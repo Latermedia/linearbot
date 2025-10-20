@@ -1,0 +1,23 @@
+# Dependencies
+node_modules/
+bun.lockb
+
+# Environment
+.env
+
+# Database
+*.db
+*.db-*
+
+# Logs
+*.log
+
+# OS
+.DS_Store
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+
