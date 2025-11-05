@@ -1,6 +1,15 @@
 # Linear Bot
 
-A bot for Linear to help identify and resolve WIP constraints and other useful insights.
+A beautiful terminal UI for Linear to help identify and resolve WIP constraints and gain useful insights into your team's work.
+
+## Features
+
+✨ **World-Class Terminal UI** - Built with Ink for a modern, interactive experience
+🔄 **Real-time Sync** - Fetch all active issues from Linear with live progress
+📊 **WIP Constraint Analysis** - Identify team members exceeding work-in-progress limits
+🎨 **Color-Coded Status** - Visual indicators for critical, warning, and healthy workloads
+⚡ **Fast Navigation** - Vim-style keybindings (j/k) and arrow keys
+🎯 **Team Filtering** - Ignore specific teams (CS, Support, etc.) from analysis
 
 ## Phasing
 
@@ -39,146 +48,122 @@ Example: `IGNORED_TEAM_KEYS=CS,SUPPORT,ADMIN`
 
 ## Usage
 
-The bot provides a simple CLI with two main commands:
-
-### 1. Sync from Linear
-
-Sync all teams, workflow states, and active issues in one command:
+Simply run the bot to launch the interactive terminal UI:
 
 ```bash
-bun start sync
+bun start
 ```
 
-This will:
+### Navigation
 
-- Fetch all issues in "started" states in **one efficient API query**
-- Store everything in the SQLite database
-- Display a summary of new and updated issues
+The bot provides an intuitive menu-driven interface:
 
-The sync command includes real-time progress indicators showing:
+**Main Menu:**
 
-- Issues fetched (with pagination support)
-- Elapsed time
+- `s` - Sync from Linear
+- `b` - Browse Issues
+- `q` - Exit
 
-**Optimization:** Uses Linear's GraphQL API filtering (`state.type: "started"`) to fetch everything in one request, avoiding dozens of API calls and rate limiting issues.
+**Browse Issues:**
 
-### 2. List Active Issues (Interactive)
+- **Level 1: Assignee Summary**
 
-Launch an interactive menu to browse issues:
+  - All assignees with flexible sorting
+    - Press `s` to toggle between "Issue Count" and "Name (A-Z)"
+    - Default: sorted by issue count (descending)
+  - WIP Constraint Tracking (3 ideal, 5 max)
+    - ✓ GOOD (1-3 issues) - Normal text
+    - ⚪ OK (4-5 issues) - Normal text
+    - 🟠 WARNING (6-7 issues) - Yellow text
+    - 🔴 CRITICAL (8+ issues) - Red text
+  - Violation summary at the top
 
-```bash
-bun start list
-```
+- **Level 2: Issue Browser**
 
-This provides a multi-level interactive interface:
+  - Compact one-line-per-issue list
+  - Team tags and status inline: `[APP-34] (In Progress) Title`
+  - Navigate with ↑/↓ or j/k
+  - Enter to view full details
 
-**Level 1: Assignee Summary**
+- **Level 3: Issue Details**
+  - Full issue title and description
+  - All metadata (team, status, assignee)
+  - Direct link to Linear
+  - Press 'b' or 'q' to go back
 
-- All assignees sorted by issue count
-- **WIP Constraint Tracking** (3 ideal, 5 max)
-  - Normal (0-5 issues): ✓ GOOD or ⚪ OK
-  - Warning (6-7 issues): 🟠 WARNING (yellow text)
-  - Critical (8+ issues): 🔴 CRITICAL (red text)
-- Visual bars showing workload distribution
-- Violation summary at the top
-- Navigate with ↑/↓ arrow keys
+**Keyboard Shortcuts:**
 
-**Level 2: Issue Browser**
+- `↑/↓` or `j/k` - Navigate up/down
+- `Enter` - Select item / drill down
+- `s` - Toggle sort mode (in assignee list: Issue Count ↔ Name A-Z)
+- `b` or `q` - Go back / Exit
+- Menu shortcuts: s (sync), b (browse), q (quit)
 
-- Compact one-line-per-issue list
-- Team tags and truncated titles
-- Navigate with ↑/↓ arrow keys
-- Hover shows full details in description area
+### Sync Command
 
-**Level 3: Issue Details**
+The sync process:
 
-- Full issue title and description
-- All metadata (team, status, assignee)
-- Direct link to Linear
-- Option to open in browser
+1. Connects to Linear API
+2. Fetches all issues in "started" states
+3. Filters out ignored teams
+4. Stores in local SQLite database
+5. Shows real-time progress
 
-**Navigation:**
+**Optimization:** Uses Linear's GraphQL API with `state.type: "started"` filtering to fetch everything efficiently in a single paginated query, avoiding rate limits.
 
-- Use ↑/↓ arrow keys to navigate
-- Enter to select/drill down
-- Ctrl+C or select Back/Exit to return
+## WIP Constraints
 
-#### Non-Interactive Mode (Optional)
+The bot tracks Work In Progress constraints:
 
-You can also view a specific assignee directly:
+- **Ideal**: 3 issues per person
+- **Maximum**: 5 issues per person
+- **Warning**: 6-7 issues (🟠 yellow)
+- **Critical**: 8+ issues (🔴 red)
 
-```bash
-bun start list "Assignee Name"
-bun start list Unassigned
-```
-
-### Help
-
-View available commands:
-
-```bash
-bun start help
-```
-
-## Quick Start
-
-```bash
-# 1. Install dependencies
-bun install
-
-# 2. Set up your API key
-echo "LINEAR_API_KEY=your_key_here" > .env
-
-# 3. Sync everything
-bun start sync
-
-# 4. View issues summary
-bun start list
-
-# 5. Drill down into specific assignee
-bun start list "John Doe"
-```
+These thresholds help identify team members who may be overloaded or blocked.
 
 ## Architecture
 
-- **TypeScript + Bun**: Fast runtime and package manager
-- **Bun SQLite**: Built-in SQLite support (no native dependencies!)
-- **@linear/sdk**: Official Linear API client
-- **@inquirer/prompts**: Interactive CLI menus
-- **Denormalized storage**: Simple, fast schema optimized for reporting
+Built with modern technologies:
 
-### Database Schema
+- **Runtime**: Bun for fast TypeScript execution
+- **UI**: Ink (React for CLIs) for beautiful terminal interfaces
+- **Database**: SQLite for local storage
+- **API**: Linear GraphQL API via `@linear/sdk`
 
-The bot uses a single, denormalized `issues` table for maximum simplicity and speed:
+## Project Structure
 
-- **issues**: id, title, description, team_id, team_name, team_key, state_id, state_name, state_type, assignee_id, assignee_name, priority, created_at, updated_at, url
+```
+src/
+  index.tsx               # Ink app entry point
+  components/
+    App.tsx               # Main app component
+    MainMenu.tsx          # Menu navigation
+    SyncView.tsx          # Sync progress display
+    BrowseView.tsx        # Issue browser
+  db/
+    schema.ts             # Database schema
+    connection.ts         # SQLite connection
+  linear/
+    client.ts             # Linear API wrapper
+  commands/               # Legacy CLI commands (deprecated)
+  ui/
+    display.ts            # Formatting utilities
+```
 
-This denormalized approach:
+## Environment Variables
 
-- ✅ Minimizes API requests (one query instead of dozens)
-- ✅ Simplifies queries (no joins needed)
-- ✅ Optimizes for read-heavy reporting workload
-- ✅ Tracks all "started" issues using Linear's native workflow type system
+- `LINEAR_API_KEY` (required) - Your Linear API key
+- `IGNORED_TEAM_KEYS` (optional) - Comma-separated team keys to ignore
 
 ## Development
 
-Run in watch mode:
+Watch mode for development:
 
 ```bash
 bun run dev
 ```
 
-## Performance
+## License
 
-The bot is highly optimized for minimal API usage:
-
-- **Single API query** fetches all "started" issues using GraphQL filtering
-- **Pagination support** handles workspaces with 100+ issues
-- **No rate limiting** - only makes one paginated request per sync
-
-## Next Steps
-
-- Process issues to identify WIP constraint violations
-- Generate snapshots and reports
-- Add time-series analysis for completed work
-- Track issue state transitions over time
+MIT
