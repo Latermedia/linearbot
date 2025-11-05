@@ -74,9 +74,10 @@ export function SyncView({ onComplete, onBack }: SyncViewProps) {
           id, identifier, title, description, team_id, team_name, team_key,
           state_id, state_name, state_type,
           assignee_id, assignee_name, priority, 
-          created_at, updated_at, url
+          created_at, updated_at, url,
+          project_id, project_name, project_state, project_updated_at
         )
-        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
         ON CONFLICT(id) DO UPDATE SET
           identifier = excluded.identifier,
           title = excluded.title,
@@ -91,7 +92,11 @@ export function SyncView({ onComplete, onBack }: SyncViewProps) {
           assignee_name = excluded.assignee_name,
           priority = excluded.priority,
           updated_at = excluded.updated_at,
-          url = excluded.url
+          url = excluded.url,
+          project_id = excluded.project_id,
+          project_name = excluded.project_name,
+          project_state = excluded.project_state,
+          project_updated_at = excluded.project_updated_at
       `);
 
       let newIssues = 0;
@@ -121,7 +126,11 @@ export function SyncView({ onComplete, onBack }: SyncViewProps) {
             issue.priority,
             issue.createdAt.toISOString(),
             issue.updatedAt.toISOString(),
-            issue.url
+            issue.url,
+            issue.projectId,
+            issue.projectName,
+            issue.projectState,
+            issue.projectUpdatedAt ? issue.projectUpdatedAt.toISOString() : null
           );
         }
       });

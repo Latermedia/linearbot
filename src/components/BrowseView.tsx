@@ -48,6 +48,7 @@ export function BrowseView({ onBack }: BrowseViewProps) {
     const db = getDatabase();
     const getIssues = db.prepare(`
       SELECT * FROM issues
+      WHERE state_type = 'started'
       ORDER BY assignee_name, team_name, title
     `);
     const allIssues = getIssues.all() as Issue[];
@@ -155,8 +156,9 @@ export function BrowseView({ onBack }: BrowseViewProps) {
   if (issuesByAssignee.size === 0) {
     return (
       <Box flexDirection="column" padding={1}>
-        <Text dimColor>No active issues found.</Text>
+        <Text dimColor>No started issues found.</Text>
         <Text dimColor>Run sync first to fetch issues from Linear.</Text>
+        <Text dimColor>(Only issues with 'started' status are shown here)</Text>
         <Box marginTop={1}>
           <Text dimColor>Press 'b' or 'q' to go back</Text>
         </Box>
@@ -194,11 +196,11 @@ export function BrowseView({ onBack }: BrowseViewProps) {
       {mode === "assignees" && (
         <Box flexDirection="column">
           <Box marginBottom={1}>
-            <Text bold>ACTIVE ISSUES SUMMARY</Text>
+            <Text bold>STARTED ISSUES SUMMARY</Text>
           </Box>
           <Box marginBottom={1}>
             <Text dimColor>
-              Total: {totalIssues} issues across {issuesByAssignee.size}{" "}
+              Total: {totalIssues} started issues across {issuesByAssignee.size}{" "}
               assignees
             </Text>
           </Box>

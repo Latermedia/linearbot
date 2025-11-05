@@ -17,6 +17,10 @@ export interface Issue {
   created_at: string;
   updated_at: string;
   url: string;
+  project_id: string | null;
+  project_name: string | null;
+  project_state: string | null;
+  project_updated_at: string | null;
 }
 
 export function initializeDatabase(db: Database): void {
@@ -41,7 +45,11 @@ export function initializeDatabase(db: Database): void {
       priority INTEGER NOT NULL,
       created_at TEXT NOT NULL,
       updated_at TEXT NOT NULL,
-      url TEXT NOT NULL
+      url TEXT NOT NULL,
+      project_id TEXT,
+      project_name TEXT,
+      project_state TEXT,
+      project_updated_at TEXT
     )
   `);
 
@@ -59,5 +67,10 @@ export function initializeDatabase(db: Database): void {
   db.run(`
     CREATE INDEX IF NOT EXISTS idx_issues_assignee_id 
     ON issues(assignee_id)
+  `);
+
+  db.run(`
+    CREATE INDEX IF NOT EXISTS idx_issues_project_id 
+    ON issues(project_id)
   `);
 }

@@ -56,17 +56,56 @@ export async function syncIssues(): Promise<void> {
     );
 
     // Filter out ignored teams
-    const issues = allIssues.filter(
+    const startedIssues = allIssues.filter(
       (issue) => !ignoredTeamKeys.includes(issue.teamKey)
     );
 
-    const ignoredCount = allIssues.length - issues.length;
+    const ignoredCount = allIssues.length - startedIssues.length;
     if (ignoredCount > 0) {
       progress.update(
-        `✓ Fetched ${allIssues.length} issues, filtered ${ignoredCount} from ignored teams\n` +
+        `✓ Fetched ${allIssues.length} started issues, filtered ${ignoredCount} from ignored teams\n` +
           `  Elapsed: ${formatElapsed(startTime)}\n\n`
       );
     }
+
+    // Phase 2: Fetch all issues for active projects
+    const activeProjectIds = new Set(
+      startedIssues
+        .filter((issue) => issue.projectId)
+        .map((issue) => issue.projectId as string)
+    );
+
+    let projectIssues: typeof allIssues = [];
+    if (activeProjectIds.size > 0) {
+      progress.update(
+        `📦 Fetching all issues for ${activeProjectIds.size} active projects...\n` +
+          `   Additional issues found: 0\n` +
+          `   Elapsed: ${formatElapsed(startTime)}\n`
+      );
+
+      projectIssues = await linearClient.fetchIssuesByProjects(
+        Array.from(activeProjectIds),
+        (projectIssueCount) => {
+          progress.update(
+            `📦 Fetching all issues for ${activeProjectIds.size} active projects...\n` +
+              `   Additional issues found: ${projectIssueCount}\n` +
+              `   Elapsed: ${formatElapsed(startTime)}\n`
+          );
+        }
+      );
+
+      progress.update(
+        `✓ Fetched ${projectIssues.length} additional issues from ${activeProjectIds.size} projects\n` +
+          `  Elapsed: ${formatElapsed(startTime)}\n\n`
+      );
+    }
+
+    // Combine and deduplicate
+    const allIssuesMap = new Map<string, (typeof allIssues)[0]>();
+    for (const issue of [...startedIssues, ...projectIssues]) {
+      allIssuesMap.set(issue.id, issue);
+    }
+    const issues = Array.from(allIssuesMap.values());
 
     if (issues.length === 0) {
       progress.clear();
@@ -109,9 +148,10 @@ export async function syncIssues(): Promise<void> {
         id, identifier, title, description, team_id, team_name, team_key,
         state_id, state_name, state_type,
         assignee_id, assignee_name, priority, 
-        created_at, updated_at, url
+        created_at, updated_at, url,
+        project_id, project_name, project_state, project_updated_at
       )
-      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
       ON CONFLICT(id) DO UPDATE SET
         identifier = excluded.identifier,
         title = excluded.title,
@@ -126,7 +166,11 @@ export async function syncIssues(): Promise<void> {
         assignee_name = excluded.assignee_name,
         priority = excluded.priority,
         updated_at = excluded.updated_at,
-        url = excluded.url
+        url = excluded.url,
+        project_id = excluded.project_id,
+        project_name = excluded.project_name,
+        project_state = excluded.project_state,
+        project_updated_at = excluded.project_updated_at
     `);
 
     let newCount = 0;
@@ -156,7 +200,11 @@ export async function syncIssues(): Promise<void> {
           issue.priority,
           issue.createdAt.toISOString(),
           issue.updatedAt.toISOString(),
-          issue.url
+          issue.url,
+          issue.projectId,
+          issue.projectName,
+          issue.projectState,
+          issue.projectUpdatedAt ? issue.projectUpdatedAt.toISOString() : null
         );
       }
     });

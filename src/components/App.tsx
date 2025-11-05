@@ -1,46 +1,46 @@
 import React, { useState } from "react";
 import { Box, Text } from "ink";
 import { MainMenu } from "./MainMenu.js";
-import { SyncView } from "./SyncView.js";
 import { BrowseView } from "./BrowseView.js";
+import { ProjectsView } from "./ProjectsView.js";
 
-export type View = "menu" | "sync" | "browse";
+export type View = "menu" | "browse" | "projects";
 
 export function App() {
   const [currentView, setCurrentView] = useState<View>("menu");
-  const [syncComplete, setSyncComplete] = useState(false);
 
   const handleViewChange = (view: View) => {
     setCurrentView(view);
   };
 
-  const handleSyncComplete = () => {
-    setSyncComplete(true);
-    setTimeout(() => {
-      setCurrentView("menu");
-      setSyncComplete(false);
-    }, 2000);
-  };
-
   return (
-    <Box flexDirection="column" padding={1}>
-      <Box borderStyle="round" borderColor="cyan" padding={1} marginBottom={1}>
-        <Text bold color="cyan">
-          📦 LINEAR BOT - WIP Constraint Analysis Tool
-        </Text>
+    <Box flexDirection="column">
+      <Box key="app-header" flexDirection="column">
+        <Box paddingX={2} paddingTop={1}>
+          <Text dimColor>━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━</Text>
+        </Box>
+        <Box paddingX={2} paddingY={0}>
+          <Text bold color="cyan">
+            ⚡ LINEAR BOT
+          </Text>
+          <Text dimColor> │ </Text>
+          <Text dimColor>WIP Constraint Analysis</Text>
+        </Box>
+        <Box paddingX={2} paddingBottom={1}>
+          <Text dimColor>━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━</Text>
+        </Box>
       </Box>
 
-      {currentView === "menu" && <MainMenu onSelectView={handleViewChange} />}
-
-      {currentView === "sync" && (
-        <SyncView
-          onComplete={handleSyncComplete}
-          onBack={() => setCurrentView("menu")}
-        />
+      {currentView === "menu" && (
+        <MainMenu key="view-menu" onSelectView={handleViewChange} />
       )}
 
       {currentView === "browse" && (
-        <BrowseView onBack={() => setCurrentView("menu")} />
+        <BrowseView key="view-browse" onBack={() => setCurrentView("menu")} />
+      )}
+
+      {currentView === "projects" && (
+        <ProjectsView key="view-projects" onBack={() => setCurrentView("menu")} />
       )}
     </Box>
   );

@@ -4,12 +4,15 @@ A beautiful terminal UI for Linear to help identify and resolve WIP constraints 
 
 ## Features
 
-✨ **World-Class Terminal UI** - Built with Ink for a modern, interactive experience
-🔄 **Real-time Sync** - Fetch all active issues from Linear with live progress
-📊 **WIP Constraint Analysis** - Identify team members exceeding work-in-progress limits
-🎨 **Color-Coded Status** - Visual indicators for critical, warning, and healthy workloads
-⚡ **Fast Navigation** - Vim-style keybindings (j/k) and arrow keys
+📊 **Real-Time Dashboard** - WIP violations summary on startup, see problems at a glance
+✨ **Elegant Terminal UI** - Futuristic design with sophisticated box-drawing characters and refined aesthetics
+🔄 **Two-Phase Sync** - Fetch started issues + complete project data for accurate metrics
+📋 **WIP Constraint Analysis** - Identify team members exceeding work-in-progress limits (5 max)
+📦 **Project Health Tracking** - Monitor active projects for multi-engineer issues, status mismatches, and stale updates
+🎨 **Color-Coded Violations** - Critical (🔴) and warning (🟠) indicators
+⚡ **Hotkey Navigation** - Single-key shortcuts for instant access
 🎯 **Team Filtering** - Ignore specific teams (CS, Support, etc.) from analysis
+⚠️ **Smart Alerts** - Automatic detection of problems requiring attention
 
 ## Phasing
 
@@ -54,17 +57,38 @@ Simply run the bot to launch the interactive terminal UI:
 bun start
 ```
 
-### Navigation
+### Dashboard & Navigation
 
-The bot provides an intuitive menu-driven interface:
+The bot opens with a **WIP violations dashboard** showing real-time health metrics:
 
-**Main Menu:**
+**Dashboard Sections:**
+
+- **Summary Stats** - Total assignees, active projects, and unassigned issues
+- **Unassigned Issues** (📋 magenta) - Started issues that need assignment
+  - These are NOT counted as WIP violations
+  - Shown prominently for action
+  - Press `u` to add warning comments to all unassigned issues in Linear
+- **WIP Violations by Assignee** (⚠️ red/yellow) - People exceeding 5 started issues (max: 5)
+  - 🔴 Critical (8+ issues) / 🟠 Warning (6-7 issues)
+  - Top 5 violations shown, sorted by severity
+  - Unassigned issues excluded from this view
+- **Project Issues** (⚠️ yellow) - Active projects with problems
+  - Multiple engineers working on same project (ideal: 1)
+  - Status mismatches (backlog status with active work)
+  - Stale updates (no update in 7+ days)
+  - Top 5 issues shown
+
+**Navigation Hotkeys** (always visible at top):
 
 - `s` - Sync from Linear
-- `b` - Browse Issues
-- `q` - Exit
+- `b` - Browse Issues (full list)
+- `p` - Browse Projects (full list)
+- `u` - Comment on all unassigned issues (adds warning in Linear)
+- `q` - Quit
 
 **Browse Issues:**
+
+Shows **only issues with "started" status** for WIP constraint tracking.
 
 - **Level 1: Assignee Summary**
 
@@ -77,6 +101,7 @@ The bot provides an intuitive menu-driven interface:
     - 🟠 WARNING (6-7 issues) - Yellow text
     - 🔴 CRITICAL (8+ issues) - Red text
   - Violation summary at the top
+  - **Note:** Only counts "started" issues (not todo, done, etc.)
 
 - **Level 2: Issue Browser**
 
@@ -91,29 +116,95 @@ The bot provides an intuitive menu-driven interface:
   - Direct link to Linear
   - Press 'b' or 'q' to go back
 
+**Browse Projects:**
+
+Shows projects with active work, including **all issues** (todo, started, done, etc.) for accurate completion metrics.
+
+- **Level 1: Team Summary**
+
+  - Overview of active projects by team
+  - Shows project counts: total, in progress, backlog
+  - Warnings for status mismatches and stale updates
+  - Only shows teams with active projects
+
+- **Level 2: Project Details**
+
+  - Projects for selected team
+  - Sorting options (press `s` to toggle):
+    - **Progress**: Sort by number of in-progress issues
+    - **Activity**: Sort by last activity date
+  - For each project:
+    - Progress percentage (completed vs total issues)
+    - Issue breakdown by status
+    - Engineer count with WIP constraint tracking
+    - Status mismatch warnings (e.g., "Backlog" with active work)
+    - Stale update warnings (no update in 7+ days)
+    - Multi-team project indicators
+
+- **Level 3: Project Issues**
+  - All issues in the selected project
+  - Shows identifier, status, assignee, and title
+  - Displays project health warnings
+  - Lists all engineers working on project
+  - Multi-team breakdown if applicable
+
 **Keyboard Shortcuts:**
 
-- `↑/↓` or `j/k` - Navigate up/down
-- `Enter` - Select item / drill down
-- `s` - Toggle sort mode (in assignee list: Issue Count ↔ Name A-Z)
-- `b` or `q` - Go back / Exit
-- Menu shortcuts: s (sync), b (browse), q (quit)
+- `↑/↓` or `j/k` - Navigate
+- `Enter` - Select / drill down
+- `s` - Toggle sort (in lists)
+- `b` or `q` - Back / Exit
 
 ### Sync Command
 
-The sync process:
+The sync process runs **inline in the main menu** with a **two-phase approach** for accurate metrics:
+
+1. Press `s` or select "Sync from Linear" in the menu
+2. Watch the sync progress appear in a status bar above the menu
+3. See real-time updates: Connecting → Fetching Started Issues → Fetching Project Issues → Storing → Complete
+4. After 3 seconds, the status bar disappears and you can continue navigating
+
+**Behind the scenes (Two-Phase Sync):**
+
+**Phase 1: Active Issues**
 
 1. Connects to Linear API
-2. Fetches all issues in "started" states
+2. Fetches all issues in "started" states (including project data)
 3. Filters out ignored teams
-4. Stores in local SQLite database
-5. Shows real-time progress
+4. Identifies active projects
 
-**Optimization:** Uses Linear's GraphQL API with `state.type: "started"` filtering to fetch everything efficiently in a single paginated query, avoiding rate limits.
+**Phase 2: Complete Project Data** 5. For each active project, fetches ALL issues (todo, in-progress, done, canceled, etc.) 6. This ensures accurate completion percentages in the Projects view 7. Deduplicates issues between phases
+
+**Phase 3: Storage** 8. Stores all issues in local SQLite database 9. Shows real-time progress throughout
+
+**Why Two Phases?** To get accurate project progress metrics, we need all issues in a project, not just the started ones. This two-phase approach keeps the sync fast while providing complete data for active projects.
+
+**Optimization:** Uses Linear's GraphQL API efficiently with filtered queries to avoid rate limits. Typical sync time: 2-5 seconds depending on project count.
+
+**Note:** Data persists between sessions. The dashboard will show cached data on startup, or prompt you to sync if no data is available. Navigation is disabled while syncing to prevent issues.
+
+### Comment on Unassigned Issues
+
+Press `u` from the dashboard to automatically comment on all unassigned started issues in Linear. The bot will:
+
+1. Find all started issues without an assignee
+2. Add a comment to each issue: _"⚠️ This issue requires an assignee - This started issue is currently unassigned. Please assign an owner to ensure it gets proper attention and tracking."_
+3. Show real-time progress as it comments
+4. Display completion summary
+
+This is useful for:
+
+- Alerting teams to assign ownership
+- Leaving a paper trail of when issues were flagged
+- Encouraging accountability without manual intervention
+
+**Permissions:** Requires Linear API key with comment permissions.
 
 ## WIP Constraints
 
-The bot tracks Work In Progress constraints:
+The bot tracks Work In Progress constraints at multiple levels:
+
+**Issue-Level Constraints (Browse Issues):**
 
 - **Ideal**: 3 issues per person
 - **Maximum**: 5 issues per person
@@ -121,6 +212,16 @@ The bot tracks Work In Progress constraints:
 - **Critical**: 8+ issues (🔴 red)
 
 These thresholds help identify team members who may be overloaded or blocked.
+
+**Project-Level Constraints (Browse Projects):**
+
+- **Ideal**: 1 project per engineer (exceptions for architects and team leads)
+- **Active Projects**: Must have started issues OR recent activity (within 14 days)
+- **Status Mismatch**: ⚠️ Warning when project status doesn't match actual work state
+- **Stale Updates**: 🕐 Warning when project hasn't been updated in 7+ days
+- **Multi-team Projects**: 🔗 Indicated when issues span multiple teams
+
+These constraints help ensure focus and prevent context switching across too many initiatives.
 
 ## Architecture
 
@@ -163,6 +264,50 @@ Watch mode for development:
 ```bash
 bun run dev
 ```
+
+### UI Components
+
+The app uses a reusable `BoxPanel` component for creating elegant bordered sections:
+
+```tsx
+import { BoxPanel, BoxPanelLine } from "./components/BoxPanel.js";
+
+// Simple panel
+<BoxPanel title="STATUS" width={40}>
+  <BoxPanelLine>
+    <Text color="green">✓ System operational</Text>
+  </BoxPanelLine>
+</BoxPanel>
+
+// Multi-line panel
+<BoxPanel title="METRICS" width={50} marginBottom={2}>
+  <BoxPanelLine>
+    <Text bold>5</Text>
+    <Text dimColor> assignees • </Text>
+    <Text bold>12</Text>
+    <Text dimColor> projects</Text>
+  </BoxPanelLine>
+  <BoxPanelLine>
+    <Text dimColor>Last sync: </Text>
+    <Text>2 minutes ago</Text>
+  </BoxPanelLine>
+</BoxPanel>
+```
+
+**BoxPanel Props:**
+
+- `title` - The title displayed in the top border
+- `width` - Panel width in characters (default: 50)
+- `marginBottom` - Bottom margin (default: 0)
+- `children` - Content to display inside the panel
+
+**BoxPanelLine:**
+
+- Automatically adds the left and right border characters (`│`) with spacing
+- Use for standard rows within a BoxPanel
+- For complex layouts, you can use raw `Box`/`Text` components inside BoxPanel
+
+See `src/components/BoxPanel.example.tsx` for more examples and tips.
 
 ## License
 

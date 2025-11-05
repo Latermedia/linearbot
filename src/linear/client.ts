@@ -17,6 +17,10 @@ export interface LinearIssueData {
   createdAt: Date;
   updatedAt: Date;
   url: string;
+  projectId: string | null;
+  projectName: string | null;
+  projectState: string | null;
+  projectUpdatedAt: Date | null;
 }
 
 export class LinearAPIClient {
@@ -65,6 +69,12 @@ export class LinearAPIClient {
               id
               name
             }
+            project {
+              id
+              name
+              state
+              updatedAt
+            }
           }
           pageInfo {
             hasNextPage
@@ -103,6 +113,12 @@ export class LinearAPIClient {
           createdAt: new Date(issue.createdAt),
           updatedAt: new Date(issue.updatedAt),
           url: issue.url,
+          projectId: issue.project?.id || null,
+          projectName: issue.project?.name || null,
+          projectState: issue.project?.state || null,
+          projectUpdatedAt: issue.project?.updatedAt
+            ? new Date(issue.project.updatedAt)
+            : null,
         });
       }
 
@@ -124,6 +140,156 @@ export class LinearAPIClient {
     }
 
     return issues;
+  }
+
+  async fetchIssuesByProjects(
+    projectIds: string[],
+    onProgress?: (current: number, pageSize: number) => void
+  ): Promise<LinearIssueData[]> {
+    if (projectIds.length === 0) return [];
+
+    const issues: LinearIssueData[] = [];
+
+    // Fetch issues for each project (Linear doesn't support OR in project filters)
+    for (const projectId of projectIds) {
+      let hasMore = true;
+      let cursor: string | undefined;
+      let pageCount = 0;
+
+      const query = `
+        query GetProjectIssues($first: Int!, $after: String, $projectId: ID!) {
+          issues(
+            first: $first
+            after: $after
+            filter: { project: { id: { eq: $projectId } } }
+          ) {
+            nodes {
+              id
+              identifier
+              title
+              description
+              priority
+              url
+              createdAt
+              updatedAt
+              team {
+                id
+                name
+                key
+              }
+              state {
+                id
+                name
+                type
+              }
+              assignee {
+                id
+                name
+              }
+              project {
+                id
+                name
+                state
+                updatedAt
+              }
+            }
+            pageInfo {
+              hasNextPage
+              endCursor
+            }
+          }
+        }
+      `;
+
+      while (hasMore) {
+        const response: any = await this.client.client.rawRequest(query, {
+          first: 100,
+          after: cursor,
+          projectId,
+        });
+
+        const data = response.data.issues;
+
+        for (const issue of data.nodes) {
+          // Skip issues without team or state
+          if (!issue.team || !issue.state) continue;
+
+          // Skip duplicates (issue might already be in started issues)
+          if (issues.some((i) => i.id === issue.id)) continue;
+
+          issues.push({
+            id: issue.id,
+            identifier: issue.identifier,
+            title: issue.title,
+            description: issue.description || null,
+            teamId: issue.team.id,
+            teamName: issue.team.name,
+            teamKey: issue.team.key,
+            stateId: issue.state.id,
+            stateName: issue.state.name,
+            stateType: issue.state.type,
+            assigneeId: issue.assignee?.id || null,
+            assigneeName: issue.assignee?.name || null,
+            priority: issue.priority,
+            createdAt: new Date(issue.createdAt),
+            updatedAt: new Date(issue.updatedAt),
+            url: issue.url,
+            projectId: issue.project?.id || null,
+            projectName: issue.project?.name || null,
+            projectState: issue.project?.state || null,
+            projectUpdatedAt: issue.project?.updatedAt
+              ? new Date(issue.project.updatedAt)
+              : null,
+          });
+        }
+
+        hasMore = data.pageInfo.hasNextPage;
+        cursor = data.pageInfo.endCursor ?? undefined;
+        pageCount++;
+
+        if (onProgress) {
+          onProgress(issues.length, data.nodes.length);
+        }
+
+        // Safety break
+        if (pageCount > 100) {
+          console.warn(
+            `Warning: Fetched 100+ pages for project ${projectId}, stopping`
+          );
+          break;
+        }
+      }
+    }
+
+    return issues;
+  }
+
+  async commentOnIssue(issueId: string, message: string): Promise<boolean> {
+    try {
+      const mutation = `
+        mutation CreateComment($issueId: String!, $body: String!) {
+          commentCreate(input: { issueId: $issueId, body: $body }) {
+            success
+            comment {
+              id
+            }
+          }
+        }
+      `;
+
+      const response: any = await this.client.client.rawRequest(mutation, {
+        issueId,
+        body: message,
+      });
+
+      return response.data.commentCreate.success;
+    } catch (error) {
+      console.error(
+        `Failed to comment on issue ${issueId}:`,
+        error instanceof Error ? error.message : error
+      );
+      return false;
+    }
   }
 
   async testConnection(): Promise<boolean> {
