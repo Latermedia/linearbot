@@ -185,8 +185,8 @@ export function ProjectsView({ onBack }: ProjectsViewProps) {
       const teamName = issues[0]?.team_name || teamKey;
       const teamId = issues[0]?.team_id || teamKey;
 
-      const inProgressProjects = teamProjects.filter((p) =>
-        (p.projectState?.toLowerCase() || "").includes("progress")
+      const inProgressProjects = teamProjects.filter(
+        (p) => (p.projectState?.toLowerCase() || "") === "started"
       ).length;
       const backlogProjects = teamProjects.filter((p) => {
         const state = p.projectState?.toLowerCase() || "";
@@ -340,6 +340,12 @@ export function ProjectsView({ onBack }: ProjectsViewProps) {
               Use ↑↓ or j/k to navigate • Enter to select • q/b to go back
             </Text>
           </Box>
+          <Box marginBottom={1}>
+            <Text dimColor>
+              Legend: <Text color="yellow">⚠️</Text> status mismatch •{" "}
+              <Text color="red">🕐</Text> no update in 7+ days
+            </Text>
+          </Box>
 
           {teams
             .slice(scrollOffset, scrollOffset + visibleLines)
@@ -347,37 +353,40 @@ export function ProjectsView({ onBack }: ProjectsViewProps) {
               const actualIndex = scrollOffset + displayIndex;
               const isSelected = actualIndex === selectedIndex;
 
+              const hasViolations =
+                team.statusMismatchCount > 0 || team.staleUpdateCount > 0;
+
+              // Build indicator string
+              let indicatorText = "";
+              if (!hasViolations) {
+                indicatorText = "✓ Healthy";
+              } else {
+                const parts = [];
+                if (team.statusMismatchCount > 0) {
+                  parts.push(`⚠️  ${team.statusMismatchCount}`);
+                }
+                if (team.staleUpdateCount > 0) {
+                  parts.push(`🕐 ${team.staleUpdateCount}`);
+                }
+                indicatorText = parts.join(" • ");
+              }
+
               return (
                 <Box key={`team-${team.teamKey}`}>
                   <Text color={isSelected ? "cyan" : "gray"}>
                     {isSelected ? "▶ " : "  "}
                   </Text>
-                  <Box width={25}>
+                  <Box width={35}>
                     <Text
                       bold={isSelected}
                       color={isSelected ? "cyan" : "white"}
                     >
-                      {team.teamName}
+                      {team.teamName} ({team.activeProjects})
                     </Text>
                   </Box>
-                  <Box width={20}>
-                    <Text color={isSelected ? "cyan" : "white"}>
-                      {team.activeProjects} projects
-                    </Text>
-                  </Box>
-                  <Box width={25}>
-                    <Text color={isSelected ? "cyan" : "gray"}>
-                      {team.inProgressProjects} in progress
-                    </Text>
-                  </Box>
-                  {team.statusMismatchCount > 0 && (
-                    <Text color="yellow">
-                      ⚠️ {team.statusMismatchCount} mismatched
-                    </Text>
-                  )}
-                  {team.staleUpdateCount > 0 && (
-                    <Text color="red"> 🕐 {team.staleUpdateCount} stale</Text>
-                  )}
+                  <Text color={!hasViolations ? "green" : "white"}>
+                    {indicatorText}
+                  </Text>
                 </Box>
               );
             })}
@@ -444,7 +453,7 @@ export function ProjectsView({ onBack }: ProjectsViewProps) {
                     <Text color={isSelected ? "cyan" : "gray"}>
                       {isSelected ? "▶ " : "  "}
                     </Text>
-                    <Box width={40}>
+                    <Box width={80}>
                       <Text
                         bold={isSelected}
                         color={isSelected ? "cyan" : "white"}
@@ -463,31 +472,38 @@ export function ProjectsView({ onBack }: ProjectsViewProps) {
                       </Text>
                     </Box>
                   </Box>
-                  <Box paddingLeft={3}>
-                    <Text color="gray" dimColor>
-                      {project.engineerCount} engineers •{" "}
-                      {project.projectState || "No status"}
-                    </Text>
+                  <Box paddingLeft={3} flexDirection="column">
+                    <Box>
+                      <Text dimColor>
+                        {project.engineerCount} engineers •{" "}
+                        {project.projectState || "No status"}
+                      </Text>
+                    </Box>
                     {project.hasStatusMismatch && (
-                      <Text color="yellow"> ⚠️ Status mismatch</Text>
+                      <Box>
+                        <Text color="yellow">⚠️ Status mismatch</Text>
+                      </Box>
                     )}
                     {project.isStaleUpdate && (
-                      <Text color="red"> 🕐 No update in 7+ days</Text>
+                      <Box>
+                        <Text color="red">🕐 No update in 7+ days</Text>
+                      </Box>
                     )}
                     {project.teams.size > 1 && (
-                      <Text color="cyan">
-                        {" "}
-                        🔗 Multi-team ({Array.from(project.teams).join(", ")})
-                      </Text>
+                      <Box>
+                        <Text color="cyan">
+                          🔗 Multi-team ({Array.from(project.teams).join(", ")})
+                        </Text>
+                      </Box>
                     )}
-                  </Box>
-                  <Box paddingLeft={3}>
-                    <Text color="gray" dimColor>
-                      Issues:{" "}
-                      {Array.from(project.issuesByState.entries())
-                        .map(([state, count]) => `${state}: ${count}`)
-                        .join(" • ")}
-                    </Text>
+                    <Box>
+                      <Text dimColor>
+                        Issues:{" "}
+                        {Array.from(project.issuesByState.entries())
+                          .map(([state, count]) => `${state}: ${count}`)
+                          .join(" • ")}
+                      </Text>
+                    </Box>
                   </Box>
                   {project.engineerCount > 5 && (
                     <Box paddingLeft={3}>
