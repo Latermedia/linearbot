@@ -6,6 +6,14 @@ import { createLinearClient } from "../linear/client.js";
 import type { View } from "./App.js";
 import type { Issue } from "../db/schema.js";
 import { BoxPanel, BoxPanelLine } from "./BoxPanel.js";
+import {
+  hasRecentComment,
+  logComment,
+  getUnassignedIssuesNeedingComments,
+  COMMENT_TYPES,
+  cleanupOldCommentLogs,
+} from "../db/comment-tracking.js";
+import { logCommentCreated, logCommentFailed } from "../utils/write-log.js";
 
 interface MainMenuProps {
   onSelectView: (view: View) => void;
@@ -34,6 +42,12 @@ interface ProjectViolation {
   isStale: boolean;
 }
 
+interface EngineerMultiProjectViolation {
+  engineerName: string;
+  projectCount: number;
+  projects: string[];
+}
+
 export function MainMenu({ onSelectView }: MainMenuProps) {
   const [syncStatus, setSyncStatus] = useState<SyncStatus>("idle");
   const [issueCount, setIssueCount] = useState(0);
@@ -47,6 +61,7 @@ export function MainMenu({ onSelectView }: MainMenuProps) {
   // Comment status
   const [commentStatus, setCommentStatus] = useState<CommentStatus>("idle");
   const [commentedCount, setCommentedCount] = useState(0);
+  const [commentedIssues, setCommentedIssues] = useState<Issue[]>([]);
   const [commentErrorMessage, setCommentErrorMessage] = useState<string | null>(
     null
   );
@@ -58,6 +73,8 @@ export function MainMenu({ onSelectView }: MainMenuProps) {
   const [projectViolations, setProjectViolations] = useState<
     ProjectViolation[]
   >([]);
+  const [engineerMultiProjectViolations, setEngineerMultiProjectViolations] =
+    useState<EngineerMultiProjectViolation[]>([]);
   const [totalAssignees, setTotalAssignees] = useState(0);
   const [totalProjects, setTotalProjects] = useState(0);
   const [unassignedCount, setUnassignedCount] = useState(0);
@@ -87,9 +104,12 @@ export function MainMenu({ onSelectView }: MainMenuProps) {
       issuesByAssignee.get(assignee)?.push(issue);
     }
 
-    // Track unassigned issues separately
+    // Track unassigned issues separately (exclude Paused/Blocked - often intentional)
     const unassignedIssues = issuesByAssignee.get("Unassigned");
-    setUnassignedCount(unassignedIssues?.length || 0);
+    const actionableUnassigned = unassignedIssues?.filter(
+      (issue) => issue.state_name !== "Paused" && issue.state_name !== "Blocked"
+    );
+    setUnassignedCount(actionableUnassigned?.length || 0);
 
     const violations: AssigneeViolation[] = [];
     for (const [name, issues] of issuesByAssignee) {
@@ -111,7 +131,56 @@ export function MainMenu({ onSelectView }: MainMenuProps) {
     // Don't count unassigned in total assignees
     setTotalAssignees(issuesByAssignee.size - (unassignedIssues ? 1 : 0));
 
-    // Load project violations
+    // Load engineers working on multiple projects
+    const startedProjectIssues = db
+      .prepare(
+        `
+      SELECT * FROM issues 
+      WHERE state_type = 'started' 
+      AND project_id IS NOT NULL 
+      AND assignee_name IS NOT NULL
+    `
+      )
+      .all() as Issue[];
+
+    // Group by engineer to see how many projects each is working on
+    const engineerProjects = new Map<string, Set<string>>();
+    const engineerProjectNames = new Map<string, Map<string, string>>();
+
+    for (const issue of startedProjectIssues) {
+      const engineerName = issue.assignee_name!;
+      const projectId = issue.project_id!;
+      const projectName = issue.project_name || "Unknown Project";
+
+      if (!engineerProjects.has(engineerName)) {
+        engineerProjects.set(engineerName, new Set());
+        engineerProjectNames.set(engineerName, new Map());
+      }
+
+      engineerProjects.get(engineerName)!.add(projectId);
+      engineerProjectNames.get(engineerName)!.set(projectId, projectName);
+    }
+
+    // Find engineers working on multiple projects
+    const multiProjectViolations: EngineerMultiProjectViolation[] = [];
+    for (const [engineerName, projectIds] of engineerProjects) {
+      if (projectIds.size > 1) {
+        const projectNamesList = Array.from(projectIds).map(
+          (id) => engineerProjectNames.get(engineerName)!.get(id)!
+        );
+
+        multiProjectViolations.push({
+          engineerName,
+          projectCount: projectIds.size,
+          projects: projectNamesList,
+        });
+      }
+    }
+
+    multiProjectViolations.sort((a, b) => b.projectCount - a.projectCount);
+    setEngineerMultiProjectViolations(multiProjectViolations);
+
+    // Load project violations (status mismatch and staleness only)
     const allIssues = db
       .prepare(`SELECT * FROM issues WHERE project_id IS NOT NULL`)
       .all() as Issue[];
@@ -145,7 +214,8 @@ export function MainMenu({ onSelectView }: MainMenuProps) {
         ? new Date(issues[0].project_updated_at) < sevenDaysAgo
         : true;
 
-      if (engineers.size > 1 || hasStatusMismatch || isStale) {
+      // Remove the engineerCount > 1 check - we're tracking that separately now
+      if (hasStatusMismatch || isStale) {
         projViolations.push({
           name: issues[0].project_name || "Unknown Project",
           engineerCount: engineers.size,
@@ -159,7 +229,10 @@ export function MainMenu({ onSelectView }: MainMenuProps) {
     setTotalProjects(projectGroups.size);
   };
 
-  const runSync = async () => {
+  // Extract sync logic into a reusable function
+  const performSync = async (
+    includeProjectSync: boolean = true
+  ): Promise<boolean> => {
     try {
       setSyncStatus("connecting");
       setErrorMessage(null);
@@ -177,7 +250,7 @@ export function MainMenu({ onSelectView }: MainMenuProps) {
         setSyncStatus("error");
         setErrorMessage("Failed to connect to Linear. Check your API key.");
         setTimeout(() => setSyncStatus("idle"), 3000);
-        return;
+        return false;
       }
 
       // Fetch issues
@@ -191,24 +264,27 @@ export function MainMenu({ onSelectView }: MainMenuProps) {
         (issue) => !ignoredTeamKeys.includes(issue.teamKey)
       );
 
-      // Phase 2: Fetch all issues for projects with active work
-      const activeProjectIds = new Set(
-        startedIssues
-          .filter((issue) => issue.projectId)
-          .map((issue) => issue.projectId as string)
-      );
-
-      setProjectCount(activeProjectIds.size);
-
+      // Phase 2: Fetch all issues for projects with active work (optional)
       let projectIssues: typeof allIssues = [];
-      if (activeProjectIds.size > 0) {
-        setSyncStatus("fetching_projects");
-        projectIssues = await linearClient.fetchIssuesByProjects(
-          Array.from(activeProjectIds),
-          (count) => {
-            setProjectIssueCount(count);
-          }
+
+      if (includeProjectSync) {
+        const activeProjectIds = new Set(
+          startedIssues
+            .filter((issue) => issue.projectId)
+            .map((issue) => issue.projectId as string)
         );
+
+        setProjectCount(activeProjectIds.size);
+
+        if (activeProjectIds.size > 0) {
+          setSyncStatus("fetching_projects");
+          projectIssues = await linearClient.fetchIssuesByProjects(
+            Array.from(activeProjectIds),
+            (count) => {
+              setProjectIssueCount(count);
+            }
+          );
+        }
       }
 
       // Combine all issues and deduplicate
@@ -316,20 +392,30 @@ export function MainMenu({ onSelectView }: MainMenuProps) {
       setNewCount(newIssues);
       setUpdatedCount(updatedIssues);
       setTotalCount(total);
-      setIssueCount(startedCount); // Reuse for started count in complete message
+      setIssueCount(startedCount);
       setSyncStatus("complete");
 
-      // Reload dashboard data after sync
-      setTimeout(() => {
-        setSyncStatus("idle");
-        loadDashboardData();
-      }, 3000);
+      return true;
     } catch (error) {
       setSyncStatus("error");
       setErrorMessage(
         error instanceof Error ? error.message : "An unknown error occurred"
       );
       setTimeout(() => setSyncStatus("idle"), 3000);
+      return false;
+    }
+  };
+
+  const runSync = async () => {
+    // Full sync with project issues for complete dashboard data
+    const success = await performSync(true);
+
+    if (success) {
+      // Reload dashboard data after sync
+      setTimeout(() => {
+        setSyncStatus("idle");
+        loadDashboardData();
+      }, 3000);
     }
   };
 
@@ -338,13 +424,38 @@ export function MainMenu({ onSelectView }: MainMenuProps) {
       setCommentStatus("commenting");
       setCommentErrorMessage(null);
       setCommentedCount(0);
+      setCommentedIssues([]);
+
+      // Step 1: Sync first to get latest issue states (skip project sync - we only need started issues)
+      const syncSuccess = await performSync(false);
+
+      if (!syncSuccess) {
+        setCommentStatus("error");
+        setCommentErrorMessage("Failed to sync issues before commenting");
+        setTimeout(() => setCommentStatus("idle"), 3000);
+        return;
+      }
+
+      // Reset sync status after sync completes
+      setSyncStatus("idle");
+
+      // Step 2: Now proceed with commenting on fresh data
+      setCommentStatus("commenting");
 
       const db = getDatabase();
+
+      // Clean up old logs periodically (optional, keeps DB lean)
+      cleanupOldCommentLogs(db);
+
+      // Get all unassigned issues from the freshly synced database
+      // Exclude Paused and Blocked states - these being unassigned is often intentional
       const unassignedIssues = db
         .prepare(
           `
         SELECT * FROM issues 
-        WHERE state_type = 'started' AND assignee_name IS NULL
+        WHERE state_type = 'started' 
+          AND assignee_name IS NULL
+          AND state_name NOT IN ('Paused', 'Blocked')
       `
         )
         .all() as Issue[];
@@ -355,21 +466,105 @@ export function MainMenu({ onSelectView }: MainMenuProps) {
         return;
       }
 
+      // Filter out issues we've commented on in the past 24 hours (local DB check)
+      let issuesNeedingComments = unassignedIssues.filter(
+        (issue) =>
+          !hasRecentComment(db, issue.id, COMMENT_TYPES.UNASSIGNED_WARNING, 24)
+      );
+
       const linearClient = createLinearClient();
       const message =
         "⚠️ **This issue requires an assignee**\n\nThis started issue is currently unassigned. Please assign an owner to ensure it gets proper attention and tracking.";
 
-      let successCount = 0;
-      for (const issue of unassignedIssues) {
-        const success = await linearClient.commentOnIssue(issue.id, message);
-        if (success) {
-          successCount++;
-          setCommentedCount(successCount);
+      // Unique identifier in the message to search for
+      const messageIdentifier = "This issue requires an assignee";
+
+      // Double-check against Linear API to catch any comments we didn't track
+      const finalIssuesNeedingComments: Issue[] = [];
+
+      for (const issue of issuesNeedingComments) {
+        const hasLinearComment = await linearClient.hasRecentCommentWithText(
+          issue.id,
+          messageIdentifier,
+          24
+        );
+
+        if (!hasLinearComment) {
+          finalIssuesNeedingComments.push(issue);
         }
       }
 
+      if (finalIssuesNeedingComments.length === 0) {
+        setCommentStatus("complete");
+        setCommentErrorMessage(
+          `All ${unassignedIssues.length} unassigned issues already have recent warnings (< 24h)`
+        );
+        return;
+      }
+
+      // Comment on all issues that need warnings
+      const successfullyCommented: Issue[] = [];
+      let failedCount = 0;
+
+      for (const issue of finalIssuesNeedingComments) {
+        try {
+          const success = await linearClient.commentOnIssue(issue.id, message);
+
+          if (success) {
+            // Log the successful comment to the write log
+            logCommentCreated(
+              issue.id,
+              issue.identifier,
+              issue.title,
+              issue.url,
+              COMMENT_TYPES.UNASSIGNED_WARNING,
+              message
+            );
+
+            // Log the comment to DB to prevent duplicates
+            logComment(db, issue.id, COMMENT_TYPES.UNASSIGNED_WARNING);
+
+            successfullyCommented.push(issue);
+            setCommentedCount(successfullyCommented.length);
+            setCommentedIssues([...successfullyCommented]);
+          } else {
+            // Log the failed comment
+            logCommentFailed(
+              issue.id,
+              issue.identifier,
+              issue.title,
+              issue.url,
+              COMMENT_TYPES.UNASSIGNED_WARNING,
+              "Comment API returned false"
+            );
+            failedCount++;
+          }
+
+          // Small delay to avoid rate limiting
+          await new Promise((resolve) => setTimeout(resolve, 500));
+        } catch (commentError) {
+          // Log the failed comment with error details
+          logCommentFailed(
+            issue.id,
+            issue.identifier,
+            issue.title,
+            issue.url,
+            COMMENT_TYPES.UNASSIGNED_WARNING,
+            commentError instanceof Error
+              ? commentError.message
+              : String(commentError)
+          );
+          failedCount++;
+        }
+      }
+
+      if (failedCount > 0) {
+        setCommentErrorMessage(
+          `Commented on ${successfullyCommented.length} issues, ${failedCount} failed`
+        );
+      }
+
       setCommentStatus("complete");
-      setTimeout(() => setCommentStatus("idle"), 3000);
     } catch (error) {
       setCommentStatus("error");
       setCommentErrorMessage(
@@ -387,8 +582,18 @@ export function MainMenu({ onSelectView }: MainMenuProps) {
       onSelectView("browse");
     } else if (input === "p") {
       onSelectView("projects");
+    } else if (input === "e") {
+      onSelectView("engineers");
     } else if (input === "u") {
       commentOnUnassigned();
+    } else if (input === "c") {
+      // Clear comment notification
+      if (commentStatus === "complete") {
+        setCommentStatus("idle");
+        setCommentedCount(0);
+        setCommentedIssues([]);
+        setCommentErrorMessage(null);
+      }
     } else if (input === "q") {
       process.exit(0);
     }
@@ -400,7 +605,7 @@ export function MainMenu({ onSelectView }: MainMenuProps) {
     <Box flexDirection="column">
       {/* Hotkey Navigation */}
       <Box key="hotkeys" paddingX={2} paddingY={1}>
-        <BoxPanel title="ACTIONS" width={65}>
+        <BoxPanel title="ACTIONS" width={79}>
           <BoxPanelLine>
             <Text color="cyan" bold>
               s
@@ -414,6 +619,10 @@ export function MainMenu({ onSelectView }: MainMenuProps) {
               p
             </Text>{" "}
             projects │{" "}
+            <Text color="cyan" bold>
+              e
+            </Text>{" "}
+            engineers │{" "}
             <Text color="cyan" bold>
               u
             </Text>{" "}
@@ -460,12 +669,44 @@ export function MainMenu({ onSelectView }: MainMenuProps) {
           {commentStatus === "complete" && (
             <Box key="comment-complete" flexDirection="column">
               <Text color="green" bold>
-                ✓ Comments Added!
+                ✓ Comment{commentedCount > 0 ? "s Added!" : " Check Complete"}
               </Text>
               <Box marginTop={0}>
                 <Text dimColor>
-                  Added assignment warnings to {commentedCount} issue
-                  {commentedCount === 1 ? "" : "s"}
+                  {commentedCount > 0
+                    ? `Added assignment warning to ${commentedCount} issue${
+                        commentedCount === 1 ? "" : "s"
+                      }`
+                    : commentErrorMessage || "No new comments needed"}
+                </Text>
+              </Box>
+              {commentErrorMessage && commentedCount > 0 && (
+                <Box marginTop={0}>
+                  <Text color="yellow">{commentErrorMessage}</Text>
+                </Box>
+              )}
+              {commentedIssues.length > 0 && (
+                <Box flexDirection="column" marginTop={1}>
+                  {commentedIssues.slice(0, 10).map((issue) => (
+                    <Box key={issue.id} marginTop={0}>
+                      <Text color="cyan">
+                        🔗 {issue.identifier}: {issue.title.substring(0, 60)}
+                        {issue.title.length > 60 ? "..." : ""}
+                      </Text>
+                    </Box>
+                  ))}
+                  {commentedIssues.length > 10 && (
+                    <Box marginTop={0}>
+                      <Text dimColor>
+                        ... and {commentedIssues.length - 10} more
+                      </Text>
+                    </Box>
+                  )}
+                </Box>
+              )}
+              <Box marginTop={1}>
+                <Text dimColor>
+                  Press <Text color="cyan">c</Text> to clear this notification
                 </Text>
               </Box>
             </Box>
@@ -642,7 +883,7 @@ export function MainMenu({ onSelectView }: MainMenuProps) {
             <Box flexDirection="column" marginBottom={2}>
               <Box marginBottom={1}>
                 <Text bold color="red">
-                  ⚠️ WIP VIOLATIONS BY ASSIGNEE ({assigneeViolations.length})
+                  ⚠️  WIP VIOLATIONS BY ASSIGNEE ({assigneeViolations.length})
                 </Text>
               </Box>
               {assigneeViolations.slice(0, 5).map((violation) => (
@@ -650,9 +891,9 @@ export function MainMenu({ onSelectView }: MainMenuProps) {
                   <Text
                     color={violation.status === "critical" ? "red" : "yellow"}
                   >
-                    {violation.status === "critical" ? "🔴" : "🟠"}
+                    {violation.status === "critical" ? "🔴" : "🟠"}{" "}
                   </Text>
-                  <Box width={30} marginLeft={1}>
+                  <Box width={30}>
                     <Text
                       color={violation.status === "critical" ? "red" : "yellow"}
                     >
@@ -685,46 +926,78 @@ export function MainMenu({ onSelectView }: MainMenuProps) {
             </Box>
           )}
 
+          {/* Engineers on Multiple Projects */}
+          {engineerMultiProjectViolations.length > 0 && (
+            <Box flexDirection="column" marginBottom={2}>
+              <Box marginBottom={1}>
+                <Text bold color="yellow">
+                  ⚠️  ENGINEERS ON MULTIPLE PROJECTS (
+                  {engineerMultiProjectViolations.length})
+                </Text>
+              </Box>
+              {engineerMultiProjectViolations.slice(0, 5).map((violation) => (
+                <Box
+                  key={`engineer-multi-${violation.engineerName}`}
+                  marginLeft={2}
+                >
+                  <Text color="yellow">👤 </Text>
+                  <Box width={30}>
+                    <Text>{violation.engineerName}</Text>
+                  </Box>
+                  <Text dimColor>{violation.projectCount} projects</Text>
+                </Box>
+              ))}
+              {engineerMultiProjectViolations.length > 5 && (
+                <Box marginLeft={2} marginTop={1}>
+                  <Text dimColor>
+                    ... and {engineerMultiProjectViolations.length - 5} more
+                  </Text>
+                </Box>
+              )}
+              <Box marginLeft={2} marginTop={1}>
+                <Text dimColor>
+                  Press <Text color="cyan">e</Text> to view details
+                </Text>
+              </Box>
+            </Box>
+          )}
+
+          {engineerMultiProjectViolations.length === 0 && (
+            <Box flexDirection="column" marginBottom={2}>
+              <Text color="green">✓ No multi-project violations</Text>
+              <Text dimColor> All engineers focused on single projects</Text>
+            </Box>
+          )}
+
           {/* Project Violations */}
           {projectViolations.length > 0 && (
             <Box flexDirection="column" marginBottom={2}>
               <Box marginBottom={1}>
                 <Text bold color="yellow">
-                  ⚠️ PROJECT ISSUES ({projectViolations.length})
+                  ⚠️  PROJECT ISSUES ({projectViolations.length})
                 </Text>
               </Box>
-              {projectViolations.slice(0, 5).map((violation) => (
-                <Box
-                  key={`project-${violation.name}`}
-                  marginLeft={2}
-                  flexDirection="column"
-                  marginBottom={1}
-                >
-                  <Box>
-                    <Text color="yellow">📦</Text>
-                    <Box width={35} marginLeft={1}>
+              {projectViolations.slice(0, 5).map((violation) => {
+                const issues = [];
+                if (violation.hasStatusMismatch) {
+                  issues.push("status mismatch");
+                }
+                if (violation.isStale) {
+                  issues.push("stale 7+ days");
+                }
+
+                return (
+                  <Box key={`project-${violation.name}`} marginLeft={2}>
+                    <Text color="yellow">📦 </Text>
+                    <Box width={35}>
                       <Text>{violation.name}</Text>
                     </Box>
-                    <Text dimColor>
-                      {violation.engineerCount} engineer
-                      {violation.engineerCount > 1 ? "s" : ""}
+                    <Text color={violation.isStale ? "red" : "yellow"}>
+                      {issues.join(", ")}
                     </Text>
                   </Box>
-                  <Box marginLeft={3}>
-                    {violation.engineerCount > 1 && (
-                      <Text color="yellow">
-                        ⚠️ Multiple engineers (ideal: 1){" "}
-                      </Text>
-                    )}
-                    {violation.hasStatusMismatch && (
-                      <Text color="yellow">⚠️ Status mismatch </Text>
-                    )}
-                    {violation.isStale && (
-                      <Text color="red">🕐 Stale (no update in 7+ days)</Text>
-                    )}
-                  </Box>
-                </Box>
-              ))}
+                );
+              })}
               {projectViolations.length > 5 && (
                 <Box marginLeft={2} marginTop={1}>
                   <Text dimColor>
