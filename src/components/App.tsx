@@ -3,8 +3,9 @@ import { Box, Text } from "ink";
 import { MainMenu } from "./MainMenu.js";
 import { BrowseView } from "./BrowseView.js";
 import { ProjectsView } from "./ProjectsView.js";
+import { EngineersView } from "./EngineersView.js";
 
-export type View = "menu" | "browse" | "projects";
+export type View = "menu" | "browse" | "projects" | "engineers";
 
 export function App() {
   const [currentView, setCurrentView] = useState<View>("menu");
@@ -41,6 +42,10 @@ export function App() {
 
       {currentView === "projects" && (
         <ProjectsView key="view-projects" onBack={() => setCurrentView("menu")} />
+      )}
+
+      {currentView === "engineers" && (
+        <EngineersView key="view-engineers" onBack={() => setCurrentView("menu")} />
       )}
     </Box>
   );
