@@ -83,7 +83,9 @@ The bot opens with a **WIP violations dashboard** showing real-time health metri
 - `s` - Sync from Linear
 - `b` - Browse Issues (full list)
 - `p` - Browse Projects (full list)
+- `e` - Browse Engineers on Multiple Projects
 - `u` - Comment on all unassigned issues (adds warning in Linear)
+- `c` - Clear comment notification (when visible)
 - `q` - Quit
 
 **Browse Issues:**
@@ -308,6 +310,86 @@ import { BoxPanel, BoxPanelLine } from "./components/BoxPanel.js";
 - For complex layouts, you can use raw `Box`/`Text` components inside BoxPanel
 
 See `src/components/BoxPanel.example.tsx` for more examples and tips.
+
+## Write Operation Logging
+
+The bot automatically logs all write operations (comments, updates, etc.) to a log file for audit and debugging purposes.
+
+### Log Location
+
+All write operations are logged to: `logs/write-operations.log`
+
+Each entry is stored as a JSON line with:
+
+- Timestamp
+- Operation type (e.g., `comment_created`, `comment_failed`)
+- Issue details (ID, identifier, title, URL)
+- Success/failure status
+- Error messages (if applicable)
+- Additional context
+
+### Viewing Logs
+
+Use the `view-logs` command to analyze write operations:
+
+```bash
+# Show statistics (default)
+bun run view-logs
+
+# Show recent operations (last 10 by default)
+bun run view-logs recent
+
+# Show recent 20 operations
+bun run view-logs recent 20
+
+# Show help
+bun run view-logs help
+```
+
+**Example output:**
+
+```
+📊 Write Operations Statistics
+
+Total operations: 42
+Success rate: 95.2%
+Last 24 hours: 8
+
+By operation type:
+  comment_created: 38
+  comment_failed: 4
+```
+
+### Features
+
+- ✅ **Automatic tracking** - All write operations are logged without manual intervention
+- ✅ **Duplicate prevention** - Checks both local database and Linear API before commenting
+- ✅ **Audit trail** - Complete history of what the bot has done
+- ✅ **Error tracking** - Failed operations are logged with error details
+- ✅ **24-hour checks** - Won't re-comment on issues within 24 hours
+- ✅ **JSON format** - Easy to parse and analyze programmatically
+
+### Comment Deduplication
+
+When you press `u` to comment on unassigned issues, the bot:
+
+1. **Syncs first** - Fetches latest issue states from Linear (skips project sync for speed)
+2. **Filters intelligently** - Only considers actively worked issues:
+   - Includes: "In Progress", "In Review", "In QA", etc.
+   - Excludes: "Paused" and "Blocked" (being unassigned is often intentional)
+3. **Checks local DB** - Skips issues commented on in the past 24 hours (from bot's database)
+4. **Checks Linear API** - Double-checks Linear for existing warning comments
+5. **Comments on all issues** - Adds warnings to ALL issues that need them (with 500ms delay between comments)
+6. **Shows results** - Displays a list of all commented issues (up to 10 shown, plus count of remaining)
+7. **Logs operation** - Records each comment in the write log and database
+
+This prevents spam and ensures issues aren't repeatedly warned about if they remain unassigned.
+
+**Note**:
+
+- The unassigned count on the dashboard also excludes "Paused" and "Blocked" issues for consistency
+- After comments are added, press `c` to manually clear the notification
+- If nothing needs comments or there's an error, the notification auto-clears after a few seconds
 
 ## License
 
