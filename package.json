@@ -5,7 +5,8 @@
   "type": "module",
   "scripts": {
     "start": "bun run src/index.tsx",
-    "dev": "bun --watch src/index.tsx"
+    "dev": "bun --watch src/index.tsx",
+    "view-logs": "bun run src/commands/view-logs.ts"
   },
   "dependencies": {
     "@inquirer/prompts": "^7.9.0",
