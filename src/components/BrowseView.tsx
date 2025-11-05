@@ -65,6 +65,17 @@ export function BrowseView({ onBack }: BrowseViewProps) {
     setIssuesByAssignee(grouped);
   };
 
+  // Helper function to get sorted assignees based on current sort mode
+  const getSortedAssignees = () => {
+    return Array.from(issuesByAssignee.entries()).sort((a, b) => {
+      if (sortMode === "count") {
+        return b[1].length - a[1].length; // Descending by count
+      } else {
+        return a[0].localeCompare(b[0]); // Ascending alphabetically
+      }
+    });
+  };
+
   useInput((input, key) => {
     if (input === "q" || input === "b") {
       if (mode === "assignees") {
@@ -137,10 +148,8 @@ export function BrowseView({ onBack }: BrowseViewProps) {
       }
     } else if (key.return) {
       if (mode === "assignees") {
-        const assignees = Array.from(issuesByAssignee.entries()).sort(
-          (a, b) => b[1].length - a[1].length
-        );
-        const [assignee] = assignees[selectedIndex];
+        const sortedAssignees = getSortedAssignees();
+        const [assignee] = sortedAssignees[selectedIndex];
         setSelectedAssignee(assignee);
         setMode("issues");
         setSelectedIndex(0);
@@ -172,15 +181,7 @@ export function BrowseView({ onBack }: BrowseViewProps) {
   );
 
   // Sort based on current sort mode
-  const sortedAssignees = Array.from(issuesByAssignee.entries()).sort(
-    (a, b) => {
-      if (sortMode === "count") {
-        return b[1].length - a[1].length; // Descending by count
-      } else {
-        return a[0].localeCompare(b[0]); // Ascending alphabetically
-      }
-    }
-  );
+  const sortedAssignees = getSortedAssignees();
 
   // Count violations
   const violations = sortedAssignees.filter(
