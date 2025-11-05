@@ -292,6 +292,62 @@ export class LinearAPIClient {
     }
   }
 
+  /**
+   * Check if an issue has a recent comment containing specific text
+   */
+  async hasRecentCommentWithText(
+    issueId: string,
+    searchText: string,
+    hoursAgo: number = 24
+  ): Promise<boolean> {
+    try {
+      const cutoffDate = new Date();
+      cutoffDate.setHours(cutoffDate.getHours() - hoursAgo);
+
+      const query = `
+        query GetIssueComments($issueId: String!) {
+          issue(id: $issueId) {
+            comments(first: 50, orderBy: createdAt) {
+              nodes {
+                id
+                body
+                createdAt
+                user {
+                  name
+                  isMe
+                }
+              }
+            }
+          }
+        }
+      `;
+
+      const response: any = await this.client.client.rawRequest(query, {
+        issueId,
+      });
+
+      const comments = response.data.issue?.comments?.nodes || [];
+
+      // Check if any recent comments contain the search text
+      for (const comment of comments) {
+        const commentDate = new Date(comment.createdAt);
+
+        // Check if comment is recent enough and contains our warning text
+        if (commentDate >= cutoffDate && comment.body.includes(searchText)) {
+          return true;
+        }
+      }
+
+      return false;
+    } catch (error) {
+      console.error(
+        `Error checking comments for issue ${issueId}:`,
+        error instanceof Error ? error.message : String(error)
+      );
+      return false; // Assume no comment if there's an error
+    }
+  }
+
   async testConnection(): Promise<boolean> {
     try {
       // Add a timeout to avoid hanging
