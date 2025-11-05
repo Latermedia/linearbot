@@ -23,6 +23,13 @@ export interface Issue {
   project_updated_at: string | null;
 }
 
+export interface CommentLog {
+  id: number;
+  issue_id: string;
+  comment_type: string;
+  commented_at: string;
+}
+
 export function initializeDatabase(db: Database): void {
   // Enable foreign keys
   db.run("PRAGMA foreign_keys = ON");
@@ -53,6 +60,17 @@ export function initializeDatabase(db: Database): void {
     )
   `);
 
+  // Create comment log table to track bot comments
+  db.run(`
+    CREATE TABLE IF NOT EXISTS comment_log (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      issue_id TEXT NOT NULL,
+      comment_type TEXT NOT NULL,
+      commented_at TEXT NOT NULL,
+      FOREIGN KEY (issue_id) REFERENCES issues(id) ON DELETE CASCADE
+    )
+  `);
+
   // Create indices for better query performance
   db.run(`
     CREATE INDEX IF NOT EXISTS idx_issues_team_id 
@@ -72,5 +90,15 @@ export function initializeDatabase(db: Database): void {
   db.run(`
     CREATE INDEX IF NOT EXISTS idx_issues_project_id 
     ON issues(project_id)
+  `);
+
+  db.run(`
+    CREATE INDEX IF NOT EXISTS idx_comment_log_issue_id 
+    ON comment_log(issue_id)
+  `);
+
+  db.run(`
+    CREATE INDEX IF NOT EXISTS idx_comment_log_type_date 
+    ON comment_log(comment_type, commented_at)
   `);
 }
