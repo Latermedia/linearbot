@@ -929,23 +929,22 @@ export function MainMenu({ onSelectView }: MainMenuProps) {
       )}
 
       {hasData && (
-        <Box flexDirection="column" paddingX={2} marginTop={1}>
+        <Box flexDirection="column" paddingX={2}>
           {/* Summary Stats */}
-          <BoxPanel title="OVERVIEW" width={52} marginBottom={2}>
+          <BoxPanel
+            title="OVERVIEW"
+            width={
+              32 +
+              totalAssignees.toString().length +
+              totalProjects.toString().length
+            }
+            marginBottom={2}
+          >
             <BoxPanelLine>
               <Text bold>{totalAssignees}</Text>
               <Text dimColor> assignees • </Text>
               <Text bold>{totalProjects}</Text>
               <Text dimColor> active projects</Text>
-              {unassignedCount > 0 && (
-                <>
-                  <Text dimColor> • </Text>
-                  <Text bold color="magenta">
-                    {unassignedCount}
-                  </Text>
-                  <Text dimColor> unassigned</Text>
-                </>
-              )}
             </BoxPanelLine>
           </BoxPanel>
 
@@ -953,7 +952,7 @@ export function MainMenu({ onSelectView }: MainMenuProps) {
           {totalTeams > 0 && (
             <Box flexDirection="column" marginBottom={1}>
               <Text bold color="cyan">
-                🏢 TEAMS ({totalTeams} teams • {teamsWithViolations} with
+                🏢 TEAMS ({teamsWithViolations}/{totalTeams} teams with
                 violations)
               </Text>
               <Box marginLeft={2}>
@@ -983,13 +982,18 @@ export function MainMenu({ onSelectView }: MainMenuProps) {
           {assigneeViolations.length > 0 && (
             <Box flexDirection="column" marginBottom={1}>
               <Text bold color="red">
-                ⚡ ISSUE VIOLATIONS ({assigneeViolations.length} assignees)
+                ⚡ ISSUE VIOLATIONS (
+                {assigneeViolations.length +
+                  missingEstimateCount +
+                  noRecentCommentCount +
+                  missingPriorityCount}
+                )
               </Text>
               <Box marginLeft={2}>
                 <Text dimColor>
-                  📏 {missingEstimateCount} missing estimate • 💬{" "}
-                  {noRecentCommentCount} no comment in 24h • 🔴{" "}
-                  {missingPriorityCount} missing priority
+                  👤{assigneeViolations.length} WIP • 📏{missingEstimateCount}{" "}
+                  estimate • 💬{noRecentCommentCount} comment • 🔴
+                  {missingPriorityCount} priority
                 </Text>
               </Box>
               <Box marginLeft={2}>
