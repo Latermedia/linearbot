@@ -195,7 +195,7 @@ export function TeamsView({ onBack, onHeaderChange }: TeamsViewProps) {
           </Box>
           <Box marginBottom={1}>
             <Text dimColor>
-              👤 engineers with WIP violations • 📏 missing estimate • 💬 no comment 24h • 🔴 missing priority
+              🚨 violations: 👤 WIP  •  📏 missing estimate  •  💬 no comment 24h  •  🔴 missing priority
             </Text>
           </Box>
 
@@ -218,23 +218,44 @@ export function TeamsView({ onBack, onHeaderChange }: TeamsViewProps) {
                       {team.teamName}
                     </Text>
                   </Box>
-                  <Box width={15}>
-                    <Text color={isSelected ? "cyan" : "white"}>
-                      ({team.totalIssues} issues)
-                    </Text>
-                  </Box>
-                  <Box width={12}>
-                    <Text color={isSelected ? "cyan" : team.wipViolations > 0 ? "red" : "green"}>
-                      {team.wipViolations > 0 ? `👤${team.wipViolations} WIP` : "✓ WIP"}
-                    </Text>
-                  </Box>
-                  {(team.missingEstimate > 0 || team.noRecentComment > 0 || team.missingPriority > 0) && (
-                    <Text color={isSelected ? "cyan" : "yellow"}>
-                      {team.missingEstimate > 0 && `📏${team.missingEstimate} `}
-                      {team.noRecentComment > 0 && `💬${team.noRecentComment} `}
-                      {team.missingPriority > 0 && `🔴${team.missingPriority}`}
-                    </Text>
+                  <Text color={isSelected ? "cyan" : "white"}>
+                    (📋 {team.totalIssues} issues)
+                  </Text>
+                  {(team.wipViolations > 0 ||
+                    team.missingEstimate > 0 ||
+                    team.noRecentComment > 0 ||
+                    team.missingPriority > 0) && (
+                    <>
+                      <Text color={isSelected ? "cyan" : "white"}>  •  </Text>
+                      <Text
+                        color={
+                          isSelected
+                            ? "cyan"
+                            : team.wipViolations > 0 ||
+                              team.missingEstimate > 0 ||
+                              team.noRecentComment > 0 ||
+                              team.missingPriority > 0
+                            ? "yellow"
+                            : "white"
+                        }
+                      >
+                        🚨(
+                        {team.wipViolations > 0 && `👤 ${team.wipViolations} `}
+                        {team.missingEstimate > 0 && `📏 ${team.missingEstimate} `}
+                        {team.noRecentComment > 0 && `💬 ${team.noRecentComment} `}
+                        {team.missingPriority > 0 && `🔴 ${team.missingPriority}`})
+                      </Text>
+                    </>
                   )}
+                  {team.wipViolations === 0 &&
+                    team.missingEstimate === 0 &&
+                    team.noRecentComment === 0 &&
+                    team.missingPriority === 0 && (
+                      <>
+                        <Text color={isSelected ? "cyan" : "white"}>  •  </Text>
+                        <Text color={isSelected ? "cyan" : "green"}>✓</Text>
+                      </>
+                    )}
                 </Box>
               );
             })}
@@ -255,7 +276,7 @@ export function TeamsView({ onBack, onHeaderChange }: TeamsViewProps) {
         <Box flexDirection="column">
           <Box marginBottom={1}>
             <Text dimColor>
-              Navigate: ↑↓/j/k • o: Open • b: Back • 📏 missing estimate • 💬 no comment 24h • 🔴 missing priority
+              Navigate: ↑↓/j/k • o: Open • b: Back  •  🚨 violations: 📏 missing estimate  •  💬 no comment 24h  •  🔴 missing priority
             </Text>
           </Box>
 

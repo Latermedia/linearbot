@@ -314,10 +314,10 @@ export function DomainsView({ onBack, onHeaderChange }: DomainsViewProps) {
         <Box flexDirection="column">
           <Box marginBottom={1}>
             <Text dimColor>
-              👥{domains.reduce((sum, d) => sum + d.engineerCount, 0)} engineers
-              • 📁
+              👥 {domains.reduce((sum, d) => sum + d.engineerCount, 0)} engineers
+              • 📁{" "}
               {domains.reduce((sum, d) => sum + d.projectCount, 0)} projects •
-              📋
+              📋{" "}
               {domains.reduce((sum, d) => sum + d.totalIssues, 0)} issues across{" "}
               {domains.length} domains
             </Text>
@@ -327,8 +327,8 @@ export function DomainsView({ onBack, onHeaderChange }: DomainsViewProps) {
           </Box>
           <Box marginBottom={1}>
             <Text dimColor>
-              👤 engineers with WIP violations • 📏 missing estimate • 💬 no
-              comment 24h • 🔴 missing priority
+              🚨 violations: 👤 WIP  •  📏 missing estimate  •  💬 no
+              comment 24h  •  🔴 missing priority
             </Text>
           </Box>
 
@@ -351,39 +351,48 @@ export function DomainsView({ onBack, onHeaderChange }: DomainsViewProps) {
                       {domain.domainName}
                     </Text>
                   </Box>
-                  <Box width={25}>
-                    <Text color={isSelected ? "cyan" : "white"}>
-                      (👥 {domain.engineerCount} 📁 {domain.projectCount} 📋{" "}
-                      {domain.totalIssues})
-                    </Text>
-                  </Box>
-                  <Box width={12}>
-                    <Text
-                      color={
-                        isSelected
-                          ? "cyan"
-                          : domain.wipViolations > 0
-                          ? "red"
-                          : "green"
-                      }
-                    >
-                      {domain.wipViolations > 0
-                        ? `👤${domain.wipViolations} WIP`
-                        : "✓ WIP"}
-                    </Text>
-                  </Box>
-                  {(domain.missingEstimate > 0 ||
+                  <Text color={isSelected ? "cyan" : "white"}>
+                    (👥 {domain.engineerCount} 📁 {domain.projectCount} 📋{" "}
+                    {domain.totalIssues})
+                  </Text>
+                  {(domain.wipViolations > 0 ||
+                    domain.missingEstimate > 0 ||
                     domain.noRecentComment > 0 ||
                     domain.missingPriority > 0) && (
-                    <Text color={isSelected ? "cyan" : "yellow"}>
-                      {domain.missingEstimate > 0 &&
-                        `📏${domain.missingEstimate} `}
-                      {domain.noRecentComment > 0 &&
-                        `💬${domain.noRecentComment} `}
-                      {domain.missingPriority > 0 &&
-                        `🔴${domain.missingPriority}`}
-                    </Text>
+                    <>
+                      <Text color={isSelected ? "cyan" : "white"}>  •  </Text>
+                      <Text
+                        color={
+                          isSelected
+                            ? "cyan"
+                            : domain.wipViolations > 0 ||
+                              domain.missingEstimate > 0 ||
+                              domain.noRecentComment > 0 ||
+                              domain.missingPriority > 0
+                            ? "yellow"
+                            : "white"
+                        }
+                      >
+                        🚨(
+                        {domain.wipViolations > 0 && `👤 ${domain.wipViolations} `}
+                        {domain.missingEstimate > 0 &&
+                          `📏 ${domain.missingEstimate} `}
+                        {domain.noRecentComment > 0 &&
+                          `💬 ${domain.noRecentComment} `}
+                        {domain.missingPriority > 0 &&
+                          `🔴 ${domain.missingPriority}`})
+                      </Text>
+                    </>
                   )}
+                  {domain.wipViolations === 0 &&
+                    domain.missingEstimate === 0 &&
+                    domain.noRecentComment === 0 &&
+                    domain.missingPriority === 0 && (
+                      <>
+                        <Text color={isSelected ? "cyan" : "white"}>  •  </Text>
+                        <Text color={isSelected ? "cyan" : "green"}>✓</Text>
+                      </>
+                    )}
                 </Box>
               );
             })}
@@ -447,36 +456,45 @@ export function DomainsView({ onBack, onHeaderChange }: DomainsViewProps) {
                       {team.teamName}
                     </Text>
                   </Box>
-                  <Box width={25}>
-                    <Text color={isSelected ? "cyan" : "white"}>
-                      (👥 {team.engineerCount} 📁 {team.projectCount} 📋{" "}
-                      {team.totalIssues})
-                    </Text>
-                  </Box>
-                  <Box width={12}>
-                    <Text
-                      color={
-                        isSelected
-                          ? "cyan"
-                          : team.wipViolations > 0
-                          ? "red"
-                          : "green"
-                      }
-                    >
-                      {team.wipViolations > 0
-                        ? `👤${team.wipViolations} WIP`
-                        : "✓ WIP"}
-                    </Text>
-                  </Box>
-                  {(team.missingEstimate > 0 ||
+                  <Text color={isSelected ? "cyan" : "white"}>
+                    (👥 {team.engineerCount} 📁 {team.projectCount} 📋{" "}
+                    {team.totalIssues})
+                  </Text>
+                  {(team.wipViolations > 0 ||
+                    team.missingEstimate > 0 ||
                     team.noRecentComment > 0 ||
                     team.missingPriority > 0) && (
-                    <Text color={isSelected ? "cyan" : "yellow"}>
-                      {team.missingEstimate > 0 && `📏${team.missingEstimate} `}
-                      {team.noRecentComment > 0 && `💬${team.noRecentComment} `}
-                      {team.missingPriority > 0 && `🔴${team.missingPriority}`}
-                    </Text>
+                    <>
+                      <Text color={isSelected ? "cyan" : "white"}>  •  </Text>
+                      <Text
+                        color={
+                          isSelected
+                            ? "cyan"
+                            : team.wipViolations > 0 ||
+                              team.missingEstimate > 0 ||
+                              team.noRecentComment > 0 ||
+                              team.missingPriority > 0
+                            ? "yellow"
+                            : "white"
+                        }
+                      >
+                        🚨(
+                        {team.wipViolations > 0 && `👤 ${team.wipViolations} `}
+                        {team.missingEstimate > 0 && `📏 ${team.missingEstimate} `}
+                        {team.noRecentComment > 0 && `💬 ${team.noRecentComment} `}
+                        {team.missingPriority > 0 && `🔴 ${team.missingPriority}`})
+                      </Text>
+                    </>
                   )}
+                  {team.wipViolations === 0 &&
+                    team.missingEstimate === 0 &&
+                    team.noRecentComment === 0 &&
+                    team.missingPriority === 0 && (
+                      <>
+                        <Text color={isSelected ? "cyan" : "white"}>  •  </Text>
+                        <Text color={isSelected ? "cyan" : "green"}>✓</Text>
+                      </>
+                    )}
                 </Box>
               );
             })}
@@ -503,7 +521,7 @@ export function DomainsView({ onBack, onHeaderChange }: DomainsViewProps) {
           </Box>
           <Box marginBottom={1}>
             <Text dimColor>
-              📏 missing estimate • 💬 no comment 24h • 🔴 missing priority
+              🚨 violations: 📏 missing estimate  •  💬 no comment 24h  •  🔴 missing priority
             </Text>
           </Box>
 

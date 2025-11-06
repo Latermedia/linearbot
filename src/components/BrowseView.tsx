@@ -249,8 +249,8 @@ export function BrowseView({ onBack, onHeaderChange }: BrowseViewProps) {
           </Box>
           <Box marginBottom={1}>
             <Text dimColor>
-              Navigate: ↑↓/j/k • Enter: Select • 📏 missing estimate • 💬 no
-              comment 24h • 🔴 missing priority
+              Navigate: ↑↓/j/k • Enter: Select  •  🚨 violations: 📏 missing estimate  •  💬 no
+              comment 24h  •  🔴 missing priority
             </Text>
           </Box>
 
@@ -326,8 +326,8 @@ export function BrowseView({ onBack, onHeaderChange }: BrowseViewProps) {
         <Box flexDirection="column">
           <Box marginBottom={1}>
             <Text dimColor>
-              Navigate: ↑↓/j/k • Enter: Details • o: Open • b: Back • 📏 missing
-              estimate • 💬 no comment 24h • 🔴 missing priority
+              Navigate: ↑↓/j/k • Enter: Details • o: Open • b: Back  •  🚨 violations: 📏 missing
+              estimate  •  💬 no comment 24h  •  🔴 missing priority
             </Text>
           </Box>
 

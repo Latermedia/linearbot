@@ -14,6 +14,7 @@ import {
   cleanupOldCommentLogs,
 } from "../db/comment-tracking.js";
 import { logCommentCreated, logCommentFailed } from "../utils/write-log.js";
+import { getDomainForTeam, ALL_DOMAINS } from "../utils/domain-mapping.js";
 
 interface MainMenuProps {
   onSelectView: (view: View) => void;
@@ -87,6 +88,10 @@ export function MainMenu({ onSelectView }: MainMenuProps) {
   // Team statistics
   const [totalTeams, setTotalTeams] = useState(0);
   const [teamsWithViolations, setTeamsWithViolations] = useState(0);
+
+  // Domain statistics
+  const [totalDomains, setTotalDomains] = useState(0);
+  const [domainsWithViolations, setDomainsWithViolations] = useState(0);
 
   useEffect(() => {
     loadDashboardData();
@@ -208,6 +213,60 @@ export function MainMenu({ onSelectView }: MainMenuProps) {
     }
 
     setTeamsWithViolations(teamsWithViolationsCount);
+
+    // Calculate domain statistics
+    const domainMap = new Map<string, Issue[]>();
+    for (const issue of startedIssues) {
+      const domain = getDomainForTeam(issue.team_key);
+      if (domain) {
+        if (!domainMap.has(domain)) {
+          domainMap.set(domain, []);
+        }
+        domainMap.get(domain)?.push(issue);
+      }
+    }
+
+    setTotalDomains(domainMap.size);
+
+    // Count domains with violations
+    let domainsWithViolationsCount = 0;
+    for (const [_, issues] of domainMap) {
+      const hasEstimateViolation = issues.some((i) => !i.estimate);
+      const hasCommentViolation = issues.some((i) => {
+        if (!i.last_comment_at) return true;
+        const lastComment = new Date(i.last_comment_at);
+        const now = new Date();
+        const hoursDiff =
+          (now.getTime() - lastComment.getTime()) / (1000 * 60 * 60);
+        return hoursDiff > 24;
+      });
+      const hasPriorityViolation = issues.some((i) => i.priority === 0);
+
+      // Check for WIP violations (any assignee in domain with > 5 started issues)
+      const assigneeCountsInDomain = new Map<string, number>();
+      for (const issue of issues) {
+        if (issue.assignee_name) {
+          assigneeCountsInDomain.set(
+            issue.assignee_name,
+            (assigneeCountsInDomain.get(issue.assignee_name) || 0) + 1
+          );
+        }
+      }
+      const hasWipViolation = Array.from(assigneeCountsInDomain.values()).some(
+        (count) => count > 5
+      );
+
+      if (
+        hasEstimateViolation ||
+        hasCommentViolation ||
+        hasPriorityViolation ||
+        hasWipViolation
+      ) {
+        domainsWithViolationsCount++;
+      }
+    }
+
+    setDomainsWithViolations(domainsWithViolationsCount);
 
     // Load engineers working on multiple projects
     const startedProjectIssues = db
@@ -954,6 +1013,21 @@ export function MainMenu({ onSelectView }: MainMenuProps) {
             </BoxPanelLine>
           </BoxPanel>
 
+          {/* Domains Summary */}
+          {totalDomains > 0 && (
+            <Box flexDirection="column" marginBottom={1}>
+              <Text bold color="cyan">
+                🌐 DOMAINS ({domainsWithViolations}/{totalDomains} domains with
+                violations)
+              </Text>
+              <Box marginLeft={2}>
+                <Text dimColor>
+                  Press <Text color="cyan">d</Text> to view by domain
+                </Text>
+              </Box>
+            </Box>
+          )}
+
           {/* Teams Summary */}
           {totalTeams > 0 && (
             <Box flexDirection="column" marginBottom={1}>
@@ -988,20 +1062,14 @@ export function MainMenu({ onSelectView }: MainMenuProps) {
           {assigneeViolations.length > 0 && (
             <Box flexDirection="column" marginBottom={1}>
               <Text bold color="red">
-                ⚡ ISSUE VIOLATIONS (
+                🚨 ISSUE VIOLATIONS (
                 {assigneeViolations.length +
                   missingEstimateCount +
                   noRecentCommentCount +
                   missingPriorityCount}
-                )
+                ) • (👤 {assigneeViolations.length} 📏 {missingEstimateCount} 💬{" "}
+                {noRecentCommentCount} 🔴 {missingPriorityCount})
               </Text>
-              <Box marginLeft={2}>
-                <Text dimColor>
-                  👤 {assigneeViolations.length} WIP • 📏 {missingEstimateCount}{" "}
-                  estimate • 💬 {noRecentCommentCount} comment • 🔴{" "}
-                  {missingPriorityCount} priority
-                </Text>
-              </Box>
               <Box marginLeft={2}>
                 <Text dimColor>
                   Press <Text color="cyan">i</Text> to view by assignee
