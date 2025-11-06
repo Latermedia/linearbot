@@ -1,5 +1,5 @@
 import React, { useState } from "react";
-import { Box, Text } from "ink";
+import { Box, Text, useStdout } from "ink";
 import { MainMenu } from "./MainMenu.js";
 import { BrowseView } from "./BrowseView.js";
 import { ProjectsView } from "./ProjectsView.js";
@@ -10,6 +10,7 @@ import { DomainsView } from "./DomainsView.js";
 export type View = "menu" | "browse" | "projects" | "engineers" | "teams" | "domains";
 
 export function App() {
+  const { stdout } = useStdout();
   const [currentView, setCurrentView] = useState<View>("menu");
   const [headerContext, setHeaderContext] = useState<string>("");
 
@@ -21,15 +22,15 @@ export function App() {
     }
   };
 
+  const terminalWidth = stdout?.columns || 80;
+
   return (
     <Box flexDirection="column">
-      <Box key="app-header" flexDirection="column">
-        <Box paddingX={2} paddingTop={1}>
-          <Text dimColor>━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━</Text>
-        </Box>
-        <Box paddingX={2} paddingY={0}>
+      <Box key="app-header" flexDirection="column" paddingTop={1}>
+        {/* Header title */}
+        <Box paddingX={1}>
           <Text bold color="cyan">
-            ⚡ LINEAR BOT
+            LINEAR BOT ⚡
           </Text>
           {headerContext && (
             <>
@@ -38,9 +39,8 @@ export function App() {
             </>
           )}
         </Box>
-        <Box paddingX={2}>
-          <Text dimColor>━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━</Text>
-        </Box>
+        {/* Full width separator */}
+        <Text dimColor>{"─".repeat(terminalWidth)}</Text>
       </Box>
 
       {currentView === "menu" && (
