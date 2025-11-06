@@ -30,11 +30,11 @@ export function App() {
         {/* Header title */}
         <Box paddingX={1}>
           <Text bold color="cyan">
-            LINEAR BOT ⚡
+            LINEAR BOT 🚀
           </Text>
           {headerContext && (
             <>
-              <Text dimColor> │ </Text>
+              <Text>  </Text>
               <Text>{headerContext}</Text>
             </>
           )}
