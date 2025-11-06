@@ -288,11 +288,11 @@ export function EngineersView({ onBack, onHeaderChange }: EngineersViewProps) {
         </Box>
         <Box marginBottom={1}>
           <Text dimColor>
-            Working on {selectedEngineer.projectCount} projects simultaneously
+            Working on 📁 {selectedEngineer.projectCount} projects simultaneously
           </Text>
         </Box>
         <Box marginBottom={1}>
-          <Text dimColor>Use ↑↓ or j/k to navigate • o to open in Linear • b to go back</Text>
+          <Text dimColor>Navigate: ↑↓/j/k • o: Open • b: Back</Text>
         </Box>
 
         {visibleProjects.map((project, idx) => {
