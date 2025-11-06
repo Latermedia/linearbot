@@ -14,6 +14,8 @@ export interface Issue {
   assignee_id: string | null;
   assignee_name: string | null;
   priority: number;
+  estimate: number | null;
+  last_comment_at: string | null;
   created_at: string;
   updated_at: string;
   url: string;
@@ -52,6 +54,8 @@ export function initializeDatabase(db: Database): void {
       assignee_id TEXT,
       assignee_name TEXT,
       priority INTEGER NOT NULL,
+      estimate REAL,
+      last_comment_at TEXT,
       created_at TEXT NOT NULL,
       updated_at TEXT NOT NULL,
       url TEXT NOT NULL,
@@ -72,6 +76,18 @@ export function initializeDatabase(db: Database): void {
   }
   try {
     db.run(`ALTER TABLE issues ADD COLUMN project_lead_name TEXT`);
+  } catch (e) {
+    // Column already exists, ignore
+  }
+
+  // Add estimate and last_comment_at columns if they don't exist (migration)
+  try {
+    db.run(`ALTER TABLE issues ADD COLUMN estimate REAL`);
+  } catch (e) {
+    // Column already exists, ignore
+  }
+  try {
+    db.run(`ALTER TABLE issues ADD COLUMN last_comment_at TEXT`);
   } catch (e) {
     // Column already exists, ignore
   }

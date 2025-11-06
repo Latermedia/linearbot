@@ -14,6 +14,8 @@ export interface LinearIssueData {
   assigneeId: string | null;
   assigneeName: string | null;
   priority: number;
+  estimate: number | null;
+  lastCommentAt: Date | null;
   createdAt: Date;
   updatedAt: Date;
   url: string;
@@ -54,9 +56,15 @@ export class LinearAPIClient {
             title
             description
             priority
+            estimate
             url
             createdAt
             updatedAt
+            comments(first: 1, orderBy: createdAt) {
+              nodes {
+                createdAt
+              }
+            }
             team {
               id
               name
@@ -102,6 +110,7 @@ export class LinearAPIClient {
         // Skip issues without team or state (shouldn't happen but be safe)
         if (!issue.team || !issue.state) continue;
 
+        const lastComment = issue.comments?.nodes?.[0];
         issues.push({
           id: issue.id,
           identifier: issue.identifier,
@@ -116,6 +125,10 @@ export class LinearAPIClient {
           assigneeId: issue.assignee?.id || null,
           assigneeName: issue.assignee?.name || null,
           priority: issue.priority,
+          estimate: issue.estimate || null,
+          lastCommentAt: lastComment?.createdAt
+            ? new Date(lastComment.createdAt)
+            : null,
           createdAt: new Date(issue.createdAt),
           updatedAt: new Date(issue.updatedAt),
           url: issue.url,
@@ -177,9 +190,15 @@ export class LinearAPIClient {
               title
               description
               priority
+              estimate
               url
               createdAt
               updatedAt
+              comments(first: 1, orderBy: createdAt) {
+                nodes {
+                  createdAt
+                }
+              }
               team {
                 id
                 name
@@ -229,6 +248,7 @@ export class LinearAPIClient {
           // Skip duplicates (issue might already be in started issues)
           if (issues.some((i) => i.id === issue.id)) continue;
 
+          const lastComment = issue.comments?.nodes?.[0];
           issues.push({
             id: issue.id,
             identifier: issue.identifier,
@@ -243,6 +263,10 @@ export class LinearAPIClient {
             assigneeId: issue.assignee?.id || null,
             assigneeName: issue.assignee?.name || null,
             priority: issue.priority,
+            estimate: issue.estimate || null,
+            lastCommentAt: lastComment?.createdAt
+              ? new Date(lastComment.createdAt)
+              : null,
             createdAt: new Date(issue.createdAt),
             updatedAt: new Date(issue.updatedAt),
             url: issue.url,

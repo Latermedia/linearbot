@@ -29,6 +29,22 @@ function getWIPStatus(count: number): WIPStatus {
   }
 }
 
+function hasNoRecentComment(issue: Issue): boolean {
+  if (!issue.last_comment_at) return true;
+  const lastComment = new Date(issue.last_comment_at);
+  const now = new Date();
+  const hoursDiff = (now.getTime() - lastComment.getTime()) / (1000 * 60 * 60);
+  return hoursDiff > 24;
+}
+
+function getViolationIndicators(issue: Issue): string {
+  const indicators: string[] = [];
+  if (!issue.estimate) indicators.push("📏"); // Missing estimate
+  if (hasNoRecentComment(issue)) indicators.push("💬"); // No recent comment
+  if (issue.priority === 0) indicators.push("🔴"); // Missing/zero priority
+  return indicators.join(" ");
+}
+
 export function BrowseView({ onBack, onHeaderChange }: BrowseViewProps) {
   const { stdout } = useStdout();
   const [mode, setMode] = useState<BrowseMode>("assignees");
@@ -48,7 +64,7 @@ export function BrowseView({ onBack, onHeaderChange }: BrowseViewProps) {
   // Update header when navigation changes
   useEffect(() => {
     if (mode === "assignees") {
-      onHeaderChange("WIP Violations by Assignee");
+      onHeaderChange("Issue Violations by Assignee");
     } else if (mode === "issues" && selectedAssignee) {
       const issueCount = issuesByAssignee.get(selectedAssignee)?.length || 0;
       onHeaderChange(`${selectedAssignee} (${issueCount} issues)`);
@@ -250,6 +266,11 @@ export function BrowseView({ onBack, onHeaderChange }: BrowseViewProps) {
               Use ↑↓ or j/k to navigate • Enter to select • b to go back
             </Text>
           </Box>
+          <Box marginBottom={1}>
+            <Text dimColor>
+              Indicators: 📏 missing estimate • 💬 no comment in 24h • 🔴 missing priority
+            </Text>
+          </Box>
 
           {sortedAssignees
             .slice(scrollOffset, scrollOffset + visibleLines)
@@ -258,6 +279,15 @@ export function BrowseView({ onBack, onHeaderChange }: BrowseViewProps) {
               const isSelected = actualIndex === selectedIndex;
               const count = issues.length;
               const status = getWIPStatus(count);
+              
+              // Count violations
+              const missingEstimate = issues.filter(i => !i.estimate).length;
+              const noRecentComment = issues.filter(i => hasNoRecentComment(i)).length;
+              const missingPriority = issues.filter(i => i.priority === 0).length;
+              const violationSummary: string[] = [];
+              if (missingEstimate > 0) violationSummary.push(`📏${missingEstimate}`);
+              if (noRecentComment > 0) violationSummary.push(`💬${noRecentComment}`);
+              if (missingPriority > 0) violationSummary.push(`🔴${missingPriority}`);
 
               return (
                 <Box key={`assignee-${assignee}`}>
@@ -277,9 +307,16 @@ export function BrowseView({ onBack, onHeaderChange }: BrowseViewProps) {
                       ({count} issues)
                     </Text>
                   </Box>
-                  <Text color={status.color}>
-                    {status.emoji} {status.label}
-                  </Text>
+                  <Box width={20}>
+                    <Text color={status.color}>
+                      {status.emoji} {status.label}
+                    </Text>
+                  </Box>
+                  {violationSummary.length > 0 && (
+                    <Text color={isSelected ? "cyan" : "yellow"}>
+                      {violationSummary.join(" ")}
+                    </Text>
+                  )}
                 </Box>
               );
             })}
@@ -309,6 +346,11 @@ export function BrowseView({ onBack, onHeaderChange }: BrowseViewProps) {
               Use ↑↓ or j/k to navigate • Enter to view details • o to open in Linear • b to go back
             </Text>
           </Box>
+          <Box marginBottom={1}>
+            <Text dimColor>
+              Indicators: 📏 missing estimate • 💬 no comment in 24h • 🔴 missing priority
+            </Text>
+          </Box>
 
           {(issuesByAssignee.get(selectedAssignee) || [])
             .slice(scrollOffset, scrollOffset + terminalHeight - 6)
@@ -316,9 +358,10 @@ export function BrowseView({ onBack, onHeaderChange }: BrowseViewProps) {
               const actualIndex = scrollOffset + displayIndex;
               const isSelected = actualIndex === selectedIndex;
               const title =
-                issue.title.length > 60
-                  ? issue.title.substring(0, 57) + "..."
+                issue.title.length > 50
+                  ? issue.title.substring(0, 47) + "..."
                   : issue.title;
+              const indicators = getViolationIndicators(issue);
 
               return (
                 <Box key={`issue-${issue.id}`} marginBottom={0}>
@@ -328,6 +371,12 @@ export function BrowseView({ onBack, onHeaderChange }: BrowseViewProps) {
                   <Text bold={isSelected} color={isSelected ? "cyan" : "white"}>
                     [{issue.identifier}] ({issue.state_name}) {title}
                   </Text>
+                  {indicators && (
+                    <Text color={isSelected ? "cyan" : "yellow"}>
+                      {" "}
+                      {indicators}
+                    </Text>
+                  )}
                 </Box>
               );
             })}

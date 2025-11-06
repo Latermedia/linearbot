@@ -78,6 +78,11 @@ export function MainMenu({ onSelectView }: MainMenuProps) {
   const [totalAssignees, setTotalAssignees] = useState(0);
   const [totalProjects, setTotalProjects] = useState(0);
   const [unassignedCount, setUnassignedCount] = useState(0);
+  
+  // Violation counts
+  const [missingEstimateCount, setMissingEstimateCount] = useState(0);
+  const [noRecentCommentCount, setNoRecentCommentCount] = useState(0);
+  const [missingPriorityCount, setMissingPriorityCount] = useState(0);
 
   useEffect(() => {
     loadDashboardData();
@@ -130,6 +135,21 @@ export function MainMenu({ onSelectView }: MainMenuProps) {
 
     // Don't count unassigned in total assignees
     setTotalAssignees(issuesByAssignee.size - (unassignedIssues ? 1 : 0));
+    
+    // Calculate violation counts across all started issues
+    const missingEstimate = startedIssues.filter(i => !i.estimate).length;
+    const noRecentComment = startedIssues.filter(i => {
+      if (!i.last_comment_at) return true;
+      const lastComment = new Date(i.last_comment_at);
+      const now = new Date();
+      const hoursDiff = (now.getTime() - lastComment.getTime()) / (1000 * 60 * 60);
+      return hoursDiff > 24;
+    }).length;
+    const missingPriority = startedIssues.filter(i => i.priority === 0).length;
+    
+    setMissingEstimateCount(missingEstimate);
+    setNoRecentCommentCount(noRecentComment);
+    setMissingPriorityCount(missingPriority);
 
     // Load engineers working on multiple projects
     const startedProjectIssues = db
@@ -307,12 +327,12 @@ export function MainMenu({ onSelectView }: MainMenuProps) {
         INSERT INTO issues (
           id, identifier, title, description, team_id, team_name, team_key,
           state_id, state_name, state_type,
-          assignee_id, assignee_name, priority, 
+          assignee_id, assignee_name, priority, estimate, last_comment_at,
           created_at, updated_at, url,
           project_id, project_name, project_state, project_updated_at,
           project_lead_id, project_lead_name
         )
-        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
         ON CONFLICT(id) DO UPDATE SET
           identifier = excluded.identifier,
           title = excluded.title,
@@ -326,6 +346,8 @@ export function MainMenu({ onSelectView }: MainMenuProps) {
           assignee_id = excluded.assignee_id,
           assignee_name = excluded.assignee_name,
           priority = excluded.priority,
+          estimate = excluded.estimate,
+          last_comment_at = excluded.last_comment_at,
           updated_at = excluded.updated_at,
           url = excluded.url,
           project_id = excluded.project_id,
@@ -361,6 +383,8 @@ export function MainMenu({ onSelectView }: MainMenuProps) {
             issue.assigneeId,
             issue.assigneeName,
             issue.priority,
+            issue.estimate,
+            issue.lastCommentAt ? issue.lastCommentAt.toISOString() : null,
             issue.createdAt.toISOString(),
             issue.updatedAt.toISOString(),
             issue.url,
@@ -888,7 +912,12 @@ export function MainMenu({ onSelectView }: MainMenuProps) {
             <Box flexDirection="column" marginBottom={2}>
               <Box marginBottom={1}>
                 <Text bold color="red">
-                  🚨 WIP VIOLATIONS BY ASSIGNEE ({assigneeViolations.length})
+                  ⚡ ISSUE VIOLATIONS BY ASSIGNEE ({assigneeViolations.length})
+                </Text>
+              </Box>
+              <Box marginLeft={2} marginBottom={1}>
+                <Text dimColor>
+                  📏 {missingEstimateCount} missing estimate • 💬 {noRecentCommentCount} no comment in 24h • 🔴 {missingPriorityCount} missing priority
                 </Text>
               </Box>
               {assigneeViolations.slice(0, 5).map((violation) => (

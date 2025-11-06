@@ -73,11 +73,11 @@ export function SyncView({ onComplete, onBack }: SyncViewProps) {
         INSERT INTO issues (
           id, identifier, title, description, team_id, team_name, team_key,
           state_id, state_name, state_type,
-          assignee_id, assignee_name, priority, 
+          assignee_id, assignee_name, priority, estimate, last_comment_at,
           created_at, updated_at, url,
           project_id, project_name, project_state, project_updated_at
         )
-        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
         ON CONFLICT(id) DO UPDATE SET
           identifier = excluded.identifier,
           title = excluded.title,
@@ -91,6 +91,8 @@ export function SyncView({ onComplete, onBack }: SyncViewProps) {
           assignee_id = excluded.assignee_id,
           assignee_name = excluded.assignee_name,
           priority = excluded.priority,
+          estimate = excluded.estimate,
+          last_comment_at = excluded.last_comment_at,
           updated_at = excluded.updated_at,
           url = excluded.url,
           project_id = excluded.project_id,
@@ -124,6 +126,8 @@ export function SyncView({ onComplete, onBack }: SyncViewProps) {
             issue.assigneeId,
             issue.assigneeName,
             issue.priority,
+            issue.estimate,
+            issue.lastCommentAt ? issue.lastCommentAt.toISOString() : null,
             issue.createdAt.toISOString(),
             issue.updatedAt.toISOString(),
             issue.url,
