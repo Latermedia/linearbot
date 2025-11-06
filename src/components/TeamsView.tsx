@@ -124,6 +124,18 @@ export function TeamsView({ onBack, onHeaderChange }: TeamsViewProps) {
         setSelectedIndex(0);
         setScrollOffset(0);
       }
+    } else if (input === "o" && mode === "issues" && selectedTeam) {
+      // Open selected issue in browser
+      const issue = selectedTeam.issues[selectedIndex];
+      if (issue) {
+        require("child_process").exec(
+          process.platform === "darwin"
+            ? `open "${issue.url}"`
+            : process.platform === "win32"
+            ? `start "${issue.url}"`
+            : `xdg-open "${issue.url}"`
+        );
+      }
     } else if (key.upArrow || input === "k") {
       if (selectedIndex > 0) {
         const newIndex = selectedIndex - 1;
@@ -243,7 +255,7 @@ export function TeamsView({ onBack, onHeaderChange }: TeamsViewProps) {
         <Box flexDirection="column">
           <Box marginBottom={1}>
             <Text dimColor>
-              Navigate: ↑↓/j/k • b: Back • 📏 missing estimate • 💬 no comment 24h • 🔴 missing priority
+              Navigate: ↑↓/j/k • o: Open • b: Back • 📏 missing estimate • 💬 no comment 24h • 🔴 missing priority
             </Text>
           </Box>
 
