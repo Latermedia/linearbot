@@ -48,7 +48,7 @@ export function App() {
       {currentView === "browse" && (
         <BrowseView
           key="view-browse"
-          onBack={() => setCurrentView("menu")}
+          onBack={() => handleViewChange("menu")}
           onHeaderChange={setHeaderContext}
         />
       )}
@@ -56,7 +56,7 @@ export function App() {
       {currentView === "projects" && (
         <ProjectsView
           key="view-projects"
-          onBack={() => setCurrentView("menu")}
+          onBack={() => handleViewChange("menu")}
           onHeaderChange={setHeaderContext}
         />
       )}
@@ -64,7 +64,7 @@ export function App() {
       {currentView === "engineers" && (
         <EngineersView
           key="view-engineers"
-          onBack={() => setCurrentView("menu")}
+          onBack={() => handleViewChange("menu")}
           onHeaderChange={setHeaderContext}
         />
       )}
