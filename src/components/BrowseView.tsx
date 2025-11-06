@@ -90,7 +90,7 @@ export function BrowseView({ onBack, onHeaderChange }: BrowseViewProps) {
   };
 
   useInput((input, key) => {
-    if (input === "q" || input === "b") {
+    if (input === "b") {
       if (mode === "assignees") {
         onBack();
       } else if (mode === "issues") {
@@ -195,7 +195,7 @@ export function BrowseView({ onBack, onHeaderChange }: BrowseViewProps) {
         <Text dimColor>Run sync first to fetch issues from Linear.</Text>
         <Text dimColor>(Only issues with 'started' status are shown here)</Text>
         <Box marginTop={1}>
-          <Text dimColor>Press 'b' or 'q' to go back</Text>
+          <Text dimColor>Press 'b' to go back</Text>
         </Box>
       </Box>
     );
@@ -247,7 +247,7 @@ export function BrowseView({ onBack, onHeaderChange }: BrowseViewProps) {
           </Box>
           <Box marginBottom={1}>
             <Text dimColor>
-              Use ↑↓ or j/k to navigate • Enter to select • q/b to go back
+              Use ↑↓ or j/k to navigate • Enter to select • b to go back
             </Text>
           </Box>
 
@@ -306,7 +306,7 @@ export function BrowseView({ onBack, onHeaderChange }: BrowseViewProps) {
           </Box>
           <Box marginBottom={1}>
             <Text dimColor>
-              Use ↑↓ or j/k to navigate • Enter to view details • o to open in Linear • q/b to go back
+              Use ↑↓ or j/k to navigate • Enter to view details • o to open in Linear • b to go back
             </Text>
           </Box>
 
@@ -389,7 +389,7 @@ export function BrowseView({ onBack, onHeaderChange }: BrowseViewProps) {
           )}
 
           <Box marginTop={1}>
-            <Text dimColor>Press 'b' or 'q' to go back</Text>
+            <Text dimColor>Press 'b' to go back</Text>
           </Box>
         </Box>
       )}

@@ -21,7 +21,7 @@ export function SyncView({ onComplete, onBack }: SyncViewProps) {
   const [canGoBack, setCanGoBack] = useState(false);
 
   useInput((input) => {
-    if (canGoBack && (input === "b" || input === "q")) {
+    if (canGoBack && input === "b") {
       onBack();
     }
   });
@@ -236,7 +236,7 @@ export function SyncView({ onComplete, onBack }: SyncViewProps) {
             <Text color="red">{errorMessage}</Text>
           </Box>
           <Box>
-            <Text dimColor>Press 'b' or 'q' to go back</Text>
+            <Text dimColor>Press 'b' to go back</Text>
           </Box>
         </Box>
       )}

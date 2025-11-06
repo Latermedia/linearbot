@@ -150,7 +150,7 @@ export function EngineersView({ onBack, onHeaderChange }: EngineersViewProps) {
   };
 
   useInput((input, key) => {
-    if (input === "q" || input === "b" || key.escape) {
+    if (input === "b" || key.escape) {
       handleBack();
       return;
     }
@@ -224,7 +224,7 @@ export function EngineersView({ onBack, onHeaderChange }: EngineersViewProps) {
         </Box>
         <Box marginBottom={1}>
           <Text dimColor>
-            Use ↑↓ or j/k to navigate • Enter to select • q/b to go back
+            Use ↑↓ or j/k to navigate • Enter to select • b to go back
           </Text>
         </Box>
 
@@ -292,7 +292,7 @@ export function EngineersView({ onBack, onHeaderChange }: EngineersViewProps) {
           </Text>
         </Box>
         <Box marginBottom={1}>
-          <Text dimColor>Use ↑↓ or j/k to navigate • o to open in Linear • b/q to go back</Text>
+          <Text dimColor>Use ↑↓ or j/k to navigate • o to open in Linear • b to go back</Text>
         </Box>
 
         {visibleProjects.map((project, idx) => {

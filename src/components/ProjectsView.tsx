@@ -251,7 +251,7 @@ export function ProjectsView({ onBack, onHeaderChange }: ProjectsViewProps) {
   };
 
   useInput((input, key) => {
-    if (input === "q" || input === "b") {
+    if (input === "b") {
       if (mode === "teams") {
         onBack();
       } else if (mode === "projects") {
@@ -374,7 +374,7 @@ export function ProjectsView({ onBack, onHeaderChange }: ProjectsViewProps) {
           Projects must have started issues or recent activity to be shown.
         </Text>
         <Box marginTop={1}>
-          <Text dimColor>Press 'b' or 'q' to go back</Text>
+          <Text dimColor>Press 'b' to go back</Text>
         </Box>
       </Box>
     );
@@ -395,7 +395,7 @@ export function ProjectsView({ onBack, onHeaderChange }: ProjectsViewProps) {
           </Box>
           <Box marginBottom={1}>
             <Text dimColor>
-              Use ↑↓ or j/k to navigate • Enter to select • q/b to go back
+              Use ↑↓ or j/k to navigate • Enter to select • b to go back
             </Text>
           </Box>
           <Box marginBottom={1}>
@@ -475,7 +475,7 @@ export function ProjectsView({ onBack, onHeaderChange }: ProjectsViewProps) {
           <Box marginBottom={1}>
             <Text dimColor>
               Use ↑↓ or j/k to navigate • Enter to view issues • o to open in
-              Linear • q/b to go back
+              Linear • b to go back
             </Text>
           </Box>
 
@@ -636,7 +636,7 @@ export function ProjectsView({ onBack, onHeaderChange }: ProjectsViewProps) {
           </Box>
           <Box marginBottom={1}>
             <Text dimColor>
-              Use ↑↓ or j/k to navigate • q/b to go back • Open links in Linear
+              Use ↑↓ or j/k to navigate • b to go back • Open links in Linear
             </Text>
           </Box>
 
