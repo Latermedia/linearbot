@@ -4,8 +4,9 @@ import { MainMenu } from "./MainMenu.js";
 import { BrowseView } from "./BrowseView.js";
 import { ProjectsView } from "./ProjectsView.js";
 import { EngineersView } from "./EngineersView.js";
+import { TeamsView } from "./TeamsView.js";
 
-export type View = "menu" | "browse" | "projects" | "engineers";
+export type View = "menu" | "browse" | "projects" | "engineers" | "teams";
 
 export function App() {
   const [currentView, setCurrentView] = useState<View>("menu");
@@ -64,6 +65,14 @@ export function App() {
       {currentView === "engineers" && (
         <EngineersView
           key="view-engineers"
+          onBack={() => handleViewChange("menu")}
+          onHeaderChange={setHeaderContext}
+        />
+      )}
+
+      {currentView === "teams" && (
+        <TeamsView
+          key="view-teams"
           onBack={() => handleViewChange("menu")}
           onHeaderChange={setHeaderContext}
         />

@@ -78,11 +78,15 @@ export function MainMenu({ onSelectView }: MainMenuProps) {
   const [totalAssignees, setTotalAssignees] = useState(0);
   const [totalProjects, setTotalProjects] = useState(0);
   const [unassignedCount, setUnassignedCount] = useState(0);
-  
+
   // Violation counts
   const [missingEstimateCount, setMissingEstimateCount] = useState(0);
   const [noRecentCommentCount, setNoRecentCommentCount] = useState(0);
   const [missingPriorityCount, setMissingPriorityCount] = useState(0);
+
+  // Team statistics
+  const [totalTeams, setTotalTeams] = useState(0);
+  const [teamsWithViolations, setTeamsWithViolations] = useState(0);
 
   useEffect(() => {
     loadDashboardData();
@@ -135,21 +139,75 @@ export function MainMenu({ onSelectView }: MainMenuProps) {
 
     // Don't count unassigned in total assignees
     setTotalAssignees(issuesByAssignee.size - (unassignedIssues ? 1 : 0));
-    
+
     // Calculate violation counts across all started issues
-    const missingEstimate = startedIssues.filter(i => !i.estimate).length;
-    const noRecentComment = startedIssues.filter(i => {
+    const missingEstimate = startedIssues.filter((i) => !i.estimate).length;
+    const noRecentComment = startedIssues.filter((i) => {
       if (!i.last_comment_at) return true;
       const lastComment = new Date(i.last_comment_at);
       const now = new Date();
-      const hoursDiff = (now.getTime() - lastComment.getTime()) / (1000 * 60 * 60);
+      const hoursDiff =
+        (now.getTime() - lastComment.getTime()) / (1000 * 60 * 60);
       return hoursDiff > 24;
     }).length;
-    const missingPriority = startedIssues.filter(i => i.priority === 0).length;
-    
+    const missingPriority = startedIssues.filter(
+      (i) => i.priority === 0
+    ).length;
+
     setMissingEstimateCount(missingEstimate);
     setNoRecentCommentCount(noRecentComment);
     setMissingPriorityCount(missingPriority);
+
+    // Calculate team statistics
+    const teamMap = new Map<string, Issue[]>();
+    for (const issue of startedIssues) {
+      const teamKey = issue.team_key;
+      if (!teamMap.has(teamKey)) {
+        teamMap.set(teamKey, []);
+      }
+      teamMap.get(teamKey)?.push(issue);
+    }
+
+    setTotalTeams(teamMap.size);
+
+    // Count teams with violations
+    let teamsWithViolationsCount = 0;
+    for (const [_, issues] of teamMap) {
+      const hasEstimateViolation = issues.some((i) => !i.estimate);
+      const hasCommentViolation = issues.some((i) => {
+        if (!i.last_comment_at) return true;
+        const lastComment = new Date(i.last_comment_at);
+        const now = new Date();
+        const hoursDiff =
+          (now.getTime() - lastComment.getTime()) / (1000 * 60 * 60);
+        return hoursDiff > 24;
+      });
+      const hasPriorityViolation = issues.some((i) => i.priority === 0);
+
+      // Check for WIP violations (assignees with > 5 issues)
+      const teamIssuesByAssignee = new Map<string, Issue[]>();
+      for (const issue of issues) {
+        const assignee = issue.assignee_name || "Unassigned";
+        if (!teamIssuesByAssignee.has(assignee)) {
+          teamIssuesByAssignee.set(assignee, []);
+        }
+        teamIssuesByAssignee.get(assignee)?.push(issue);
+      }
+      const hasWipViolation = Array.from(teamIssuesByAssignee.values()).some(
+        (assigneeIssues) => assigneeIssues.length > 5
+      );
+
+      if (
+        hasEstimateViolation ||
+        hasCommentViolation ||
+        hasPriorityViolation ||
+        hasWipViolation
+      ) {
+        teamsWithViolationsCount++;
+      }
+    }
+
+    setTeamsWithViolations(teamsWithViolationsCount);
 
     // Load engineers working on multiple projects
     const startedProjectIssues = db
@@ -391,7 +449,9 @@ export function MainMenu({ onSelectView }: MainMenuProps) {
             issue.projectId,
             issue.projectName,
             issue.projectState,
-            issue.projectUpdatedAt ? issue.projectUpdatedAt.toISOString() : null,
+            issue.projectUpdatedAt
+              ? issue.projectUpdatedAt.toISOString()
+              : null,
             issue.projectLeadId,
             issue.projectLeadName
           );
@@ -607,6 +667,8 @@ export function MainMenu({ onSelectView }: MainMenuProps) {
     // Handle keyboard shortcuts
     if (input === "s") {
       runSync();
+    } else if (input === "t") {
+      onSelectView("teams");
     } else if (input === "i") {
       onSelectView("browse");
     } else if (input === "p") {
@@ -634,12 +696,16 @@ export function MainMenu({ onSelectView }: MainMenuProps) {
     <Box flexDirection="column">
       {/* Hotkey Navigation */}
       <Box key="hotkeys" paddingX={2} paddingY={1}>
-        <BoxPanel title="ACTIONS" width={79}>
+        <BoxPanel title="ACTIONS" width={78}>
           <BoxPanelLine>
             <Text color="cyan" bold>
               s
             </Text>{" "}
             sync │{" "}
+            <Text color="cyan" bold>
+              t
+            </Text>{" "}
+            teams │{" "}
             <Text color="cyan" bold>
               i
             </Text>{" "}
@@ -655,7 +721,7 @@ export function MainMenu({ onSelectView }: MainMenuProps) {
             <Text color="cyan" bold>
               u
             </Text>{" "}
-            comment-unassigned │{" "}
+            comment │{" "}
             <Text color="cyan" bold>
               q
             </Text>{" "}
@@ -883,25 +949,31 @@ export function MainMenu({ onSelectView }: MainMenuProps) {
             </BoxPanelLine>
           </BoxPanel>
 
-          {/* Unassigned Issues */}
-          {unassignedCount > 0 && (
-            <Box flexDirection="column" marginBottom={2}>
-              <Box marginBottom={1}>
-                <Text bold color="magenta">
-                  ❓ UNASSIGNED ISSUES ({unassignedCount})
-                </Text>
-              </Box>
+          {/* Teams Summary */}
+          {totalTeams > 0 && (
+            <Box flexDirection="column" marginBottom={1}>
+              <Text bold color="cyan">
+                🏢 TEAMS ({totalTeams} teams • {teamsWithViolations} with
+                violations)
+              </Text>
               <Box marginLeft={2}>
                 <Text dimColor>
-                  {unassignedCount} started issue
-                  {unassignedCount === 1 ? "" : "s"} need
-                  {unassignedCount === 1 ? "s" : ""} assignment
+                  Press <Text color="cyan">t</Text> to view by team
                 </Text>
               </Box>
-              <Box marginLeft={2} marginTop={0}>
+            </Box>
+          )}
+
+          {/* Unassigned Issues */}
+          {unassignedCount > 0 && (
+            <Box flexDirection="column" marginBottom={1}>
+              <Text bold color="magenta">
+                ❓ UNASSIGNED ISSUES ({unassignedCount})
+              </Text>
+              <Box marginLeft={2}>
                 <Text dimColor>
                   Press <Text color="cyan">u</Text> to comment warnings • Press{" "}
-                  <Text color="cyan">i</Text> to view all
+                  <Text color="cyan">i</Text> to view by assignee
                 </Text>
               </Box>
             </Box>
@@ -909,139 +981,70 @@ export function MainMenu({ onSelectView }: MainMenuProps) {
 
           {/* Assignee Violations */}
           {assigneeViolations.length > 0 && (
-            <Box flexDirection="column" marginBottom={2}>
-              <Box marginBottom={1}>
-                <Text bold color="red">
-                  ⚡ ISSUE VIOLATIONS BY ASSIGNEE ({assigneeViolations.length})
-                </Text>
-              </Box>
-              <Box marginLeft={2} marginBottom={1}>
+            <Box flexDirection="column" marginBottom={1}>
+              <Text bold color="red">
+                ⚡ ISSUE VIOLATIONS ({assigneeViolations.length} assignees)
+              </Text>
+              <Box marginLeft={2}>
                 <Text dimColor>
-                  📏 {missingEstimateCount} missing estimate • 💬 {noRecentCommentCount} no comment in 24h • 🔴 {missingPriorityCount} missing priority
+                  📏 {missingEstimateCount} missing estimate • 💬{" "}
+                  {noRecentCommentCount} no comment in 24h • 🔴{" "}
+                  {missingPriorityCount} missing priority
                 </Text>
               </Box>
-              {assigneeViolations.slice(0, 5).map((violation) => (
-                <Box key={`assignee-${violation.name}`} marginLeft={2}>
-                  <Text
-                    color={violation.status === "critical" ? "red" : "yellow"}
-                  >
-                    •
-                  </Text>
-                  <Box width={30}>
-                    <Text
-                      color={violation.status === "critical" ? "red" : "yellow"}
-                    >
-                      {violation.name}
-                    </Text>
-                  </Box>
-                  <Text
-                    color={violation.status === "critical" ? "red" : "yellow"}
-                  >
-                    {violation.count} issues
-                  </Text>
-                </Box>
-              ))}
-              {assigneeViolations.length > 5 && (
-                <Box marginLeft={2} marginTop={1}>
-                  <Text dimColor>
-                    ... and {assigneeViolations.length - 5} more • Press{" "}
-                    <Text color="cyan">i</Text> to view all
-                  </Text>
-                </Box>
-              )}
+              <Box marginLeft={2}>
+                <Text dimColor>
+                  Press <Text color="cyan">i</Text> to view by assignee
+                </Text>
+              </Box>
             </Box>
           )}
 
           {assigneeViolations.length === 0 && (
-            <Box flexDirection="column" marginBottom={2}>
-              <Text color="green">✓ No assignee WIP violations</Text>
+            <Box flexDirection="column" marginBottom={1}>
+              <Text color="green">✓ No WIP violations</Text>
               <Text dimColor> All assignees have ≤ 5 started issues</Text>
             </Box>
           )}
 
           {/* Engineers on Multiple Projects */}
           {engineerMultiProjectViolations.length > 0 && (
-            <Box flexDirection="column" marginBottom={2}>
-              <Box marginBottom={1}>
-                <Text bold color="yellow">
-                  🔀 ENGINEERS ON MULTIPLE PROJECTS (
-                  {engineerMultiProjectViolations.length})
+            <Box flexDirection="column" marginBottom={1}>
+              <Text bold color="yellow">
+                🔀 MULTI-PROJECT ENGINEERS (
+                {engineerMultiProjectViolations.length})
+              </Text>
+              <Box marginLeft={2}>
+                <Text dimColor>
+                  Press <Text color="cyan">e</Text> to view all
                 </Text>
               </Box>
-              {engineerMultiProjectViolations.slice(0, 5).map((violation) => (
-                <Box
-                  key={`engineer-multi-${violation.engineerName}`}
-                  marginLeft={2}
-                >
-                  <Text color="yellow">• </Text>
-                  <Box width={30}>
-                    <Text>{violation.engineerName}</Text>
-                  </Box>
-                  <Text dimColor>{violation.projectCount} projects</Text>
-                </Box>
-              ))}
-              {engineerMultiProjectViolations.length > 5 && (
-                <Box marginLeft={2} marginTop={1}>
-                  <Text dimColor>
-                    ... and {engineerMultiProjectViolations.length - 5} more •
-                    Press <Text color="cyan">e</Text> to view all
-                  </Text>
-                </Box>
-              )}
             </Box>
           )}
 
           {engineerMultiProjectViolations.length === 0 && (
-            <Box flexDirection="column" marginBottom={2}>
+            <Box flexDirection="column" marginBottom={1}>
               <Text color="green">✓ No multi-project violations</Text>
-              <Text dimColor> All engineers focused on single projects</Text>
             </Box>
           )}
 
           {/* Project Violations */}
           {projectViolations.length > 0 && (
-            <Box flexDirection="column" marginBottom={2}>
-              <Box marginBottom={1}>
-                <Text bold color="yellow">
-                  😭 PROJECT ISSUES ({projectViolations.length})
+            <Box flexDirection="column" marginBottom={1}>
+              <Text bold color="yellow">
+                😭 PROJECT VIOLATIONS ({projectViolations.length})
+              </Text>
+              <Box marginLeft={2}>
+                <Text dimColor>
+                  Press <Text color="cyan">p</Text> to view all
                 </Text>
               </Box>
-              {projectViolations.slice(0, 5).map((violation) => {
-                const issues = [];
-                if (violation.hasStatusMismatch) {
-                  issues.push("status mismatch");
-                }
-                if (violation.isStale) {
-                  issues.push("stale 7+ days");
-                }
-
-                return (
-                  <Box key={`project-${violation.name}`} marginLeft={2}>
-                    <Text color="yellow">• </Text>
-                    <Box width={35}>
-                      <Text>{violation.name}</Text>
-                    </Box>
-                    <Text color={violation.isStale ? "red" : "yellow"}>
-                      {issues.join(", ")}
-                    </Text>
-                  </Box>
-                );
-              })}
-              {projectViolations.length > 5 && (
-                <Box marginLeft={2} marginTop={1}>
-                  <Text dimColor>
-                    ... and {projectViolations.length - 5} more • Press{" "}
-                    <Text color="cyan">p</Text> to view all
-                  </Text>
-                </Box>
-              )}
             </Box>
           )}
 
           {projectViolations.length === 0 && (
-            <Box flexDirection="column" marginBottom={2}>
-              <Text color="green">✓ No project issues detected</Text>
-              <Text dimColor> All projects have proper status and updates</Text>
+            <Box flexDirection="column" marginBottom={1}>
+              <Text color="green">✓ No project issues</Text>
             </Box>
           )}
         </Box>

@@ -1,6 +1,6 @@
 /**
  * BoxPanel Usage Examples
- * 
+ *
  * This file demonstrates how to use the BoxPanel utility component
  * to create elegant, futuristic bordered sections in your terminal UI.
  */
@@ -69,7 +69,7 @@ export function ConditionalExample({ errorCount }: { errorCount: number }) {
 
 /**
  * Example 4: Panel with mixed content (without BoxPanelLine)
- * 
+ *
  * For more complex layouts, you can use regular Box/Text components
  * inside BoxPanel without BoxPanelLine.
  */
@@ -78,9 +78,18 @@ export function ComplexExample() {
     <Box paddingX={2} paddingY={1}>
       <BoxPanel title="ACTIONS" width={65}>
         <BoxPanelLine>
-          <Text color="cyan" bold>s</Text> sync │{" "}
-          <Text color="cyan" bold>b</Text> browse │{" "}
-          <Text color="cyan" bold>q</Text> quit
+          <Text color="cyan" bold>
+            s
+          </Text>{" "}
+          sync │{" "}
+          <Text color="cyan" bold>
+            b
+          </Text>{" "}
+          browse │{" "}
+          <Text color="cyan" bold>
+            q
+          </Text>{" "}
+          quit
         </BoxPanelLine>
       </BoxPanel>
     </Box>
@@ -117,7 +126,11 @@ export function StackedExample() {
 /**
  * Example 6: Dynamic content with data
  */
-export function DataExample({ projects }: { projects: Array<{ name: string; count: number }> }) {
+export function DataExample({
+  projects,
+}: {
+  projects: Array<{ name: string; count: number }>;
+}) {
   return (
     <Box paddingX={2} paddingY={1}>
       <BoxPanel title="PROJECTS" width={60} marginBottom={2}>
@@ -135,29 +148,28 @@ export function DataExample({ projects }: { projects: Array<{ name: string; coun
 
 /**
  * Tips for using BoxPanel:
- * 
+ *
  * 1. Width Calculation:
  *    - Choose width based on your content length
  *    - Typical widths: 40-70 characters work well
  *    - Too narrow = content gets cut off
  *    - Too wide = looks sparse on smaller terminals
- * 
+ *
  * 2. BoxPanelLine vs Raw Content:
  *    - Use BoxPanelLine for standard rows with left and right borders
  *    - Use raw Box/Text for more complex layouts
- * 
+ *
  * 3. Spacing:
  *    - Use marginBottom on BoxPanel for spacing between panels
  *    - Wrap BoxPanel in a Box with paddingX/paddingY for outer spacing
- * 
+ *
  * 4. Consistency:
  *    - Use the same width for related panels
  *    - Keep titles short and uppercase for consistency
  *    - Use dimColor for borders (automatic with BoxPanel)
- * 
+ *
  * 5. Content Overflow:
  *    - Be mindful of content length vs panel width
  *    - Text will wrap in terminal if it exceeds width
  *    - Test on different terminal sizes
  */
-
