@@ -36,7 +36,7 @@ export function App() {
             </>
           )}
         </Box>
-        <Box paddingX={2} paddingBottom={1}>
+        <Box paddingX={2}>
           <Text dimColor>━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━</Text>
         </Box>
       </Box>

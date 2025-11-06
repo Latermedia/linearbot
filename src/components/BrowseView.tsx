@@ -157,7 +157,7 @@ export function BrowseView({ onBack, onHeaderChange }: BrowseViewProps) {
 
           // Adjust scroll to keep selection visible
           const terminalHeight = stdout?.rows || 24;
-          const visibleLines = terminalHeight - 8;
+          const visibleLines = Math.max(5, terminalHeight - 7);
           if (newIndex >= scrollOffset + visibleLines) {
             setScrollOffset(newIndex - visibleLines + 1);
           }
@@ -169,7 +169,7 @@ export function BrowseView({ onBack, onHeaderChange }: BrowseViewProps) {
           setSelectedIndex(newIndex);
 
           const terminalHeight = stdout?.rows || 24;
-          const visibleLines = terminalHeight - 6;
+          const visibleLines = Math.max(5, terminalHeight - 10);
           if (newIndex >= scrollOffset + visibleLines) {
             setScrollOffset(newIndex - visibleLines + 1);
           }
@@ -232,43 +232,25 @@ export function BrowseView({ onBack, onHeaderChange }: BrowseViewProps) {
 
   // Calculate visible window
   const terminalHeight = stdout?.rows || 24;
-  const visibleLines = terminalHeight - 8; // Account for header, footer, borders
+  // Account for: App header (3) + view headers with margins (3) + footer (1) = 7 lines
+  const visibleLines = Math.max(5, terminalHeight - 11);
 
   return (
-    <Box flexDirection="column" padding={1}>
+    <Box flexDirection="column" paddingX={1}>
       {mode === "assignees" && (
         <Box flexDirection="column">
           <Box marginBottom={1}>
-            <Text bold>STARTED ISSUES SUMMARY</Text>
-          </Box>
-          <Box marginBottom={1}>
             <Text dimColor>
-              Total: {totalIssues} started issues across {issuesByAssignee.size}{" "}
-              assignees
+              {totalIssues} issues • {issuesByAssignee.size} assignees •{" "}
+              {violations} WIP violations • Sort:{" "}
+              <Text color="cyan">{sortMode === "count" ? "Count" : "A-Z"}</Text>{" "}
+              (press s)
             </Text>
           </Box>
           <Box marginBottom={1}>
             <Text dimColor>
-              WIP Constraint: 3 ideal, 5 max • Violations: {violations}
-            </Text>
-          </Box>
-          <Box marginBottom={1}>
-            <Text>
-              <Text dimColor>Sort: </Text>
-              <Text color="cyan" bold>
-                {sortMode === "count" ? "Issue Count" : "Name (A-Z)"}
-              </Text>
-              <Text dimColor> (press 's' to toggle)</Text>
-            </Text>
-          </Box>
-          <Box marginBottom={1}>
-            <Text dimColor>
-              Use ↑↓ or j/k to navigate • Enter to select • b to go back
-            </Text>
-          </Box>
-          <Box marginBottom={1}>
-            <Text dimColor>
-              Indicators: 📏 missing estimate • 💬 no comment in 24h • 🔴 missing priority
+              Navigate: ↑↓/j/k • Enter: Select • 📏 missing estimate • 💬 no
+              comment 24h • 🔴 missing priority
             </Text>
           </Box>
 
@@ -279,15 +261,22 @@ export function BrowseView({ onBack, onHeaderChange }: BrowseViewProps) {
               const isSelected = actualIndex === selectedIndex;
               const count = issues.length;
               const status = getWIPStatus(count);
-              
+
               // Count violations
-              const missingEstimate = issues.filter(i => !i.estimate).length;
-              const noRecentComment = issues.filter(i => hasNoRecentComment(i)).length;
-              const missingPriority = issues.filter(i => i.priority === 0).length;
+              const missingEstimate = issues.filter((i) => !i.estimate).length;
+              const noRecentComment = issues.filter((i) =>
+                hasNoRecentComment(i)
+              ).length;
+              const missingPriority = issues.filter(
+                (i) => i.priority === 0
+              ).length;
               const violationSummary: string[] = [];
-              if (missingEstimate > 0) violationSummary.push(`📏${missingEstimate}`);
-              if (noRecentComment > 0) violationSummary.push(`💬${noRecentComment}`);
-              if (missingPriority > 0) violationSummary.push(`🔴${missingPriority}`);
+              if (missingEstimate > 0)
+                violationSummary.push(`📏${missingEstimate}`);
+              if (noRecentComment > 0)
+                violationSummary.push(`💬${noRecentComment}`);
+              if (missingPriority > 0)
+                violationSummary.push(`🔴${missingPriority}`);
 
               return (
                 <Box key={`assignee-${assignee}`}>
@@ -336,24 +325,14 @@ export function BrowseView({ onBack, onHeaderChange }: BrowseViewProps) {
       {mode === "issues" && selectedAssignee && (
         <Box flexDirection="column">
           <Box marginBottom={1}>
-            <Text bold>
-              ISSUES FOR: {selectedAssignee} (
-              {issuesByAssignee.get(selectedAssignee)?.length} issues)
-            </Text>
-          </Box>
-          <Box marginBottom={1}>
             <Text dimColor>
-              Use ↑↓ or j/k to navigate • Enter to view details • o to open in Linear • b to go back
-            </Text>
-          </Box>
-          <Box marginBottom={1}>
-            <Text dimColor>
-              Indicators: 📏 missing estimate • 💬 no comment in 24h • 🔴 missing priority
+              Navigate: ↑↓/j/k • Enter: Details • o: Open • b: Back • 📏 missing
+              estimate • 💬 no comment 24h • 🔴 missing priority
             </Text>
           </Box>
 
           {(issuesByAssignee.get(selectedAssignee) || [])
-            .slice(scrollOffset, scrollOffset + terminalHeight - 6)
+            .slice(scrollOffset, scrollOffset + visibleLines)
             .map((issue, displayIndex) => {
               const actualIndex = scrollOffset + displayIndex;
               const isSelected = actualIndex === selectedIndex;
@@ -382,12 +361,12 @@ export function BrowseView({ onBack, onHeaderChange }: BrowseViewProps) {
             })}
 
           {(issuesByAssignee.get(selectedAssignee)?.length || 0) >
-            terminalHeight - 6 && (
+            visibleLines && (
             <Box marginTop={1}>
               <Text dimColor>
                 Showing {scrollOffset + 1}-
                 {Math.min(
-                  scrollOffset + terminalHeight - 6,
+                  scrollOffset + visibleLines,
                   issuesByAssignee.get(selectedAssignee)?.length || 0
                 )}{" "}
                 of {issuesByAssignee.get(selectedAssignee)?.length}
@@ -398,7 +377,7 @@ export function BrowseView({ onBack, onHeaderChange }: BrowseViewProps) {
       )}
 
       {mode === "detail" && selectedIssue && (
-        <Box flexDirection="column" padding={1}>
+        <Box flexDirection="column" paddingX={1}>
           <Box marginBottom={1}>
             <Text bold color="cyan">
               {selectedIssue.title}
