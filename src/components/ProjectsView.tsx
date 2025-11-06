@@ -36,6 +36,8 @@ interface ProjectSummary {
   isStaleUpdate: boolean;
   lastActivityDate: string;
   teams: Set<string>;
+  projectLeadName: string | null;
+  missingLead: boolean;
 }
 
 function isProjectActive(issues: Issue[]): boolean {
@@ -66,6 +68,18 @@ function isStaleUpdate(project: ProjectSummary): boolean {
   const sevenDaysAgo = new Date();
   sevenDaysAgo.setDate(sevenDaysAgo.getDate() - 7);
   return new Date(project.projectUpdatedAt) < sevenDaysAgo;
+}
+
+function isMissingLead(project: ProjectSummary, issues: Issue[]): boolean {
+  // Project should have a lead if it has active work or is in an active state
+  const hasActiveWork = issues.some((i) => i.state_type === "started");
+  const projectState = project.projectState?.toLowerCase() || "";
+  const isActiveState =
+    projectState.includes("progress") ||
+    projectState.includes("started") ||
+    projectState === "started";
+
+  return (hasActiveWork || isActiveState) && !project.projectLeadName;
 }
 
 export function ProjectsView({ onBack, onHeaderChange }: ProjectsViewProps) {
@@ -168,6 +182,8 @@ export function ProjectsView({ onBack, onHeaderChange }: ProjectsViewProps) {
         isStaleUpdate: false, // Will set below
         lastActivityDate,
         teams,
+        projectLeadName: firstIssue.project_lead_name,
+        missingLead: false, // Will set below
       };
 
       projectSummary.hasStatusMismatch = hasStatusMismatch(
@@ -175,6 +191,7 @@ export function ProjectsView({ onBack, onHeaderChange }: ProjectsViewProps) {
         issues
       );
       projectSummary.isStaleUpdate = isStaleUpdate(projectSummary);
+      projectSummary.missingLead = isMissingLead(projectSummary, issues);
 
       projects.set(projectId, projectSummary);
       projectGroups.set(projectId, issues);
@@ -245,6 +262,34 @@ export function ProjectsView({ onBack, onHeaderChange }: ProjectsViewProps) {
         setMode("projects");
         setSelectedIndex(0);
         setScrollOffset(0);
+      }
+    } else if (input === "o" && mode === "projects" && selectedTeam) {
+      // Open selected project in browser
+      const projects = sortProjects(
+        projectsByTeam.get(selectedTeam.teamKey) || [],
+        sortMode
+      );
+      const project = projects[selectedIndex];
+      if (project) {
+        // Get workspace from first issue URL
+        const issues = issuesByProject.get(project.projectId) || [];
+        if (issues.length > 0) {
+          const issueUrl = issues[0].url;
+          const workspaceMatch = issueUrl.match(
+            /https:\/\/linear\.app\/([^\/]+)/
+          );
+          if (workspaceMatch) {
+            const workspace = workspaceMatch[1];
+            const projectUrl = `https://linear.app/${workspace}/project/${project.projectId}`;
+            require("child_process").exec(
+              process.platform === "darwin"
+                ? `open "${projectUrl}"`
+                : process.platform === "win32"
+                ? `start "${projectUrl}"`
+                : `xdg-open "${projectUrl}"`
+            );
+          }
+        }
       }
     } else if (input === "s" && mode === "projects") {
       // Toggle sort mode for projects
@@ -429,7 +474,8 @@ export function ProjectsView({ onBack, onHeaderChange }: ProjectsViewProps) {
           </Box>
           <Box marginBottom={1}>
             <Text dimColor>
-              Use ↑↓ or j/k to navigate • Enter to view issues • q/b to go back
+              Use ↑↓ or j/k to navigate • Enter to view issues • o to open in
+              Linear • q/b to go back
             </Text>
           </Box>
 
@@ -486,6 +532,11 @@ export function ProjectsView({ onBack, onHeaderChange }: ProjectsViewProps) {
                         {project.projectState || "No status"}
                       </Text>
                     </Box>
+                    {project.missingLead && (
+                      <Box>
+                        <Text color="red">👤 No lead assigned</Text>
+                      </Box>
+                    )}
                     {project.hasStatusMismatch && (
                       <Box>
                         <Text color="yellow">
@@ -544,6 +595,13 @@ export function ProjectsView({ onBack, onHeaderChange }: ProjectsViewProps) {
 
       {mode === "issues" && selectedProject && (
         <Box flexDirection="column">
+          {selectedProject.missingLead && (
+            <Box marginBottom={1}>
+              <Text color="red">
+                👤 Missing Lead: Active project has no lead assigned
+              </Text>
+            </Box>
+          )}
           {selectedProject.hasStatusMismatch && (
             <Box marginBottom={1}>
               <Text color="yellow">
@@ -571,6 +629,9 @@ export function ProjectsView({ onBack, onHeaderChange }: ProjectsViewProps) {
             <Text dimColor>
               Engineers ({selectedProject.engineerCount}):{" "}
               {Array.from(selectedProject.engineers).join(", ")}
+              {selectedProject.projectLeadName && (
+                <Text> • Lead: {selectedProject.projectLeadName}</Text>
+              )}
             </Text>
           </Box>
           <Box marginBottom={1}>

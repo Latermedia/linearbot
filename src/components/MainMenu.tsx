@@ -309,9 +309,10 @@ export function MainMenu({ onSelectView }: MainMenuProps) {
           state_id, state_name, state_type,
           assignee_id, assignee_name, priority, 
           created_at, updated_at, url,
-          project_id, project_name, project_state, project_updated_at
+          project_id, project_name, project_state, project_updated_at,
+          project_lead_id, project_lead_name
         )
-        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
         ON CONFLICT(id) DO UPDATE SET
           identifier = excluded.identifier,
           title = excluded.title,
@@ -330,7 +331,9 @@ export function MainMenu({ onSelectView }: MainMenuProps) {
           project_id = excluded.project_id,
           project_name = excluded.project_name,
           project_state = excluded.project_state,
-          project_updated_at = excluded.project_updated_at
+          project_updated_at = excluded.project_updated_at,
+          project_lead_id = excluded.project_lead_id,
+          project_lead_name = excluded.project_lead_name
       `);
 
       let newIssues = 0;
@@ -364,7 +367,9 @@ export function MainMenu({ onSelectView }: MainMenuProps) {
             issue.projectId,
             issue.projectName,
             issue.projectState,
-            issue.projectUpdatedAt ? issue.projectUpdatedAt.toISOString() : null
+            issue.projectUpdatedAt ? issue.projectUpdatedAt.toISOString() : null,
+            issue.projectLeadId,
+            issue.projectLeadName
           );
         }
       });

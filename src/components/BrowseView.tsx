@@ -159,6 +159,19 @@ export function BrowseView({ onBack, onHeaderChange }: BrowseViewProps) {
           }
         }
       }
+    } else if (input === "o" && mode === "issues" && selectedAssignee) {
+      // Open selected issue in browser
+      const issues = issuesByAssignee.get(selectedAssignee) || [];
+      const issue = issues[selectedIndex];
+      if (issue) {
+        require("child_process").exec(
+          process.platform === "darwin"
+            ? `open "${issue.url}"`
+            : process.platform === "win32"
+            ? `start "${issue.url}"`
+            : `xdg-open "${issue.url}"`
+        );
+      }
     } else if (key.return) {
       if (mode === "assignees") {
         const sortedAssignees = getSortedAssignees();
@@ -293,7 +306,7 @@ export function BrowseView({ onBack, onHeaderChange }: BrowseViewProps) {
           </Box>
           <Box marginBottom={1}>
             <Text dimColor>
-              Use ↑↓ or j/k to navigate • Enter to view details • q/b to go back
+              Use ↑↓ or j/k to navigate • Enter to view details • o to open in Linear • q/b to go back
             </Text>
           </Box>
 

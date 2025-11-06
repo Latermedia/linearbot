@@ -21,6 +21,8 @@ export interface Issue {
   project_name: string | null;
   project_state: string | null;
   project_updated_at: string | null;
+  project_lead_id: string | null;
+  project_lead_name: string | null;
 }
 
 export interface CommentLog {
@@ -56,9 +58,23 @@ export function initializeDatabase(db: Database): void {
       project_id TEXT,
       project_name TEXT,
       project_state TEXT,
-      project_updated_at TEXT
+      project_updated_at TEXT,
+      project_lead_id TEXT,
+      project_lead_name TEXT
     )
   `);
+
+  // Add project lead columns if they don't exist (migration)
+  try {
+    db.run(`ALTER TABLE issues ADD COLUMN project_lead_id TEXT`);
+  } catch (e) {
+    // Column already exists, ignore
+  }
+  try {
+    db.run(`ALTER TABLE issues ADD COLUMN project_lead_name TEXT`);
+  } catch (e) {
+    // Column already exists, ignore
+  }
 
   // Create comment log table to track bot comments
   db.run(`

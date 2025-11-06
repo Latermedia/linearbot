@@ -64,7 +64,7 @@ The bot opens with a **WIP violations dashboard** showing real-time health metri
 **Dashboard Sections:**
 
 - **Summary Stats** - Total assignees, active projects, and unassigned issues
-- **Unassigned Issues** (📋 magenta) - Started issues that need assignment
+- **Unassigned Issues** (magenta) - Started issues that need assignment
   - These are NOT counted as WIP violations
   - Shown prominently for action
   - Press `u` to add warning comments to all unassigned issues in Linear

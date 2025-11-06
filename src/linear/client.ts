@@ -21,6 +21,8 @@ export interface LinearIssueData {
   projectName: string | null;
   projectState: string | null;
   projectUpdatedAt: Date | null;
+  projectLeadId: string | null;
+  projectLeadName: string | null;
 }
 
 export class LinearAPIClient {
@@ -74,6 +76,10 @@ export class LinearAPIClient {
               name
               state
               updatedAt
+              lead {
+                id
+                name
+              }
             }
           }
           pageInfo {
@@ -119,6 +125,8 @@ export class LinearAPIClient {
           projectUpdatedAt: issue.project?.updatedAt
             ? new Date(issue.project.updatedAt)
             : null,
+          projectLeadId: issue.project?.lead?.id || null,
+          projectLeadName: issue.project?.lead?.name || null,
         });
       }
 
@@ -191,6 +199,10 @@ export class LinearAPIClient {
                 name
                 state
                 updatedAt
+                lead {
+                  id
+                  name
+                }
               }
             }
             pageInfo {
@@ -240,6 +252,8 @@ export class LinearAPIClient {
             projectUpdatedAt: issue.project?.updatedAt
               ? new Date(issue.project.updatedAt)
               : null,
+            projectLeadId: issue.project?.lead?.id || null,
+            projectLeadName: issue.project?.lead?.name || null,
           });
         }
 

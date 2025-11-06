@@ -172,6 +172,19 @@ export function EngineersView({ onBack, onHeaderChange }: EngineersViewProps) {
         setSelectedIndex((prev) =>
           Math.min(selectedEngineer.projects.length - 1, prev + 1)
         );
+      } else if (input === "o") {
+        // Open first issue from selected project in browser
+        const project = selectedEngineer.projects[selectedIndex];
+        if (project && project.issues.length > 0) {
+          const issue = project.issues[0];
+          require("child_process").exec(
+            process.platform === "darwin"
+              ? `open "${issue.url}"`
+              : process.platform === "win32"
+              ? `start "${issue.url}"`
+              : `xdg-open "${issue.url}"`
+          );
+        }
       }
     }
   });
@@ -279,7 +292,7 @@ export function EngineersView({ onBack, onHeaderChange }: EngineersViewProps) {
           </Text>
         </Box>
         <Box marginBottom={1}>
-          <Text dimColor>Use ↑↓ or j/k to navigate • b/q to go back</Text>
+          <Text dimColor>Use ↑↓ or j/k to navigate • o to open in Linear • b/q to go back</Text>
         </Box>
 
         {visibleProjects.map((project, idx) => {
