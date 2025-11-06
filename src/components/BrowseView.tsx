@@ -249,8 +249,12 @@ export function BrowseView({ onBack, onHeaderChange }: BrowseViewProps) {
           </Box>
           <Box marginBottom={1}>
             <Text dimColor>
-              Navigate: ↑↓/j/k • Enter: Select  •  🚨 violations: 📏 missing estimate  •  💬 no
-              comment 24h  •  🔴 missing priority
+              Navigate: ↑↓/j/k • Enter: Select
+            </Text>
+          </Box>
+          <Box marginBottom={2}>
+            <Text dimColor>
+              📏 missing estimate  •  💬 no comment 24h  •  🔴 missing priority
             </Text>
           </Box>
 
@@ -272,11 +276,11 @@ export function BrowseView({ onBack, onHeaderChange }: BrowseViewProps) {
               ).length;
               const violationSummary: string[] = [];
               if (missingEstimate > 0)
-                violationSummary.push(`📏${missingEstimate}`);
+                violationSummary.push(`📏 ${missingEstimate}`);
               if (noRecentComment > 0)
-                violationSummary.push(`💬${noRecentComment}`);
+                violationSummary.push(`💬 ${noRecentComment}`);
               if (missingPriority > 0)
-                violationSummary.push(`🔴${missingPriority}`);
+                violationSummary.push(`🔴 ${missingPriority}`);
 
               return (
                 <Box key={`assignee-${assignee}`}>
@@ -286,25 +290,21 @@ export function BrowseView({ onBack, onHeaderChange }: BrowseViewProps) {
                   <Box width={35}>
                     <Text
                       bold={isSelected}
-                      color={isSelected ? "cyan" : status.color}
+                      color={isSelected ? "cyan" : "white"}
                     >
                       {assignee}
                     </Text>
                   </Box>
-                  <Box width={15}>
-                    <Text color={isSelected ? "cyan" : "white"}>
-                      ({count} issues)
-                    </Text>
-                  </Box>
-                  <Box width={20}>
-                    <Text color={status.color}>
-                      {status.emoji} {status.label}
-                    </Text>
-                  </Box>
+                  <Text color={status.color}>{status.emoji}</Text>
+                  <Text> </Text>
+                  <Text color={isSelected ? "cyan" : "white"}>{count}</Text>
                   {violationSummary.length > 0 && (
-                    <Text color={isSelected ? "cyan" : "yellow"}>
-                      {violationSummary.join(" ")}
-                    </Text>
+                    <>
+                      <Text>  </Text>
+                      <Text color={isSelected ? "cyan" : "yellow"}>
+                        {violationSummary.join(" ")}
+                      </Text>
+                    </>
                   )}
                 </Box>
               );
@@ -326,8 +326,12 @@ export function BrowseView({ onBack, onHeaderChange }: BrowseViewProps) {
         <Box flexDirection="column">
           <Box marginBottom={1}>
             <Text dimColor>
-              Navigate: ↑↓/j/k • Enter: Details • o: Open • b: Back  •  🚨 violations: 📏 missing
-              estimate  •  💬 no comment 24h  •  🔴 missing priority
+              Navigate: ↑↓/j/k • Enter: Details • o: Open • b: Back
+            </Text>
+          </Box>
+          <Box marginBottom={1}>
+            <Text dimColor>
+              📏 missing estimate  •  💬 no comment 24h  •  🔴 missing priority
             </Text>
           </Box>
 

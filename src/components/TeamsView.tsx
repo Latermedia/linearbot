@@ -34,7 +34,9 @@ export function TeamsView({ onBack, onHeaderChange }: TeamsViewProps) {
   const { stdout } = useStdout();
   const [mode, setMode] = useState<ViewMode>("teams");
   const [teams, setTeams] = useState<TeamViolationSummary[]>([]);
-  const [selectedTeam, setSelectedTeam] = useState<TeamViolationSummary | null>(null);
+  const [selectedTeam, setSelectedTeam] = useState<TeamViolationSummary | null>(
+    null
+  );
   const [selectedIndex, setSelectedIndex] = useState(0);
   const [scrollOffset, setScrollOffset] = useState(0);
 
@@ -47,7 +49,9 @@ export function TeamsView({ onBack, onHeaderChange }: TeamsViewProps) {
     if (mode === "teams") {
       onHeaderChange("Issue Violations by Team");
     } else if (mode === "issues" && selectedTeam) {
-      onHeaderChange(`${selectedTeam.teamName} (${selectedTeam.totalIssues} issues)`);
+      onHeaderChange(
+        `${selectedTeam.teamName} (${selectedTeam.totalIssues} issues)`
+      );
     }
   }, [mode, selectedTeam, onHeaderChange]);
 
@@ -62,7 +66,7 @@ export function TeamsView({ onBack, onHeaderChange }: TeamsViewProps) {
     for (const issue of startedIssues) {
       const assignee = issue.assignee_name || "Unassigned";
       globalAssigneeIssueCount.set(
-        assignee, 
+        assignee,
         (globalAssigneeIssueCount.get(assignee) || 0) + 1
       );
     }
@@ -80,9 +84,11 @@ export function TeamsView({ onBack, onHeaderChange }: TeamsViewProps) {
     // Calculate violations per team
     const teamSummaries: TeamViolationSummary[] = [];
     for (const [teamKey, issues] of teamMap) {
-      const missingEstimate = issues.filter(i => !i.estimate).length;
-      const noRecentComment = issues.filter(i => hasNoRecentComment(i)).length;
-      const missingPriority = issues.filter(i => i.priority === 0).length;
+      const missingEstimate = issues.filter((i) => !i.estimate).length;
+      const noRecentComment = issues.filter((i) =>
+        hasNoRecentComment(i)
+      ).length;
+      const missingPriority = issues.filter((i) => i.priority === 0).length;
 
       // Calculate WIP violations: count unique team members whose TOTAL issues (across all teams) > 5
       const teamMembers = new Set<string>();
@@ -90,12 +96,13 @@ export function TeamsView({ onBack, onHeaderChange }: TeamsViewProps) {
         const assignee = issue.assignee_name || "Unassigned";
         teamMembers.add(assignee);
       }
-      
+
       const wipViolations = Array.from(teamMembers).filter(
-        assignee => (globalAssigneeIssueCount.get(assignee) || 0) > 5
+        (assignee) => (globalAssigneeIssueCount.get(assignee) || 0) > 5
       ).length;
 
-      const totalViolations = missingEstimate + noRecentComment + missingPriority + wipViolations;
+      const totalViolations =
+        missingEstimate + noRecentComment + missingPriority + wipViolations;
 
       teamSummaries.push({
         teamKey,
@@ -148,10 +155,11 @@ export function TeamsView({ onBack, onHeaderChange }: TeamsViewProps) {
         }
       }
     } else if (key.downArrow || input === "j") {
-      const maxIndex = mode === "teams" 
-        ? teams.length - 1 
-        : (selectedTeam?.issues.length || 1) - 1;
-      
+      const maxIndex =
+        mode === "teams"
+          ? teams.length - 1
+          : (selectedTeam?.issues.length || 1) - 1;
+
       if (selectedIndex < maxIndex) {
         const newIndex = selectedIndex + 1;
         setSelectedIndex(newIndex);
@@ -190,12 +198,14 @@ export function TeamsView({ onBack, onHeaderChange }: TeamsViewProps) {
         <Box flexDirection="column">
           <Box marginBottom={1}>
             <Text dimColor>
-              {teams.reduce((sum, t) => sum + t.totalIssues, 0)} issues across {teams.length} teams • Navigate: ↑↓/j/k • Enter: View issues
+              {teams.reduce((sum, t) => sum + t.totalIssues, 0)} issues across{" "}
+              {teams.length} teams • Navigate: ↑↓/j/k • Enter: View issues
             </Text>
           </Box>
           <Box marginBottom={1}>
             <Text dimColor>
-              🚨 violations: 👤 WIP  •  📏 missing estimate  •  💬 no comment 24h  •  🔴 missing priority
+              👤 WIP • 📏 missing estimate • 💬 no comment 24h • 🔴 missing
+              priority
             </Text>
           </Box>
 
@@ -226,7 +236,7 @@ export function TeamsView({ onBack, onHeaderChange }: TeamsViewProps) {
                     team.noRecentComment > 0 ||
                     team.missingPriority > 0) && (
                     <>
-                      <Text color={isSelected ? "cyan" : "white"}>  •  </Text>
+                      <Text color={isSelected ? "cyan" : "white"}> • </Text>
                       <Text
                         color={
                           isSelected
@@ -241,9 +251,13 @@ export function TeamsView({ onBack, onHeaderChange }: TeamsViewProps) {
                       >
                         🚨(
                         {team.wipViolations > 0 && `👤 ${team.wipViolations} `}
-                        {team.missingEstimate > 0 && `📏 ${team.missingEstimate} `}
-                        {team.noRecentComment > 0 && `💬 ${team.noRecentComment} `}
-                        {team.missingPriority > 0 && `🔴 ${team.missingPriority}`})
+                        {team.missingEstimate > 0 &&
+                          `📏 ${team.missingEstimate} `}
+                        {team.noRecentComment > 0 &&
+                          `💬 ${team.noRecentComment} `}
+                        {team.missingPriority > 0 &&
+                          `🔴 ${team.missingPriority}`}
+                        )
                       </Text>
                     </>
                   )}
@@ -252,7 +266,7 @@ export function TeamsView({ onBack, onHeaderChange }: TeamsViewProps) {
                     team.noRecentComment === 0 &&
                     team.missingPriority === 0 && (
                       <>
-                        <Text color={isSelected ? "cyan" : "white"}>  •  </Text>
+                        <Text color={isSelected ? "cyan" : "white"}> • </Text>
                         <Text color={isSelected ? "cyan" : "green"}>✓</Text>
                       </>
                     )}
@@ -275,8 +289,11 @@ export function TeamsView({ onBack, onHeaderChange }: TeamsViewProps) {
       {mode === "issues" && selectedTeam && (
         <Box flexDirection="column">
           <Box marginBottom={1}>
+            <Text dimColor>Navigate: ↑↓/j/k • o: Open • b: Back</Text>
+          </Box>
+          <Box marginBottom={1}>
             <Text dimColor>
-              Navigate: ↑↓/j/k • o: Open • b: Back  •  🚨 violations: 📏 missing estimate  •  💬 no comment 24h  •  🔴 missing priority
+              📏 missing estimate • 💬 no comment 24h • 🔴 missing priority
             </Text>
           </Box>
 
@@ -313,10 +330,7 @@ export function TeamsView({ onBack, onHeaderChange }: TeamsViewProps) {
                       {issue.assignee_name || "Unassigned"}
                     </Text>
                   </Box>
-                  <Text
-                    bold={isSelected}
-                    color={isSelected ? "cyan" : "white"}
-                  >
+                  <Text bold={isSelected} color={isSelected ? "cyan" : "white"}>
                     {title}
                   </Text>
                   {violations.length > 0 && (
@@ -333,7 +347,10 @@ export function TeamsView({ onBack, onHeaderChange }: TeamsViewProps) {
             <Box marginTop={1}>
               <Text dimColor>
                 Showing {scrollOffset + 1}-
-                {Math.min(scrollOffset + visibleLines, selectedTeam.issues.length)}{" "}
+                {Math.min(
+                  scrollOffset + visibleLines,
+                  selectedTeam.issues.length
+                )}{" "}
                 of {selectedTeam.issues.length}
               </Text>
             </Box>
@@ -343,4 +360,3 @@ export function TeamsView({ onBack, onHeaderChange }: TeamsViewProps) {
     </Box>
   );
 }
-

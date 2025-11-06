@@ -327,8 +327,7 @@ export function DomainsView({ onBack, onHeaderChange }: DomainsViewProps) {
           </Box>
           <Box marginBottom={1}>
             <Text dimColor>
-              🚨 violations: 👤 WIP  •  📏 missing estimate  •  💬 no
-              comment 24h  •  🔴 missing priority
+              👤 WIP  •  📏 missing estimate  •  💬 no comment 24h  •  🔴 missing priority
             </Text>
           </Box>
 
@@ -521,7 +520,7 @@ export function DomainsView({ onBack, onHeaderChange }: DomainsViewProps) {
           </Box>
           <Box marginBottom={1}>
             <Text dimColor>
-              🚨 violations: 📏 missing estimate  •  💬 no comment 24h  •  🔴 missing priority
+              📏 missing estimate  •  💬 no comment 24h  •  🔴 missing priority
             </Text>
           </Box>
 
