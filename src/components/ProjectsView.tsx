@@ -99,6 +99,7 @@ export function ProjectsView({ onBack, onHeaderChange }: ProjectsViewProps) {
   );
   const [selectedIndex, setSelectedIndex] = useState(0);
   const [scrollOffset, setScrollOffset] = useState(0);
+  const [totalUniqueProjects, setTotalUniqueProjects] = useState(0);
 
   useEffect(() => {
     loadProjects();
@@ -196,6 +197,9 @@ export function ProjectsView({ onBack, onHeaderChange }: ProjectsViewProps) {
       projects.set(projectId, projectSummary);
       projectGroups.set(projectId, issues);
     }
+
+    // Store total unique projects count
+    setTotalUniqueProjects(projects.size);
 
     // Group projects by team (by participation - any team with issues in the project)
     const teamMap = new Map<string, ProjectSummary[]>();
@@ -326,9 +330,10 @@ export function ProjectsView({ onBack, onHeaderChange }: ProjectsViewProps) {
         setSelectedIndex(newIndex);
 
         const terminalHeight = stdout?.rows || 24;
-        const visibleLines = mode === "projects" 
-          ? Math.floor((terminalHeight - 8) / 7)
-          : terminalHeight - 8;
+        const visibleLines =
+          mode === "projects"
+            ? Math.floor((terminalHeight - 8) / 7)
+            : terminalHeight - 8;
         if (newIndex < scrollOffset) {
           setScrollOffset(newIndex);
         }
@@ -350,9 +355,10 @@ export function ProjectsView({ onBack, onHeaderChange }: ProjectsViewProps) {
         setSelectedIndex(newIndex);
 
         const terminalHeight = stdout?.rows || 24;
-        const visibleLines = mode === "projects" 
-          ? Math.floor((terminalHeight - 8) / 7)
-          : terminalHeight - 8;
+        const visibleLines =
+          mode === "projects"
+            ? Math.floor((terminalHeight - 8) / 7)
+            : terminalHeight - 8;
         if (newIndex >= scrollOffset + visibleLines) {
           setScrollOffset(newIndex - visibleLines + 1);
         }
@@ -410,9 +416,10 @@ export function ProjectsView({ onBack, onHeaderChange }: ProjectsViewProps) {
 
   const terminalHeight = stdout?.rows || 24;
   // Projects take ~6-8 lines each, so divide by 7 to get visible project count
-  const visibleLines = mode === "projects" 
-    ? Math.floor((terminalHeight - 8) / 7)
-    : terminalHeight - 8;
+  const visibleLines =
+    mode === "projects"
+      ? Math.floor((terminalHeight - 8) / 7)
+      : terminalHeight - 8;
 
   return (
     <Box flexDirection="column" padding={1}>
@@ -420,8 +427,8 @@ export function ProjectsView({ onBack, onHeaderChange }: ProjectsViewProps) {
         <Box flexDirection="column">
           <Box marginBottom={1}>
             <Text dimColor>
-              📁 {teams.reduce((sum, t) => sum + t.totalProjects, 0)} active
-              projects across {teams.length} teams
+              📁 {totalUniqueProjects} active projects across {teams.length}{" "}
+              teams
             </Text>
           </Box>
           <Box marginBottom={1}>
@@ -431,8 +438,8 @@ export function ProjectsView({ onBack, onHeaderChange }: ProjectsViewProps) {
           </Box>
           <Box marginBottom={1}>
             <Text dimColor>
-              Legend: <Text color="yellow">△</Text> status mismatch •{" "}
-              <Text color="red">⏱</Text> no update in 7+ days
+              <Text>⚠️{"  "}status mismatch</Text> •{" "}
+              <Text>💤 no update in 7+ days</Text>
             </Text>
           </Box>
 
@@ -452,10 +459,10 @@ export function ProjectsView({ onBack, onHeaderChange }: ProjectsViewProps) {
               } else {
                 const parts = [];
                 if (team.statusMismatchCount > 0) {
-                  parts.push(`△ ${team.statusMismatchCount}`);
+                  parts.push(`⚠️  ${team.statusMismatchCount}`);
                 }
                 if (team.staleUpdateCount > 0) {
-                  parts.push(`⏱ ${team.staleUpdateCount}`);
+                  parts.push(`💤 ${team.staleUpdateCount}`);
                 }
                 indicatorText = parts.join(" • ");
               }
@@ -571,13 +578,13 @@ export function ProjectsView({ onBack, onHeaderChange }: ProjectsViewProps) {
                     {project.hasStatusMismatch && (
                       <Box>
                         <Text color="yellow">
-                          △ Marked "{project.projectState}" but has active work
+                          ⚠️ Marked "{project.projectState}" but has active work
                         </Text>
                       </Box>
                     )}
                     {project.isStaleUpdate && (
                       <Box>
-                        <Text color="red">⏱ No update in 7+ days</Text>
+                        <Text color="red">💤 No update in 7+ days</Text>
                       </Box>
                     )}
                     {project.teams.size > 1 && (
@@ -599,7 +606,7 @@ export function ProjectsView({ onBack, onHeaderChange }: ProjectsViewProps) {
                   {project.engineerCount > 5 && (
                     <Box paddingLeft={3}>
                       <Text color="yellow">
-                        △ High engineer count (WIP constraint: 1 project per
+                        ⚠️ High engineer count (WIP constraint: 1 project per
                         engineer)
                       </Text>
                     </Box>
@@ -636,7 +643,7 @@ export function ProjectsView({ onBack, onHeaderChange }: ProjectsViewProps) {
           {selectedProject.hasStatusMismatch && (
             <Box marginBottom={1}>
               <Text color="yellow">
-                △ Status Mismatch: Project status is "
+                ⚠️ Status Mismatch: Project status is "
                 {selectedProject.projectState || "unknown"}" but has active work
               </Text>
             </Box>
@@ -644,7 +651,7 @@ export function ProjectsView({ onBack, onHeaderChange }: ProjectsViewProps) {
           {selectedProject.isStaleUpdate && (
             <Box marginBottom={1}>
               <Text color="red">
-                ⏱ Stale Update: Project hasn't been updated in 7+ days
+                💤 Stale Update: Project hasn't been updated in 7+ days
               </Text>
             </Box>
           )}
