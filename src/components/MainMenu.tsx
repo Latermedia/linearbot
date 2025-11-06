@@ -667,6 +667,8 @@ export function MainMenu({ onSelectView }: MainMenuProps) {
     // Handle keyboard shortcuts
     if (input === "s") {
       runSync();
+    } else if (input === "d") {
+      onSelectView("domains");
     } else if (input === "t") {
       onSelectView("teams");
     } else if (input === "i") {
@@ -696,12 +698,16 @@ export function MainMenu({ onSelectView }: MainMenuProps) {
     <Box flexDirection="column">
       {/* Hotkey Navigation */}
       <Box key="hotkeys" paddingX={2} paddingY={1}>
-        <BoxPanel title="ACTIONS" width={78}>
+        <BoxPanel title="ACTIONS" width={90}>
           <BoxPanelLine>
             <Text color="cyan" bold>
               s
             </Text>{" "}
             sync │{" "}
+            <Text color="cyan" bold>
+              d
+            </Text>{" "}
+            domains │{" "}
             <Text color="cyan" bold>
               t
             </Text>{" "}
@@ -874,7 +880,7 @@ export function MainMenu({ onSelectView }: MainMenuProps) {
               <Box marginTop={0}>
                 <Text dimColor>
                   {" "}
-                  Projects: {projectCount} • Additional issues:{" "}
+                  📁 Projects: {projectCount} • Additional issues:{" "}
                   {projectIssueCount}
                 </Text>
               </Box>
@@ -897,7 +903,7 @@ export function MainMenu({ onSelectView }: MainMenuProps) {
               </Text>
               <Box marginTop={0}>
                 <Text dimColor>
-                  {issueCount} started issues • {totalCount} total issues in{" "}
+                  {issueCount} started issues • {totalCount} total issues in 📁{" "}
                   {projectCount} projects
                 </Text>
               </Box>
@@ -991,8 +997,8 @@ export function MainMenu({ onSelectView }: MainMenuProps) {
               </Text>
               <Box marginLeft={2}>
                 <Text dimColor>
-                  👤{assigneeViolations.length} WIP • 📏{missingEstimateCount}{" "}
-                  estimate • 💬{noRecentCommentCount} comment • 🔴
+                  👤 {assigneeViolations.length} WIP • 📏 {missingEstimateCount}{" "}
+                  estimate • 💬 {noRecentCommentCount} comment • 🔴{" "}
                   {missingPriorityCount} priority
                 </Text>
               </Box>
@@ -1036,7 +1042,7 @@ export function MainMenu({ onSelectView }: MainMenuProps) {
           {projectViolations.length > 0 && (
             <Box flexDirection="column" marginBottom={1}>
               <Text bold color="yellow">
-                😭 PROJECT VIOLATIONS ({projectViolations.length})
+                📁 PROJECT VIOLATIONS ({projectViolations.length})
               </Text>
               <Box marginLeft={2}>
                 <Text dimColor>
