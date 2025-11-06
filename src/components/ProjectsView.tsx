@@ -111,7 +111,7 @@ export function ProjectsView({ onBack, onHeaderChange }: ProjectsViewProps) {
     } else if (mode === "projects" && selectedTeam) {
       const projectCount =
         projectsByTeam.get(selectedTeam.teamKey)?.length || 0;
-      onHeaderChange(`${selectedTeam.teamName} (${projectCount} projects)`);
+      onHeaderChange(`${selectedTeam.teamName} (📁 ${projectCount} projects)`);
     } else if (mode === "issues" && selectedProject) {
       onHeaderChange(
         `${selectedProject.projectName} (${selectedProject.totalIssues} issues)`
@@ -197,26 +197,37 @@ export function ProjectsView({ onBack, onHeaderChange }: ProjectsViewProps) {
       projectGroups.set(projectId, issues);
     }
 
-    // Group projects by team
+    // Group projects by team (by participation - any team with issues in the project)
     const teamMap = new Map<string, ProjectSummary[]>();
     for (const project of projects.values()) {
       const issues = projectGroups.get(project.projectId) || [];
-      const teamKey = issues[0]?.team_key;
-      if (!teamKey) continue;
+      // Get all unique teams that have issues in this project
+      const teamsInProject = new Set(issues.map((i) => i.team_key));
 
-      if (!teamMap.has(teamKey)) {
-        teamMap.set(teamKey, []);
+      // Add this project to each team that has issues in it
+      for (const teamKey of teamsInProject) {
+        if (!teamMap.has(teamKey)) {
+          teamMap.set(teamKey, []);
+        }
+        teamMap.get(teamKey)?.push(project);
       }
-      teamMap.get(teamKey)?.push(project);
     }
 
     // Build team summaries
     const teamSummaries: TeamSummary[] = [];
     for (const [teamKey, teamProjects] of teamMap) {
-      const firstProject = teamProjects[0];
-      const issues = projectGroups.get(firstProject.projectId) || [];
-      const teamName = issues[0]?.team_name || teamKey;
-      const teamId = issues[0]?.team_id || teamKey;
+      // Find any issue from this team to get team name and ID
+      let teamName = teamKey;
+      let teamId = teamKey;
+      for (const project of teamProjects) {
+        const issues = projectGroups.get(project.projectId) || [];
+        const teamIssue = issues.find((i) => i.team_key === teamKey);
+        if (teamIssue) {
+          teamName = teamIssue.team_name;
+          teamId = teamIssue.team_id;
+          break;
+        }
+      }
 
       const inProgressProjects = teamProjects.filter(
         (p) => (p.projectState?.toLowerCase() || "") === "started"
@@ -291,6 +302,19 @@ export function ProjectsView({ onBack, onHeaderChange }: ProjectsViewProps) {
           }
         }
       }
+    } else if (input === "o" && mode === "issues" && selectedProject) {
+      // Open selected issue in browser
+      const issues = issuesByProject.get(selectedProject.projectId) || [];
+      const issue = issues[selectedIndex];
+      if (issue) {
+        require("child_process").exec(
+          process.platform === "darwin"
+            ? `open "${issue.url}"`
+            : process.platform === "win32"
+            ? `start "${issue.url}"`
+            : `xdg-open "${issue.url}"`
+        );
+      }
     } else if (input === "s" && mode === "projects") {
       // Toggle sort mode for projects
       setSortMode((prev) => (prev === "progress" ? "activity" : "progress"));
@@ -302,7 +326,9 @@ export function ProjectsView({ onBack, onHeaderChange }: ProjectsViewProps) {
         setSelectedIndex(newIndex);
 
         const terminalHeight = stdout?.rows || 24;
-        const visibleLines = terminalHeight - 8;
+        const visibleLines = mode === "projects" 
+          ? Math.floor((terminalHeight - 8) / 7)
+          : terminalHeight - 8;
         if (newIndex < scrollOffset) {
           setScrollOffset(newIndex);
         }
@@ -324,7 +350,9 @@ export function ProjectsView({ onBack, onHeaderChange }: ProjectsViewProps) {
         setSelectedIndex(newIndex);
 
         const terminalHeight = stdout?.rows || 24;
-        const visibleLines = terminalHeight - 8;
+        const visibleLines = mode === "projects" 
+          ? Math.floor((terminalHeight - 8) / 7)
+          : terminalHeight - 8;
         if (newIndex >= scrollOffset + visibleLines) {
           setScrollOffset(newIndex - visibleLines + 1);
         }
@@ -381,7 +409,10 @@ export function ProjectsView({ onBack, onHeaderChange }: ProjectsViewProps) {
   }
 
   const terminalHeight = stdout?.rows || 24;
-  const visibleLines = terminalHeight - 8;
+  // Projects take ~6-8 lines each, so divide by 7 to get visible project count
+  const visibleLines = mode === "projects" 
+    ? Math.floor((terminalHeight - 8) / 7)
+    : terminalHeight - 8;
 
   return (
     <Box flexDirection="column" padding={1}>
@@ -389,7 +420,7 @@ export function ProjectsView({ onBack, onHeaderChange }: ProjectsViewProps) {
         <Box flexDirection="column">
           <Box marginBottom={1}>
             <Text dimColor>
-              Total: {teams.reduce((sum, t) => sum + t.totalProjects, 0)} active
+              📁 {teams.reduce((sum, t) => sum + t.totalProjects, 0)} active
               projects across {teams.length} teams
             </Text>
           </Box>
@@ -474,8 +505,8 @@ export function ProjectsView({ onBack, onHeaderChange }: ProjectsViewProps) {
           </Box>
           <Box marginBottom={1}>
             <Text dimColor>
-              Use ↑↓ or j/k to navigate • Enter to view issues • o to open in
-              Linear • b to go back
+              Navigate: ↑↓/j/k • Enter: View issues • o: Open project • s: Sort
+              • b: Back
             </Text>
           </Box>
 
@@ -635,9 +666,7 @@ export function ProjectsView({ onBack, onHeaderChange }: ProjectsViewProps) {
             </Text>
           </Box>
           <Box marginBottom={1}>
-            <Text dimColor>
-              Use ↑↓ or j/k to navigate • b to go back • Open links in Linear
-            </Text>
+            <Text dimColor>Navigate: ↑↓/j/k • o: Open • b: Back</Text>
           </Box>
 
           {(issuesByProject.get(selectedProject.projectId) || [])
