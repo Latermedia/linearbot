@@ -5,6 +5,7 @@ import type { Issue } from "../db/schema.js";
 
 interface BrowseViewProps {
   onBack: () => void;
+  onHeaderChange: (header: string) => void;
 }
 
 type BrowseMode = "assignees" | "issues" | "detail";
@@ -18,17 +19,17 @@ interface WIPStatus {
 
 function getWIPStatus(count: number): WIPStatus {
   if (count >= 8) {
-    return { emoji: "🔴", label: "CRITICAL", color: "red" };
+    return { emoji: "●", label: "CRITICAL", color: "red" };
   } else if (count >= 6) {
-    return { emoji: "🟠", label: "WARNING", color: "yellow" };
+    return { emoji: "◉", label: "WARNING", color: "yellow" };
   } else if (count >= 4) {
-    return { emoji: "⚪", label: "OK", color: "white" };
+    return { emoji: "○", label: "OK", color: "white" };
   } else {
     return { emoji: "✓", label: "GOOD", color: "green" };
   }
 }
 
-export function BrowseView({ onBack }: BrowseViewProps) {
+export function BrowseView({ onBack, onHeaderChange }: BrowseViewProps) {
   const { stdout } = useStdout();
   const [mode, setMode] = useState<BrowseMode>("assignees");
   const [sortMode, setSortMode] = useState<SortMode>("count");
@@ -43,6 +44,18 @@ export function BrowseView({ onBack }: BrowseViewProps) {
   useEffect(() => {
     loadIssues();
   }, []);
+
+  // Update header when navigation changes
+  useEffect(() => {
+    if (mode === "assignees") {
+      onHeaderChange("WIP Violations by Assignee");
+    } else if (mode === "issues" && selectedAssignee) {
+      const issueCount = issuesByAssignee.get(selectedAssignee)?.length || 0;
+      onHeaderChange(`${selectedAssignee} (${issueCount} issues)`);
+    } else if (mode === "detail" && selectedIssue) {
+      onHeaderChange(`${selectedIssue.identifier}: ${selectedIssue.title}`);
+    }
+  }, [mode, selectedAssignee, selectedIssue, issuesByAssignee, onHeaderChange]);
 
   const loadIssues = () => {
     const db = getDatabase();

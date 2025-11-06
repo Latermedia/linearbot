@@ -5,6 +5,7 @@ import type { Issue } from "../db/schema.js";
 
 interface ProjectsViewProps {
   onBack: () => void;
+  onHeaderChange: (header: string) => void;
 }
 
 type ViewMode = "teams" | "projects" | "issues";
@@ -67,7 +68,7 @@ function isStaleUpdate(project: ProjectSummary): boolean {
   return new Date(project.projectUpdatedAt) < sevenDaysAgo;
 }
 
-export function ProjectsView({ onBack }: ProjectsViewProps) {
+export function ProjectsView({ onBack, onHeaderChange }: ProjectsViewProps) {
   const { stdout } = useStdout();
   const [mode, setMode] = useState<ViewMode>("teams");
   const [sortMode, setSortMode] = useState<SortMode>("progress");
@@ -88,6 +89,21 @@ export function ProjectsView({ onBack }: ProjectsViewProps) {
   useEffect(() => {
     loadProjects();
   }, []);
+
+  // Update header when navigation changes
+  useEffect(() => {
+    if (mode === "teams") {
+      onHeaderChange("Active Projects by Team");
+    } else if (mode === "projects" && selectedTeam) {
+      const projectCount =
+        projectsByTeam.get(selectedTeam.teamKey)?.length || 0;
+      onHeaderChange(`${selectedTeam.teamName} (${projectCount} projects)`);
+    } else if (mode === "issues" && selectedProject) {
+      onHeaderChange(
+        `${selectedProject.projectName} (${selectedProject.totalIssues} issues)`
+      );
+    }
+  }, [mode, selectedTeam, selectedProject, projectsByTeam, onHeaderChange]);
 
   const loadProjects = () => {
     const db = getDatabase();
@@ -327,9 +343,6 @@ export function ProjectsView({ onBack }: ProjectsViewProps) {
       {mode === "teams" && (
         <Box flexDirection="column">
           <Box marginBottom={1}>
-            <Text bold>ACTIVE PROJECTS BY TEAM</Text>
-          </Box>
-          <Box marginBottom={1}>
             <Text dimColor>
               Total: {teams.reduce((sum, t) => sum + t.totalProjects, 0)} active
               projects across {teams.length} teams
@@ -342,8 +355,8 @@ export function ProjectsView({ onBack }: ProjectsViewProps) {
           </Box>
           <Box marginBottom={1}>
             <Text dimColor>
-              Legend: <Text color="yellow">⚠️</Text> status mismatch •{" "}
-              <Text color="red">🕐</Text> no update in 7+ days
+              Legend: <Text color="yellow">△</Text> status mismatch •{" "}
+              <Text color="red">⏱</Text> no update in 7+ days
             </Text>
           </Box>
 
@@ -363,10 +376,10 @@ export function ProjectsView({ onBack }: ProjectsViewProps) {
               } else {
                 const parts = [];
                 if (team.statusMismatchCount > 0) {
-                  parts.push(`⚠️  ${team.statusMismatchCount}`);
+                  parts.push(`△ ${team.statusMismatchCount}`);
                 }
                 if (team.staleUpdateCount > 0) {
-                  parts.push(`🕐 ${team.staleUpdateCount}`);
+                  parts.push(`⏱ ${team.staleUpdateCount}`);
                 }
                 indicatorText = parts.join(" • ");
               }
@@ -405,12 +418,6 @@ export function ProjectsView({ onBack }: ProjectsViewProps) {
 
       {mode === "projects" && selectedTeam && (
         <Box flexDirection="column">
-          <Box marginBottom={1}>
-            <Text bold>
-              PROJECTS FOR: {selectedTeam.teamName} (
-              {projectsByTeam.get(selectedTeam.teamKey)?.length || 0} projects)
-            </Text>
-          </Box>
           <Box marginBottom={1}>
             <Text>
               <Text dimColor>Sort: </Text>
@@ -481,18 +488,20 @@ export function ProjectsView({ onBack }: ProjectsViewProps) {
                     </Box>
                     {project.hasStatusMismatch && (
                       <Box>
-                        <Text color="yellow">⚠️ Status mismatch</Text>
+                        <Text color="yellow">
+                          △ Marked "{project.projectState}" but has active work
+                        </Text>
                       </Box>
                     )}
                     {project.isStaleUpdate && (
                       <Box>
-                        <Text color="red">🕐 No update in 7+ days</Text>
+                        <Text color="red">⏱ No update in 7+ days</Text>
                       </Box>
                     )}
                     {project.teams.size > 1 && (
                       <Box>
                         <Text color="cyan">
-                          🔗 Multi-team ({Array.from(project.teams).join(", ")})
+                          ↔ Multi-team ({Array.from(project.teams).join(", ")})
                         </Text>
                       </Box>
                     )}
@@ -508,7 +517,7 @@ export function ProjectsView({ onBack }: ProjectsViewProps) {
                   {project.engineerCount > 5 && (
                     <Box paddingLeft={3}>
                       <Text color="yellow">
-                        ⚠️ High engineer count (WIP constraint: 1 project per
+                        △ High engineer count (WIP constraint: 1 project per
                         engineer)
                       </Text>
                     </Box>
@@ -535,17 +544,10 @@ export function ProjectsView({ onBack }: ProjectsViewProps) {
 
       {mode === "issues" && selectedProject && (
         <Box flexDirection="column">
-          <Box marginBottom={1}>
-            <Text bold>
-              ISSUES IN: {selectedProject.projectName} (
-              {issuesByProject.get(selectedProject.projectId)?.length || 0}{" "}
-              issues)
-            </Text>
-          </Box>
           {selectedProject.hasStatusMismatch && (
             <Box marginBottom={1}>
               <Text color="yellow">
-                ⚠️ Status Mismatch: Project status is "
+                △ Status Mismatch: Project status is "
                 {selectedProject.projectState || "unknown"}" but has active work
               </Text>
             </Box>
@@ -553,14 +555,14 @@ export function ProjectsView({ onBack }: ProjectsViewProps) {
           {selectedProject.isStaleUpdate && (
             <Box marginBottom={1}>
               <Text color="red">
-                🕐 Stale Update: Project hasn't been updated in 7+ days
+                ⏱ Stale Update: Project hasn't been updated in 7+ days
               </Text>
             </Box>
           )}
           {selectedProject.teams.size > 1 && (
             <Box marginBottom={1}>
               <Text color="cyan">
-                🔗 Multi-team project:{" "}
+                ↔ Multi-team project:{" "}
                 {Array.from(selectedProject.teams).join(", ")}
               </Text>
             </Box>

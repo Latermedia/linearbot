@@ -578,7 +578,7 @@ export function MainMenu({ onSelectView }: MainMenuProps) {
     // Handle keyboard shortcuts
     if (input === "s") {
       runSync();
-    } else if (input === "b") {
+    } else if (input === "i") {
       onSelectView("browse");
     } else if (input === "p") {
       onSelectView("projects");
@@ -612,7 +612,7 @@ export function MainMenu({ onSelectView }: MainMenuProps) {
             </Text>{" "}
             sync │{" "}
             <Text color="cyan" bold>
-              b
+              i
             </Text>{" "}
             issues │{" "}
             <Text color="cyan" bold>
@@ -859,7 +859,7 @@ export function MainMenu({ onSelectView }: MainMenuProps) {
             <Box flexDirection="column" marginBottom={2}>
               <Box marginBottom={1}>
                 <Text bold color="magenta">
-                  📋 UNASSIGNED ISSUES ({unassignedCount})
+                  ❓ UNASSIGNED ISSUES ({unassignedCount})
                 </Text>
               </Box>
               <Box marginLeft={2}>
@@ -871,8 +871,8 @@ export function MainMenu({ onSelectView }: MainMenuProps) {
               </Box>
               <Box marginLeft={2} marginTop={0}>
                 <Text dimColor>
-                  Press <Text color="cyan">u</Text> to comment warnings on all •
-                  Press <Text color="cyan">b</Text> to view list
+                  Press <Text color="cyan">u</Text> to comment warnings • Press{" "}
+                  <Text color="cyan">i</Text> to view all
                 </Text>
               </Box>
             </Box>
@@ -883,7 +883,7 @@ export function MainMenu({ onSelectView }: MainMenuProps) {
             <Box flexDirection="column" marginBottom={2}>
               <Box marginBottom={1}>
                 <Text bold color="red">
-                  ⚠️  WIP VIOLATIONS BY ASSIGNEE ({assigneeViolations.length})
+                  🚨 WIP VIOLATIONS BY ASSIGNEE ({assigneeViolations.length})
                 </Text>
               </Box>
               {assigneeViolations.slice(0, 5).map((violation) => (
@@ -891,7 +891,7 @@ export function MainMenu({ onSelectView }: MainMenuProps) {
                   <Text
                     color={violation.status === "critical" ? "red" : "yellow"}
                   >
-                    {violation.status === "critical" ? "🔴" : "🟠"}{" "}
+                    •
                   </Text>
                   <Box width={30}>
                     <Text
@@ -905,14 +905,13 @@ export function MainMenu({ onSelectView }: MainMenuProps) {
                   >
                     {violation.count} issues
                   </Text>
-                  <Text dimColor> (max: 5)</Text>
                 </Box>
               ))}
               {assigneeViolations.length > 5 && (
                 <Box marginLeft={2} marginTop={1}>
                   <Text dimColor>
-                    ... and {assigneeViolations.length - 5} more (press{" "}
-                    <Text color="cyan">b</Text> to view all)
+                    ... and {assigneeViolations.length - 5} more • Press{" "}
+                    <Text color="cyan">i</Text> to view all
                   </Text>
                 </Box>
               )}
@@ -931,7 +930,7 @@ export function MainMenu({ onSelectView }: MainMenuProps) {
             <Box flexDirection="column" marginBottom={2}>
               <Box marginBottom={1}>
                 <Text bold color="yellow">
-                  ⚠️  ENGINEERS ON MULTIPLE PROJECTS (
+                  🔀 ENGINEERS ON MULTIPLE PROJECTS (
                   {engineerMultiProjectViolations.length})
                 </Text>
               </Box>
@@ -940,7 +939,7 @@ export function MainMenu({ onSelectView }: MainMenuProps) {
                   key={`engineer-multi-${violation.engineerName}`}
                   marginLeft={2}
                 >
-                  <Text color="yellow">👤 </Text>
+                  <Text color="yellow">• </Text>
                   <Box width={30}>
                     <Text>{violation.engineerName}</Text>
                   </Box>
@@ -950,15 +949,11 @@ export function MainMenu({ onSelectView }: MainMenuProps) {
               {engineerMultiProjectViolations.length > 5 && (
                 <Box marginLeft={2} marginTop={1}>
                   <Text dimColor>
-                    ... and {engineerMultiProjectViolations.length - 5} more
+                    ... and {engineerMultiProjectViolations.length - 5} more •
+                    Press <Text color="cyan">e</Text> to view all
                   </Text>
                 </Box>
               )}
-              <Box marginLeft={2} marginTop={1}>
-                <Text dimColor>
-                  Press <Text color="cyan">e</Text> to view details
-                </Text>
-              </Box>
             </Box>
           )}
 
@@ -974,7 +969,7 @@ export function MainMenu({ onSelectView }: MainMenuProps) {
             <Box flexDirection="column" marginBottom={2}>
               <Box marginBottom={1}>
                 <Text bold color="yellow">
-                  ⚠️  PROJECT ISSUES ({projectViolations.length})
+                  😭 PROJECT ISSUES ({projectViolations.length})
                 </Text>
               </Box>
               {projectViolations.slice(0, 5).map((violation) => {
@@ -988,7 +983,7 @@ export function MainMenu({ onSelectView }: MainMenuProps) {
 
                 return (
                   <Box key={`project-${violation.name}`} marginLeft={2}>
-                    <Text color="yellow">📦 </Text>
+                    <Text color="yellow">• </Text>
                     <Box width={35}>
                       <Text>{violation.name}</Text>
                     </Box>
@@ -1001,8 +996,8 @@ export function MainMenu({ onSelectView }: MainMenuProps) {
               {projectViolations.length > 5 && (
                 <Box marginLeft={2} marginTop={1}>
                   <Text dimColor>
-                    ... and {projectViolations.length - 5} more (press{" "}
-                    <Text color="cyan">p</Text> to view all)
+                    ... and {projectViolations.length - 5} more • Press{" "}
+                    <Text color="cyan">p</Text> to view all
                   </Text>
                 </Box>
               )}

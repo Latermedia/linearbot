@@ -9,9 +9,14 @@ export type View = "menu" | "browse" | "projects" | "engineers";
 
 export function App() {
   const [currentView, setCurrentView] = useState<View>("menu");
+  const [headerContext, setHeaderContext] = useState<string>("");
 
   const handleViewChange = (view: View) => {
     setCurrentView(view);
+    // Clear header context when changing to main menu
+    if (view === "menu") {
+      setHeaderContext("");
+    }
   };
 
   return (
@@ -24,8 +29,12 @@ export function App() {
           <Text bold color="cyan">
             ⚡ LINEAR BOT
           </Text>
-          <Text dimColor> │ </Text>
-          <Text dimColor>WIP Constraint Analysis</Text>
+          {headerContext && (
+            <>
+              <Text dimColor> │ </Text>
+              <Text>{headerContext}</Text>
+            </>
+          )}
         </Box>
         <Box paddingX={2} paddingBottom={1}>
           <Text dimColor>━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━</Text>
@@ -37,15 +46,27 @@ export function App() {
       )}
 
       {currentView === "browse" && (
-        <BrowseView key="view-browse" onBack={() => setCurrentView("menu")} />
+        <BrowseView
+          key="view-browse"
+          onBack={() => setCurrentView("menu")}
+          onHeaderChange={setHeaderContext}
+        />
       )}
 
       {currentView === "projects" && (
-        <ProjectsView key="view-projects" onBack={() => setCurrentView("menu")} />
+        <ProjectsView
+          key="view-projects"
+          onBack={() => setCurrentView("menu")}
+          onHeaderChange={setHeaderContext}
+        />
       )}
 
       {currentView === "engineers" && (
-        <EngineersView key="view-engineers" onBack={() => setCurrentView("menu")} />
+        <EngineersView
+          key="view-engineers"
+          onBack={() => setCurrentView("menu")}
+          onHeaderChange={setHeaderContext}
+        />
       )}
     </Box>
   );

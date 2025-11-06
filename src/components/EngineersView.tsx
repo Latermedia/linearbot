@@ -5,6 +5,7 @@ import type { Issue } from "../db/schema.js";
 
 interface EngineersViewProps {
   onBack: () => void;
+  onHeaderChange: (header: string) => void;
 }
 
 type ViewMode = "engineers" | "projects";
@@ -23,7 +24,25 @@ interface ProjectInfo {
   issues: Issue[];
 }
 
-export function EngineersView({ onBack }: EngineersViewProps) {
+interface MultiProjectStatus {
+  emoji: string;
+  label: string;
+  color: string;
+}
+
+function getMultiProjectStatus(count: number): MultiProjectStatus {
+  if (count >= 4) {
+    return { emoji: "●", label: "CRITICAL", color: "red" };
+  } else if (count >= 3) {
+    return { emoji: "◉", label: "WARNING", color: "yellow" };
+  } else if (count === 2) {
+    return { emoji: "○", label: "CAUTION", color: "white" };
+  } else {
+    return { emoji: "✓", label: "FOCUSED", color: "green" };
+  }
+}
+
+export function EngineersView({ onBack, onHeaderChange }: EngineersViewProps) {
   const { stdout } = useStdout();
   const [mode, setMode] = useState<ViewMode>("engineers");
   const [engineers, setEngineers] = useState<EngineerSummary[]>([]);
@@ -34,6 +53,15 @@ export function EngineersView({ onBack }: EngineersViewProps) {
   useEffect(() => {
     loadEngineers();
   }, []);
+
+  // Update header when navigation changes
+  useEffect(() => {
+    if (mode === "engineers") {
+      onHeaderChange("Engineers on Multiple Projects");
+    } else if (mode === "projects" && selectedEngineer) {
+      onHeaderChange(`${selectedEngineer.engineerName} (${selectedEngineer.projectCount} projects)`);
+    }
+  }, [mode, selectedEngineer, onHeaderChange]);
 
   const loadEngineers = () => {
     const db = getDatabase();
@@ -164,44 +192,61 @@ export function EngineersView({ onBack }: EngineersViewProps) {
       scrollOffset + viewportHeight
     );
 
+    const violations = engineers.filter((e) => e.projectCount >= 2).length;
+
     return (
-      <Box flexDirection="column">
-        <Box paddingX={2} paddingY={1}>
-          <Text bold color="yellow">
-            ⚠️ ENGINEERS ON MULTIPLE PROJECTS ({engineers.length})
-          </Text>
+      <Box flexDirection="column" padding={1}>
+        <Box marginBottom={1}>
+          <Text bold>MULTI-PROJECT ENGINEERS</Text>
         </Box>
-
-        <Box paddingX={2} marginBottom={1}>
+        <Box marginBottom={1}>
           <Text dimColor>
-            Use ↑↓ or j/k to navigate, Enter to view details, b/q to go back
+            Total: {engineers.length} engineers working on multiple projects
+          </Text>
+        </Box>
+        <Box marginBottom={1}>
+          <Text dimColor>
+            WIP Constraint: 1 project ideal • Violations: {violations}
+          </Text>
+        </Box>
+        <Box marginBottom={1}>
+          <Text dimColor>
+            Use ↑↓ or j/k to navigate • Enter to select • q/b to go back
           </Text>
         </Box>
 
-        <Box flexDirection="column" paddingX={2}>
-          {visibleEngineers.map((engineer, idx) => {
-            const actualIndex = scrollOffset + idx;
-            const isSelected = actualIndex === selectedIndex;
+        {visibleEngineers.map((engineer, idx) => {
+          const actualIndex = scrollOffset + idx;
+          const isSelected = actualIndex === selectedIndex;
+          const status = getMultiProjectStatus(engineer.projectCount);
 
-            return (
-              <Box key={engineer.engineerName} marginBottom={0}>
+          return (
+            <Box key={engineer.engineerName}>
+              <Text color={isSelected ? "cyan" : "gray"}>
+                {isSelected ? "▶ " : "  "}
+              </Text>
+              <Box width={35}>
                 <Text
-                  color={isSelected ? "cyan" : undefined}
                   bold={isSelected}
-                  inverse={isSelected}
+                  color={isSelected ? "cyan" : status.color}
                 >
-                  {isSelected ? "→ " : "  "}
-                  👤 {engineer.engineerName}
-                  {" - "}
-                  {engineer.projectCount} projects
+                  {engineer.engineerName}
                 </Text>
               </Box>
-            );
-          })}
-        </Box>
+              <Box width={20}>
+                <Text color={isSelected ? "cyan" : "white"}>
+                  ({engineer.projectCount} projects)
+                </Text>
+              </Box>
+              <Text color={status.color}>
+                {status.emoji} {status.label}
+              </Text>
+            </Box>
+          );
+        })}
 
         {engineers.length > viewportHeight && (
-          <Box paddingX={2} marginTop={1}>
+          <Box marginTop={1}>
             <Text dimColor>
               Showing {scrollOffset + 1}-
               {Math.min(scrollOffset + viewportHeight, engineers.length)} of{" "}
@@ -222,74 +267,74 @@ export function EngineersView({ onBack }: EngineersViewProps) {
     );
 
     return (
-      <Box flexDirection="column">
-        <Box paddingX={2} paddingY={1}>
-          <Text bold color="cyan">
-            👤 {selectedEngineer.engineerName}
+      <Box flexDirection="column" padding={1}>
+        <Box marginBottom={1}>
+          <Text bold>
+            PROJECTS FOR {selectedEngineer.engineerName.toUpperCase()}
           </Text>
-          <Text dimColor> - {selectedEngineer.projectCount} projects</Text>
+        </Box>
+        <Box marginBottom={1}>
+          <Text dimColor>
+            Working on {selectedEngineer.projectCount} projects simultaneously
+          </Text>
+        </Box>
+        <Box marginBottom={1}>
+          <Text dimColor>Use ↑↓ or j/k to navigate • b/q to go back</Text>
         </Box>
 
-        <Box paddingX={2} marginBottom={1}>
-          <Text dimColor>Use ↑↓ or j/k to navigate, b/q to go back</Text>
-        </Box>
+        {visibleProjects.map((project, idx) => {
+          const actualIndex = scrollOffset + idx;
+          const isSelected = actualIndex === selectedIndex;
 
-        <Box flexDirection="column" paddingX={2}>
-          {visibleProjects.map((project, idx) => {
-            const actualIndex = scrollOffset + idx;
-            const isSelected = actualIndex === selectedIndex;
-
-            return (
-              <Box
-                key={project.projectId}
-                flexDirection="column"
-                marginBottom={1}
-              >
-                <Box>
-                  <Text
-                    color={isSelected ? "cyan" : "yellow"}
-                    bold={isSelected}
-                    inverse={isSelected}
-                  >
-                    {isSelected ? "→ " : "  "}
-                    📦 {project.projectName}
-                  </Text>
-                  <Text dimColor>
-                    {" "}
-                    - {project.startedIssueCount} started issues
+          return (
+            <Box
+              key={project.projectId}
+              flexDirection="column"
+              marginBottom={1}
+            >
+              <Box>
+                <Text color={isSelected ? "cyan" : "gray"}>
+                  {isSelected ? "▶ " : "  "}
+                </Text>
+                <Box width={50}>
+                  <Text bold={isSelected} color={isSelected ? "cyan" : "white"}>
+                    {project.projectName}
                   </Text>
                 </Box>
+                <Text color={isSelected ? "cyan" : "gray"}>
+                  {project.startedIssueCount} started
+                </Text>
+              </Box>
 
-                {/* Show issues for this project */}
-                <Box flexDirection="column" marginLeft={4}>
-                  {project.issues.slice(0, 3).map((issue) => (
-                    <Box key={issue.id}>
-                      <Text dimColor>{issue.identifier}</Text>
-                      <Text> </Text>
-                      <Text>{issue.title.substring(0, 60)}</Text>
-                      {issue.title.length > 60 && <Text dimColor>...</Text>}
-                    </Box>
-                  ))}
-                  {project.issues.length > 3 && (
-                    <Text dimColor>
-                      ... and {project.issues.length - 3} more issues
-                    </Text>
-                  )}
-                </Box>
-
-                {/* Show link to first issue (which contains project context) */}
-                {project.issues[0] && (
-                  <Box marginLeft={4} marginTop={0}>
-                    <Text color="cyan">🔗 {project.issues[0].url}</Text>
+              {/* Show issues for this project */}
+              <Box flexDirection="column" paddingLeft={3}>
+                {project.issues.slice(0, 3).map((issue) => (
+                  <Box key={issue.id}>
+                    <Text dimColor>• </Text>
+                    <Text color="cyan">{issue.identifier}</Text>
+                    <Text dimColor> {issue.title.substring(0, 60)}</Text>
+                    {issue.title.length > 60 && <Text dimColor>...</Text>}
                   </Box>
+                ))}
+                {project.issues.length > 3 && (
+                  <Text dimColor>
+                    ... and {project.issues.length - 3} more issues
+                  </Text>
                 )}
               </Box>
-            );
-          })}
-        </Box>
+
+              {/* Show link to first issue (which contains project context) */}
+              {project.issues[0] && (
+                <Box paddingLeft={3}>
+                  <Text color="cyan">→ {project.issues[0].url}</Text>
+                </Box>
+              )}
+            </Box>
+          );
+        })}
 
         {selectedEngineer.projects.length > viewportHeight && (
-          <Box paddingX={2} marginTop={1}>
+          <Box marginTop={1}>
             <Text dimColor>
               Showing {scrollOffset + 1}-
               {Math.min(
