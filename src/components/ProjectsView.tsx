@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from "react";
-import { Box, Text, useInput, useStdout } from "ink";
+import { Box, Text, useInput } from "ink";
 import { getDatabase } from "../db/connection.js";
 import {
   isProjectActive,
@@ -8,6 +8,8 @@ import {
   isMissingLead,
 } from "../utils/status-helpers.js";
 import { openIssue, openProject } from "../utils/browser-helpers.js";
+import { useListNavigation } from "../hooks/useListNavigation.js";
+import { useVisibleLines } from "../hooks/useVisibleLines.js";
 import type { Issue } from "../db/schema.js";
 
 interface ProjectsViewProps {
@@ -48,7 +50,7 @@ interface ProjectSummary {
 }
 
 export function ProjectsView({ onBack, onHeaderChange }: ProjectsViewProps) {
-  const { stdout } = useStdout();
+  const visibleLines = useVisibleLines();
   const [mode, setMode] = useState<ViewMode>("teams");
   const [sortMode, setSortMode] = useState<SortMode>("progress");
   const [teams, setTeams] = useState<TeamSummary[]>([]);
@@ -62,9 +64,23 @@ export function ProjectsView({ onBack, onHeaderChange }: ProjectsViewProps) {
   const [selectedProject, setSelectedProject] = useState<ProjectSummary | null>(
     null
   );
-  const [selectedIndex, setSelectedIndex] = useState(0);
-  const [scrollOffset, setScrollOffset] = useState(0);
   const [totalUniqueProjects, setTotalUniqueProjects] = useState(0);
+
+  // Navigation for all 3 modes
+  const teamsNav = useListNavigation(teams.length, visibleLines);
+  const projectsNav = useListNavigation(
+    selectedTeam ? projectsByTeam.get(selectedTeam.teamKey)?.length || 0 : 0,
+    visibleLines
+  );
+  const issuesNav = useListNavigation(
+    selectedProject
+      ? issuesByProject.get(selectedProject.projectId)?.length || 0
+      : 0,
+    visibleLines
+  );
+
+  const { selectedIndex, scrollOffset } =
+    mode === "teams" ? teamsNav : mode === "projects" ? projectsNav : issuesNav;
 
   useEffect(() => {
     loadProjects();
@@ -242,12 +258,10 @@ export function ProjectsView({ onBack, onHeaderChange }: ProjectsViewProps) {
         onBack();
       } else if (mode === "projects") {
         setMode("teams");
-        setSelectedIndex(0);
-        setScrollOffset(0);
+        teamsNav.reset();
       } else if (mode === "issues") {
         setMode("projects");
-        setSelectedIndex(0);
-        setScrollOffset(0);
+        projectsNav.reset();
       }
     } else if (input === "o" && mode === "projects" && selectedTeam) {
       // Open selected project in browser
@@ -255,7 +269,7 @@ export function ProjectsView({ onBack, onHeaderChange }: ProjectsViewProps) {
         projectsByTeam.get(selectedTeam.teamKey) || [],
         sortMode
       );
-      const project = projects[selectedIndex];
+      const project = projects[projectsNav.selectedIndex];
       if (project) {
         // Get workspace from first issue URL
         const issues = issuesByProject.get(project.projectId) || [];
@@ -266,67 +280,41 @@ export function ProjectsView({ onBack, onHeaderChange }: ProjectsViewProps) {
     } else if (input === "o" && mode === "issues" && selectedProject) {
       // Open selected issue in browser
       const issues = issuesByProject.get(selectedProject.projectId) || [];
-      const issue = issues[selectedIndex];
+      const issue = issues[issuesNav.selectedIndex];
       if (issue) {
         openIssue(issue);
       }
     } else if (input === "s" && mode === "projects") {
       // Toggle sort mode for projects
       setSortMode((prev) => (prev === "progress" ? "activity" : "progress"));
-      setSelectedIndex(0);
-      setScrollOffset(0);
+      projectsNav.reset();
     } else if (key.upArrow || input === "k") {
-      if (selectedIndex > 0) {
-        const newIndex = selectedIndex - 1;
-        setSelectedIndex(newIndex);
-
-        const terminalHeight = stdout?.rows || 24;
-        const visibleLines =
-          mode === "projects"
-            ? Math.floor((terminalHeight - 8) / 7)
-            : terminalHeight - 8;
-        if (newIndex < scrollOffset) {
-          setScrollOffset(newIndex);
-        }
+      if (mode === "teams") {
+        teamsNav.handleUp();
+      } else if (mode === "projects") {
+        projectsNav.handleUp();
+      } else {
+        issuesNav.handleUp();
       }
     } else if (key.downArrow || input === "j") {
-      let maxIndex = 0;
       if (mode === "teams") {
-        maxIndex = teams.length - 1;
-      } else if (mode === "projects" && selectedTeam) {
-        const projects = projectsByTeam.get(selectedTeam.teamKey) || [];
-        maxIndex = projects.length - 1;
-      } else if (mode === "issues" && selectedProject) {
-        const issues = issuesByProject.get(selectedProject.projectId) || [];
-        maxIndex = issues.length - 1;
-      }
-
-      if (selectedIndex < maxIndex) {
-        const newIndex = selectedIndex + 1;
-        setSelectedIndex(newIndex);
-
-        const terminalHeight = stdout?.rows || 24;
-        const visibleLines =
-          mode === "projects"
-            ? Math.floor((terminalHeight - 8) / 7)
-            : terminalHeight - 8;
-        if (newIndex >= scrollOffset + visibleLines) {
-          setScrollOffset(newIndex - visibleLines + 1);
-        }
+        teamsNav.handleDown();
+      } else if (mode === "projects") {
+        projectsNav.handleDown();
+      } else {
+        issuesNav.handleDown();
       }
     } else if (key.return) {
       if (mode === "teams") {
-        setSelectedTeam(teams[selectedIndex]);
+        setSelectedTeam(teams[teamsNav.selectedIndex]);
         setMode("projects");
-        setSelectedIndex(0);
-        setScrollOffset(0);
+        projectsNav.reset();
       } else if (mode === "projects" && selectedTeam) {
         const projects = projectsByTeam.get(selectedTeam.teamKey) || [];
         const sortedProjects = sortProjects(projects, sortMode);
-        setSelectedProject(sortedProjects[selectedIndex]);
+        setSelectedProject(sortedProjects[projectsNav.selectedIndex]);
         setMode("issues");
-        setSelectedIndex(0);
-        setScrollOffset(0);
+        issuesNav.reset();
       }
     }
   });
@@ -365,12 +353,11 @@ export function ProjectsView({ onBack, onHeaderChange }: ProjectsViewProps) {
     );
   }
 
-  const terminalHeight = stdout?.rows || 24;
-  // Projects take ~6-8 lines each, so divide by 7 to get visible project count
-  const visibleLines =
+  // Projects mode uses different visible lines calculation (each project takes ~7 lines)
+  const effectiveVisibleLines =
     mode === "projects"
-      ? Math.floor((terminalHeight - 8) / 7)
-      : terminalHeight - 8;
+      ? Math.max(1, Math.floor(visibleLines / 7))
+      : visibleLines;
 
   return (
     <Box flexDirection="column" padding={1}>
@@ -395,10 +382,13 @@ export function ProjectsView({ onBack, onHeaderChange }: ProjectsViewProps) {
           </Box>
 
           {teams
-            .slice(scrollOffset, scrollOffset + visibleLines)
+            .slice(
+              teamsNav.scrollOffset,
+              teamsNav.scrollOffset + effectiveVisibleLines
+            )
             .map((team, displayIndex) => {
-              const actualIndex = scrollOffset + displayIndex;
-              const isSelected = actualIndex === selectedIndex;
+              const actualIndex = teamsNav.scrollOffset + displayIndex;
+              const isSelected = actualIndex === teamsNav.selectedIndex;
 
               const hasViolations =
                 team.statusMismatchCount > 0 || team.staleUpdateCount > 0;
@@ -438,12 +428,15 @@ export function ProjectsView({ onBack, onHeaderChange }: ProjectsViewProps) {
               );
             })}
 
-          {teams.length > visibleLines && (
+          {teams.length > effectiveVisibleLines && (
             <Box marginTop={1}>
               <Text dimColor>
-                Showing {scrollOffset + 1}-
-                {Math.min(scrollOffset + visibleLines, teams.length)} of{" "}
-                {teams.length}
+                Showing {teamsNav.scrollOffset + 1}-
+                {Math.min(
+                  teamsNav.scrollOffset + effectiveVisibleLines,
+                  teams.length
+                )}{" "}
+                of {teams.length}
               </Text>
             </Box>
           )}
@@ -472,10 +465,13 @@ export function ProjectsView({ onBack, onHeaderChange }: ProjectsViewProps) {
             projectsByTeam.get(selectedTeam.teamKey) || [],
             sortMode
           )
-            .slice(scrollOffset, scrollOffset + visibleLines)
+            .slice(
+              projectsNav.scrollOffset,
+              projectsNav.scrollOffset + effectiveVisibleLines
+            )
             .map((project, displayIndex) => {
-              const actualIndex = scrollOffset + displayIndex;
-              const isSelected = actualIndex === selectedIndex;
+              const actualIndex = projectsNav.scrollOffset + displayIndex;
+              const isSelected = actualIndex === projectsNav.selectedIndex;
 
               // Calculate progress
               const completedIssues =
@@ -626,10 +622,13 @@ export function ProjectsView({ onBack, onHeaderChange }: ProjectsViewProps) {
           </Box>
 
           {(issuesByProject.get(selectedProject.projectId) || [])
-            .slice(scrollOffset, scrollOffset + visibleLines)
+            .slice(
+              issuesNav.scrollOffset,
+              issuesNav.scrollOffset + effectiveVisibleLines
+            )
             .map((issue, displayIndex) => {
-              const actualIndex = scrollOffset + displayIndex;
-              const isSelected = actualIndex === selectedIndex;
+              const actualIndex = issuesNav.scrollOffset + displayIndex;
+              const isSelected = actualIndex === issuesNav.selectedIndex;
               const title =
                 issue.title.length > 50
                   ? issue.title.substring(0, 47) + "..."

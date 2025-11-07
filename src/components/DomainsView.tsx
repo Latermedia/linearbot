@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from "react";
-import { Box, Text, useInput, useStdout } from "ink";
+import { Box, Text, useInput } from "ink";
 import { getDatabase } from "../db/connection.js";
 import {
   hasNoRecentComment,
@@ -8,6 +8,8 @@ import {
   hasMissingPriority,
 } from "../utils/issue-validators.js";
 import { openIssue } from "../utils/browser-helpers.js";
+import { useListNavigation } from "../hooks/useListNavigation.js";
+import { useVisibleLines } from "../hooks/useVisibleLines.js";
 import type { Issue } from "../db/schema.js";
 import {
   getDomainForTeam,
@@ -50,7 +52,7 @@ interface TeamViolationSummary {
 }
 
 export function DomainsView({ onBack, onHeaderChange }: DomainsViewProps) {
-  const { stdout } = useStdout();
+  const visibleLines = useVisibleLines();
   const [mode, setMode] = useState<ViewMode>("domains");
   const [domains, setDomains] = useState<DomainViolationSummary[]>([]);
   const [selectedDomain, setSelectedDomain] =
@@ -58,8 +60,22 @@ export function DomainsView({ onBack, onHeaderChange }: DomainsViewProps) {
   const [selectedTeam, setSelectedTeam] = useState<TeamViolationSummary | null>(
     null
   );
-  const [selectedIndex, setSelectedIndex] = useState(0);
-  const [scrollOffset, setScrollOffset] = useState(0);
+  
+  // Navigation for all 3 modes
+  const domainsNav = useListNavigation(domains.length, visibleLines);
+  const teamsNav = useListNavigation(
+    selectedDomain?.teams.length || 0,
+    visibleLines
+  );
+  const issuesNav = useListNavigation(
+    selectedTeam?.issues.length || 0,
+    visibleLines
+  );
+  
+  const { selectedIndex, scrollOffset } =
+    mode === "domains" ? domainsNav :
+    mode === "teams" ? teamsNav :
+    issuesNav;
 
   useEffect(() => {
     loadDomains();
@@ -230,63 +246,43 @@ export function DomainsView({ onBack, onHeaderChange }: DomainsViewProps) {
         onBack();
       } else if (mode === "teams") {
         setMode("domains");
-        setSelectedIndex(0);
-        setScrollOffset(0);
+        domainsNav.reset();
       } else if (mode === "issues") {
         setMode("teams");
-        setSelectedIndex(0);
-        setScrollOffset(0);
+        teamsNav.reset();
       }
     } else if (input === "o" && mode === "issues" && selectedTeam) {
       // Open selected issue in browser
-      const issue = selectedTeam.issues[selectedIndex];
+      const issue = selectedTeam.issues[issuesNav.selectedIndex];
       if (issue) {
         openIssue(issue);
       }
     } else if (key.upArrow || input === "k") {
-      if (selectedIndex > 0) {
-        const newIndex = selectedIndex - 1;
-        setSelectedIndex(newIndex);
-
-        const terminalHeight = stdout?.rows || 24;
-        const visibleLines = Math.max(5, terminalHeight - 7);
-        if (newIndex < scrollOffset) {
-          setScrollOffset(newIndex);
-        }
+      if (mode === "domains") {
+        domainsNav.handleUp();
+      } else if (mode === "teams") {
+        teamsNav.handleUp();
+      } else {
+        issuesNav.handleUp();
       }
     } else if (key.downArrow || input === "j") {
-      const maxIndex =
-        mode === "domains"
-          ? domains.length - 1
-          : mode === "teams"
-          ? (selectedDomain?.teams.length || 1) - 1
-          : (selectedTeam?.issues.length || 1) - 1;
-
-      if (selectedIndex < maxIndex) {
-        const newIndex = selectedIndex + 1;
-        setSelectedIndex(newIndex);
-
-        const terminalHeight = stdout?.rows || 24;
-        const visibleLines = Math.max(5, terminalHeight - 7);
-        if (newIndex >= scrollOffset + visibleLines) {
-          setScrollOffset(newIndex - visibleLines + 1);
-        }
+      if (mode === "domains") {
+        domainsNav.handleDown();
+      } else if (mode === "teams") {
+        teamsNav.handleDown();
+      } else {
+        issuesNav.handleDown();
       }
     } else if (key.return && mode === "domains") {
-      setSelectedDomain(domains[selectedIndex]);
+      setSelectedDomain(domains[domainsNav.selectedIndex]);
       setMode("teams");
-      setSelectedIndex(0);
-      setScrollOffset(0);
+      teamsNav.reset();
     } else if (key.return && mode === "teams" && selectedDomain) {
-      setSelectedTeam(selectedDomain.teams[selectedIndex]);
+      setSelectedTeam(selectedDomain.teams[teamsNav.selectedIndex]);
       setMode("issues");
-      setSelectedIndex(0);
-      setScrollOffset(0);
+      issuesNav.reset();
     }
   });
-
-  const terminalHeight = stdout?.rows || 24;
-  const visibleLines = Math.max(5, terminalHeight - 7);
 
   if (domains.length === 0) {
     return (
@@ -323,10 +319,10 @@ export function DomainsView({ onBack, onHeaderChange }: DomainsViewProps) {
           </Box>
 
           {domains
-            .slice(scrollOffset, scrollOffset + visibleLines)
+            .slice(domainsNav.scrollOffset, domainsNav.scrollOffset + visibleLines)
             .map((domain, displayIndex) => {
-              const actualIndex = scrollOffset + displayIndex;
-              const isSelected = actualIndex === selectedIndex;
+              const actualIndex = domainsNav.scrollOffset + displayIndex;
+              const isSelected = actualIndex === domainsNav.selectedIndex;
 
               return (
                 <Box key={`domain-${domain.domainName}`}>
@@ -390,8 +386,8 @@ export function DomainsView({ onBack, onHeaderChange }: DomainsViewProps) {
           {domains.length > visibleLines && (
             <Box marginTop={1}>
               <Text dimColor>
-                Showing {scrollOffset + 1}-
-                {Math.min(scrollOffset + visibleLines, domains.length)} of{" "}
+                Showing {domainsNav.scrollOffset + 1}-
+                {Math.min(domainsNav.scrollOffset + visibleLines, domains.length)} of{" "}
                 {domains.length}
               </Text>
             </Box>
@@ -428,10 +424,10 @@ export function DomainsView({ onBack, onHeaderChange }: DomainsViewProps) {
           </Box>
 
           {selectedDomain.teams
-            .slice(scrollOffset, scrollOffset + visibleLines)
+            .slice(teamsNav.scrollOffset, teamsNav.scrollOffset + visibleLines)
             .map((team, displayIndex) => {
-              const actualIndex = scrollOffset + displayIndex;
-              const isSelected = actualIndex === selectedIndex;
+              const actualIndex = teamsNav.scrollOffset + displayIndex;
+              const isSelected = actualIndex === teamsNav.selectedIndex;
 
               return (
                 <Box key={`team-${team.teamKey}`}>
@@ -492,9 +488,9 @@ export function DomainsView({ onBack, onHeaderChange }: DomainsViewProps) {
           {selectedDomain.teams.length > visibleLines && (
             <Box marginTop={1}>
               <Text dimColor>
-                Showing {scrollOffset + 1}-
+                Showing {teamsNav.scrollOffset + 1}-
                 {Math.min(
-                  scrollOffset + visibleLines,
+                  teamsNav.scrollOffset + visibleLines,
                   selectedDomain.teams.length
                 )}{" "}
                 of {selectedDomain.teams.length}
@@ -516,10 +512,10 @@ export function DomainsView({ onBack, onHeaderChange }: DomainsViewProps) {
           </Box>
 
           {selectedTeam.issues
-            .slice(scrollOffset, scrollOffset + visibleLines)
+            .slice(issuesNav.scrollOffset, issuesNav.scrollOffset + visibleLines)
             .map((issue, displayIndex) => {
-              const actualIndex = scrollOffset + displayIndex;
-              const isSelected = actualIndex === selectedIndex;
+              const actualIndex = issuesNav.scrollOffset + displayIndex;
+              const isSelected = actualIndex === issuesNav.selectedIndex;
               const title =
                 issue.title.length > 40
                   ? issue.title.substring(0, 37) + "..."
@@ -561,9 +557,9 @@ export function DomainsView({ onBack, onHeaderChange }: DomainsViewProps) {
           {selectedTeam.issues.length > visibleLines && (
             <Box marginTop={1}>
               <Text dimColor>
-                Showing {scrollOffset + 1}-
+                Showing {issuesNav.scrollOffset + 1}-
                 {Math.min(
-                  scrollOffset + visibleLines,
+                  issuesNav.scrollOffset + visibleLines,
                   selectedTeam.issues.length
                 )}{" "}
                 of {selectedTeam.issues.length}

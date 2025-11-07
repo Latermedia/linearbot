@@ -7,6 +7,8 @@ import {
   getViolationIndicators,
 } from "../utils/issue-validators.js";
 import { openIssue } from "../utils/browser-helpers.js";
+import { useListNavigation } from "../hooks/useListNavigation.js";
+import { useVisibleLines } from "../hooks/useVisibleLines.js";
 import type { Issue } from "../db/schema.js";
 
 interface BrowseViewProps {
@@ -19,6 +21,7 @@ type SortMode = "count" | "name";
 
 export function BrowseView({ onBack, onHeaderChange }: BrowseViewProps) {
   const { stdout } = useStdout();
+  const visibleLines = useVisibleLines(11);
   const [mode, setMode] = useState<BrowseMode>("assignees");
   const [sortMode, setSortMode] = useState<SortMode>("count");
   const [issuesByAssignee, setIssuesByAssignee] = useState<
@@ -26,8 +29,19 @@ export function BrowseView({ onBack, onHeaderChange }: BrowseViewProps) {
   >(new Map());
   const [selectedAssignee, setSelectedAssignee] = useState<string | null>(null);
   const [selectedIssue, setSelectedIssue] = useState<Issue | null>(null);
-  const [selectedIndex, setSelectedIndex] = useState(0);
-  const [scrollOffset, setScrollOffset] = useState(0);
+  
+  // Navigation state for different modes
+  const assigneeNav = useListNavigation(
+    Array.from(issuesByAssignee.keys()).length,
+    visibleLines
+  );
+  const issueNav = useListNavigation(
+    selectedAssignee ? (issuesByAssignee.get(selectedAssignee)?.length || 0) : 0,
+    visibleLines
+  );
+  
+  // Get current navigation based on mode
+  const { selectedIndex, scrollOffset } = mode === "assignees" ? assigneeNav : issueNav;
 
   useEffect(() => {
     loadIssues();
@@ -83,88 +97,43 @@ export function BrowseView({ onBack, onHeaderChange }: BrowseViewProps) {
         onBack();
       } else if (mode === "issues") {
         setMode("assignees");
-        setSelectedIndex(0);
-        setScrollOffset(0);
+        assigneeNav.reset();
       } else if (mode === "detail") {
         setMode("issues");
       }
     } else if (input === "s" && mode === "assignees") {
       // Toggle sort mode
       setSortMode((prev) => (prev === "count" ? "name" : "count"));
-      setSelectedIndex(0);
-      setScrollOffset(0);
+      assigneeNav.reset();
     } else if (key.upArrow || input === "k") {
       if (mode === "assignees") {
-        const assigneeCount = Array.from(issuesByAssignee.keys()).length;
-        if (selectedIndex > 0) {
-          const newIndex = selectedIndex - 1;
-          setSelectedIndex(newIndex);
-
-          // Adjust scroll to keep selection visible
-          const terminalHeight = stdout?.rows || 24;
-          const visibleLines = terminalHeight - 8; // Account for header/footer
-          if (newIndex < scrollOffset) {
-            setScrollOffset(newIndex);
-          }
-        }
-      } else if (mode === "issues" && selectedAssignee) {
-        const issues = issuesByAssignee.get(selectedAssignee) || [];
-        if (selectedIndex > 0) {
-          const newIndex = selectedIndex - 1;
-          setSelectedIndex(newIndex);
-
-          const terminalHeight = stdout?.rows || 24;
-          const visibleLines = terminalHeight - 6;
-          if (newIndex < scrollOffset) {
-            setScrollOffset(newIndex);
-          }
-        }
+        assigneeNav.handleUp();
+      } else if (mode === "issues") {
+        issueNav.handleUp();
       }
     } else if (key.downArrow || input === "j") {
       if (mode === "assignees") {
-        const assigneeCount = Array.from(issuesByAssignee.keys()).length;
-        if (selectedIndex < assigneeCount - 1) {
-          const newIndex = selectedIndex + 1;
-          setSelectedIndex(newIndex);
-
-          // Adjust scroll to keep selection visible
-          const terminalHeight = stdout?.rows || 24;
-          const visibleLines = Math.max(5, terminalHeight - 7);
-          if (newIndex >= scrollOffset + visibleLines) {
-            setScrollOffset(newIndex - visibleLines + 1);
-          }
-        }
-      } else if (mode === "issues" && selectedAssignee) {
-        const issues = issuesByAssignee.get(selectedAssignee) || [];
-        if (selectedIndex < issues.length - 1) {
-          const newIndex = selectedIndex + 1;
-          setSelectedIndex(newIndex);
-
-          const terminalHeight = stdout?.rows || 24;
-          const visibleLines = Math.max(5, terminalHeight - 10);
-          if (newIndex >= scrollOffset + visibleLines) {
-            setScrollOffset(newIndex - visibleLines + 1);
-          }
-        }
+        assigneeNav.handleDown();
+      } else if (mode === "issues") {
+        issueNav.handleDown();
       }
     } else if (input === "o" && mode === "issues" && selectedAssignee) {
       // Open selected issue in browser
       const issues = issuesByAssignee.get(selectedAssignee) || [];
-      const issue = issues[selectedIndex];
+      const issue = issues[issueNav.selectedIndex];
       if (issue) {
         openIssue(issue);
       }
     } else if (key.return) {
       if (mode === "assignees") {
         const sortedAssignees = getSortedAssignees();
-        const [assignee] = sortedAssignees[selectedIndex];
+        const [assignee] = sortedAssignees[assigneeNav.selectedIndex];
         setSelectedAssignee(assignee);
         setMode("issues");
-        setSelectedIndex(0);
-        setScrollOffset(0);
+        issueNav.reset();
       } else if (mode === "issues" && selectedAssignee) {
         const issues = issuesByAssignee.get(selectedAssignee) || [];
-        setSelectedIssue(issues[selectedIndex]);
+        setSelectedIssue(issues[issueNav.selectedIndex]);
         setMode("detail");
       }
     }
@@ -196,11 +165,6 @@ export function BrowseView({ onBack, onHeaderChange }: BrowseViewProps) {
     ([_, issues]) => issues.length > 5
   ).length;
 
-  // Calculate visible window
-  const terminalHeight = stdout?.rows || 24;
-  // Account for: App header (3) + view headers with margins (3) + footer (1) = 7 lines
-  const visibleLines = Math.max(5, terminalHeight - 11);
-
   return (
     <Box flexDirection="column" paddingX={1}>
       {mode === "assignees" && (
@@ -225,10 +189,10 @@ export function BrowseView({ onBack, onHeaderChange }: BrowseViewProps) {
           </Box>
 
           {sortedAssignees
-            .slice(scrollOffset, scrollOffset + visibleLines)
+            .slice(assigneeNav.scrollOffset, assigneeNav.scrollOffset + visibleLines)
             .map(([assignee, issues], displayIndex) => {
-              const actualIndex = scrollOffset + displayIndex;
-              const isSelected = actualIndex === selectedIndex;
+              const actualIndex = assigneeNav.scrollOffset + displayIndex;
+              const isSelected = actualIndex === assigneeNav.selectedIndex;
               const count = issues.length;
               const status = getWIPStatus(count);
 
@@ -279,8 +243,8 @@ export function BrowseView({ onBack, onHeaderChange }: BrowseViewProps) {
           {sortedAssignees.length > visibleLines && (
             <Box marginTop={1}>
               <Text dimColor>
-                Showing {scrollOffset + 1}-
-                {Math.min(scrollOffset + visibleLines, sortedAssignees.length)}{" "}
+                Showing {assigneeNav.scrollOffset + 1}-
+                {Math.min(assigneeNav.scrollOffset + visibleLines, sortedAssignees.length)}{" "}
                 of {sortedAssignees.length}
               </Text>
             </Box>
@@ -302,10 +266,10 @@ export function BrowseView({ onBack, onHeaderChange }: BrowseViewProps) {
           </Box>
 
           {(issuesByAssignee.get(selectedAssignee) || [])
-            .slice(scrollOffset, scrollOffset + visibleLines)
+            .slice(issueNav.scrollOffset, issueNav.scrollOffset + visibleLines)
             .map((issue, displayIndex) => {
-              const actualIndex = scrollOffset + displayIndex;
-              const isSelected = actualIndex === selectedIndex;
+              const actualIndex = issueNav.scrollOffset + displayIndex;
+              const isSelected = actualIndex === issueNav.selectedIndex;
               const title =
                 issue.title.length > 50
                   ? issue.title.substring(0, 47) + "..."
@@ -334,9 +298,9 @@ export function BrowseView({ onBack, onHeaderChange }: BrowseViewProps) {
             visibleLines && (
             <Box marginTop={1}>
               <Text dimColor>
-                Showing {scrollOffset + 1}-
+                Showing {issueNav.scrollOffset + 1}-
                 {Math.min(
-                  scrollOffset + visibleLines,
+                  issueNav.scrollOffset + visibleLines,
                   issuesByAssignee.get(selectedAssignee)?.length || 0
                 )}{" "}
                 of {issuesByAssignee.get(selectedAssignee)?.length}

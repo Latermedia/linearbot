@@ -1,8 +1,10 @@
 import React, { useState, useEffect } from "react";
-import { Box, Text, useInput, useStdout } from "ink";
+import { Box, Text, useInput } from "ink";
 import { getDatabase } from "../db/connection.js";
 import { getMultiProjectStatus } from "../utils/status-helpers.js";
 import { openIssue } from "../utils/browser-helpers.js";
+import { useListNavigation } from "../hooks/useListNavigation.js";
+import { useVisibleLines } from "../hooks/useVisibleLines.js";
 import type { Issue } from "../db/schema.js";
 
 interface EngineersViewProps {
@@ -27,12 +29,19 @@ interface ProjectInfo {
 }
 
 export function EngineersView({ onBack, onHeaderChange }: EngineersViewProps) {
-  const { stdout } = useStdout();
+  const visibleLines = useVisibleLines();
   const [mode, setMode] = useState<ViewMode>("engineers");
   const [engineers, setEngineers] = useState<EngineerSummary[]>([]);
   const [selectedEngineer, setSelectedEngineer] = useState<EngineerSummary | null>(null);
-  const [selectedIndex, setSelectedIndex] = useState(0);
-  const [scrollOffset, setScrollOffset] = useState(0);
+  
+  // Navigation for both modes
+  const engineersNav = useListNavigation(engineers.length, visibleLines);
+  const projectsNav = useListNavigation(
+    selectedEngineer?.projects.length || 0,
+    visibleLines
+  );
+  
+  const { selectedIndex, scrollOffset } = mode === "engineers" ? engineersNav : projectsNav;
 
   useEffect(() => {
     loadEngineers();
@@ -119,8 +128,7 @@ export function EngineersView({ onBack, onHeaderChange }: EngineersViewProps) {
     if (mode === "projects") {
       setMode("engineers");
       setSelectedEngineer(null);
-      setSelectedIndex(0);
-      setScrollOffset(0);
+      engineersNav.reset();
     } else {
       onBack();
     }
@@ -129,8 +137,7 @@ export function EngineersView({ onBack, onHeaderChange }: EngineersViewProps) {
   const handleSelectEngineer = (engineer: EngineerSummary) => {
     setSelectedEngineer(engineer);
     setMode("projects");
-    setSelectedIndex(0);
-    setScrollOffset(0);
+    projectsNav.reset();
   };
 
   useInput((input, key) => {
@@ -141,24 +148,22 @@ export function EngineersView({ onBack, onHeaderChange }: EngineersViewProps) {
 
     if (mode === "engineers") {
       if (key.upArrow || input === "k") {
-        setSelectedIndex((prev) => Math.max(0, prev - 1));
+        engineersNav.handleUp();
       } else if (key.downArrow || input === "j") {
-        setSelectedIndex((prev) => Math.min(engineers.length - 1, prev + 1));
+        engineersNav.handleDown();
       } else if (key.return) {
-        if (engineers[selectedIndex]) {
-          handleSelectEngineer(engineers[selectedIndex]);
+        if (engineers[engineersNav.selectedIndex]) {
+          handleSelectEngineer(engineers[engineersNav.selectedIndex]);
         }
       }
     } else if (mode === "projects" && selectedEngineer) {
       if (key.upArrow || input === "k") {
-        setSelectedIndex((prev) => Math.max(0, prev - 1));
+        projectsNav.handleUp();
       } else if (key.downArrow || input === "j") {
-        setSelectedIndex((prev) =>
-          Math.min(selectedEngineer.projects.length - 1, prev + 1)
-        );
+        projectsNav.handleDown();
       } else if (input === "o") {
         // Open first issue from selected project in browser
-        const project = selectedEngineer.projects[selectedIndex];
+        const project = selectedEngineer.projects[projectsNav.selectedIndex];
         if (project && project.issues.length > 0) {
           openIssue(project.issues[0]);
         }
@@ -166,20 +171,10 @@ export function EngineersView({ onBack, onHeaderChange }: EngineersViewProps) {
     }
   });
 
-  // Handle scrolling
-  const viewportHeight = (stdout?.rows || 30) - 10;
-  useEffect(() => {
-    if (selectedIndex < scrollOffset) {
-      setScrollOffset(selectedIndex);
-    } else if (selectedIndex >= scrollOffset + viewportHeight) {
-      setScrollOffset(selectedIndex - viewportHeight + 1);
-    }
-  }, [selectedIndex, viewportHeight]);
-
   const renderEngineersView = () => {
     const visibleEngineers = engineers.slice(
-      scrollOffset,
-      scrollOffset + viewportHeight
+      engineersNav.scrollOffset,
+      engineersNav.scrollOffset + visibleLines
     );
 
     const violations = engineers.filter((e) => e.projectCount >= 2).length;
@@ -206,8 +201,8 @@ export function EngineersView({ onBack, onHeaderChange }: EngineersViewProps) {
         </Box>
 
         {visibleEngineers.map((engineer, idx) => {
-          const actualIndex = scrollOffset + idx;
-          const isSelected = actualIndex === selectedIndex;
+          const actualIndex = engineersNav.scrollOffset + idx;
+          const isSelected = actualIndex === engineersNav.selectedIndex;
           const status = getMultiProjectStatus(engineer.projectCount);
 
           return (
@@ -252,8 +247,8 @@ export function EngineersView({ onBack, onHeaderChange }: EngineersViewProps) {
     if (!selectedEngineer) return null;
 
     const visibleProjects = selectedEngineer.projects.slice(
-      scrollOffset,
-      scrollOffset + viewportHeight
+      projectsNav.scrollOffset,
+      projectsNav.scrollOffset + visibleLines
     );
 
     return (
@@ -273,8 +268,8 @@ export function EngineersView({ onBack, onHeaderChange }: EngineersViewProps) {
         </Box>
 
         {visibleProjects.map((project, idx) => {
-          const actualIndex = scrollOffset + idx;
-          const isSelected = actualIndex === selectedIndex;
+          const actualIndex = projectsNav.scrollOffset + idx;
+          const isSelected = actualIndex === projectsNav.selectedIndex;
 
           return (
             <Box

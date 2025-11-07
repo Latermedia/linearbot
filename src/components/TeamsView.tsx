@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from "react";
-import { Box, Text, useInput, useStdout } from "ink";
+import { Box, Text, useInput } from "ink";
 import { getDatabase } from "../db/connection.js";
 import {
   hasNoRecentComment,
@@ -8,6 +8,8 @@ import {
   hasMissingPriority,
 } from "../utils/issue-validators.js";
 import { openIssue } from "../utils/browser-helpers.js";
+import { useListNavigation } from "../hooks/useListNavigation.js";
+import { useVisibleLines } from "../hooks/useVisibleLines.js";
 import type { Issue } from "../db/schema.js";
 
 interface TeamsViewProps {
@@ -30,14 +32,22 @@ interface TeamViolationSummary {
 }
 
 export function TeamsView({ onBack, onHeaderChange }: TeamsViewProps) {
-  const { stdout } = useStdout();
+  const visibleLines = useVisibleLines();
   const [mode, setMode] = useState<ViewMode>("teams");
   const [teams, setTeams] = useState<TeamViolationSummary[]>([]);
   const [selectedTeam, setSelectedTeam] = useState<TeamViolationSummary | null>(
     null
   );
-  const [selectedIndex, setSelectedIndex] = useState(0);
-  const [scrollOffset, setScrollOffset] = useState(0);
+
+  // Navigation for different modes
+  const teamsNav = useListNavigation(teams.length, visibleLines);
+  const issuesNav = useListNavigation(
+    selectedTeam?.issues.length || 0,
+    visibleLines
+  );
+
+  const { selectedIndex, scrollOffset } =
+    mode === "teams" ? teamsNav : issuesNav;
 
   useEffect(() => {
     loadTeams();
@@ -125,52 +135,32 @@ export function TeamsView({ onBack, onHeaderChange }: TeamsViewProps) {
         onBack();
       } else if (mode === "issues") {
         setMode("teams");
-        setSelectedIndex(0);
-        setScrollOffset(0);
+        teamsNav.reset();
       }
     } else if (input === "o" && mode === "issues" && selectedTeam) {
       // Open selected issue in browser
-      const issue = selectedTeam.issues[selectedIndex];
+      const issue = selectedTeam.issues[issuesNav.selectedIndex];
       if (issue) {
         openIssue(issue);
       }
     } else if (key.upArrow || input === "k") {
-      if (selectedIndex > 0) {
-        const newIndex = selectedIndex - 1;
-        setSelectedIndex(newIndex);
-
-        const terminalHeight = stdout?.rows || 24;
-        const visibleLines = Math.max(5, terminalHeight - 7);
-        if (newIndex < scrollOffset) {
-          setScrollOffset(newIndex);
-        }
+      if (mode === "teams") {
+        teamsNav.handleUp();
+      } else {
+        issuesNav.handleUp();
       }
     } else if (key.downArrow || input === "j") {
-      const maxIndex =
-        mode === "teams"
-          ? teams.length - 1
-          : (selectedTeam?.issues.length || 1) - 1;
-
-      if (selectedIndex < maxIndex) {
-        const newIndex = selectedIndex + 1;
-        setSelectedIndex(newIndex);
-
-        const terminalHeight = stdout?.rows || 24;
-        const visibleLines = Math.max(5, terminalHeight - 7);
-        if (newIndex >= scrollOffset + visibleLines) {
-          setScrollOffset(newIndex - visibleLines + 1);
-        }
+      if (mode === "teams") {
+        teamsNav.handleDown();
+      } else {
+        issuesNav.handleDown();
       }
     } else if (key.return && mode === "teams") {
-      setSelectedTeam(teams[selectedIndex]);
+      setSelectedTeam(teams[teamsNav.selectedIndex]);
       setMode("issues");
-      setSelectedIndex(0);
-      setScrollOffset(0);
+      issuesNav.reset();
     }
   });
-
-  const terminalHeight = stdout?.rows || 24;
-  const visibleLines = Math.max(5, terminalHeight - 7);
 
   if (teams.length === 0) {
     return (
@@ -201,10 +191,10 @@ export function TeamsView({ onBack, onHeaderChange }: TeamsViewProps) {
           </Box>
 
           {teams
-            .slice(scrollOffset, scrollOffset + visibleLines)
+            .slice(teamsNav.scrollOffset, teamsNav.scrollOffset + visibleLines)
             .map((team, displayIndex) => {
-              const actualIndex = scrollOffset + displayIndex;
-              const isSelected = actualIndex === selectedIndex;
+              const actualIndex = teamsNav.scrollOffset + displayIndex;
+              const isSelected = actualIndex === teamsNav.selectedIndex;
 
               return (
                 <Box key={`team-${team.teamKey}`}>
@@ -266,9 +256,9 @@ export function TeamsView({ onBack, onHeaderChange }: TeamsViewProps) {
           {teams.length > visibleLines && (
             <Box marginTop={1}>
               <Text dimColor>
-                Showing {scrollOffset + 1}-
-                {Math.min(scrollOffset + visibleLines, teams.length)} of{" "}
-                {teams.length}
+                Showing {teamsNav.scrollOffset + 1}-
+                {Math.min(teamsNav.scrollOffset + visibleLines, teams.length)}{" "}
+                of {teams.length}
               </Text>
             </Box>
           )}
@@ -287,10 +277,13 @@ export function TeamsView({ onBack, onHeaderChange }: TeamsViewProps) {
           </Box>
 
           {selectedTeam.issues
-            .slice(scrollOffset, scrollOffset + visibleLines)
+            .slice(
+              issuesNav.scrollOffset,
+              issuesNav.scrollOffset + visibleLines
+            )
             .map((issue, displayIndex) => {
-              const actualIndex = scrollOffset + displayIndex;
-              const isSelected = actualIndex === selectedIndex;
+              const actualIndex = issuesNav.scrollOffset + displayIndex;
+              const isSelected = actualIndex === issuesNav.selectedIndex;
               const title =
                 issue.title.length > 40
                   ? issue.title.substring(0, 37) + "..."
@@ -332,9 +325,9 @@ export function TeamsView({ onBack, onHeaderChange }: TeamsViewProps) {
           {selectedTeam.issues.length > visibleLines && (
             <Box marginTop={1}>
               <Text dimColor>
-                Showing {scrollOffset + 1}-
+                Showing {issuesNav.scrollOffset + 1}-
                 {Math.min(
-                  scrollOffset + visibleLines,
+                  issuesNav.scrollOffset + visibleLines,
                   selectedTeam.issues.length
                 )}{" "}
                 of {selectedTeam.issues.length}
