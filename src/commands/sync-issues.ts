@@ -211,6 +211,23 @@ export async function syncIssues(): Promise<void> {
 
     syncIssuesTransaction();
 
+    // Clean up old issues: remove issues that are no longer in "started" state
+    // These are issues in the DB but not in our current fetch
+    const fetchedIds = new Set(issues.map((i) => i.id));
+    const idsToDelete = Array.from(existingIds).filter(
+      (id) => !fetchedIds.has(id)
+    );
+
+    let cleanedCount = 0;
+    if (idsToDelete.length > 0) {
+      const placeholders = idsToDelete.map(() => "?").join(",");
+      const deleteStale = db.prepare(`
+        DELETE FROM issues WHERE id IN (${placeholders})
+      `);
+      const result = deleteStale.run(...idsToDelete);
+      cleanedCount = result.changes;
+    }
+
     // Remove any issues from ignored teams
     let removedCount = 0;
     if (ignoredTeamKeys.length > 0) {
@@ -231,6 +248,9 @@ export async function syncIssues(): Promise<void> {
 
     console.log("✓ Sync complete!\n");
     displaySyncSummary(newCount, updatedCount, totalCount);
+    if (cleanedCount > 0) {
+      console.log(`🧹 Cleaned up ${cleanedCount} issues no longer in WIP\n`);
+    }
     if (removedCount > 0) {
       console.log(`Removed ${removedCount} issues from ignored teams\n`);
     }
