@@ -1,5 +1,6 @@
 import { getDatabase } from "../db/connection.js";
 import { getDomainForTeam } from "../utils/domain-mapping.js";
+import { WIP_THRESHOLDS, PROJECT_THRESHOLDS, COMMENT_THRESHOLDS } from "../constants/thresholds.js";
 import type { Issue } from "../db/schema.js";
 import type {
   AssigneeViolation,
@@ -16,7 +17,7 @@ function hasNoRecentComment(issue: Issue): boolean {
   const lastComment = new Date(issue.last_comment_at);
   const now = new Date();
   const hoursDiff = (now.getTime() - lastComment.getTime()) / (1000 * 60 * 60);
-  return hoursDiff > 24;
+  return hoursDiff > COMMENT_THRESHOLDS.RECENT_HOURS;
 }
 
 /**
@@ -67,11 +68,11 @@ export function loadDashboardData(): DashboardData {
     if (name === "Unassigned") continue;
 
     const count = issues.length;
-    if (count > 5) {
+    if (count > WIP_THRESHOLDS.IDEAL) {
       violations.push({
         name,
         count,
-        status: count >= 8 ? "critical" : "warning",
+        status: count >= WIP_THRESHOLDS.CRITICAL ? "critical" : "warning",
       });
     }
   }
@@ -110,7 +111,7 @@ export function loadDashboardData(): DashboardData {
       teamIssuesByAssignee.get(assignee)?.push(issue);
     }
     const hasWipViolation = Array.from(teamIssuesByAssignee.values()).some(
-      (assigneeIssues) => assigneeIssues.length > 5
+      (assigneeIssues) => assigneeIssues.length > WIP_THRESHOLDS.IDEAL
     );
 
     if (
@@ -153,7 +154,7 @@ export function loadDashboardData(): DashboardData {
       }
     }
     const hasWipViolation = Array.from(assigneeCountsInDomain.values()).some(
-      (count) => count > 5
+      (count) => count > WIP_THRESHOLDS.IDEAL
     );
 
     if (
@@ -242,10 +243,10 @@ export function loadDashboardData(): DashboardData {
       projectState.includes("progress") || projectState.includes("started");
     const hasStatusMismatch = hasStartedIssues && !isProjectStarted;
 
-    const sevenDaysAgo = new Date();
-    sevenDaysAgo.setDate(sevenDaysAgo.getDate() - 7);
+    const cutoffDate = new Date();
+    cutoffDate.setDate(cutoffDate.getDate() - PROJECT_THRESHOLDS.STALE_DAYS);
     const isStale = issues[0].project_updated_at
-      ? new Date(issues[0].project_updated_at) < sevenDaysAgo
+      ? new Date(issues[0].project_updated_at) < cutoffDate
       : true;
 
     // Remove the engineerCount > 1 check - we're tracking that separately now

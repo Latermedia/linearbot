@@ -1,6 +1,12 @@
 import React, { useState, useEffect } from "react";
 import { Box, Text, useInput, useStdout } from "ink";
 import { getDatabase } from "../db/connection.js";
+import { getWIPStatus } from "../utils/status-helpers.js";
+import {
+  hasNoRecentComment,
+  getViolationIndicators,
+} from "../utils/issue-validators.js";
+import { openIssue } from "../utils/browser-helpers.js";
 import type { Issue } from "../db/schema.js";
 
 interface BrowseViewProps {
@@ -10,40 +16,6 @@ interface BrowseViewProps {
 
 type BrowseMode = "assignees" | "issues" | "detail";
 type SortMode = "count" | "name";
-
-interface WIPStatus {
-  emoji: string;
-  label: string;
-  color: string;
-}
-
-function getWIPStatus(count: number): WIPStatus {
-  if (count >= 8) {
-    return { emoji: "●", label: "CRITICAL", color: "red" };
-  } else if (count >= 6) {
-    return { emoji: "◉", label: "WARNING", color: "yellow" };
-  } else if (count >= 4) {
-    return { emoji: "○", label: "OK", color: "white" };
-  } else {
-    return { emoji: "✓", label: "GOOD", color: "green" };
-  }
-}
-
-function hasNoRecentComment(issue: Issue): boolean {
-  if (!issue.last_comment_at) return true;
-  const lastComment = new Date(issue.last_comment_at);
-  const now = new Date();
-  const hoursDiff = (now.getTime() - lastComment.getTime()) / (1000 * 60 * 60);
-  return hoursDiff > 24;
-}
-
-function getViolationIndicators(issue: Issue): string {
-  const indicators: string[] = [];
-  if (!issue.estimate) indicators.push("📏"); // Missing estimate
-  if (hasNoRecentComment(issue)) indicators.push("💬"); // No recent comment
-  if (issue.priority === 0) indicators.push("🔴"); // Missing/zero priority
-  return indicators.join(" ");
-}
 
 export function BrowseView({ onBack, onHeaderChange }: BrowseViewProps) {
   const { stdout } = useStdout();
@@ -180,13 +152,7 @@ export function BrowseView({ onBack, onHeaderChange }: BrowseViewProps) {
       const issues = issuesByAssignee.get(selectedAssignee) || [];
       const issue = issues[selectedIndex];
       if (issue) {
-        require("child_process").exec(
-          process.platform === "darwin"
-            ? `open "${issue.url}"`
-            : process.platform === "win32"
-            ? `start "${issue.url}"`
-            : `xdg-open "${issue.url}"`
-        );
+        openIssue(issue);
       }
     } else if (key.return) {
       if (mode === "assignees") {

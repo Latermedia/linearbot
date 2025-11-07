@@ -1,4 +1,5 @@
 import { LinearClient } from "@linear/sdk";
+import { PAGINATION, TIMEOUTS } from "../constants/thresholds.js";
 
 export interface LinearIssueData {
   id: string;
@@ -100,7 +101,7 @@ export class LinearAPIClient {
 
     while (hasMore) {
       const response: any = await this.client.client.rawRequest(query, {
-        first: 100,
+        first: PAGINATION.GRAPHQL_PAGE_SIZE,
         after: cursor,
       });
 
@@ -152,9 +153,9 @@ export class LinearAPIClient {
       }
 
       // Safety break to avoid infinite loops
-      if (pageCount > 100) {
+      if (pageCount > PAGINATION.MAX_PAGES) {
         console.warn(
-          "Warning: Fetched 100+ pages, stopping to avoid infinite loop"
+          `Warning: Fetched ${PAGINATION.MAX_PAGES}+ pages, stopping to avoid infinite loop`
         );
         break;
       }
@@ -234,7 +235,7 @@ export class LinearAPIClient {
 
       while (hasMore) {
         const response: any = await this.client.client.rawRequest(query, {
-          first: 100,
+          first: PAGINATION.GRAPHQL_PAGE_SIZE,
           after: cursor,
           projectId,
         });
@@ -290,9 +291,9 @@ export class LinearAPIClient {
         }
 
         // Safety break
-        if (pageCount > 100) {
+        if (pageCount > PAGINATION.MAX_PAGES) {
           console.warn(
-            `Warning: Fetched 100+ pages for project ${projectId}, stopping`
+            `Warning: Fetched ${PAGINATION.MAX_PAGES}+ pages for project ${projectId}, stopping`
           );
           break;
         }
@@ -390,7 +391,7 @@ export class LinearAPIClient {
     try {
       // Add a timeout to avoid hanging
       const timeoutPromise = new Promise<never>((_, reject) =>
-        setTimeout(() => reject(new Error("Connection timeout")), 10000)
+        setTimeout(() => reject(new Error("Connection timeout")), TIMEOUTS.API_TIMEOUT_MS)
       );
 
       await Promise.race([this.client.viewer, timeoutPromise]);

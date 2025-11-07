@@ -1,6 +1,8 @@
 import React, { useState, useEffect } from "react";
 import { Box, Text, useInput, useStdout } from "ink";
 import { getDatabase } from "../db/connection.js";
+import { getMultiProjectStatus } from "../utils/status-helpers.js";
+import { openIssue } from "../utils/browser-helpers.js";
 import type { Issue } from "../db/schema.js";
 
 interface EngineersViewProps {
@@ -22,24 +24,6 @@ interface ProjectInfo {
   issueCount: number;
   startedIssueCount: number;
   issues: Issue[];
-}
-
-interface MultiProjectStatus {
-  emoji: string;
-  label: string;
-  color: string;
-}
-
-function getMultiProjectStatus(count: number): MultiProjectStatus {
-  if (count >= 4) {
-    return { emoji: "●", label: "CRITICAL", color: "red" };
-  } else if (count >= 3) {
-    return { emoji: "◉", label: "WARNING", color: "yellow" };
-  } else if (count === 2) {
-    return { emoji: "○", label: "CAUTION", color: "white" };
-  } else {
-    return { emoji: "✓", label: "FOCUSED", color: "green" };
-  }
 }
 
 export function EngineersView({ onBack, onHeaderChange }: EngineersViewProps) {
@@ -176,14 +160,7 @@ export function EngineersView({ onBack, onHeaderChange }: EngineersViewProps) {
         // Open first issue from selected project in browser
         const project = selectedEngineer.projects[selectedIndex];
         if (project && project.issues.length > 0) {
-          const issue = project.issues[0];
-          require("child_process").exec(
-            process.platform === "darwin"
-              ? `open "${issue.url}"`
-              : process.platform === "win32"
-              ? `start "${issue.url}"`
-              : `xdg-open "${issue.url}"`
-          );
+          openIssue(project.issues[0]);
         }
       }
     }

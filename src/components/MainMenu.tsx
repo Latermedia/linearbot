@@ -7,6 +7,7 @@ import { BoxPanel, BoxPanelLine } from "./BoxPanel.js";
 import { performSync } from "../services/sync-service.js";
 import { loadDashboardData } from "../services/dashboard-service.js";
 import { commentOnUnassignedIssues } from "../services/comment-service.js";
+import { TIMEOUTS } from "../constants/thresholds.js";
 import type {
   AssigneeViolation,
   ProjectViolation,
@@ -116,7 +117,7 @@ export function MainMenu({ onSelectView }: MainMenuProps) {
       if (!result.success) {
         setSyncStatus("error");
         setErrorMessage(result.error || "Sync failed");
-        setTimeout(() => setSyncStatus("idle"), 3000);
+        setTimeout(() => setSyncStatus("idle"), TIMEOUTS.STATUS_MESSAGE_MS);
         return false;
       }
 
@@ -135,7 +136,7 @@ export function MainMenu({ onSelectView }: MainMenuProps) {
       setErrorMessage(
         error instanceof Error ? error.message : "An unknown error occurred"
       );
-      setTimeout(() => setSyncStatus("idle"), 3000);
+      setTimeout(() => setSyncStatus("idle"), TIMEOUTS.STATUS_MESSAGE_MS);
       return false;
     }
   };
@@ -149,7 +150,7 @@ export function MainMenu({ onSelectView }: MainMenuProps) {
       setTimeout(() => {
         setSyncStatus("idle");
         loadDashboard();
-      }, 3000);
+      }, TIMEOUTS.STATUS_MESSAGE_MS);
     }
   };
 
@@ -174,7 +175,7 @@ export function MainMenu({ onSelectView }: MainMenuProps) {
       if (!result.success) {
         setCommentStatus("error");
         setCommentErrorMessage(result.errorMessage || "Failed to comment on issues");
-        setTimeout(() => setCommentStatus("idle"), 3000);
+        setTimeout(() => setCommentStatus("idle"), TIMEOUTS.STATUS_MESSAGE_MS);
         return;
       }
 
@@ -191,7 +192,7 @@ export function MainMenu({ onSelectView }: MainMenuProps) {
       setCommentErrorMessage(
         error instanceof Error ? error.message : "Failed to comment on issues"
       );
-      setTimeout(() => setCommentStatus("idle"), 3000);
+      setTimeout(() => setCommentStatus("idle"), TIMEOUTS.STATUS_MESSAGE_MS);
     }
   };
 
@@ -540,8 +541,7 @@ export function MainMenu({ onSelectView }: MainMenuProps) {
                   missingEstimateCount +
                   noRecentCommentCount +
                   missingPriorityCount}
-                ) • (👤 {assigneeViolations.length} 📏 {missingEstimateCount} 💬{" "}
-                {noRecentCommentCount} 🔴 {missingPriorityCount})
+                )
               </Text>
               <Box marginLeft={2}>
                 <Text dimColor>

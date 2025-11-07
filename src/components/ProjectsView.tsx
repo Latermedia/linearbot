@@ -1,6 +1,13 @@
 import React, { useState, useEffect } from "react";
 import { Box, Text, useInput, useStdout } from "ink";
 import { getDatabase } from "../db/connection.js";
+import {
+  isProjectActive,
+  hasStatusMismatch,
+  isStaleUpdate,
+  isMissingLead,
+} from "../utils/status-helpers.js";
+import { openIssue, openProject } from "../utils/browser-helpers.js";
 import type { Issue } from "../db/schema.js";
 
 interface ProjectsViewProps {
@@ -38,49 +45,6 @@ interface ProjectSummary {
   teams: Set<string>;
   projectLeadName: string | null;
   missingLead: boolean;
-}
-
-function isProjectActive(issues: Issue[]): boolean {
-  // Project is active if it has started issues OR recent activity (within 14 days)
-  const hasStartedIssues = issues.some((i) => i.state_type === "started");
-  const twoWeeksAgo = new Date();
-  twoWeeksAgo.setDate(twoWeeksAgo.getDate() - 14);
-  const hasRecentActivity = issues.some(
-    (i) => new Date(i.updated_at) > twoWeeksAgo
-  );
-  return hasStartedIssues || hasRecentActivity;
-}
-
-function hasStatusMismatch(project: ProjectSummary, issues: Issue[]): boolean {
-  // Status mismatch if project state is not "started" but has active work
-  const hasStartedIssues = issues.some((i) => i.state_type === "started");
-  const projectState = project.projectState?.toLowerCase() || "";
-  const isProjectStarted =
-    projectState.includes("progress") ||
-    projectState.includes("started") ||
-    projectState === "started";
-  return hasStartedIssues && !isProjectStarted;
-}
-
-function isStaleUpdate(project: ProjectSummary): boolean {
-  // Check if project hasn't had any activity in 7+ days
-  // Use lastActivityDate (from issues) instead of projectUpdatedAt (from Linear's project metadata)
-  if (!project.lastActivityDate) return true;
-  const sevenDaysAgo = new Date();
-  sevenDaysAgo.setDate(sevenDaysAgo.getDate() - 7);
-  return new Date(project.lastActivityDate) < sevenDaysAgo;
-}
-
-function isMissingLead(project: ProjectSummary, issues: Issue[]): boolean {
-  // Project should have a lead if it has active work or is in an active state
-  const hasActiveWork = issues.some((i) => i.state_type === "started");
-  const projectState = project.projectState?.toLowerCase() || "";
-  const isActiveState =
-    projectState.includes("progress") ||
-    projectState.includes("started") ||
-    projectState === "started";
-
-  return (hasActiveWork || isActiveState) && !project.projectLeadName;
 }
 
 export function ProjectsView({ onBack, onHeaderChange }: ProjectsViewProps) {
@@ -189,11 +153,17 @@ export function ProjectsView({ onBack, onHeaderChange }: ProjectsViewProps) {
       };
 
       projectSummary.hasStatusMismatch = hasStatusMismatch(
-        projectSummary,
+        projectSummary.projectState,
         issues
       );
-      projectSummary.isStaleUpdate = isStaleUpdate(projectSummary);
-      projectSummary.missingLead = isMissingLead(projectSummary, issues);
+      projectSummary.isStaleUpdate = isStaleUpdate(
+        projectSummary.lastActivityDate
+      );
+      projectSummary.missingLead = isMissingLead(
+        projectSummary.projectState,
+        projectSummary.projectLeadName,
+        issues
+      );
 
       projects.set(projectId, projectSummary);
       projectGroups.set(projectId, issues);
@@ -290,21 +260,7 @@ export function ProjectsView({ onBack, onHeaderChange }: ProjectsViewProps) {
         // Get workspace from first issue URL
         const issues = issuesByProject.get(project.projectId) || [];
         if (issues.length > 0) {
-          const issueUrl = issues[0].url;
-          const workspaceMatch = issueUrl.match(
-            /https:\/\/linear\.app\/([^\/]+)/
-          );
-          if (workspaceMatch) {
-            const workspace = workspaceMatch[1];
-            const projectUrl = `https://linear.app/${workspace}/project/${project.projectId}`;
-            require("child_process").exec(
-              process.platform === "darwin"
-                ? `open "${projectUrl}"`
-                : process.platform === "win32"
-                ? `start "${projectUrl}"`
-                : `xdg-open "${projectUrl}"`
-            );
-          }
+          openProject(project.projectId, issues[0].url);
         }
       }
     } else if (input === "o" && mode === "issues" && selectedProject) {
@@ -312,13 +268,7 @@ export function ProjectsView({ onBack, onHeaderChange }: ProjectsViewProps) {
       const issues = issuesByProject.get(selectedProject.projectId) || [];
       const issue = issues[selectedIndex];
       if (issue) {
-        require("child_process").exec(
-          process.platform === "darwin"
-            ? `open "${issue.url}"`
-            : process.platform === "win32"
-            ? `start "${issue.url}"`
-            : `xdg-open "${issue.url}"`
-        );
+        openIssue(issue);
       }
     } else if (input === "s" && mode === "projects") {
       // Toggle sort mode for projects
@@ -607,10 +557,7 @@ export function ProjectsView({ onBack, onHeaderChange }: ProjectsViewProps) {
                   </Box>
                   {project.engineerCount > 5 && (
                     <Box paddingLeft={3}>
-                      <Text color="yellow">
-                        ⚠️{"  "}High engineer count (WIP constraint: 1 project
-                        per engineer)
-                      </Text>
+                      <Text color="blue">💡 High engineer count</Text>
                     </Box>
                   )}
                 </Box>

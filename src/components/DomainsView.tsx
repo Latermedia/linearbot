@@ -1,6 +1,13 @@
 import React, { useState, useEffect } from "react";
 import { Box, Text, useInput, useStdout } from "ink";
 import { getDatabase } from "../db/connection.js";
+import {
+  hasNoRecentComment,
+  getViolationIndicators,
+  hasMissingEstimate,
+  hasMissingPriority,
+} from "../utils/issue-validators.js";
+import { openIssue } from "../utils/browser-helpers.js";
 import type { Issue } from "../db/schema.js";
 import {
   getDomainForTeam,
@@ -40,14 +47,6 @@ interface TeamViolationSummary {
   wipViolations: number;
   totalViolations: number;
   issues: Issue[];
-}
-
-function hasNoRecentComment(issue: Issue): boolean {
-  if (!issue.last_comment_at) return true;
-  const lastComment = new Date(issue.last_comment_at);
-  const now = new Date();
-  const hoursDiff = (now.getTime() - lastComment.getTime()) / (1000 * 60 * 60);
-  return hoursDiff > 24;
 }
 
 export function DomainsView({ onBack, onHeaderChange }: DomainsViewProps) {
@@ -108,11 +107,9 @@ export function DomainsView({ onBack, onHeaderChange }: DomainsViewProps) {
     // Calculate violations per team
     const teamSummaries: TeamViolationSummary[] = [];
     for (const [teamKey, issues] of teamMap) {
-      const missingEstimate = issues.filter((i) => !i.estimate).length;
-      const noRecentComment = issues.filter((i) =>
-        hasNoRecentComment(i)
-      ).length;
-      const missingPriority = issues.filter((i) => i.priority === 0).length;
+      const missingEstimate = issues.filter(hasMissingEstimate).length;
+      const noRecentComment = issues.filter(hasNoRecentComment).length;
+      const missingPriority = issues.filter(hasMissingPriority).length;
 
       // Calculate WIP violations
       const teamMembers = new Set<string>();
@@ -244,13 +241,7 @@ export function DomainsView({ onBack, onHeaderChange }: DomainsViewProps) {
       // Open selected issue in browser
       const issue = selectedTeam.issues[selectedIndex];
       if (issue) {
-        require("child_process").exec(
-          process.platform === "darwin"
-            ? `open "${issue.url}"`
-            : process.platform === "win32"
-            ? `start "${issue.url}"`
-            : `xdg-open "${issue.url}"`
-        );
+        openIssue(issue);
       }
     } else if (key.upArrow || input === "k") {
       if (selectedIndex > 0) {
@@ -534,10 +525,7 @@ export function DomainsView({ onBack, onHeaderChange }: DomainsViewProps) {
                   ? issue.title.substring(0, 37) + "..."
                   : issue.title;
 
-              const violations: string[] = [];
-              if (!issue.estimate) violations.push("📏");
-              if (hasNoRecentComment(issue)) violations.push("💬");
-              if (issue.priority === 0) violations.push("🔴");
+              const violations = getViolationIndicators(issue);
 
               return (
                 <Box key={`issue-${issue.id}`}>
@@ -560,10 +548,10 @@ export function DomainsView({ onBack, onHeaderChange }: DomainsViewProps) {
                   <Text bold={isSelected} color={isSelected ? "cyan" : "white"}>
                     {title}
                   </Text>
-                  {violations.length > 0 && (
+                  {violations && (
                     <Text color={isSelected ? "cyan" : "yellow"}>
                       {" "}
-                      {violations.join(" ")}
+                      {violations}
                     </Text>
                   )}
                 </Box>

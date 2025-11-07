@@ -8,6 +8,7 @@ import {
 } from "../db/comment-tracking.js";
 import { logCommentCreated, logCommentFailed } from "../utils/write-log.js";
 import { performSync } from "./sync-service.js";
+import { COMMENT_THRESHOLDS, RATE_LIMITS } from "../constants/thresholds.js";
 import type { Issue } from "../db/schema.js";
 
 export interface CommentResult {
@@ -75,7 +76,7 @@ export async function commentOnUnassignedIssues(
     // Filter out issues we've commented on in the past 24 hours (local DB check)
     let issuesNeedingComments = unassignedIssues.filter(
       (issue) =>
-        !hasRecentComment(db, issue.id, COMMENT_TYPES.UNASSIGNED_WARNING, 24)
+        !hasRecentComment(db, issue.id, COMMENT_TYPES.UNASSIGNED_WARNING, COMMENT_THRESHOLDS.RECENT_HOURS)
     );
 
     const linearClient = createLinearClient();
@@ -92,7 +93,7 @@ export async function commentOnUnassignedIssues(
       const hasLinearComment = await linearClient.hasRecentCommentWithText(
         issue.id,
         messageIdentifier,
-        24
+        COMMENT_THRESHOLDS.RECENT_HOURS
       );
 
       if (!hasLinearComment) {
@@ -149,7 +150,7 @@ export async function commentOnUnassignedIssues(
         }
 
         // Small delay to avoid rate limiting
-        await new Promise((resolve) => setTimeout(resolve, 500));
+        await new Promise((resolve) => setTimeout(resolve, RATE_LIMITS.COMMENT_DELAY_MS));
       } catch (commentError) {
         // Log the failed comment with error details
         logCommentFailed(
