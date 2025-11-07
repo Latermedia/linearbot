@@ -622,7 +622,7 @@ export function MainMenu({ onSelectView }: MainMenuProps) {
 
       const linearClient = createLinearClient();
       const message =
-        "⚠️ **This issue requires an assignee**\n\nThis started issue is currently unassigned. Please assign an owner to ensure it gets proper attention and tracking.";
+        "⚠️  **This issue requires an assignee**\n\nThis started issue is currently unassigned. Please assign an owner to ensure it gets proper attention and tracking.";
 
       // Unique identifier in the message to search for
       const messageIdentifier = "This issue requires an assignee";

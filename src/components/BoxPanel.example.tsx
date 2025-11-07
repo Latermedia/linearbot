@@ -55,7 +55,7 @@ export function ConditionalExample({ errorCount }: { errorCount: number }) {
       <BoxPanel title="VIOLATIONS" width={45} marginBottom={2}>
         {errorCount > 0 ? (
           <BoxPanelLine>
-            <Text color="red">⚠️ {errorCount} violations found</Text>
+            <Text color="red">⚠️  {errorCount} violations found</Text>
           </BoxPanelLine>
         ) : (
           <BoxPanelLine>
