@@ -579,7 +579,8 @@ export function ProjectsView({ onBack, onHeaderChange }: ProjectsViewProps) {
                     {project.hasStatusMismatch && (
                       <Box>
                         <Text color="yellow">
-                          ⚠️ Marked "{project.projectState}" but has active work
+                          ⚠️{"  "}Marked "{project.projectState}" but has active
+                          work
                         </Text>
                       </Box>
                     )}
@@ -607,8 +608,8 @@ export function ProjectsView({ onBack, onHeaderChange }: ProjectsViewProps) {
                   {project.engineerCount > 5 && (
                     <Box paddingLeft={3}>
                       <Text color="yellow">
-                        ⚠️ High engineer count (WIP constraint: 1 project per
-                        engineer)
+                        ⚠️{"  "}High engineer count (WIP constraint: 1 project
+                        per engineer)
                       </Text>
                     </Box>
                   )}
@@ -644,7 +645,7 @@ export function ProjectsView({ onBack, onHeaderChange }: ProjectsViewProps) {
           {selectedProject.hasStatusMismatch && (
             <Box marginBottom={1}>
               <Text color="yellow">
-                ⚠️ Status Mismatch: Project status is "
+                ⚠️{"  "}Status Mismatch: Project status is "
                 {selectedProject.projectState || "unknown"}" but has active work
               </Text>
             </Box>

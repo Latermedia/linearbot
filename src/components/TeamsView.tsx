@@ -229,7 +229,7 @@ export function TeamsView({ onBack, onHeaderChange }: TeamsViewProps) {
                     </Text>
                   </Box>
                   <Text color={isSelected ? "cyan" : "white"}>
-                    (📋 {team.totalIssues} issues)
+                    📋 {team.totalIssues}
                   </Text>
                   {(team.wipViolations > 0 ||
                     team.missingEstimate > 0 ||
@@ -249,7 +249,6 @@ export function TeamsView({ onBack, onHeaderChange }: TeamsViewProps) {
                             : "white"
                         }
                       >
-                        🚨(
                         {team.wipViolations > 0 && `👤 ${team.wipViolations} `}
                         {team.missingEstimate > 0 &&
                           `📏 ${team.missingEstimate} `}
@@ -257,7 +256,6 @@ export function TeamsView({ onBack, onHeaderChange }: TeamsViewProps) {
                           `💬 ${team.noRecentComment} `}
                         {team.missingPriority > 0 &&
                           `🔴 ${team.missingPriority}`}
-                        )
                       </Text>
                     </>
                   )}

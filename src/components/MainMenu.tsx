@@ -1,20 +1,17 @@
 import React, { useState, useEffect } from "react";
 import { Box, Text, useInput } from "ink";
 import Spinner from "ink-spinner";
-import { getDatabase } from "../db/connection.js";
-import { createLinearClient } from "../linear/client.js";
 import type { View } from "./App.js";
 import type { Issue } from "../db/schema.js";
 import { BoxPanel, BoxPanelLine } from "./BoxPanel.js";
-import {
-  hasRecentComment,
-  logComment,
-  getUnassignedIssuesNeedingComments,
-  COMMENT_TYPES,
-  cleanupOldCommentLogs,
-} from "../db/comment-tracking.js";
-import { logCommentCreated, logCommentFailed } from "../utils/write-log.js";
-import { getDomainForTeam, ALL_DOMAINS } from "../utils/domain-mapping.js";
+import { performSync } from "../services/sync-service.js";
+import { loadDashboardData } from "../services/dashboard-service.js";
+import { commentOnUnassignedIssues } from "../services/comment-service.js";
+import type {
+  AssigneeViolation,
+  ProjectViolation,
+  EngineerMultiProjectViolation,
+} from "../types/violations.js";
 
 interface MainMenuProps {
   onSelectView: (view: View) => void;
@@ -29,25 +26,6 @@ type SyncStatus =
   | "complete"
   | "error";
 type CommentStatus = "idle" | "commenting" | "complete" | "error";
-
-interface AssigneeViolation {
-  name: string;
-  count: number;
-  status: "critical" | "warning" | "ok";
-}
-
-interface ProjectViolation {
-  name: string;
-  engineerCount: number;
-  hasStatusMismatch: boolean;
-  isStale: boolean;
-}
-
-interface EngineerMultiProjectViolation {
-  engineerName: string;
-  projectCount: number;
-  projects: string[];
-}
 
 export function MainMenu({ onSelectView }: MainMenuProps) {
   const [syncStatus, setSyncStatus] = useState<SyncStatus>("idle");
@@ -94,453 +72,61 @@ export function MainMenu({ onSelectView }: MainMenuProps) {
   const [domainsWithViolations, setDomainsWithViolations] = useState(0);
 
   useEffect(() => {
-    loadDashboardData();
+    loadDashboard();
   }, []);
 
-  const loadDashboardData = () => {
-    const db = getDatabase();
-
-    // Load assignee violations (started issues only, > 5 issues)
-    const startedIssues = db
-      .prepare(
-        `
-      SELECT * FROM issues WHERE state_type = 'started'
-    `
-      )
-      .all() as Issue[];
-
-    const issuesByAssignee = new Map<string, Issue[]>();
-    for (const issue of startedIssues) {
-      const assignee = issue.assignee_name || "Unassigned";
-      if (!issuesByAssignee.has(assignee)) {
-        issuesByAssignee.set(assignee, []);
-      }
-      issuesByAssignee.get(assignee)?.push(issue);
-    }
-
-    // Track unassigned issues separately (exclude Paused/Blocked - often intentional)
-    const unassignedIssues = issuesByAssignee.get("Unassigned");
-    const actionableUnassigned = unassignedIssues?.filter(
-      (issue) => issue.state_name !== "Paused" && issue.state_name !== "Blocked"
-    );
-    setUnassignedCount(actionableUnassigned?.length || 0);
-
-    const violations: AssigneeViolation[] = [];
-    for (const [name, issues] of issuesByAssignee) {
-      // Skip unassigned - they're tracked separately
-      if (name === "Unassigned") continue;
-
-      const count = issues.length;
-      if (count > 5) {
-        violations.push({
-          name,
-          count,
-          status: count >= 8 ? "critical" : "warning",
-        });
-      }
-    }
-    violations.sort((a, b) => b.count - a.count);
-    setAssigneeViolations(violations);
-
-    // Don't count unassigned in total assignees
-    setTotalAssignees(issuesByAssignee.size - (unassignedIssues ? 1 : 0));
-
-    // Calculate violation counts across all started issues
-    const missingEstimate = startedIssues.filter((i) => !i.estimate).length;
-    const noRecentComment = startedIssues.filter((i) => {
-      if (!i.last_comment_at) return true;
-      const lastComment = new Date(i.last_comment_at);
-      const now = new Date();
-      const hoursDiff =
-        (now.getTime() - lastComment.getTime()) / (1000 * 60 * 60);
-      return hoursDiff > 24;
-    }).length;
-    const missingPriority = startedIssues.filter(
-      (i) => i.priority === 0
-    ).length;
-
-    setMissingEstimateCount(missingEstimate);
-    setNoRecentCommentCount(noRecentComment);
-    setMissingPriorityCount(missingPriority);
-
-    // Calculate team statistics
-    const teamMap = new Map<string, Issue[]>();
-    for (const issue of startedIssues) {
-      const teamKey = issue.team_key;
-      if (!teamMap.has(teamKey)) {
-        teamMap.set(teamKey, []);
-      }
-      teamMap.get(teamKey)?.push(issue);
-    }
-
-    setTotalTeams(teamMap.size);
-
-    // Count teams with violations
-    let teamsWithViolationsCount = 0;
-    for (const [_, issues] of teamMap) {
-      const hasEstimateViolation = issues.some((i) => !i.estimate);
-      const hasCommentViolation = issues.some((i) => {
-        if (!i.last_comment_at) return true;
-        const lastComment = new Date(i.last_comment_at);
-        const now = new Date();
-        const hoursDiff =
-          (now.getTime() - lastComment.getTime()) / (1000 * 60 * 60);
-        return hoursDiff > 24;
-      });
-      const hasPriorityViolation = issues.some((i) => i.priority === 0);
-
-      // Check for WIP violations (assignees with > 5 issues)
-      const teamIssuesByAssignee = new Map<string, Issue[]>();
-      for (const issue of issues) {
-        const assignee = issue.assignee_name || "Unassigned";
-        if (!teamIssuesByAssignee.has(assignee)) {
-          teamIssuesByAssignee.set(assignee, []);
-        }
-        teamIssuesByAssignee.get(assignee)?.push(issue);
-      }
-      const hasWipViolation = Array.from(teamIssuesByAssignee.values()).some(
-        (assigneeIssues) => assigneeIssues.length > 5
-      );
-
-      if (
-        hasEstimateViolation ||
-        hasCommentViolation ||
-        hasPriorityViolation ||
-        hasWipViolation
-      ) {
-        teamsWithViolationsCount++;
-      }
-    }
-
-    setTeamsWithViolations(teamsWithViolationsCount);
-
-    // Calculate domain statistics
-    const domainMap = new Map<string, Issue[]>();
-    for (const issue of startedIssues) {
-      const domain = getDomainForTeam(issue.team_key);
-      if (domain) {
-        if (!domainMap.has(domain)) {
-          domainMap.set(domain, []);
-        }
-        domainMap.get(domain)?.push(issue);
-      }
-    }
-
-    setTotalDomains(domainMap.size);
-
-    // Count domains with violations
-    let domainsWithViolationsCount = 0;
-    for (const [_, issues] of domainMap) {
-      const hasEstimateViolation = issues.some((i) => !i.estimate);
-      const hasCommentViolation = issues.some((i) => {
-        if (!i.last_comment_at) return true;
-        const lastComment = new Date(i.last_comment_at);
-        const now = new Date();
-        const hoursDiff =
-          (now.getTime() - lastComment.getTime()) / (1000 * 60 * 60);
-        return hoursDiff > 24;
-      });
-      const hasPriorityViolation = issues.some((i) => i.priority === 0);
-
-      // Check for WIP violations (any assignee in domain with > 5 started issues)
-      const assigneeCountsInDomain = new Map<string, number>();
-      for (const issue of issues) {
-        if (issue.assignee_name) {
-          assigneeCountsInDomain.set(
-            issue.assignee_name,
-            (assigneeCountsInDomain.get(issue.assignee_name) || 0) + 1
-          );
-        }
-      }
-      const hasWipViolation = Array.from(assigneeCountsInDomain.values()).some(
-        (count) => count > 5
-      );
-
-      if (
-        hasEstimateViolation ||
-        hasCommentViolation ||
-        hasPriorityViolation ||
-        hasWipViolation
-      ) {
-        domainsWithViolationsCount++;
-      }
-    }
-
-    setDomainsWithViolations(domainsWithViolationsCount);
-
-    // Load engineers working on multiple projects
-    const startedProjectIssues = db
-      .prepare(
-        `
-      SELECT * FROM issues 
-      WHERE state_type = 'started' 
-      AND project_id IS NOT NULL 
-      AND assignee_name IS NOT NULL
-    `
-      )
-      .all() as Issue[];
-
-    // Group by engineer to see how many projects each is working on
-    const engineerProjects = new Map<string, Set<string>>();
-    const engineerProjectNames = new Map<string, Map<string, string>>();
-
-    for (const issue of startedProjectIssues) {
-      const engineerName = issue.assignee_name!;
-      const projectId = issue.project_id!;
-      const projectName = issue.project_name || "Unknown Project";
-
-      if (!engineerProjects.has(engineerName)) {
-        engineerProjects.set(engineerName, new Set());
-        engineerProjectNames.set(engineerName, new Map());
-      }
-
-      engineerProjects.get(engineerName)!.add(projectId);
-      engineerProjectNames.get(engineerName)!.set(projectId, projectName);
-    }
-
-    // Find engineers working on multiple projects
-    const multiProjectViolations: EngineerMultiProjectViolation[] = [];
-    for (const [engineerName, projectIds] of engineerProjects) {
-      if (projectIds.size > 1) {
-        const projectNamesList = Array.from(projectIds).map(
-          (id) => engineerProjectNames.get(engineerName)!.get(id)!
-        );
-
-        multiProjectViolations.push({
-          engineerName,
-          projectCount: projectIds.size,
-          projects: projectNamesList,
-        });
-      }
-    }
-
-    multiProjectViolations.sort((a, b) => b.projectCount - a.projectCount);
-    setEngineerMultiProjectViolations(multiProjectViolations);
-
-    // Load project violations (status mismatch and staleness only)
-    const allIssues = db
-      .prepare(`SELECT * FROM issues WHERE project_id IS NOT NULL`)
-      .all() as Issue[];
-
-    const projectGroups = new Map<string, Issue[]>();
-    for (const issue of allIssues) {
-      if (!issue.project_id) continue;
-      if (!projectGroups.has(issue.project_id)) {
-        projectGroups.set(issue.project_id, []);
-      }
-      projectGroups.get(issue.project_id)?.push(issue);
-    }
-
-    const projViolations: ProjectViolation[] = [];
-    for (const [projectId, issues] of projectGroups) {
-      const hasStartedIssues = issues.some((i) => i.state_type === "started");
-      if (!hasStartedIssues) continue; // Only active projects
-
-      const engineers = new Set(
-        issues.filter((i) => i.assignee_name).map((i) => i.assignee_name)
-      );
-
-      const projectState = issues[0].project_state?.toLowerCase() || "";
-      const isProjectStarted =
-        projectState.includes("progress") || projectState.includes("started");
-      const hasStatusMismatch = hasStartedIssues && !isProjectStarted;
-
-      const sevenDaysAgo = new Date();
-      sevenDaysAgo.setDate(sevenDaysAgo.getDate() - 7);
-      const isStale = issues[0].project_updated_at
-        ? new Date(issues[0].project_updated_at) < sevenDaysAgo
-        : true;
-
-      // Remove the engineerCount > 1 check - we're tracking that separately now
-      if (hasStatusMismatch || isStale) {
-        projViolations.push({
-          name: issues[0].project_name || "Unknown Project",
-          engineerCount: engineers.size,
-          hasStatusMismatch,
-          isStale,
-        });
-      }
-    }
-    projViolations.sort((a, b) => b.engineerCount - a.engineerCount);
-    setProjectViolations(projViolations);
-    setTotalProjects(projectGroups.size);
+  const loadDashboard = () => {
+    const data = loadDashboardData();
+    setAssigneeViolations(data.assigneeViolations);
+    setProjectViolations(data.projectViolations);
+    setEngineerMultiProjectViolations(data.engineerMultiProjectViolations);
+    setTotalAssignees(data.totalAssignees);
+    setTotalProjects(data.totalProjects);
+    setUnassignedCount(data.unassignedCount);
+    setMissingEstimateCount(data.missingEstimateCount);
+    setNoRecentCommentCount(data.noRecentCommentCount);
+    setMissingPriorityCount(data.missingPriorityCount);
+    setTotalTeams(data.totalTeams);
+    setTeamsWithViolations(data.teamsWithViolations);
+    setTotalDomains(data.totalDomains);
+    setDomainsWithViolations(data.domainsWithViolations);
   };
 
-  // Extract sync logic into a reusable function
-  const performSync = async (
+  const runSyncWithCallbacks = async (
     includeProjectSync: boolean = true
   ): Promise<boolean> => {
     try {
       setSyncStatus("connecting");
       setErrorMessage(null);
 
-      // Get ignored team keys
-      const ignoredTeamKeys = process.env.IGNORED_TEAM_KEYS
-        ? process.env.IGNORED_TEAM_KEYS.split(",").map((key) => key.trim())
-        : [];
+      // Update status as sync progresses
+      setSyncStatus("fetching");
 
-      // Connect to Linear
-      const linearClient = createLinearClient();
-      const connected = await linearClient.testConnection();
+      const result = await performSync(includeProjectSync, {
+        onIssueCountUpdate: setIssueCount,
+        onProjectCountUpdate: (count) => {
+          setProjectCount(count);
+          if (count > 0) {
+          setSyncStatus("fetching_projects");
+          }
+        },
+        onProjectIssueCountUpdate: setProjectIssueCount,
+      });
 
-      if (!connected) {
+      if (!result.success) {
         setSyncStatus("error");
-        setErrorMessage("Failed to connect to Linear. Check your API key.");
+        setErrorMessage(result.error || "Sync failed");
         setTimeout(() => setSyncStatus("idle"), 3000);
         return false;
       }
 
-      // Fetch issues
-      setSyncStatus("fetching");
-      const allIssues = await linearClient.fetchStartedIssues((count) => {
-        setIssueCount(count);
-      });
-
-      // Filter ignored teams
-      const startedIssues = allIssues.filter(
-        (issue) => !ignoredTeamKeys.includes(issue.teamKey)
-      );
-
-      // Phase 2: Fetch all issues for projects with active work (optional)
-      let projectIssues: typeof allIssues = [];
-
-      if (includeProjectSync) {
-        const activeProjectIds = new Set(
-          startedIssues
-            .filter((issue) => issue.projectId)
-            .map((issue) => issue.projectId as string)
-        );
-
-        setProjectCount(activeProjectIds.size);
-
-        if (activeProjectIds.size > 0) {
-          setSyncStatus("fetching_projects");
-          projectIssues = await linearClient.fetchIssuesByProjects(
-            Array.from(activeProjectIds),
-            (count) => {
-              setProjectIssueCount(count);
-            }
-          );
-        }
-      }
-
-      // Combine all issues and deduplicate
-      const allIssuesMap = new Map<string, (typeof allIssues)[0]>();
-      for (const issue of [...startedIssues, ...projectIssues]) {
-        allIssuesMap.set(issue.id, issue);
-      }
-      const issues = Array.from(allIssuesMap.values());
-
-      // Store in database
+      // Update UI with results
       setSyncStatus("storing");
-      const db = getDatabase();
-
-      const getExistingIssueIds = db.prepare(`SELECT id FROM issues`);
-      const existingIds = new Set(
-        (getExistingIssueIds.all() as { id: string }[]).map((row) => row.id)
-      );
-
-      const upsertIssue = db.prepare(`
-        INSERT INTO issues (
-          id, identifier, title, description, team_id, team_name, team_key,
-          state_id, state_name, state_type,
-          assignee_id, assignee_name, priority, estimate, last_comment_at,
-          created_at, updated_at, url,
-          project_id, project_name, project_state, project_updated_at,
-          project_lead_id, project_lead_name
-        )
-        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-        ON CONFLICT(id) DO UPDATE SET
-          identifier = excluded.identifier,
-          title = excluded.title,
-          description = excluded.description,
-          team_id = excluded.team_id,
-          team_name = excluded.team_name,
-          team_key = excluded.team_key,
-          state_id = excluded.state_id,
-          state_name = excluded.state_name,
-          state_type = excluded.state_type,
-          assignee_id = excluded.assignee_id,
-          assignee_name = excluded.assignee_name,
-          priority = excluded.priority,
-          estimate = excluded.estimate,
-          last_comment_at = excluded.last_comment_at,
-          updated_at = excluded.updated_at,
-          url = excluded.url,
-          project_id = excluded.project_id,
-          project_name = excluded.project_name,
-          project_state = excluded.project_state,
-          project_updated_at = excluded.project_updated_at,
-          project_lead_id = excluded.project_lead_id,
-          project_lead_name = excluded.project_lead_name
-      `);
-
-      let newIssues = 0;
-      let updatedIssues = 0;
-
-      const syncTransaction = db.transaction(() => {
-        for (const issue of issues) {
-          if (existingIds.has(issue.id)) {
-            updatedIssues++;
-          } else {
-            newIssues++;
-          }
-
-          upsertIssue.run(
-            issue.id,
-            issue.identifier,
-            issue.title,
-            issue.description,
-            issue.teamId,
-            issue.teamName,
-            issue.teamKey,
-            issue.stateId,
-            issue.stateName,
-            issue.stateType,
-            issue.assigneeId,
-            issue.assigneeName,
-            issue.priority,
-            issue.estimate,
-            issue.lastCommentAt ? issue.lastCommentAt.toISOString() : null,
-            issue.createdAt.toISOString(),
-            issue.updatedAt.toISOString(),
-            issue.url,
-            issue.projectId,
-            issue.projectName,
-            issue.projectState,
-            issue.projectUpdatedAt
-              ? issue.projectUpdatedAt.toISOString()
-              : null,
-            issue.projectLeadId,
-            issue.projectLeadName
-          );
-        }
-      });
-
-      syncTransaction();
-
-      // Remove ignored teams from database
-      if (ignoredTeamKeys.length > 0) {
-        const placeholders = ignoredTeamKeys.map(() => "?").join(",");
-        const deleteIgnored = db.prepare(`
-          DELETE FROM issues WHERE team_key IN (${placeholders})
-        `);
-        deleteIgnored.run(...ignoredTeamKeys);
-      }
-
-      // Get total count
-      const getTotalCount = db.prepare(`SELECT COUNT(*) as count FROM issues`);
-      const total = (getTotalCount.get() as { count: number }).count;
-
-      // Count started issues for reporting
-      const startedCount = issues.filter(
-        (i) => i.stateType === "started"
-      ).length;
-
-      setNewCount(newIssues);
-      setUpdatedCount(updatedIssues);
-      setTotalCount(total);
-      setIssueCount(startedCount);
+      setNewCount(result.newCount);
+      setUpdatedCount(result.updatedCount);
+      setTotalCount(result.totalCount);
+      setIssueCount(result.issueCount);
+      setProjectCount(result.projectCount);
       setSyncStatus("complete");
 
       return true;
@@ -556,13 +142,13 @@ export function MainMenu({ onSelectView }: MainMenuProps) {
 
   const runSync = async () => {
     // Full sync with project issues for complete dashboard data
-    const success = await performSync(true);
+    const success = await runSyncWithCallbacks(true);
 
     if (success) {
       // Reload dashboard data after sync
       setTimeout(() => {
         setSyncStatus("idle");
-        loadDashboardData();
+        loadDashboard();
       }, 3000);
     }
   };
@@ -574,146 +160,33 @@ export function MainMenu({ onSelectView }: MainMenuProps) {
       setCommentedCount(0);
       setCommentedIssues([]);
 
-      // Step 1: Sync first to get latest issue states (skip project sync - we only need started issues)
-      const syncSuccess = await performSync(false);
+      // Sync will happen inside the comment service
+      setSyncStatus("connecting");
 
-      if (!syncSuccess) {
-        setCommentStatus("error");
-        setCommentErrorMessage("Failed to sync issues before commenting");
-        setTimeout(() => setCommentStatus("idle"), 3000);
-        return;
-      }
+      const result = await commentOnUnassignedIssues({
+        onCommentedCountUpdate: setCommentedCount,
+        onCommentedIssuesUpdate: setCommentedIssues,
+      });
 
       // Reset sync status after sync completes
       setSyncStatus("idle");
 
-      // Step 2: Now proceed with commenting on fresh data
-      setCommentStatus("commenting");
-
-      const db = getDatabase();
-
-      // Clean up old logs periodically (optional, keeps DB lean)
-      cleanupOldCommentLogs(db);
-
-      // Get all unassigned issues from the freshly synced database
-      // Exclude Paused and Blocked states - these being unassigned is often intentional
-      const unassignedIssues = db
-        .prepare(
-          `
-        SELECT * FROM issues 
-        WHERE state_type = 'started' 
-          AND assignee_name IS NULL
-          AND state_name NOT IN ('Paused', 'Blocked')
-      `
-        )
-        .all() as Issue[];
-
-      if (unassignedIssues.length === 0) {
-        setCommentStatus("complete");
-        setTimeout(() => setCommentStatus("idle"), 2000);
+      if (!result.success) {
+        setCommentStatus("error");
+        setCommentErrorMessage(result.errorMessage || "Failed to comment on issues");
+        setTimeout(() => setCommentStatus("idle"), 3000);
         return;
       }
 
-      // Filter out issues we've commented on in the past 24 hours (local DB check)
-      let issuesNeedingComments = unassignedIssues.filter(
-        (issue) =>
-          !hasRecentComment(db, issue.id, COMMENT_TYPES.UNASSIGNED_WARNING, 24)
-      );
-
-      const linearClient = createLinearClient();
-      const message =
-        "⚠️  **This issue requires an assignee**\n\nThis started issue is currently unassigned. Please assign an owner to ensure it gets proper attention and tracking.";
-
-      // Unique identifier in the message to search for
-      const messageIdentifier = "This issue requires an assignee";
-
-      // Double-check against Linear API to catch any comments we didn't track
-      const finalIssuesNeedingComments: Issue[] = [];
-
-      for (const issue of issuesNeedingComments) {
-        const hasLinearComment = await linearClient.hasRecentCommentWithText(
-          issue.id,
-          messageIdentifier,
-          24
-        );
-
-        if (!hasLinearComment) {
-          finalIssuesNeedingComments.push(issue);
-        }
-      }
-
-      if (finalIssuesNeedingComments.length === 0) {
-        setCommentStatus("complete");
-        setCommentErrorMessage(
-          `All ${unassignedIssues.length} unassigned issues already have recent warnings (< 24h)`
-        );
-        return;
-      }
-
-      // Comment on all issues that need warnings
-      const successfullyCommented: Issue[] = [];
-      let failedCount = 0;
-
-      for (const issue of finalIssuesNeedingComments) {
-        try {
-          const success = await linearClient.commentOnIssue(issue.id, message);
-
-          if (success) {
-            // Log the successful comment to the write log
-            logCommentCreated(
-              issue.id,
-              issue.identifier,
-              issue.title,
-              issue.url,
-              COMMENT_TYPES.UNASSIGNED_WARNING,
-              message
-            );
-
-            // Log the comment to DB to prevent duplicates
-            logComment(db, issue.id, COMMENT_TYPES.UNASSIGNED_WARNING);
-
-            successfullyCommented.push(issue);
-            setCommentedCount(successfullyCommented.length);
-            setCommentedIssues([...successfullyCommented]);
-          } else {
-            // Log the failed comment
-            logCommentFailed(
-              issue.id,
-              issue.identifier,
-              issue.title,
-              issue.url,
-              COMMENT_TYPES.UNASSIGNED_WARNING,
-              "Comment API returned false"
-            );
-            failedCount++;
-          }
-
-          // Small delay to avoid rate limiting
-          await new Promise((resolve) => setTimeout(resolve, 500));
-        } catch (commentError) {
-          // Log the failed comment with error details
-          logCommentFailed(
-            issue.id,
-            issue.identifier,
-            issue.title,
-            issue.url,
-            COMMENT_TYPES.UNASSIGNED_WARNING,
-            commentError instanceof Error
-              ? commentError.message
-              : String(commentError)
-          );
-          failedCount++;
-        }
-      }
-
-      if (failedCount > 0) {
-        setCommentErrorMessage(
-          `Commented on ${successfullyCommented.length} issues, ${failedCount} failed`
-        );
+      setCommentedCount(result.commentedCount);
+      setCommentedIssues(result.commentedIssues);
+      if (result.errorMessage) {
+        setCommentErrorMessage(result.errorMessage);
       }
 
       setCommentStatus("complete");
     } catch (error) {
+      setSyncStatus("idle");
       setCommentStatus("error");
       setCommentErrorMessage(
         error instanceof Error ? error.message : "Failed to comment on issues"
