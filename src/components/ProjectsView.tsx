@@ -63,11 +63,12 @@ function hasStatusMismatch(project: ProjectSummary, issues: Issue[]): boolean {
 }
 
 function isStaleUpdate(project: ProjectSummary): boolean {
-  // Check if project hasn't been updated in 7+ days
-  if (!project.projectUpdatedAt) return true;
+  // Check if project hasn't had any activity in 7+ days
+  // Use lastActivityDate (from issues) instead of projectUpdatedAt (from Linear's project metadata)
+  if (!project.lastActivityDate) return true;
   const sevenDaysAgo = new Date();
   sevenDaysAgo.setDate(sevenDaysAgo.getDate() - 7);
-  return new Date(project.projectUpdatedAt) < sevenDaysAgo;
+  return new Date(project.lastActivityDate) < sevenDaysAgo;
 }
 
 function isMissingLead(project: ProjectSummary, issues: Issue[]): boolean {
