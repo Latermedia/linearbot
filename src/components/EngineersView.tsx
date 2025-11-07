@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from "react";
 import { Box, Text, useInput } from "ink";
-import { getDatabase } from "../db/connection.js";
+import { getStartedProjectIssuesWithAssignees } from "../db/queries.js";
 import { getMultiProjectStatus } from "../utils/status-helpers.js";
 import { openIssue } from "../utils/browser-helpers.js";
 import { useListNavigation } from "../hooks/useListNavigation.js";
@@ -57,18 +57,7 @@ export function EngineersView({ onBack, onHeaderChange }: EngineersViewProps) {
   }, [mode, selectedEngineer, onHeaderChange]);
 
   const loadEngineers = () => {
-    const db = getDatabase();
-    const startedProjectIssues = db
-      .prepare(
-        `
-        SELECT * FROM issues 
-        WHERE state_type = 'started' 
-        AND project_id IS NOT NULL 
-        AND assignee_name IS NOT NULL
-        ORDER BY assignee_name, project_name
-      `
-      )
-      .all() as Issue[];
+    const startedProjectIssues = getStartedProjectIssuesWithAssignees();
 
     // Group by engineer and then by project
     const engineerMap = new Map<string, Map<string, Issue[]>>();
@@ -230,11 +219,11 @@ export function EngineersView({ onBack, onHeaderChange }: EngineersViewProps) {
           );
         })}
 
-        {engineers.length > viewportHeight && (
+        {engineers.length > visibleLines && (
           <Box marginTop={1}>
             <Text dimColor>
-              Showing {scrollOffset + 1}-
-              {Math.min(scrollOffset + viewportHeight, engineers.length)} of{" "}
+              Showing {engineersNav.scrollOffset + 1}-
+              {Math.min(engineersNav.scrollOffset + visibleLines, engineers.length)} of{" "}
               {engineers.length}
             </Text>
           </Box>
@@ -318,12 +307,12 @@ export function EngineersView({ onBack, onHeaderChange }: EngineersViewProps) {
           );
         })}
 
-        {selectedEngineer.projects.length > viewportHeight && (
+        {selectedEngineer.projects.length > visibleLines && (
           <Box marginTop={1}>
             <Text dimColor>
-              Showing {scrollOffset + 1}-
+              Showing {projectsNav.scrollOffset + 1}-
               {Math.min(
-                scrollOffset + viewportHeight,
+                projectsNav.scrollOffset + visibleLines,
                 selectedEngineer.projects.length
               )}{" "}
               of {selectedEngineer.projects.length}

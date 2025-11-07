@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from "react";
 import { Box, Text, useInput } from "ink";
-import { getDatabase } from "../db/connection.js";
+import { getIssuesWithProjects } from "../db/queries.js";
 import {
   isProjectActive,
   hasStatusMismatch,
@@ -102,13 +102,7 @@ export function ProjectsView({ onBack, onHeaderChange }: ProjectsViewProps) {
   }, [mode, selectedTeam, selectedProject, projectsByTeam, onHeaderChange]);
 
   const loadProjects = () => {
-    const db = getDatabase();
-    const getIssues = db.prepare(`
-      SELECT * FROM issues
-      WHERE project_id IS NOT NULL
-      ORDER BY team_name, project_name, identifier
-    `);
-    const allIssues = getIssues.all() as Issue[];
+    const allIssues = getIssuesWithProjects();
 
     // Group issues by project
     const projectGroups = new Map<string, Issue[]>();

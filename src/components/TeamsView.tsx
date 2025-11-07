@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from "react";
 import { Box, Text, useInput } from "ink";
-import { getDatabase } from "../db/connection.js";
+import { getStartedIssues } from "../db/queries.js";
 import {
   hasNoRecentComment,
   getViolationIndicators,
@@ -65,10 +65,7 @@ export function TeamsView({ onBack, onHeaderChange }: TeamsViewProps) {
   }, [mode, selectedTeam, onHeaderChange]);
 
   const loadTeams = () => {
-    const db = getDatabase();
-    const startedIssues = db
-      .prepare(`SELECT * FROM issues WHERE state_type = 'started'`)
-      .all() as Issue[];
+    const startedIssues = getStartedIssues();
 
     // First, build a global map of all assignees to their TOTAL issue count across all teams
     const globalAssigneeIssueCount = new Map<string, number>();

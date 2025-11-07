@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from "react";
 import { Box, Text, useInput } from "ink";
-import { getDatabase } from "../db/connection.js";
+import { getStartedIssues } from "../db/queries.js";
 import {
   hasNoRecentComment,
   getViolationIndicators,
@@ -95,10 +95,7 @@ export function DomainsView({ onBack, onHeaderChange }: DomainsViewProps) {
   }, [mode, selectedDomain, selectedTeam, onHeaderChange]);
 
   const loadDomains = () => {
-    const db = getDatabase();
-    const startedIssues = db
-      .prepare(`SELECT * FROM issues WHERE state_type = 'started'`)
-      .all() as Issue[];
+    const startedIssues = getStartedIssues();
 
     // Build global assignee issue count
     const globalAssigneeIssueCount = new Map<string, number>();

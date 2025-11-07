@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from "react";
-import { Box, Text, useInput, useStdout } from "ink";
-import { getDatabase } from "../db/connection.js";
+import { Box, Text, useInput } from "ink";
+import { getStartedIssues } from "../db/queries.js";
 import { getWIPStatus } from "../utils/status-helpers.js";
 import {
   hasNoRecentComment,
@@ -20,7 +20,6 @@ type BrowseMode = "assignees" | "issues" | "detail";
 type SortMode = "count" | "name";
 
 export function BrowseView({ onBack, onHeaderChange }: BrowseViewProps) {
-  const { stdout } = useStdout();
   const visibleLines = useVisibleLines(11);
   const [mode, setMode] = useState<BrowseMode>("assignees");
   const [sortMode, setSortMode] = useState<SortMode>("count");
@@ -29,19 +28,20 @@ export function BrowseView({ onBack, onHeaderChange }: BrowseViewProps) {
   >(new Map());
   const [selectedAssignee, setSelectedAssignee] = useState<string | null>(null);
   const [selectedIssue, setSelectedIssue] = useState<Issue | null>(null);
-  
+
   // Navigation state for different modes
   const assigneeNav = useListNavigation(
     Array.from(issuesByAssignee.keys()).length,
     visibleLines
   );
   const issueNav = useListNavigation(
-    selectedAssignee ? (issuesByAssignee.get(selectedAssignee)?.length || 0) : 0,
+    selectedAssignee ? issuesByAssignee.get(selectedAssignee)?.length || 0 : 0,
     visibleLines
   );
-  
+
   // Get current navigation based on mode
-  const { selectedIndex, scrollOffset } = mode === "assignees" ? assigneeNav : issueNav;
+  const { selectedIndex, scrollOffset } =
+    mode === "assignees" ? assigneeNav : issueNav;
 
   useEffect(() => {
     loadIssues();
@@ -60,13 +60,7 @@ export function BrowseView({ onBack, onHeaderChange }: BrowseViewProps) {
   }, [mode, selectedAssignee, selectedIssue, issuesByAssignee, onHeaderChange]);
 
   const loadIssues = () => {
-    const db = getDatabase();
-    const getIssues = db.prepare(`
-      SELECT * FROM issues
-      WHERE state_type = 'started'
-      ORDER BY assignee_name, team_name, title
-    `);
-    const allIssues = getIssues.all() as Issue[];
+    const allIssues = getStartedIssues();
 
     const grouped = new Map<string, Issue[]>();
     for (const issue of allIssues) {
@@ -178,18 +172,19 @@ export function BrowseView({ onBack, onHeaderChange }: BrowseViewProps) {
             </Text>
           </Box>
           <Box marginBottom={1}>
-            <Text dimColor>
-              Navigate: ↑↓/j/k • Enter: Select
-            </Text>
+            <Text dimColor>Navigate: ↑↓/j/k • Enter: Select</Text>
           </Box>
           <Box marginBottom={2}>
             <Text dimColor>
-              📏 missing estimate  •  💬 no comment 24h  •  🔴 missing priority
+              📏 missing estimate • 💬 no comment 24h • 🔴 missing priority
             </Text>
           </Box>
 
           {sortedAssignees
-            .slice(assigneeNav.scrollOffset, assigneeNav.scrollOffset + visibleLines)
+            .slice(
+              assigneeNav.scrollOffset,
+              assigneeNav.scrollOffset + visibleLines
+            )
             .map(([assignee, issues], displayIndex) => {
               const actualIndex = assigneeNav.scrollOffset + displayIndex;
               const isSelected = actualIndex === assigneeNav.selectedIndex;
@@ -230,7 +225,7 @@ export function BrowseView({ onBack, onHeaderChange }: BrowseViewProps) {
                   <Text color={isSelected ? "cyan" : "white"}>{count}</Text>
                   {violationSummary.length > 0 && (
                     <>
-                      <Text>  </Text>
+                      <Text> </Text>
                       <Text color={isSelected ? "cyan" : "yellow"}>
                         {violationSummary.join(" ")}
                       </Text>
@@ -244,7 +239,10 @@ export function BrowseView({ onBack, onHeaderChange }: BrowseViewProps) {
             <Box marginTop={1}>
               <Text dimColor>
                 Showing {assigneeNav.scrollOffset + 1}-
-                {Math.min(assigneeNav.scrollOffset + visibleLines, sortedAssignees.length)}{" "}
+                {Math.min(
+                  assigneeNav.scrollOffset + visibleLines,
+                  sortedAssignees.length
+                )}{" "}
                 of {sortedAssignees.length}
               </Text>
             </Box>
@@ -261,7 +259,7 @@ export function BrowseView({ onBack, onHeaderChange }: BrowseViewProps) {
           </Box>
           <Box marginBottom={1}>
             <Text dimColor>
-              📏 missing estimate  •  💬 no comment 24h  •  🔴 missing priority
+              📏 missing estimate • 💬 no comment 24h • 🔴 missing priority
             </Text>
           </Box>
 

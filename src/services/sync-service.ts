@@ -1,6 +1,10 @@
-import { getDatabase } from "../db/connection.js";
 import { createLinearClient } from "../linear/client.js";
-import type { Issue } from "../db/schema.js";
+import {
+  getExistingIssueIds,
+  upsertIssue,
+  deleteIssuesByTeams,
+  getTotalIssueCount,
+} from "../db/queries.js";
 
 export interface SyncResult {
   success: boolean;
@@ -93,102 +97,57 @@ export async function performSync(
     const issues = Array.from(allIssuesMap.values());
 
     // Store in database
-    const db = getDatabase();
-
-    const getExistingIssueIds = db.prepare(`SELECT id FROM issues`);
-    const existingIds = new Set(
-      (getExistingIssueIds.all() as { id: string }[]).map((row) => row.id)
-    );
-
-    const upsertIssue = db.prepare(`
-      INSERT INTO issues (
-        id, identifier, title, description, team_id, team_name, team_key,
-        state_id, state_name, state_type,
-        assignee_id, assignee_name, priority, estimate, last_comment_at,
-        created_at, updated_at, url,
-        project_id, project_name, project_state, project_updated_at,
-        project_lead_id, project_lead_name
-      )
-      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-      ON CONFLICT(id) DO UPDATE SET
-        identifier = excluded.identifier,
-        title = excluded.title,
-        description = excluded.description,
-        team_id = excluded.team_id,
-        team_name = excluded.team_name,
-        team_key = excluded.team_key,
-        state_id = excluded.state_id,
-        state_name = excluded.state_name,
-        state_type = excluded.state_type,
-        assignee_id = excluded.assignee_id,
-        assignee_name = excluded.assignee_name,
-        priority = excluded.priority,
-        estimate = excluded.estimate,
-        last_comment_at = excluded.last_comment_at,
-        updated_at = excluded.updated_at,
-        url = excluded.url,
-        project_id = excluded.project_id,
-        project_name = excluded.project_name,
-        project_state = excluded.project_state,
-        project_updated_at = excluded.project_updated_at,
-        project_lead_id = excluded.project_lead_id,
-        project_lead_name = excluded.project_lead_name
-    `);
+    const existingIds = getExistingIssueIds();
 
     let newIssues = 0;
     let updatedIssues = 0;
 
-    const syncTransaction = db.transaction(() => {
-      for (const issue of issues) {
-        if (existingIds.has(issue.id)) {
-          updatedIssues++;
-        } else {
-          newIssues++;
-        }
-
-        upsertIssue.run(
-          issue.id,
-          issue.identifier,
-          issue.title,
-          issue.description,
-          issue.teamId,
-          issue.teamName,
-          issue.teamKey,
-          issue.stateId,
-          issue.stateName,
-          issue.stateType,
-          issue.assigneeId,
-          issue.assigneeName,
-          issue.priority,
-          issue.estimate,
-          issue.lastCommentAt ? issue.lastCommentAt.toISOString() : null,
-          issue.createdAt.toISOString(),
-          issue.updatedAt.toISOString(),
-          issue.url,
-          issue.projectId,
-          issue.projectName,
-          issue.projectState,
-          issue.projectUpdatedAt ? issue.projectUpdatedAt.toISOString() : null,
-          issue.projectLeadId,
-          issue.projectLeadName
-        );
+    for (const issue of issues) {
+      if (existingIds.has(issue.id)) {
+        updatedIssues++;
+      } else {
+        newIssues++;
       }
-    });
 
-    syncTransaction();
+      upsertIssue({
+        id: issue.id,
+        identifier: issue.identifier,
+        title: issue.title,
+        description: issue.description,
+        team_id: issue.teamId,
+        team_name: issue.teamName,
+        team_key: issue.teamKey,
+        state_id: issue.stateId,
+        state_name: issue.stateName,
+        state_type: issue.stateType,
+        assignee_id: issue.assigneeId,
+        assignee_name: issue.assigneeName,
+        priority: issue.priority,
+        estimate: issue.estimate,
+        last_comment_at: issue.lastCommentAt
+          ? issue.lastCommentAt.toISOString()
+          : null,
+        created_at: issue.createdAt.toISOString(),
+        updated_at: issue.updatedAt.toISOString(),
+        url: issue.url,
+        project_id: issue.projectId,
+        project_name: issue.projectName,
+        project_state: issue.projectState,
+        project_updated_at: issue.projectUpdatedAt
+          ? issue.projectUpdatedAt.toISOString()
+          : null,
+        project_lead_id: issue.projectLeadId,
+        project_lead_name: issue.projectLeadName,
+      });
+    }
 
     // Remove ignored teams from database
     if (ignoredTeamKeys.length > 0) {
-      const placeholders = ignoredTeamKeys.map(() => "?").join(",");
-      const deleteIgnored = db.prepare(`
-        DELETE FROM issues WHERE team_key IN (${placeholders})
-      `);
-      deleteIgnored.run(...ignoredTeamKeys);
+      deleteIssuesByTeams(ignoredTeamKeys);
     }
 
     // Get total count
-    const getTotalCount = db.prepare(`SELECT COUNT(*) as count FROM issues`);
-    const total = (getTotalCount.get() as { count: number }).count;
+    const total = getTotalIssueCount();
 
     // Count started issues for reporting
     const startedCount = issues.filter((i) => i.stateType === "started").length;
