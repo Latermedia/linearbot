@@ -14,6 +14,8 @@ export interface LinearIssueData {
   stateType: string;
   assigneeId: string | null;
   assigneeName: string | null;
+  creatorId: string | null;
+  creatorName: string | null;
   priority: number;
   estimate: number | null;
   lastCommentAt: Date | null;
@@ -80,6 +82,10 @@ export class LinearAPIClient {
               id
               name
             }
+            creator {
+              id
+              name
+            }
             project {
               id
               name
@@ -125,6 +131,8 @@ export class LinearAPIClient {
           stateType: issue.state.type,
           assigneeId: issue.assignee?.id || null,
           assigneeName: issue.assignee?.name || null,
+          creatorId: issue.creator?.id || null,
+          creatorName: issue.creator?.name || null,
           priority: issue.priority,
           estimate: issue.estimate || null,
           lastCommentAt: lastComment?.createdAt
@@ -214,6 +222,10 @@ export class LinearAPIClient {
                 id
                 name
               }
+              creator {
+                id
+                name
+              }
               project {
                 id
                 name
@@ -263,6 +275,8 @@ export class LinearAPIClient {
             stateType: issue.state.type,
             assigneeId: issue.assignee?.id || null,
             assigneeName: issue.assignee?.name || null,
+            creatorId: issue.creator?.id || null,
+            creatorName: issue.creator?.name || null,
             priority: issue.priority,
             estimate: issue.estimate || null,
             lastCommentAt: lastComment?.createdAt

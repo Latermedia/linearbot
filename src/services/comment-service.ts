@@ -80,9 +80,7 @@ export async function commentOnUnassignedIssues(
     );
 
     const linearClient = createLinearClient();
-    const message =
-      "⚠️  **This issue requires an assignee**\n\nThis started issue is currently unassigned. Please assign an owner to ensure it gets proper attention and tracking.";
-
+    
     // Unique identifier in the message to search for
     const messageIdentifier = "This issue requires an assignee";
 
@@ -117,6 +115,15 @@ export async function commentOnUnassignedIssues(
 
     for (const issue of finalIssuesNeedingComments) {
       try {
+        // Build message with optional creator @mention
+        let message = "⚠️  **This issue requires an assignee**\n\nThis started issue is currently unassigned.";
+        
+        if (issue.creator_name) {
+          message += ` Consider assigning to creator @${issue.creator_name} or designate appropriate owner.`;
+        } else {
+          message += " Please assign an owner to ensure it gets proper attention and tracking.";
+        }
+
         const success = await linearClient.commentOnIssue(issue.id, message);
 
         if (success) {

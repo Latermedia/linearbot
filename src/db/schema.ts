@@ -13,6 +13,8 @@ export interface Issue {
   state_type: string;
   assignee_id: string | null;
   assignee_name: string | null;
+  creator_id: string | null;
+  creator_name: string | null;
   priority: number;
   estimate: number | null;
   last_comment_at: string | null;
@@ -53,6 +55,8 @@ export function initializeDatabase(db: Database): void {
       state_type TEXT NOT NULL,
       assignee_id TEXT,
       assignee_name TEXT,
+      creator_id TEXT,
+      creator_name TEXT,
       priority INTEGER NOT NULL,
       estimate REAL,
       last_comment_at TEXT,
@@ -76,6 +80,18 @@ export function initializeDatabase(db: Database): void {
   }
   try {
     db.run(`ALTER TABLE issues ADD COLUMN project_lead_name TEXT`);
+  } catch (e) {
+    // Column already exists, ignore
+  }
+
+  // Add creator columns if they don't exist (migration)
+  try {
+    db.run(`ALTER TABLE issues ADD COLUMN creator_id TEXT`);
+  } catch (e) {
+    // Column already exists, ignore
+  }
+  try {
+    db.run(`ALTER TABLE issues ADD COLUMN creator_name TEXT`);
   } catch (e) {
     // Column already exists, ignore
   }

@@ -110,6 +110,8 @@ export function upsertIssue(issue: {
   state_type: string;
   assignee_id: string | null;
   assignee_name: string | null;
+  creator_id: string | null;
+  creator_name: string | null;
   priority: number | null;
   estimate: number | null;
   last_comment_at: string | null;
@@ -128,14 +130,16 @@ export function upsertIssue(issue: {
     INSERT INTO issues (
       id, identifier, title, description, team_id, team_name, team_key,
       state_id, state_name, state_type,
-      assignee_id, assignee_name, priority, estimate, last_comment_at,
+      assignee_id, assignee_name, creator_id, creator_name,
+      priority, estimate, last_comment_at,
       created_at, updated_at, url,
       project_id, project_name, project_state, project_updated_at,
       project_lead_id, project_lead_name
     ) VALUES (
       ?, ?, ?, ?, ?, ?, ?,
       ?, ?, ?,
-      ?, ?, ?, ?, ?,
+      ?, ?, ?, ?,
+      ?, ?, ?,
       ?, ?, ?,
       ?, ?, ?, ?,
       ?, ?
@@ -152,6 +156,8 @@ export function upsertIssue(issue: {
       state_type = excluded.state_type,
       assignee_id = excluded.assignee_id,
       assignee_name = excluded.assignee_name,
+      creator_id = excluded.creator_id,
+      creator_name = excluded.creator_name,
       priority = excluded.priority,
       estimate = excluded.estimate,
       last_comment_at = excluded.last_comment_at,
@@ -178,6 +184,8 @@ export function upsertIssue(issue: {
     issue.state_type,
     issue.assignee_id,
     issue.assignee_name,
+    issue.creator_id,
+    issue.creator_name,
     issue.priority,
     issue.estimate,
     issue.last_comment_at,

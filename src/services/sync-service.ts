@@ -122,6 +122,8 @@ export async function performSync(
         state_type: issue.stateType,
         assignee_id: issue.assigneeId,
         assignee_name: issue.assigneeName,
+        creator_id: issue.creatorId,
+        creator_name: issue.creatorName,
         priority: issue.priority,
         estimate: issue.estimate,
         last_comment_at: issue.lastCommentAt
