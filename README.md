@@ -21,7 +21,13 @@ Create `.env`:
 
 ```bash
 LINEAR_API_KEY=your_linear_api_key_here
-IGNORED_TEAM_KEYS=CS,MUX  # Optional: exclude teams
+
+# Optional: Exclude specific teams from sync
+IGNORED_TEAM_KEYS=CS,MUX
+
+# Optional: Team-to-domain mappings (enables Domains and Teams views)
+# Map your Linear team keys to logical domain groupings
+# TEAM_DOMAIN_MAPPINGS='{"FE":"Frontend","BE":"Backend","INFRA":"Platform","DATA":"Data"}'
 ```
 
 Run:
@@ -52,6 +58,39 @@ src/
   db/            # SQLite schema and connection
   linear/        # Linear API wrapper
   ui/            # Display utilities
+```
+
+## Configuration
+
+### Team Domain Mappings (Optional)
+
+Map your Linear team keys to logical domains to enable team and domain grouping views. Without this configuration, the tool works but won't show Teams/Domains views.
+
+**Example configurations:**
+
+```bash
+# Simple setup: Frontend, Backend, Platform
+TEAM_DOMAIN_MAPPINGS='{"WEB":"Frontend","MOBILE":"Frontend","API":"Backend","INFRA":"Platform","DEVOPS":"Platform"}'
+
+# Product-oriented: Map teams to product areas
+TEAM_DOMAIN_MAPPINGS='{"CART":"Shopping","CHECKOUT":"Shopping","SEARCH":"Discovery","RECS":"Discovery","ANALYTICS":"Data"}'
+
+# Org structure: Engineering divisions
+TEAM_DOMAIN_MAPPINGS='{"GROWTH":"Consumer","CREATOR":"Consumer","ADS":"B2B","INSIGHTS":"B2B","DATA":"Platform","INFRA":"Platform"}'
+```
+
+**How to find your team keys:**
+1. Open Linear → any issue
+2. Look at issue identifier (e.g., `ENG-123`)
+3. The prefix (`ENG`) is your team key
+
+### Ignoring Teams
+
+Exclude specific teams from syncing:
+
+```bash
+# Skip customer support and marketing teams
+IGNORED_TEAM_KEYS=CS,MKT,SALES
 ```
 
 ## WIP Constraints

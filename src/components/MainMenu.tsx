@@ -8,6 +8,7 @@ import { performSync } from "../services/sync-service.js";
 import { loadDashboardData } from "../services/dashboard-service.js";
 import { commentOnUnassignedIssues } from "../services/comment-service.js";
 import { TIMEOUTS } from "../constants/thresholds.js";
+import { hasDomainMappings } from "../utils/domain-mapping.js";
 import type {
   AssigneeViolation,
   ProjectViolation,
@@ -196,13 +197,15 @@ export function MainMenu({ onSelectView }: MainMenuProps) {
     }
   };
 
+  const domainMappingsEnabled = hasDomainMappings();
+
   useInput((input) => {
     // Handle keyboard shortcuts
     if (input === "s") {
       runSync();
-    } else if (input === "d") {
+    } else if (input === "d" && domainMappingsEnabled) {
       onSelectView("domains");
-    } else if (input === "t") {
+    } else if (input === "t" && domainMappingsEnabled) {
       onSelectView("teams");
     } else if (input === "i") {
       onSelectView("browse");
@@ -237,14 +240,18 @@ export function MainMenu({ onSelectView }: MainMenuProps) {
               s
             </Text>{" "}
             sync │{" "}
-            <Text color="cyan" bold>
-              d
-            </Text>{" "}
-            domains │{" "}
-            <Text color="cyan" bold>
-              t
-            </Text>{" "}
-            teams │{" "}
+            {domainMappingsEnabled && (
+              <>
+                <Text color="cyan" bold>
+                  d
+                </Text>{" "}
+                domains │{" "}
+                <Text color="cyan" bold>
+                  t
+                </Text>{" "}
+                teams │{" "}
+              </>
+            )}
             <Text color="cyan" bold>
               i
             </Text>{" "}
@@ -488,7 +495,7 @@ export function MainMenu({ onSelectView }: MainMenuProps) {
           </BoxPanel>
 
           {/* Domains Summary */}
-          {totalDomains > 0 && (
+          {domainMappingsEnabled && totalDomains > 0 && (
             <Box flexDirection="column" marginBottom={1}>
               <Text bold color="cyan">
                 🌐 DOMAINS ({domainsWithViolations}/{totalDomains} domains with
@@ -503,7 +510,7 @@ export function MainMenu({ onSelectView }: MainMenuProps) {
           )}
 
           {/* Teams Summary */}
-          {totalTeams > 0 && (
+          {domainMappingsEnabled && totalTeams > 0 && (
             <Box flexDirection="column" marginBottom={1}>
               <Text bold color="cyan">
                 🏢 TEAMS ({teamsWithViolations}/{totalTeams} teams with

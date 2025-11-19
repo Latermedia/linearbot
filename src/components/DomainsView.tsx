@@ -13,7 +13,7 @@ import { useVisibleLines } from "../hooks/useVisibleLines.js";
 import type { Issue } from "../db/schema.js";
 import {
   getDomainForTeam,
-  ALL_DOMAINS,
+  getAllDomains,
   type DomainName,
 } from "../utils/domain-mapping.js";
 
@@ -173,7 +173,7 @@ export function DomainsView({ onBack, onHeaderChange }: DomainsViewProps) {
 
     // Calculate domain summaries
     const domainSummaries: DomainViolationSummary[] = [];
-    for (const domainName of ALL_DOMAINS) {
+    for (const domainName of getAllDomains()) {
       const teams = domainMap.get(domainName) || [];
       if (teams.length === 0) continue;
 
