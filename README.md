@@ -30,18 +30,43 @@ IGNORED_TEAM_KEYS=CS,MUX
 # TEAM_DOMAIN_MAPPINGS='{"FE":"Frontend","BE":"Backend","INFRA":"Platform","DATA":"Data"}'
 ```
 
-Run:
+### Sync Data from Linear
+
+First, sync your Linear data to the local database:
 
 ```bash
-bun start
+bun run sync
 ```
+
+This will fetch all started issues and active projects from Linear.
+
+### Run Terminal App (Original TUI)
+
+```bash
+bun run start:cli
+```
+
+### Run Web App (New Timeline View)
+
+**Development:**
+```bash
+bun run dev
+```
+
+Then open http://localhost:5173 in your browser.
+
+**Important:** 
+- The web app requires Bun to run the API routes (uses `bun:sqlite`)
+- If you see runtime errors, make sure you're using `bun run dev` (not `npm run dev` or `vite dev`)
+- Make sure to run `bun run sync` first to populate the database
 
 ## Architecture
 
 **Stack:**
 
 - Bun (TypeScript runtime)
-- Ink (React for terminal UIs)
+- **Terminal App:** Ink (React for terminal UIs)
+- **Web App:** SvelteKit + shadcn/ui + Tailwind CSS
 - SQLite (local caching)
 - Linear GraphQL API
 
@@ -49,15 +74,24 @@ bun start
 
 - Two-phase sync: fetches started issues first, then complete project data
 - Local SQLite cache for fast dashboard rendering
+- Web app queries SQLite via API endpoints
 
 **Structure:**
 
 ```
-src/
-  components/     # Ink UI components (dashboard, browsers, panels)
-  db/            # SQLite schema and connection
-  linear/        # Linear API wrapper
+terminal/
+  components/    # Ink UI components (TUI dashboard)
+  hooks/         # Terminal-specific hooks
   ui/            # Display utilities
+  index.tsx      # Terminal app entry point
+
+src/
+  routes/        # SvelteKit pages and API endpoints
+  lib/           # Web app components, stores, utilities
+  db/            # SQLite schema and connection (shared)
+  services/      # Sync and dashboard services (shared)
+  linear/        # Linear API wrapper (shared)
+  utils/         # Helper functions (shared)
 ```
 
 ## Configuration

@@ -1,16 +1,16 @@
 import React, { useState, useEffect } from "react";
 import { Box, Text, useInput } from "ink";
-import { getIssuesWithProjects } from "../db/queries.js";
+import { getIssuesWithProjects } from "../src/db/queries.js";
 import {
   isProjectActive,
   hasStatusMismatch,
   isStaleUpdate,
   isMissingLead,
-} from "../utils/status-helpers.js";
-import { openIssue, openProject } from "../utils/browser-helpers.js";
+} from "../src/utils/status-helpers.js";
+import { openIssue, openProject } from "../src/utils/browser-helpers.js";
 import { useListNavigation } from "../hooks/useListNavigation.js";
 import { useVisibleLines } from "../hooks/useVisibleLines.js";
-import type { Issue } from "../db/schema.js";
+import type { Issue } from "../src/db/schema.js";
 
 interface ProjectsViewProps {
   onBack: () => void;

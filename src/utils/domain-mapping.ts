@@ -9,6 +9,13 @@ export interface DomainMapping {
 // Load team-to-domain mappings from environment variable
 // Returns empty object if not configured
 function loadTeamMappings(): DomainMapping {
+  // Check if we're in a server environment (Node/Bun)
+  if (typeof process === "undefined" || !process.env) {
+    // Browser environment - return empty mappings
+    // Domain info will come from the database/API
+    return {};
+  }
+
   const envMappings = process.env.TEAM_DOMAIN_MAPPINGS;
   if (envMappings) {
     try {
@@ -21,7 +28,12 @@ function loadTeamMappings(): DomainMapping {
   return {};
 }
 
-export const TEAM_TO_DOMAIN: DomainMapping = loadTeamMappings();
+let TEAM_TO_DOMAIN: DomainMapping = loadTeamMappings();
+
+// Initialize domain mappings (for browser)
+export function initializeDomainMappings(mappings: DomainMapping): void {
+  TEAM_TO_DOMAIN = mappings;
+}
 
 // Check if domain mappings are configured
 export function hasDomainMappings(): boolean {
@@ -41,4 +53,9 @@ export function getTeamsForDomain(domain: DomainName): string[] {
 // Get all unique domains from the mapping
 export function getAllDomains(): DomainName[] {
   return Array.from(new Set(Object.values(TEAM_TO_DOMAIN)));
+}
+
+// Get current mappings (for inspection)
+export function getDomainMappings(): DomainMapping {
+  return { ...TEAM_TO_DOMAIN };
 }

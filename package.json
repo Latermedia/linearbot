@@ -4,18 +4,39 @@
   "description": "A bot for Linear to help identify and resolve WIP constraints and other useful insights",
   "type": "module",
   "scripts": {
-    "start": "bun run src/index.tsx",
-    "dev": "bun --watch src/index.tsx"
+    "start:cli": "bun run terminal/index.tsx",
+    "dev:cli": "bun --watch terminal/index.tsx",
+    "sync": "bun run scripts/sync.ts",
+    "dev": "bun --bun vite dev",
+    "build": "vite build",
+    "preview": "bun --bun vite preview"
   },
   "dependencies": {
     "@inquirer/prompts": "^7.9.0",
     "@linear/sdk": "^35.0.0",
     "ink": "^6.3.1",
     "ink-spinner": "^5.0.0",
+    "lucide-svelte": "^0.554.0",
     "react": "^19.2.0"
   },
   "devDependencies": {
+    "@internationalized/date": "^3.8.1",
+    "@sveltejs/adapter-auto": "^7.0.0",
+    "@sveltejs/adapter-node": "^5.4.0",
+    "@sveltejs/kit": "^2.49.0",
+    "@sveltejs/vite-plugin-svelte": "^6.2.1",
+    "@tailwindcss/postcss": "^4.1.17",
     "@types/bun": "latest",
-    "@types/react": "^19.2.2"
+    "@types/react": "^19.2.2",
+    "autoprefixer": "^10.4.22",
+    "bits-ui": "^2.11.0",
+    "clsx": "^2.1.1",
+    "postcss": "^8.5.6",
+    "shadcn-svelte": "^1.0.12",
+    "svelte": "^5.43.14",
+    "tailwind-merge": "^3.4.0",
+    "tailwind-variants": "^3.1.1",
+    "tailwindcss": "^4.1.17",
+    "vite": "^7.2.4"
   }
 }

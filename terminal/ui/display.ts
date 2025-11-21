@@ -1,4 +1,4 @@
-import type { Issue } from "../db/schema.js";
+import type { Issue } from "../src/db/schema.js";
 
 export function displayIssues(issues: Issue[]): void {
   console.log("\nACTIVE ISSUES\n");

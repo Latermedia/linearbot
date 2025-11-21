@@ -5,6 +5,13 @@ node_modules/
 dist/
 build/
 
+# SvelteKit
+.svelte-kit/
+.vercel/
+.netlify/
+
 # Log files
 logs/
 *.log
+
+GOALS.md

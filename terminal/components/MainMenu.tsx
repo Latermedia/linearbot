@@ -2,18 +2,18 @@ import React, { useState, useEffect } from "react";
 import { Box, Text, useInput } from "ink";
 import Spinner from "ink-spinner";
 import type { View } from "./App.js";
-import type { Issue } from "../db/schema.js";
+import type { Issue } from "../src/db/schema.js";
 import { BoxPanel, BoxPanelLine } from "./BoxPanel.js";
-import { performSync } from "../services/sync-service.js";
-import { loadDashboardData } from "../services/dashboard-service.js";
-import { commentOnUnassignedIssues } from "../services/comment-service.js";
-import { TIMEOUTS } from "../constants/thresholds.js";
-import { hasDomainMappings } from "../utils/domain-mapping.js";
+import { performSync } from "../src/services/sync-service.js";
+import { loadDashboardData } from "../src/services/dashboard-service.js";
+import { commentOnUnassignedIssues } from "../src/services/comment-service.js";
+import { TIMEOUTS } from "../src/constants/thresholds.js";
+import { hasDomainMappings } from "../src/utils/domain-mapping.js";
 import type {
   AssigneeViolation,
   ProjectViolation,
   EngineerMultiProjectViolation,
-} from "../types/violations.js";
+} from "../src/types/violations.js";
 
 interface MainMenuProps {
   onSelectView: (view: View) => void;

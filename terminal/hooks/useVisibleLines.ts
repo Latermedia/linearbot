@@ -1,5 +1,5 @@
 import { useStdout } from "ink";
-import { UI_CONSTANTS } from "../constants/thresholds.js";
+import { UI_CONSTANTS } from "../src/constants/thresholds.js";
 
 /**
  * Hook to calculate visible lines in terminal based on terminal height

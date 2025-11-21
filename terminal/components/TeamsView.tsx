@@ -1,16 +1,16 @@
 import React, { useState, useEffect } from "react";
 import { Box, Text, useInput } from "ink";
-import { getStartedIssues } from "../db/queries.js";
+import { getStartedIssues } from "../src/db/queries.js";
 import {
   hasNoRecentComment,
   getViolationIndicators,
   hasMissingEstimate,
   hasMissingPriority,
-} from "../utils/issue-validators.js";
-import { openIssue } from "../utils/browser-helpers.js";
+} from "../src/utils/issue-validators.js";
+import { openIssue } from "../src/utils/browser-helpers.js";
 import { useListNavigation } from "../hooks/useListNavigation.js";
 import { useVisibleLines } from "../hooks/useVisibleLines.js";
-import type { Issue } from "../db/schema.js";
+import type { Issue } from "../src/db/schema.js";
 
 interface TeamsViewProps {
   onBack: () => void;

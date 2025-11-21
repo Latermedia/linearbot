@@ -1,11 +1,11 @@
 import React, { useState, useEffect } from "react";
 import { Box, Text, useInput } from "ink";
-import { getStartedProjectIssuesWithAssignees } from "../db/queries.js";
-import { getMultiProjectStatus } from "../utils/status-helpers.js";
-import { openIssue } from "../utils/browser-helpers.js";
+import { getStartedProjectIssuesWithAssignees } from "../src/db/queries.js";
+import { getMultiProjectStatus } from "../src/utils/status-helpers.js";
+import { openIssue } from "../src/utils/browser-helpers.js";
 import { useListNavigation } from "../hooks/useListNavigation.js";
 import { useVisibleLines } from "../hooks/useVisibleLines.js";
-import type { Issue } from "../db/schema.js";
+import type { Issue } from "../src/db/schema.js";
 
 interface EngineersViewProps {
   onBack: () => void;
