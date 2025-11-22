@@ -1,9 +1,27 @@
 @import 'tailwindcss';
+@custom-variant dark (&:where(.dark, .dark *));
 @import './lib/styles/theme.css';
 
 :root {
 	font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Roboto', 'Oxygen', 'Ubuntu',
 		'Cantarell', 'Fira Sans', 'Droid Sans', 'Helvetica Neue', sans-serif;
+}
+
+html {
+	transition: background-color 0.2s ease, color 0.2s ease;
+}
+
+body {
+	transition: background-color 0.2s ease, color 0.2s ease;
+}
+
+/* Smooth theme transitions for all elements */
+*,
+*::before,
+*::after {
+	transition-property: background-color, border-color, color, fill, stroke;
+	transition-timing-function: cubic-bezier(0.4, 0, 0.2, 1);
+	transition-duration: 0.2s;
 }
 
 .dark {
@@ -13,5 +31,10 @@
 body {
 	margin: 0;
 	padding: 0;
+	background-color: white;
+}
+
+.dark body {
+	background-color: #0a0a0a;
 }
 

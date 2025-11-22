@@ -152,12 +152,12 @@
 
 <div class="flex flex-col sm:flex-row items-start sm:items-center gap-4">
   <div class="text-sm">
-    <div class="text-neutral-400">
-      Last sync: <span class="font-medium text-white"
+    <div class="text-neutral-600 dark:text-neutral-400">
+      Last sync: <span class="font-medium text-neutral-900 dark:text-white"
         >{formatLastSync(lastSync)}</span
       >
     </div>
-    <div class="text-xs text-neutral-500">
+    <div class="text-xs text-neutral-500 dark:text-neutral-500">
       {formatDateTime(lastSync)}
     </div>
   </div>

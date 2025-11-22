@@ -46,10 +46,12 @@
     class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4"
   >
     <div>
-      <h2 class="text-xl font-semibold tracking-tight text-white">
+      <h2
+        class="text-xl font-semibold tracking-tight text-neutral-900 dark:text-white"
+      >
         Project Timeline
       </h2>
-      <p class="text-neutral-400 text-sm mt-1">
+      <p class="text-neutral-600 dark:text-neutral-400 text-sm mt-1">
         View active projects across teams and domains
       </p>
     </div>
@@ -60,18 +62,28 @@
   {#if !loading && !error && teams.length > 0}
     <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
       <Card>
-        <div class="text-xs text-neutral-500 mb-1">Total Teams</div>
-        <div class="text-2xl font-semibold text-white">{teams.length}</div>
+        <div class="text-xs text-neutral-500 dark:text-neutral-500 mb-1">
+          Total Teams
+        </div>
+        <div class="text-2xl font-semibold text-neutral-900 dark:text-white">
+          {teams.length}
+        </div>
       </Card>
       <Card>
-        <div class="text-xs text-neutral-500 mb-1">Active Projects</div>
-        <div class="text-2xl font-semibold text-white">
+        <div class="text-xs text-neutral-500 dark:text-neutral-500 mb-1">
+          Active Projects
+        </div>
+        <div class="text-2xl font-semibold text-neutral-900 dark:text-white">
           {projects.size}
         </div>
       </Card>
       <Card>
-        <div class="text-xs text-neutral-500 mb-1">Domains</div>
-        <div class="text-2xl font-semibold text-white">{domains.length}</div>
+        <div class="text-xs text-neutral-500 dark:text-neutral-500 mb-1">
+          Domains
+        </div>
+        <div class="text-2xl font-semibold text-neutral-900 dark:text-white">
+          {domains.length}
+        </div>
       </Card>
     </div>
   {/if}
@@ -103,21 +115,23 @@
     </div>
   {:else if error}
     <Card class="border-red-500/50">
-      <div class="text-sm font-medium text-red-400 mb-3">
+      <div class="text-sm font-medium text-red-600 dark:text-red-400 mb-3">
         Error Loading Data
       </div>
-      <p class="text-neutral-400 mb-3">{error}</p>
-      <p class="text-sm text-neutral-500">
+      <p class="text-neutral-700 dark:text-neutral-400 mb-3">{error}</p>
+      <p class="text-sm text-neutral-600 dark:text-neutral-500">
         Make sure the database is synced. Run: <code
-          class="bg-neutral-800 px-2 py-1 rounded font-mono text-xs text-neutral-300"
+          class="bg-neutral-100 dark:bg-neutral-800 px-2 py-1 rounded font-mono text-xs text-neutral-700 dark:text-neutral-300"
           >bun run sync</code
         >
       </p>
     </Card>
   {:else if teams.length === 0}
     <Card>
-      <div class="text-sm font-medium text-white mb-3">No Projects Found</div>
-      <p class="text-neutral-400">
+      <div class="text-sm font-medium text-neutral-900 dark:text-white mb-3">
+        No Projects Found
+      </div>
+      <p class="text-neutral-700 dark:text-neutral-400">
         No active projects with started issues. Sync your Linear data to see
         projects.
       </p>

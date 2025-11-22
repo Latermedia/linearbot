@@ -8,7 +8,11 @@
 			// Prevent flash of unstyled content - set theme before page loads
 			try {
 				const theme = localStorage.getItem('linear-bot-theme') || 'dark';
-				document.documentElement.classList.add(theme);
+				if (theme === 'dark') {
+					document.documentElement.classList.add('dark');
+				} else {
+					document.documentElement.classList.remove('dark');
+				}
 			} catch (e) {
 				document.documentElement.classList.add('dark');
 			}

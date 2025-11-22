@@ -277,7 +277,7 @@ Standard:   rounded-md (6px) — max for cards, containers
 
 ```html
 <div
-  class="flex justify-center items-center w-6 h-6 text-xs font-medium text-white bg-gradient-to-br from-violet-500 to-fuchsia-500 rounded-full"
+  class="flex justify-center items-center w-6 h-6 text-xs font-medium text-white from-violet-500 to-fuchsia-500 rounded-full bg-linear-to-br"
 >
   JD
 </div>
@@ -456,7 +456,7 @@ Since this system is dark-mode-first:
 
   <!-- Assignee -->
   <div
-    class="w-5 h-5 bg-gradient-to-br from-cyan-500 to-blue-500 rounded-full"
+    class="w-5 h-5 from-cyan-500 to-blue-500 rounded-full bg-linear-to-br"
   ></div>
 
   <!-- Date -->

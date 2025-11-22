@@ -101,14 +101,18 @@
 
 <div class="space-y-6">
   <!-- Timeline header -->
-  <div class="sticky top-0 z-10 border-b border-white/10 bg-neutral-950 pb-2">
+  <div
+    class="sticky top-0 z-10 border-b border-neutral-200 dark:border-white/10 bg-white dark:bg-neutral-950 pb-2"
+  >
     <div class="grid grid-cols-[200px_1fr] gap-4">
-      <div class="text-sm font-medium text-white">
+      <div class="text-sm font-medium text-neutral-900 dark:text-white">
         {groupBy === "team" ? "Team / Project" : "Domain / Project"}
       </div>
       <div class="grid grid-cols-12 gap-1">
         {#each months as month}
-          <div class="text-xs font-medium text-center text-neutral-400">
+          <div
+            class="text-xs font-medium text-center text-neutral-600 dark:text-neutral-400"
+          >
             {formatMonth(month)}
           </div>
         {/each}
@@ -120,7 +124,9 @@
   {#if groupBy === "team"}
     {#each teams as team}
       <div class="space-y-2">
-        <h3 class="text-lg font-medium text-white">{team.teamName}</h3>
+        <h3 class="text-lg font-medium text-neutral-900 dark:text-white">
+          {team.teamName}
+        </h3>
         {#each team.projects as project}
           {@const position = getProjectPosition(project)}
           {@const color = getProjectColor(project)}
@@ -129,8 +135,12 @@
           <div class="grid grid-cols-[200px_1fr] gap-4 items-center">
             <!-- Project name -->
             <div class="text-sm truncate" title={project.projectName}>
-              <span class="font-medium text-white">{project.projectName}</span>
-              <span class="text-neutral-500 text-xs ml-2">{progress}%</span>
+              <span class="font-medium text-neutral-900 dark:text-white"
+                >{project.projectName}</span
+              >
+              <span class="text-neutral-500 dark:text-neutral-500 text-xs ml-2"
+                >{progress}%</span
+              >
             </div>
 
             <!-- Timeline bar -->
@@ -165,8 +175,12 @@
           <div class="grid grid-cols-[200px_1fr] gap-4 items-center">
             <!-- Project name -->
             <div class="text-sm truncate" title={project.projectName}>
-              <span class="font-medium text-white">{project.projectName}</span>
-              <span class="text-neutral-500 text-xs ml-2">{progress}%</span>
+              <span class="font-medium text-neutral-900 dark:text-white"
+                >{project.projectName}</span
+              >
+              <span class="text-neutral-500 dark:text-neutral-500 text-xs ml-2"
+                >{progress}%</span
+              >
             </div>
 
             <!-- Timeline bar -->
@@ -191,7 +205,9 @@
   <!-- Legend -->
   <Card class="mt-6">
     <div class="px-4 pt-4">
-      <div class="text-sm font-medium text-white mb-3">Legend</div>
+      <div class="text-sm font-medium text-neutral-900 dark:text-white mb-3">
+        Legend
+      </div>
     </div>
     <div class="px-4 pb-4">
       <div class="flex flex-wrap gap-4 text-xs text-neutral-400">
