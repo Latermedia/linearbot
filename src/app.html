@@ -11,16 +11,22 @@
 				if (theme === 'dark') {
 					document.documentElement.classList.add('dark');
 					document.documentElement.style.backgroundColor = '#0a0a0a';
-					document.body.style.backgroundColor = '#0a0a0a';
+					if (document.body) {
+						document.body.style.backgroundColor = '#0a0a0a';
+					}
 				} else {
 					document.documentElement.classList.remove('dark');
 					document.documentElement.style.backgroundColor = 'white';
-					document.body.style.backgroundColor = 'white';
+					if (document.body) {
+						document.body.style.backgroundColor = 'white';
+					}
 				}
 			} catch (e) {
 				document.documentElement.classList.add('dark');
 				document.documentElement.style.backgroundColor = '#0a0a0a';
-				document.body.style.backgroundColor = '#0a0a0a';
+				if (document.body) {
+					document.body.style.backgroundColor = '#0a0a0a';
+				}
 			}
 		</script>
 		%sveltekit.head%
