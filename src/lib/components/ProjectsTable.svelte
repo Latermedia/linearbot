@@ -33,7 +33,9 @@
   }
 
   function hasHealthIssues(project: ProjectSummary): boolean {
-    return project.hasStatusMismatch || project.isStaleUpdate || project.missingLead;
+    return (
+      project.hasStatusMismatch || project.isStaleUpdate || project.missingLead
+    );
   }
 
   function formatDate(dateStr: string | null): string {
@@ -45,31 +47,68 @@
     });
   }
 
-  function getHealthDisplay(health: string | null): { 
-    text: string; 
+  function formatRelativeDate(dateStr: string | null): string {
+    if (!dateStr) return "N/A";
+    const date = new Date(dateStr);
+    const now = new Date();
+    const diffMs = now.getTime() - date.getTime();
+    const diffDays = Math.floor(diffMs / (1000 * 60 * 60 * 24));
+
+    if (diffDays === 0) return "Today";
+    if (diffDays === 1) return "Yesterday";
+    if (diffDays < 7) return `${diffDays}d ago`;
+    if (diffDays < 30) return `${Math.floor(diffDays / 7)}w ago`;
+    if (diffDays < 365) return `${Math.floor(diffDays / 30)}mo ago`;
+    return `${Math.floor(diffDays / 365)}y ago`;
+  }
+
+  function getBacklogCount(project: ProjectSummary): number {
+    const backlogStates = ["backlog", "todo", "unstarted"];
+    let count = 0;
+    for (const [state, stateCount] of project.issuesByState) {
+      if (backlogStates.includes(state.toLowerCase())) {
+        count += stateCount;
+      }
+    }
+    return count;
+  }
+
+  function getHealthDisplay(health: string | null): {
+    text: string;
     variant: "default" | "destructive" | "secondary" | "outline";
     colorClass: string;
   } {
     if (!health) {
       return { text: "—", variant: "outline", colorClass: "" };
     }
-    
+
     const healthLower = health.toLowerCase();
     if (healthLower === "ontrack" || healthLower === "on track") {
-      return { text: "On Track", variant: "default", colorClass: "!text-green-600 dark:!text-green-500" };
+      return {
+        text: "On Track",
+        variant: "default",
+        colorClass: "!text-green-600 dark:!text-green-500",
+      };
     }
     if (healthLower === "atrisk" || healthLower === "at risk") {
-      return { text: "At Risk", variant: "default", colorClass: "!text-amber-600 dark:!text-amber-500" };
+      return {
+        text: "At Risk",
+        variant: "default",
+        colorClass: "!text-amber-600 dark:!text-amber-500",
+      };
     }
     if (healthLower === "offtrack" || healthLower === "off track") {
       return { text: "Off Track", variant: "destructive", colorClass: "" };
     }
-    
+
     // Fallback for any other values
     return { text: health, variant: "outline", colorClass: "" };
   }
 
-  function handleRowMouseEnter(event: MouseEvent, project: ProjectSummary): void {
+  function handleRowMouseEnter(
+    event: MouseEvent,
+    project: ProjectSummary
+  ): void {
     hoveredProject = project;
     tooltipPosition = { x: event.clientX, y: event.clientY };
   }
@@ -125,12 +164,24 @@
                     >Progress & Issues</th
                   >
                   <th
+                    class="text-left py-3 px-2 text-sm font-medium text-neutral-600 dark:text-neutral-400 w-[100px]"
+                    >State</th
+                  >
+                  <th
                     class="text-left py-3 px-2 text-sm font-medium text-neutral-600 dark:text-neutral-400 w-[140px]"
                     >Health</th
                   >
                   <th
                     class="text-left py-3 px-2 text-sm font-medium text-neutral-600 dark:text-neutral-400 w-[100px]"
                     >Engineers</th
+                  >
+                  <th
+                    class="text-left py-3 px-2 text-sm font-medium text-neutral-600 dark:text-neutral-400 w-[100px]"
+                    >Start Date</th
+                  >
+                  <th
+                    class="text-left py-3 px-2 text-sm font-medium text-neutral-600 dark:text-neutral-400 w-[100px]"
+                    >Last Activity</th
                   >
                   <th
                     class="text-left py-3 px-2 text-sm font-medium text-neutral-600 dark:text-neutral-400 w-[120px]"
@@ -144,7 +195,10 @@
                   {@const completedPercent = getCompletedPercent(project)}
                   {@const wipPercent = getWIPPercent(project)}
                   {@const hasIssues = hasHealthIssues(project)}
-                  {@const healthDisplay = getHealthDisplay(project.projectHealth)}
+                  {@const healthDisplay = getHealthDisplay(
+                    project.projectHealth
+                  )}
+                  {@const backlogCount = getBacklogCount(project)}
                   <tr
                     class="border-b border-neutral-200 dark:border-white/5 hover:bg-neutral-50 dark:hover:bg-white/5 transition-colors duration-150 cursor-pointer"
                     onmouseenter={(e) => handleRowMouseEnter(e, project)}
@@ -158,8 +212,7 @@
                       {#if hasIssues}
                         <span
                           class="text-amber-400 text-sm"
-                          title="Health check failed"
-                          >⚠️</span
+                          title="Health check failed">⚠️</span
                         >
                       {/if}
                     </td>
@@ -197,30 +250,81 @@
                             {/if}
                           </div>
                         </div>
-                        <div class="flex items-center justify-between text-xs text-neutral-600 dark:text-neutral-400">
+                        <div
+                          class="flex items-center justify-between text-xs text-neutral-600 dark:text-neutral-400"
+                        >
                           <span>
                             {#if project.inProgressIssues > 0}
                               {project.inProgressIssues} in progress
                             {:else}
-                              <span class="text-neutral-400 dark:text-neutral-600">0 in progress</span>
+                              <span
+                                class="text-neutral-400 dark:text-neutral-600"
+                                >0 in progress</span
+                              >
                             {/if}
                           </span>
-                          <span>{project.completedIssues}/{project.totalIssues}</span>
+                          <span
+                            >{project.completedIssues}/{project.totalIssues}</span
+                          >
                         </div>
+                        {#if backlogCount > 0}
+                          <div
+                            class="text-xs text-neutral-500 dark:text-neutral-500"
+                          >
+                            {backlogCount} in backlog
+                          </div>
+                        {/if}
                       </div>
                     </td>
+                    <td class="py-3 px-2 w-[100px]">
+                      {#if project.projectState}
+                        <Badge variant="outline" class="text-xs">
+                          {project.projectState}
+                        </Badge>
+                      {:else}
+                        <span
+                          class="text-sm text-neutral-400 dark:text-neutral-600"
+                          >—</span
+                        >
+                      {/if}
+                    </td>
                     <td class="py-3 px-2 w-[140px]">
-                      <Badge variant={healthDisplay.variant} class={healthDisplay.colorClass}>
+                      <Badge
+                        variant={healthDisplay.variant}
+                        class={healthDisplay.colorClass}
+                      >
                         {healthDisplay.text}
                       </Badge>
                     </td>
+                    <td class="py-3 px-2 w-[100px]">
+                      <div
+                        class="text-sm text-neutral-700 dark:text-neutral-300"
+                      >
+                        {project.engineerCount}
+                      </div>
+                      {#if project.teams.size > 1}
+                        <div
+                          class="text-xs text-neutral-500 dark:text-neutral-500 mt-0.5"
+                        >
+                          {project.teams.size} teams
+                        </div>
+                      {/if}
+                    </td>
                     <td
-                      class="py-3 px-2 w-[100px] text-sm text-neutral-700 dark:text-neutral-300"
-                      >{project.engineerCount}</td
+                      class="py-3 px-2 w-[100px] text-sm text-neutral-600 dark:text-neutral-400"
                     >
-                    <td class="py-3 px-2 w-[120px] text-sm"
-                      >{formatDate(project.estimatedEndDate)}</td
+                      {formatDate(project.startDate)}
+                    </td>
+                    <td
+                      class="py-3 px-2 w-[100px] text-sm text-neutral-600 dark:text-neutral-400"
                     >
+                      {formatRelativeDate(project.lastActivityDate)}
+                    </td>
+                    <td
+                      class="py-3 px-2 w-[120px] text-sm text-neutral-600 dark:text-neutral-400"
+                    >
+                      {formatDate(project.estimatedEndDate)}
+                    </td>
                   </tr>
                 {/each}
               </tbody>
@@ -253,12 +357,24 @@
                     >Progress & Issues</th
                   >
                   <th
+                    class="text-left py-3 px-2 text-sm font-medium text-neutral-600 dark:text-neutral-400 w-[100px]"
+                    >State</th
+                  >
+                  <th
                     class="text-left py-3 px-2 text-sm font-medium text-neutral-600 dark:text-neutral-400 w-[140px]"
                     >Health</th
                   >
                   <th
                     class="text-left py-3 px-2 text-sm font-medium text-neutral-600 dark:text-neutral-400 w-[100px]"
                     >Engineers</th
+                  >
+                  <th
+                    class="text-left py-3 px-2 text-sm font-medium text-neutral-600 dark:text-neutral-400 w-[100px]"
+                    >Start Date</th
+                  >
+                  <th
+                    class="text-left py-3 px-2 text-sm font-medium text-neutral-600 dark:text-neutral-400 w-[100px]"
+                    >Last Activity</th
                   >
                   <th
                     class="text-left py-3 px-2 text-sm font-medium text-neutral-600 dark:text-neutral-400 w-[120px]"
@@ -272,7 +388,10 @@
                   {@const completedPercent = getCompletedPercent(project)}
                   {@const wipPercent = getWIPPercent(project)}
                   {@const hasIssues = hasHealthIssues(project)}
-                  {@const healthDisplay = getHealthDisplay(project.projectHealth)}
+                  {@const healthDisplay = getHealthDisplay(
+                    project.projectHealth
+                  )}
+                  {@const backlogCount = getBacklogCount(project)}
                   <tr
                     class="border-b border-neutral-200 dark:border-white/5 hover:bg-neutral-50 dark:hover:bg-white/5 transition-colors duration-150 cursor-pointer"
                     onmouseenter={(e) => handleRowMouseEnter(e, project)}
@@ -286,8 +405,7 @@
                       {#if hasIssues}
                         <span
                           class="text-amber-400 text-sm"
-                          title="Health check failed"
-                          >⚠️</span
+                          title="Health check failed">⚠️</span
                         >
                       {/if}
                     </td>
@@ -325,30 +443,81 @@
                             {/if}
                           </div>
                         </div>
-                        <div class="flex items-center justify-between text-xs text-neutral-600 dark:text-neutral-400">
+                        <div
+                          class="flex items-center justify-between text-xs text-neutral-600 dark:text-neutral-400"
+                        >
                           <span>
                             {#if project.inProgressIssues > 0}
                               {project.inProgressIssues} in progress
                             {:else}
-                              <span class="text-neutral-400 dark:text-neutral-600">0 in progress</span>
+                              <span
+                                class="text-neutral-400 dark:text-neutral-600"
+                                >0 in progress</span
+                              >
                             {/if}
                           </span>
-                          <span>{project.completedIssues}/{project.totalIssues}</span>
+                          <span
+                            >{project.completedIssues}/{project.totalIssues}</span
+                          >
                         </div>
+                        {#if backlogCount > 0}
+                          <div
+                            class="text-xs text-neutral-500 dark:text-neutral-500"
+                          >
+                            {backlogCount} in backlog
+                          </div>
+                        {/if}
                       </div>
                     </td>
+                    <td class="py-3 px-2 w-[100px]">
+                      {#if project.projectState}
+                        <Badge variant="outline" class="text-xs">
+                          {project.projectState}
+                        </Badge>
+                      {:else}
+                        <span
+                          class="text-sm text-neutral-400 dark:text-neutral-600"
+                          >—</span
+                        >
+                      {/if}
+                    </td>
                     <td class="py-3 px-2 w-[140px]">
-                      <Badge variant={healthDisplay.variant} class={healthDisplay.colorClass}>
+                      <Badge
+                        variant={healthDisplay.variant}
+                        class={healthDisplay.colorClass}
+                      >
                         {healthDisplay.text}
                       </Badge>
                     </td>
+                    <td class="py-3 px-2 w-[100px]">
+                      <div
+                        class="text-sm text-neutral-700 dark:text-neutral-300"
+                      >
+                        {project.engineerCount}
+                      </div>
+                      {#if project.teams.size > 1}
+                        <div
+                          class="text-xs text-neutral-500 dark:text-neutral-500 mt-0.5"
+                        >
+                          {project.teams.size} teams
+                        </div>
+                      {/if}
+                    </td>
                     <td
-                      class="py-3 px-2 w-[100px] text-sm text-neutral-700 dark:text-neutral-300"
-                      >{project.engineerCount}</td
+                      class="py-3 px-2 w-[100px] text-sm text-neutral-600 dark:text-neutral-400"
                     >
-                    <td class="py-3 px-2 w-[120px] text-sm"
-                      >{formatDate(project.estimatedEndDate)}</td
+                      {formatDate(project.startDate)}
+                    </td>
+                    <td
+                      class="py-3 px-2 w-[100px] text-sm text-neutral-600 dark:text-neutral-400"
                     >
+                      {formatRelativeDate(project.lastActivityDate)}
+                    </td>
+                    <td
+                      class="py-3 px-2 w-[120px] text-sm text-neutral-600 dark:text-neutral-400"
+                    >
+                      {formatDate(project.estimatedEndDate)}
+                    </td>
                   </tr>
                 {/each}
               </tbody>
