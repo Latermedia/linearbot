@@ -235,12 +235,34 @@ export function groupProjectsByTeams(
 
 	const teams: TeamSummary[] = [];
 	for (const [teamKey, { projects, teamInfo }] of teamMap) {
+		const domain = getDomainForTeam(teamKey);
+		
+		// Deduplicate projects by projectId (shouldn't be necessary but ensures correctness)
+		const uniqueProjects: ProjectSummary[] = [];
+		const seenProjectIds = new Set<string>();
+		for (const project of projects) {
+			if (!seenProjectIds.has(project.projectId)) {
+				uniqueProjects.push(project);
+				seenProjectIds.add(project.projectId);
+			}
+		}
+		
+		if (teamInfo.teamName === "Creator Applications" || teamKey === "APP") {
+			console.log('[groupProjectsByTeams] Team mapping:', {
+				teamKey,
+				teamName: teamInfo.teamName,
+				domain,
+				projectsCount: uniqueProjects.length,
+				hadDuplicates: projects.length !== uniqueProjects.length
+			});
+		}
+		
 		teams.push({
 			teamId: teamInfo.teamId,
 			teamName: teamInfo.teamName,
 			teamKey: teamInfo.teamKey,
-			projects,
-			domain: getDomainForTeam(teamKey)
+			projects: uniqueProjects,
+			domain
 		});
 	}
 
@@ -253,8 +275,11 @@ export function groupProjectsByTeams(
 export function groupProjectsByDomains(teams: TeamSummary[]): DomainSummary[] {
 	const domainMap = new Map<string, DomainSummary>();
 	const allDomains = getAllDomains();
+	
+	console.log('[groupProjectsByDomains] All domains from mapping:', allDomains);
+	console.log('[groupProjectsByDomains] Teams with domains:', teams.map(t => ({ team: t.teamName, teamKey: t.teamKey, domain: t.domain })));
 
-	// Initialize all domains
+	// Initialize all domains from the mapping
 	for (const domainName of allDomains) {
 		domainMap.set(domainName, {
 			domainName,
@@ -270,19 +295,51 @@ export function groupProjectsByDomains(teams: TeamSummary[]): DomainSummary[] {
 		projects: []
 	});
 
-	// Group teams by domain
+	// Group teams by domain - all teams in a domain get their projects added to that domain
+	// Track project IDs per domain for efficient deduplication
+	const domainProjectIds = new Map<string, Set<string>>();
+	for (const domainName of domainMap.keys()) {
+		domainProjectIds.set(domainName, new Set());
+	}
+	
 	for (const team of teams) {
 		const domainName = team.domain || 'Unmapped';
 		const domain = domainMap.get(domainName);
 
-		if (domain) {
-			domain.teams.push(team);
-			domain.projects.push(...team.projects);
+		if (!domain) {
+			// This shouldn't happen, but if a domain doesn't exist, skip it
+			console.warn('[groupProjectsByDomains] Domain not found:', domainName, 'for team:', team.teamName);
+			continue;
+		}
+
+		domain.teams.push(team);
+		// Add projects, deduplicating by projectId
+		const projectIdSet = domainProjectIds.get(domainName)!;
+		for (const project of team.projects) {
+			if (!projectIdSet.has(project.projectId)) {
+				domain.projects.push(project);
+				projectIdSet.add(project.projectId);
+			}
 		}
 	}
 
-	// Remove empty domains
+	// Remove empty domains - only return domains that have teams
 	const domains = Array.from(domainMap.values()).filter((d) => d.teams.length > 0);
+	
+	// Verify deduplication worked correctly
+	for (const domain of domains) {
+		const uniqueProjectIds = new Set(domain.projects.map(p => p.projectId));
+		if (uniqueProjectIds.size !== domain.projects.length) {
+			console.warn(`[groupProjectsByDomains] Domain "${domain.domainName}" has duplicate projects! Unique: ${uniqueProjectIds.size}, Total: ${domain.projects.length}`);
+		}
+	}
+	
+	console.log('[groupProjectsByDomains] Final domains:', domains.map(d => ({ 
+		domain: d.domainName, 
+		teams: d.teams.length, 
+		projects: d.projects.length,
+		uniqueProjects: new Set(d.projects.map(p => p.projectId)).size
+	})));
 
 	return domains.sort((a, b) => {
 		// Put "Unmapped" at the end

@@ -1,8 +1,4 @@
 <script lang="ts">
-  import Badge from "$lib/components/ui/badge.svelte";
-  import Card from "$lib/components/ui/card.svelte";
-  import Button from "$lib/components/ui/button.svelte";
-  import { cn } from "$lib/utils";
   import type {
     ProjectSummary,
     TeamSummary,
@@ -10,7 +6,9 @@
   } from "../project-data";
   import ProjectDetailModal from "./ProjectDetailModal.svelte";
   import GanttExportModal from "./GanttExportModal.svelte";
-  import { Image } from "lucide-svelte";
+  import GanttProjectBar from "./GanttProjectBar.svelte";
+  import GanttSectionHeader from "./GanttSectionHeader.svelte";
+  import { formatDateFull, getProgressPercent } from "$lib/utils/project-helpers";
 
   let {
     teams = [],
@@ -198,26 +196,51 @@
     };
   }
 
-  function getProgressPercent(project: ProjectSummary): number {
-    if (project.totalIssues === 0) return 0;
-    return Math.round((project.completedIssues / project.totalIssues) * 100);
-  }
+  const groups = $derived.by(() => {
+    return groupBy === "team" ? teams : domains;
+  });
 
-  function hasDiscrepancies(project: ProjectSummary): boolean {
-    return (
-      project.hasStatusMismatch || project.isStaleUpdate || project.missingLead
-    );
-  }
-
-  function formatDate(date: Date | string | null): string {
-    if (!date) return "N/A";
-    const d = typeof date === "string" ? new Date(date) : date;
-    return d.toLocaleDateString("en-US", {
-      month: "short",
-      day: "numeric",
-      year: "numeric",
-    });
-  }
+  // Log sections when displaying
+  $effect(() => {
+    console.log("[GanttChart] groupBy changed:", groupBy);
+    console.log("[GanttChart] teams.length:", teams.length);
+    console.log("[GanttChart] domains.length:", domains.length);
+    console.log("[GanttChart] groups.length:", groups.length);
+    
+    if (groups.length > 0) {
+      if (groupBy === "team") {
+        const sections = teams.map((team) => ({
+          title: team.teamName,
+          projects: team.projects.map((p) => ({
+            projectId: p.projectId,
+            projectName: p.projectName,
+          })),
+        }));
+        console.log("[GanttChart] Sections (by team):", sections);
+      } else {
+        // Domain grouping format: [{ domain: "Domain Name", projects: [...] }, ...]
+        const sections = domains.map((domain) => ({
+          domain: domain.domainName,
+          projects: domain.projects.map((p) => ({
+            projectId: p.projectId,
+            projectName: p.projectName,
+          })),
+        }));
+        console.log("[GanttChart] Sections (by domain):", sections);
+        // Also log with generic "title" abstraction
+        const sectionsWithTitle = domains.map((domain) => ({
+          title: domain.domainName,
+          projects: domain.projects.map((p) => ({
+            projectId: p.projectId,
+            projectName: p.projectName,
+          })),
+        }));
+        console.log("[GanttChart] Sections (by domain, abstracted with title):", sectionsWithTitle);
+      }
+    } else {
+      console.warn("[GanttChart] groups is empty! groupBy:", groupBy);
+    }
+  });
 
   function handleBarMouseEnter(
     event: MouseEvent,
@@ -255,10 +278,9 @@
     exportDomain = null;
   }
 
-  function getSectionKey(team?: TeamSummary, domain?: DomainSummary): string {
-    if (team) return `team-${team.teamId}`;
-    if (domain) return `domain-${domain.domainName}`;
-    return "";
+  function getSectionKey(group: TeamSummary | DomainSummary): string {
+    if ("teamId" in group) return `team-${group.teamId}`;
+    return `domain-${group.domainName}`;
   }
 
   // Get current day position
@@ -325,162 +347,39 @@
   {/if}
 
   <!-- Projects grouped by team or domain -->
-  {#if groupBy === "team"}
-    {#each teams as team}
-      {@const sectionKey = getSectionKey(team)}
-      <div
-        class="mb-5 space-y-1.5 group"
-        role="group"
-        onmouseenter={() => (hoveredSection = sectionKey)}
-        onmouseleave={() => (hoveredSection = null)}
-      >
-        <div class="flex relative gap-2 items-center mb-3">
-          <h3 class="text-lg font-medium text-neutral-900 dark:text-white">
-            {team.teamName}
-          </h3>
-          <Button
-            variant="ghost"
-            size="icon-sm"
-            class={cn(
-              "opacity-0 group-hover:opacity-100 transition-opacity duration-150",
-              hoveredSection === sectionKey && "opacity-100"
-            )}
-            onclick={() => openExportModal(team)}
-            aria-label="Export team timeline"
-          >
-            <Image class="w-4 h-4" />
-          </Button>
-        </div>
-        {#each team.projects as project}
-          {@const position = getProjectPosition(project)}
-          {@const progress = getProgressPercent(project)}
-          {@const hasWarnings = hasDiscrepancies(project)}
-
-          <!-- Timeline bar -->
-          <div class="relative h-12">
-            <div
-              class={cn(
-                "absolute h-10 rounded-md flex items-center px-6 cursor-pointer transition-all duration-150",
-                "bg-neutral-600 dark:bg-neutral-700 text-white text-xs font-medium overflow-hidden",
-                "hover:bg-neutral-500 dark:hover:bg-neutral-600 hover:shadow-sm"
-              )}
-              style={`
-                left: ${position.startPercent}%; 
-                width: ${position.widthPercent}%;
-                ${position.extendsBefore && position.extendsAfter ? "mask-image: linear-gradient(to right, transparent 0px, black 24px, black calc(100% - 24px), transparent 100%); -webkit-mask-image: linear-gradient(to right, transparent 0px, black 24px, black calc(100% - 24px), transparent 100%);" : ""}
-                ${position.extendsBefore && !position.extendsAfter ? "mask-image: linear-gradient(to right, transparent 0px, black 24px); -webkit-mask-image: linear-gradient(to right, transparent 0px, black 24px);" : ""}
-                ${!position.extendsBefore && position.extendsAfter ? "mask-image: linear-gradient(to left, transparent 0px, black 24px); -webkit-mask-image: linear-gradient(to left, transparent 0px, black 24px);" : ""}
-              `}
-              onmouseenter={(e) => handleBarMouseEnter(e, project)}
-              onmousemove={(e) => handleBarMouseMove(e)}
-              onmouseleave={handleBarMouseLeave}
-              onclick={() => handleBarClick(project)}
-              onkeydown={(e) => {
-                if (e.key === "Enter" || e.key === " ") {
-                  e.preventDefault();
-                  handleBarClick(project);
-                }
-              }}
-              role="button"
-              tabindex="0"
-            >
-              <!-- Progress fill background -->
-              <div
-                class="absolute inset-0 rounded-md bg-violet-500/40 dark:bg-violet-500/50"
-                style={`width: ${progress}%;`}
-              ></div>
-              <!-- Project name overlay -->
-              <span class="flex relative z-10 gap-1.5 items-center truncate">
-                {#if hasWarnings}
-                  <span class="text-sm text-amber-400 shrink-0">⚠️</span>
-                {/if}
-                {project.projectName}
-              </span>
-            </div>
-          </div>
-        {/each}
-      </div>
-    {/each}
-  {:else}
-    {#each domains as domain}
-      {@const sectionKey = getSectionKey(undefined, domain)}
-      <div
-        class="mb-5 space-y-1.5 group"
-        role="group"
-        onmouseenter={() => (hoveredSection = sectionKey)}
-        onmouseleave={() => (hoveredSection = null)}
-      >
-        <div class="flex relative gap-2 items-center mb-3">
-          <h3
-            class="flex gap-2 items-center text-lg font-medium text-neutral-900 dark:text-white"
-          >
-            {domain.domainName}
-            <Badge variant="outline">{domain.projects.length} projects</Badge>
-          </h3>
-          <Button
-            variant="ghost"
-            size="icon-sm"
-            class={cn(
-              "opacity-0 group-hover:opacity-100 transition-opacity duration-150",
-              hoveredSection === sectionKey && "opacity-100"
-            )}
-            onclick={() => openExportModal(undefined, domain)}
-            aria-label="Export domain timeline"
-          >
-            <Image class="w-4 h-4" />
-          </Button>
-        </div>
-        {#each domain.projects as project}
-          {@const position = getProjectPosition(project)}
-          {@const progress = getProgressPercent(project)}
-          {@const hasWarnings = hasDiscrepancies(project)}
-
-          <!-- Timeline bar -->
-          <div class="relative h-12">
-            <div
-              class={cn(
-                "absolute h-10 rounded-md flex items-center px-6 cursor-pointer transition-all duration-150",
-                "bg-neutral-600 dark:bg-neutral-700 text-white text-xs font-medium overflow-hidden",
-                "hover:bg-neutral-500 dark:hover:bg-neutral-600 hover:shadow-sm"
-              )}
-              style={`
-                left: ${position.startPercent}%; 
-                width: ${position.widthPercent}%;
-                ${position.extendsBefore && position.extendsAfter ? "mask-image: linear-gradient(to right, transparent 0px, black 24px, black calc(100% - 24px), transparent 100%); -webkit-mask-image: linear-gradient(to right, transparent 0px, black 24px, black calc(100% - 24px), transparent 100%);" : ""}
-                ${position.extendsBefore && !position.extendsAfter ? "mask-image: linear-gradient(to right, transparent 0px, black 24px); -webkit-mask-image: linear-gradient(to right, transparent 0px, black 24px);" : ""}
-                ${!position.extendsBefore && position.extendsAfter ? "mask-image: linear-gradient(to left, transparent 0px, black 24px); -webkit-mask-image: linear-gradient(to left, transparent 0px, black 24px);" : ""}
-              `}
-              onmouseenter={(e) => handleBarMouseEnter(e, project)}
-              onmousemove={(e) => handleBarMouseMove(e)}
-              onmouseleave={handleBarMouseLeave}
-              onclick={() => handleBarClick(project)}
-              onkeydown={(e) => {
-                if (e.key === "Enter" || e.key === " ") {
-                  e.preventDefault();
-                  handleBarClick(project);
-                }
-              }}
-              role="button"
-              tabindex="0"
-            >
-              <!-- Progress fill background -->
-              <div
-                class="absolute inset-0 rounded-md bg-violet-500/40 dark:bg-violet-500/50"
-                style={`width: ${progress}%;`}
-              ></div>
-              <!-- Project name overlay -->
-              <span class="flex relative z-10 gap-1.5 items-center truncate">
-                {#if hasWarnings}
-                  <span class="text-sm text-amber-400 shrink-0">⚠️</span>
-                {/if}
-                {project.projectName}
-              </span>
-            </div>
-          </div>
-        {/each}
-      </div>
-    {/each}
-  {/if}
+  {#each groups as group (getSectionKey(group))}
+    {@const sectionKey = getSectionKey(group)}
+    <div
+      class="mb-5 space-y-1.5 group"
+      role="group"
+      onmouseenter={() => (hoveredSection = sectionKey)}
+      onmouseleave={() => (hoveredSection = null)}
+    >
+      <GanttSectionHeader
+        {group}
+        {hoveredSection}
+        {sectionKey}
+        onExport={() => {
+          if ("teamId" in group) {
+            openExportModal(group);
+          } else {
+            openExportModal(undefined, group);
+          }
+        }}
+      />
+      {#each group.projects as project}
+        {@const position = getProjectPosition(project)}
+        <GanttProjectBar
+          {project}
+          {position}
+          onmouseenter={(e) => handleBarMouseEnter(e, project)}
+          onmousemove={handleBarMouseMove}
+          onmouseleave={handleBarMouseLeave}
+          onclick={() => handleBarClick(project)}
+        />
+      {/each}
+    </div>
+  {/each}
 
   <!-- Hover tooltip -->
   {#if hoveredProject}
@@ -493,10 +392,10 @@
       <div class="space-y-0.5 text-neutral-300">
         <div>Progress: {progress}%</div>
         <div>
-          Start: {formatDate(hoveredProject.startDate)}
+          Start: {formatDateFull(hoveredProject.startDate)}
         </div>
         <div>
-          End: {formatDate(hoveredProject.estimatedEndDate)}
+          End: {formatDateFull(hoveredProject.estimatedEndDate)}
         </div>
       </div>
     </div>
