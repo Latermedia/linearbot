@@ -164,7 +164,7 @@
   <Button
     onclick={handleRefresh}
     disabled={!canRefresh || isRefreshing}
-    variant="default"
+    variant="secondary"
     size="sm"
   >
     <RefreshCw class={`h-4 w-4 ${isRefreshing ? "animate-spin" : ""}`} />

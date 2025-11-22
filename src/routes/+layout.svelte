@@ -18,13 +18,11 @@
 </script>
 
 <div class="min-h-screen bg-neutral-950">
-  <header
-    class="sticky top-0 z-50 border-b backdrop-blur-md border-neutral-800 bg-neutral-950/80"
-  >
+  <header class="sticky top-0 z-50 border-b border-white/10 bg-neutral-950/95">
     <div class="max-w-[1600px] mx-auto px-4 sm:px-6 lg:px-8 py-4">
       <div class="flex justify-between items-center">
         <div class="flex gap-3 items-center">
-          <h1 class="text-2xl font-semibold tracking-tight text-white">
+          <h1 class="text-xl font-semibold tracking-tight text-white">
             LinearBot
           </h1>
         </div>
@@ -45,7 +43,7 @@
     <slot />
   </main>
 
-  <footer class="mt-12 border-t border-neutral-800 bg-neutral-900">
+  <footer class="mt-12 border-t border-white/10 bg-neutral-900">
     <div class="max-w-[1600px] mx-auto px-4 sm:px-6 lg:px-8 py-6">
       <p class="text-sm text-center text-neutral-500">
         Linear Bot - Track WIP constraints and project health
