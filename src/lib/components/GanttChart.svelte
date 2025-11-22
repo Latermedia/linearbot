@@ -390,7 +390,12 @@
                 style={`width: ${progress}%;`}
               ></div>
               <!-- Project name overlay -->
-              <span class="relative z-10 truncate">{project.projectName}</span>
+              <span class="flex relative z-10 gap-1.5 items-center truncate">
+                {#if hasWarnings}
+                  <span class="text-sm text-amber-400 shrink-0">⚠️</span>
+                {/if}
+                {project.projectName}
+              </span>
             </div>
           </div>
         {/each}
@@ -464,7 +469,12 @@
                 style={`width: ${progress}%;`}
               ></div>
               <!-- Project name overlay -->
-              <span class="relative z-10 truncate">{project.projectName}</span>
+              <span class="flex relative z-10 gap-1.5 items-center truncate">
+                {#if hasWarnings}
+                  <span class="text-sm text-amber-400 shrink-0">⚠️</span>
+                {/if}
+                {project.projectName}
+              </span>
             </div>
           </div>
         {/each}
@@ -475,7 +485,6 @@
   <!-- Hover tooltip -->
   {#if hoveredProject}
     {@const progress = getProgressPercent(hoveredProject)}
-    {@const hasWarnings = hasDiscrepancies(hoveredProject)}
     <div
       class="fixed z-50 px-3 py-2 text-xs text-white rounded border shadow-lg pointer-events-none bg-neutral-800 border-white/10"
       style={`left: ${tooltipPosition.x + 10}px; top: ${tooltipPosition.y + 10}px; max-width: 200px;`}
@@ -489,9 +498,6 @@
         <div>
           End: {formatDate(hoveredProject.estimatedEndDate)}
         </div>
-        {#if hasWarnings}
-          <div class="mt-1 text-amber-400">⚠️ Has discrepancies</div>
-        {/if}
       </div>
     </div>
   {/if}
