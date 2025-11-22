@@ -30,7 +30,7 @@
   // Elegant Linear-style toggle variants
   export function toggleVariants(variant: Variant, size: Size = "default") {
     const base =
-      "inline-flex items-center justify-center whitespace-nowrap text-sm outline-none transition-colors duration-150 cursor-pointer disabled:pointer-events-none disabled:opacity-50 focus:outline-none focus:ring-1 focus:ring-violet-500/50";
+      "inline-flex items-center justify-center whitespace-nowrap text-sm outline-none transition-colors duration-150 cursor-pointer disabled:pointer-events-none disabled:opacity-50 focus:outline-none";
 
     const variants = {
       default:

@@ -163,7 +163,7 @@
   {:else}
     {#each domains as domain}
       <div class="space-y-2">
-        <h3 class="font-semibold text-gray-900 flex items-center gap-2">
+        <h3 class="text-lg font-medium text-neutral-900 dark:text-white flex items-center gap-2">
           {domain.domainName}
           <Badge variant="outline">{domain.projects.length} projects</Badge>
         </h3>

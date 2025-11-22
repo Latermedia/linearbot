@@ -8,6 +8,7 @@
     projectsStore,
   } from "$lib/stores/database";
   import ProjectsTable from "$lib/components/ProjectsTable.svelte";
+  import GanttChart from "$lib/components/GanttChart.svelte";
   import RefreshButton from "$lib/components/RefreshButton.svelte";
   import * as ToggleGroup from "$lib/components/ui/toggle-group";
   import Card from "$lib/components/ui/card.svelte";
@@ -15,6 +16,7 @@
   import Separator from "$lib/components/ui/separator.svelte";
 
   let groupBy: "team" | "domain" = "team";
+  let viewType: "table" | "gantt" = "table";
 
   // Initialize with default values for SSR
   let loading = true;
@@ -90,15 +92,28 @@
 
   <Separator />
 
-  <!-- Group by toggle -->
-  <ToggleGroup.Root bind:value={groupBy} variant="outline" type="single">
-    <ToggleGroup.Item value="team" aria-label="Group by teams">
-      Teams
-    </ToggleGroup.Item>
-    <ToggleGroup.Item value="domain" aria-label="Group by domains">
-      Domains
-    </ToggleGroup.Item>
-  </ToggleGroup.Root>
+  <!-- View controls -->
+  <div class="flex flex-col sm:flex-row gap-4 items-start sm:items-center">
+    <!-- View type toggle -->
+    <ToggleGroup.Root bind:value={viewType} variant="outline" type="single">
+      <ToggleGroup.Item value="table" aria-label="Table view">
+        Table
+      </ToggleGroup.Item>
+      <ToggleGroup.Item value="gantt" aria-label="Gantt view">
+        Gantt
+      </ToggleGroup.Item>
+    </ToggleGroup.Root>
+
+    <!-- Group by toggle -->
+    <ToggleGroup.Root bind:value={groupBy} variant="outline" type="single">
+      <ToggleGroup.Item value="team" aria-label="Group by teams">
+        Teams
+      </ToggleGroup.Item>
+      <ToggleGroup.Item value="domain" aria-label="Group by domains">
+        Domains
+      </ToggleGroup.Item>
+    </ToggleGroup.Root>
+  </div>
 
   <!-- Main content -->
   {#if loading}
@@ -137,6 +152,10 @@
       </p>
     </Card>
   {:else}
-    <ProjectsTable {teams} {domains} {groupBy} />
+    {#if viewType === "table"}
+      <ProjectsTable {teams} {domains} {groupBy} />
+    {:else}
+      <GanttChart {teams} {domains} {groupBy} />
+    {/if}
   {/if}
 </div>
