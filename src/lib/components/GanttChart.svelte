@@ -4,9 +4,15 @@
 	import { cn } from '$lib/utils';
 	import type { ProjectSummary, TeamSummary, DomainSummary } from '../project-data';
 
-	export let teams: TeamSummary[] = [];
-	export let domains: DomainSummary[] = [];
-	export let groupBy: 'team' | 'domain' = 'team';
+	let {
+		teams = [],
+		domains = [],
+		groupBy = 'team' as 'team' | 'domain'
+	}: {
+		teams?: TeamSummary[];
+		domains?: DomainSummary[];
+		groupBy?: 'team' | 'domain';
+	} = $props();
 
 	// Generate months for the timeline (next 12 months)
 	function generateMonths() {

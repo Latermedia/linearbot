@@ -14,7 +14,7 @@
 </script>
 
 <Button
-	on:click={toggleTheme}
+	onclick={toggleTheme}
 	variant="ghost"
 	size="icon-sm"
 	class="rounded-full"

@@ -5,7 +5,7 @@
   import { databaseStore } from "../stores/database";
   import { RefreshCw } from "lucide-svelte";
 
-  export let lastSync: Date | null = null;
+  let { lastSync = null }: { lastSync?: Date | null } = $props();
 
   const THROTTLE_MS = 10 * 60 * 1000; // 10 minutes
   const POLL_INTERVAL = 5000; // 5 seconds
@@ -162,7 +162,7 @@
     </div>
   </div>
   <Button
-    on:click={handleRefresh}
+    onclick={handleRefresh}
     disabled={!canRefresh || isRefreshing}
     variant="default"
     size="sm"

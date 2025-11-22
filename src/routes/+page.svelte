@@ -72,7 +72,7 @@
 			<Button
 				variant={groupBy === 'team' ? 'default' : 'outline'}
 				size="sm"
-				on:click={() => (groupBy = 'team')}
+				onclick={() => (groupBy = 'team')}
 				class="rounded-r-none"
 			>
 				Teams
@@ -80,7 +80,7 @@
 			<Button
 				variant={groupBy === 'domain' ? 'default' : 'outline'}
 				size="sm"
-				on:click={() => (groupBy = 'domain')}
+				onclick={() => (groupBy = 'domain')}
 				class="rounded-l-none"
 			>
 				Domains
