@@ -7,6 +7,7 @@
     "start:cli": "bun run terminal/index.tsx",
     "dev:cli": "bun --watch terminal/index.tsx",
     "sync": "bun run scripts/sync.ts",
+    "reset-db": "bun run scripts/reset-db.ts",
     "dev": "bun --bun vite dev",
     "build": "vite build",
     "preview": "bun --bun vite preview"
@@ -14,6 +15,7 @@
   "dependencies": {
     "@inquirer/prompts": "^7.9.0",
     "@linear/sdk": "^35.0.0",
+    "html2canvas": "^1.4.1",
     "ink": "^6.3.1",
     "ink-spinner": "^5.0.0",
     "lucide-svelte": "^0.554.0",
