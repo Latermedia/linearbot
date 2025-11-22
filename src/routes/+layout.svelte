@@ -39,21 +39,17 @@
         : (event.ctrlKey && event.shiftKey && !event.altKey && !event.metaKey);
       
       if (modifierPressed && keyLower === "d") {
-        console.log('[DevMenu] ✅ Shortcut detected! Toggling menu...');
         event.preventDefault();
         event.stopPropagation();
         event.stopImmediatePropagation();
         showDevMenu = !showDevMenu;
-        console.log('[DevMenu] Menu state:', showDevMenu);
         return false;
       }
     }
 
-    console.log('[DevMenu] Setting up keyboard listener (Cmd+Shift+D / Ctrl+Shift+D)...');
     document.addEventListener("keydown", handleKeydown, { capture: true, passive: false });
     
     return () => {
-      console.log('[DevMenu] Cleaning up keyboard listener...');
       document.removeEventListener("keydown", handleKeydown, { capture: true } as any);
     };
   });
