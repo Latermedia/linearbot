@@ -4,20 +4,20 @@
 	import { type VariantProps, tv } from "tailwind-variants";
 
 	export const buttonVariants = tv({
-		base: "cursor-pointer inline-flex shrink-0 items-center justify-center gap-2 whitespace-nowrap text-sm font-medium outline-none transition-colors disabled:pointer-events-none disabled:opacity-50 [&_svg:not([class*='size-'])]:size-4 [&_svg]:pointer-events-none [&_svg]:shrink-0",
+		base: "cursor-pointer inline-flex shrink-0 items-center justify-center gap-2 whitespace-nowrap text-sm font-medium outline-none transition-colors duration-150 disabled:pointer-events-none disabled:opacity-50 [&_svg:not([class*='size-'])]:size-4 [&_svg]:pointer-events-none [&_svg]:shrink-0",
 		variants: {
 			variant: {
-				default: "bg-foreground text-background hover:bg-foreground/90",
-				destructive: "bg-destructive text-white hover:bg-destructive/90",
-				outline: "bg-transparent border border-border hover:bg-muted/50",
-				secondary: "bg-muted text-foreground hover:bg-muted/80",
-				ghost: "hover:bg-muted/50",
-				link: "text-foreground underline-offset-4 hover:underline",
+				default: "bg-violet-700/80 text-white hover:bg-violet-700 rounded focus:ring-1 focus:ring-violet-600/50",
+				destructive: "bg-red-700/80 text-white hover:bg-red-700 rounded focus:ring-1 focus:ring-red-600/50",
+				outline: "bg-transparent border border-neutral-800 text-neutral-300 hover:bg-white/10 rounded focus:border-violet-600/50 focus:ring-1 focus:ring-violet-600/30",
+				secondary: "bg-white/5 text-neutral-300 hover:bg-white/10 rounded focus:ring-1 focus:ring-violet-600/30",
+				ghost: "text-neutral-300 hover:bg-white/10 rounded",
+				link: "text-violet-400 underline-offset-4 hover:text-violet-300 hover:underline",
 			},
 			size: {
-				default: "h-8 px-3",
-				sm: "h-7 px-2.5",
-				lg: "h-9 px-4",
+				default: "h-8 px-3 py-1.5",
+				sm: "h-7 px-2.5 py-1",
+				lg: "h-9 px-4 py-2",
 				icon: "size-8",
 				"icon-sm": "size-7",
 				"icon-lg": "size-9",

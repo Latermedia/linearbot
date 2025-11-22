@@ -150,14 +150,14 @@
   });
 </script>
 
-<div class="flex flex-col sm:flex-row items-start sm:items-center gap-3">
+<div class="flex flex-col sm:flex-row items-start sm:items-center gap-4">
   <div class="text-sm">
-    <div class="text-muted-foreground">
-      Last sync: <span class="font-medium text-foreground"
+    <div class="text-neutral-400">
+      Last sync: <span class="font-medium text-white"
         >{formatLastSync(lastSync)}</span
       >
     </div>
-    <div class="text-xs text-muted-foreground">
+    <div class="text-xs text-neutral-500">
       {formatDateTime(lastSync)}
     </div>
   </div>

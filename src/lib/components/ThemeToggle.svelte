@@ -17,7 +17,6 @@
 	onclick={toggleTheme}
 	variant="ghost"
 	size="icon-sm"
-	class="rounded-full"
 	aria-label="Toggle theme"
 >
 	{#if $theme === 'dark'}

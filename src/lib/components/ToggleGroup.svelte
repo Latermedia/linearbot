@@ -27,13 +27,13 @@
 		return ctx;
 	}
 
-	// Minimal Linear-style toggle variants
+	// Elegant Linear-style toggle variants
 	export function toggleVariants(variant: Variant, size: Size = 'default') {
-		const base = 'inline-flex items-center justify-center whitespace-nowrap text-sm outline-none transition-colors disabled:pointer-events-none disabled:opacity-50';
+		const base = 'inline-flex items-center justify-center whitespace-nowrap text-sm outline-none transition-all duration-200 ease-out cursor-pointer disabled:pointer-events-none disabled:opacity-50';
 		
 		const variants = {
-			default: 'hover:bg-muted/50 data-[state=on]:bg-muted data-[state=on]:text-foreground text-muted-foreground bg-transparent',
-			outline: 'hover:bg-muted/30 data-[state=on]:bg-muted data-[state=on]:text-foreground text-muted-foreground bg-transparent'
+			default: 'hover:bg-white/10 data-[state=on]:bg-white/10 data-[state=on]:text-white text-neutral-400 bg-transparent rounded',
+			outline: 'hover:bg-white/5 data-[state=on]:bg-transparent data-[state=on]:text-white text-neutral-400 bg-transparent rounded-md'
 		};
 
 		const sizes = {

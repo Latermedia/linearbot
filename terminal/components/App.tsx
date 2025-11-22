@@ -7,7 +7,13 @@ import { EngineersView } from "./EngineersView.js";
 import { TeamsView } from "./TeamsView.js";
 import { DomainsView } from "./DomainsView.js";
 
-export type View = "menu" | "browse" | "projects" | "engineers" | "teams" | "domains";
+export type View =
+  | "menu"
+  | "browse"
+  | "projects"
+  | "engineers"
+  | "teams"
+  | "domains";
 
 export function App() {
   const { stdout } = useStdout();
@@ -30,11 +36,11 @@ export function App() {
         {/* Header title */}
         <Box paddingX={1}>
           <Text bold color="cyan">
-            LINEAR BOT 🚀
+            LinearBot
           </Text>
           {headerContext && (
             <>
-              <Text>  </Text>
+              <Text> </Text>
               <Text>{headerContext}</Text>
             </>
           )}

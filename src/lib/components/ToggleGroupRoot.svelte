@@ -1,6 +1,9 @@
 <script lang="ts">
 	import { setToggleGroupCtx } from './ToggleGroup.svelte';
 	import { cn } from '$lib/utils';
+	import { tick } from 'svelte';
+	import { tweened } from 'svelte/motion';
+	import { cubicOut } from 'svelte/easing';
 
 	type Variant = 'default' | 'outline';
 	type Size = 'default' | 'sm' | 'lg';
@@ -23,7 +26,11 @@
 	} = $props();
 
 	let containerRef: HTMLDivElement | null = $state(null);
-	let indicatorRef: HTMLDivElement | null = $state(null);
+	
+	// Use Svelte tweened stores for smooth animation
+	const indicatorLeft = tweened(0, { duration: 200, easing: cubicOut });
+	const indicatorWidth = tweened(0, { duration: 200, easing: cubicOut });
+	const indicatorOpacity = tweened(0, { duration: 150, easing: cubicOut });
 
 	function isSelected(itemValue: string): boolean {
 		if (type === 'multiple') {
@@ -45,27 +52,35 @@
 		}
 	}
 
-	function updateIndicator() {
-		if (!containerRef || !indicatorRef || type !== 'single' || variant !== 'outline') return;
-
-		const selectedButton = containerRef.querySelector(
-			'[data-selected="true"]'
-		) as HTMLElement;
-		if (!selectedButton) {
-			indicatorRef.style.opacity = '0';
+	async function updateIndicator() {
+		if (!containerRef || type !== 'single' || variant !== 'outline') {
+			indicatorOpacity.set(0);
 			return;
 		}
 
-		indicatorRef.style.opacity = '1';
+		await tick();
+		const selectedButton = containerRef.querySelector(
+			'[data-selected="true"]'
+		) as HTMLElement;
+		
+		if (!selectedButton) {
+			indicatorOpacity.set(0);
+			return;
+		}
+
 		const containerRect = containerRef.getBoundingClientRect();
 		const buttonRect = selectedButton.getBoundingClientRect();
 
-		indicatorRef.style.width = `${buttonRect.width}px`;
-		indicatorRef.style.transform = `translateX(${buttonRect.left - containerRect.left}px)`;
+		const newLeft = buttonRect.left - containerRect.left;
+		const newWidth = buttonRect.width;
+
+		// Animate all properties simultaneously
+		indicatorLeft.set(newLeft);
+		indicatorWidth.set(newWidth);
+		indicatorOpacity.set(1);
 	}
 
 	$effect(() => {
-		// Update indicator when value changes
 		value;
 		updateIndicator();
 	});
@@ -83,19 +98,18 @@
 <div
 	bind:this={containerRef}
 	class={cn(
-		'group/toggle-group flex w-fit items-center',
-		variant === 'outline' && 'bg-muted/30 rounded-md p-0.5',
+		'group/toggle-group relative flex w-fit items-center',
+		variant === 'outline' && 'bg-white/5 rounded-md p-0.5 gap-0.5',
 		className
 	)}
 	role="group"
 	{...restProps}
 >
 	{#if variant === 'outline' && type === 'single'}
-		<!-- Minimal sliding indicator -->
+		<!-- Sliding indicator with Svelte tweened animation -->
 		<div
-			bind:this={indicatorRef}
-			class="absolute h-full rounded-sm bg-background transition-all duration-200 ease-out"
-			style="opacity: 0; top: 0;"
+			class="absolute rounded-md bg-white/10 pointer-events-none z-0"
+			style="top: 0.125rem; bottom: 0.125rem; left: {$indicatorLeft}px; width: {$indicatorWidth}px; opacity: {$indicatorOpacity};"
 			aria-hidden="true"
 		/>
 	{/if}

@@ -17,22 +17,21 @@
   });
 </script>
 
-<div class="min-h-screen bg-background">
-  <header class="bg-card border-b border-border shadow-sm sticky top-0 z-50">
+<div class="min-h-screen bg-neutral-950">
+  <header
+    class="sticky top-0 z-50 border-b backdrop-blur-md border-neutral-800 bg-neutral-950/80"
+  >
     <div class="max-w-[1600px] mx-auto px-4 sm:px-6 lg:px-8 py-4">
-      <div class="flex items-center justify-between">
-        <div class="flex items-center gap-3">
-          <h1
-            class="text-2xl font-bold bg-gradient-to-r from-blue-500 to-cyan-500 bg-clip-text text-transparent"
-          >
-            LINEAR BOT
+      <div class="flex justify-between items-center">
+        <div class="flex gap-3 items-center">
+          <h1 class="text-2xl font-semibold tracking-tight text-white">
+            LinearBot
           </h1>
-          <span class="text-2xl">🚀</span>
         </div>
-        <div class="flex items-center gap-4">
+        <div class="flex gap-4 items-center">
           <a
             href="/"
-            class="text-sm font-medium text-muted-foreground hover:text-foreground transition-colors"
+            class="text-sm font-medium transition-colors duration-150 text-neutral-400 hover:text-white"
           >
             Timeline
           </a>
@@ -46,9 +45,9 @@
     <slot />
   </main>
 
-  <footer class="border-t border-border bg-card mt-12">
+  <footer class="mt-12 border-t border-neutral-800 bg-neutral-900">
     <div class="max-w-[1600px] mx-auto px-4 sm:px-6 lg:px-8 py-6">
-      <p class="text-sm text-muted-foreground text-center">
+      <p class="text-sm text-center text-neutral-500">
         Linear Bot - Track WIP constraints and project health
       </p>
     </div>

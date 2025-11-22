@@ -12,7 +12,7 @@
 
 <div
 	bind:this={ref}
-	class={cn('bg-card text-card-foreground flex flex-col border-b', className)}
+	class={cn('bg-neutral-900 text-white flex flex-col border border-neutral-800 rounded-md p-4 transition-colors duration-150', className)}
 	{...restProps}
 >
 	{@render children?.()}

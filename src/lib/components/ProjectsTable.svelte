@@ -55,45 +55,45 @@
 				<div class="overflow-x-auto">
 					<table class="w-full">
 						<thead>
-							<tr class="border-b border-border">
-								<th class="text-left py-3 px-2 text-sm font-medium text-muted-foreground">Project</th>
-								<th class="text-left py-3 px-2 text-sm font-medium text-muted-foreground">Progress</th>
-								<th class="text-left py-3 px-2 text-sm font-medium text-muted-foreground">Status</th>
-								<th class="text-left py-3 px-2 text-sm font-medium text-muted-foreground">Engineers</th>
-								<th class="text-left py-3 px-2 text-sm font-medium text-muted-foreground">Issues</th>
-								<th class="text-left py-3 px-2 text-sm font-medium text-muted-foreground">Est. Complete</th>
+							<tr class="border-b border-neutral-800">
+								<th class="text-left py-3 px-2 text-sm font-medium text-neutral-400">Project</th>
+								<th class="text-left py-3 px-2 text-sm font-medium text-neutral-400">Progress</th>
+								<th class="text-left py-3 px-2 text-sm font-medium text-neutral-400">Status</th>
+								<th class="text-left py-3 px-2 text-sm font-medium text-neutral-400">Engineers</th>
+								<th class="text-left py-3 px-2 text-sm font-medium text-neutral-400">Issues</th>
+								<th class="text-left py-3 px-2 text-sm font-medium text-neutral-400">Est. Complete</th>
 							</tr>
 						</thead>
 						<tbody>
 							{#each team.projects as project}
 								{@const progress = getProgressPercent(project)}
 								{@const status = getStatusBadge(project)}
-								<tr class="border-b border-border hover:bg-muted/50 transition-colors">
+								<tr class="border-b border-neutral-800 hover:bg-white/5 transition-colors duration-150">
 									<td class="py-3 px-2">
-										<div class="font-medium">{project.projectName || 'Unknown'}</div>
+										<div class="font-medium text-white">{project.projectName || 'Unknown'}</div>
 										{#if project.projectLeadName}
-											<div class="text-sm text-muted-foreground">Lead: {project.projectLeadName}</div>
+											<div class="text-sm text-neutral-400">Lead: {project.projectLeadName}</div>
 										{/if}
 									</td>
 									<td class="py-3 px-2">
 										<div class="flex items-center gap-2">
-											<div class="flex-1 h-2 bg-muted rounded-full overflow-hidden max-w-[100px]">
+											<div class="flex-1 h-2 bg-neutral-800 rounded overflow-hidden max-w-[100px]">
 												<div
-													class="h-full bg-gradient-to-r from-blue-500 to-cyan-500 transition-all"
+													class="h-full bg-violet-600/70 transition-all duration-150"
 													style={`width: ${progress}%`}
 												></div>
 											</div>
-											<span class="text-sm font-medium">{progress}%</span>
+											<span class="text-sm font-medium text-white">{progress}%</span>
 										</div>
 									</td>
 									<td class="py-3 px-2">
 										<Badge variant={status?.variant || 'default'}>{status?.text || 'Unknown'}</Badge>
 									</td>
-									<td class="py-3 px-2 text-sm">{project.engineerCount}</td>
+									<td class="py-3 px-2 text-sm text-neutral-300">{project.engineerCount}</td>
 									<td class="py-3 px-2">
 										<div class="text-sm">
-											<div>{project.completedIssues}/{project.totalIssues} done</div>
-											<div class="text-muted-foreground">{project.inProgressIssues} in progress</div>
+											<div class="text-white">{project.completedIssues}/{project.totalIssues} done</div>
+											<div class="text-neutral-400">{project.inProgressIssues} in progress</div>
 										</div>
 									</td>
 									<td class="py-3 px-2 text-sm">{formatDate(project.estimatedEndDate)}</td>
@@ -117,45 +117,45 @@
 				<div class="overflow-x-auto">
 					<table class="w-full">
 						<thead>
-							<tr class="border-b border-border">
-								<th class="text-left py-3 px-2 text-sm font-medium text-muted-foreground">Project</th>
-								<th class="text-left py-3 px-2 text-sm font-medium text-muted-foreground">Progress</th>
-								<th class="text-left py-3 px-2 text-sm font-medium text-muted-foreground">Status</th>
-								<th class="text-left py-3 px-2 text-sm font-medium text-muted-foreground">Engineers</th>
-								<th class="text-left py-3 px-2 text-sm font-medium text-muted-foreground">Issues</th>
-								<th class="text-left py-3 px-2 text-sm font-medium text-muted-foreground">Est. Complete</th>
+							<tr class="border-b border-neutral-800">
+								<th class="text-left py-3 px-2 text-sm font-medium text-neutral-400">Project</th>
+								<th class="text-left py-3 px-2 text-sm font-medium text-neutral-400">Progress</th>
+								<th class="text-left py-3 px-2 text-sm font-medium text-neutral-400">Status</th>
+								<th class="text-left py-3 px-2 text-sm font-medium text-neutral-400">Engineers</th>
+								<th class="text-left py-3 px-2 text-sm font-medium text-neutral-400">Issues</th>
+								<th class="text-left py-3 px-2 text-sm font-medium text-neutral-400">Est. Complete</th>
 							</tr>
 						</thead>
 						<tbody>
 							{#each domain.projects as project}
 								{@const progress = getProgressPercent(project)}
 								{@const status = getStatusBadge(project)}
-								<tr class="border-b border-border hover:bg-muted/50 transition-colors">
+								<tr class="border-b border-neutral-800 hover:bg-white/5 transition-colors duration-150">
 									<td class="py-3 px-2">
-										<div class="font-medium">{project.projectName || 'Unknown'}</div>
+										<div class="font-medium text-white">{project.projectName || 'Unknown'}</div>
 										{#if project.projectLeadName}
-											<div class="text-sm text-muted-foreground">Lead: {project.projectLeadName}</div>
+											<div class="text-sm text-neutral-400">Lead: {project.projectLeadName}</div>
 										{/if}
 									</td>
 									<td class="py-3 px-2">
 										<div class="flex items-center gap-2">
-											<div class="flex-1 h-2 bg-muted rounded-full overflow-hidden max-w-[100px]">
+											<div class="flex-1 h-2 bg-neutral-800 rounded overflow-hidden max-w-[100px]">
 												<div
-													class="h-full bg-gradient-to-r from-blue-500 to-cyan-500 transition-all"
+													class="h-full bg-violet-600/70 transition-all duration-150"
 													style={`width: ${progress}%`}
 												></div>
 											</div>
-											<span class="text-sm font-medium">{progress}%</span>
+											<span class="text-sm font-medium text-white">{progress}%</span>
 										</div>
 									</td>
 									<td class="py-3 px-2">
 										<Badge variant={status?.variant || 'default'}>{status?.text || 'Unknown'}</Badge>
 									</td>
-									<td class="py-3 px-2 text-sm">{project.engineerCount}</td>
+									<td class="py-3 px-2 text-sm text-neutral-300">{project.engineerCount}</td>
 									<td class="py-3 px-2">
 										<div class="text-sm">
-											<div>{project.completedIssues}/{project.totalIssues} done</div>
-											<div class="text-muted-foreground">{project.inProgressIssues} in progress</div>
+											<div class="text-white">{project.completedIssues}/{project.totalIssues} done</div>
+											<div class="text-neutral-400">{project.inProgressIssues} in progress</div>
 										</div>
 									</td>
 									<td class="py-3 px-2 text-sm">{formatDate(project.estimatedEndDate)}</td>

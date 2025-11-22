@@ -29,7 +29,7 @@
 	onclick={() => ctx.handleClick(value)}
 	class={cn(
 		toggleVariants(ctx.variant, ctx.size),
-		'min-w-0 flex-1 shrink-0 rounded-sm',
+		'min-w-0 flex-1 shrink-0',
 		className
 	)}
 	{...restProps}

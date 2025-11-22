@@ -20,7 +20,7 @@
 	aria-orientation={orientation}
 	data-orientation={orientation}
 	class={cn(
-		'bg-border/50 shrink-0',
+		'bg-neutral-800 shrink-0',
 		orientation === 'horizontal' ? 'h-px w-full' : 'h-full w-px',
 		className
 	)}

@@ -1,0 +1,483 @@
+---
+description: Linear-style design system with Tailwind CSS
+globs: ["**/*.tsx", "**/*.jsx", "**/*.html"]
+alwaysApply: false
+---
+
+# Design System: Linear-style (Tailwind)
+
+Linear's design philosophy centers on being "professional" for engineers - a dark, minimal interface that feels like a well-crafted coding environment. Every element should feel intentional and engineered. If it doesn't serve a purpose, remove it.
+
+## Core Philosophy
+
+- **Information-dense but uncluttered** — pack functionality without visual noise
+- **Monochromatic with selective accent** — restrained use of color creates hierarchy
+- **Dark-mode-first** — optimized for low-light, reduced eye strain
+- **Typography-forward** — hierarchy through type, not decoration
+- **Fast & functional** — no gratuitous animations
+
+---
+
+## Color Palette
+
+### Backgrounds (layered elevation)
+
+```
+Base:       bg-[#0a0a0a] or bg-neutral-950
+Surface 1:  bg-[#111111] or bg-neutral-900
+Surface 2:  bg-[#171717] or bg-neutral-800
+Elevated:   bg-[#1f1f1f] or bg-neutral-800/80
+Overlay:    bg-black/50 (for modals, dropdowns)
+```
+
+### Sidebar
+
+```
+Background: bg-[#0d0d0d] or bg-neutral-950/95
+Hover:      bg-white/5
+Active:     bg-white/10
+```
+
+### Text
+
+```
+Primary:    text-white or text-neutral-50
+Secondary:  text-neutral-400
+Muted:      text-neutral-500
+Disabled:   text-neutral-600
+```
+
+### Accent (use sparingly)
+
+```
+Primary:    violet-500 (#8b5cf6)
+Hover:      violet-400
+Active:     violet-600
+Muted:      violet-500/20 (for backgrounds)
+```
+
+### Borders
+
+```
+Default:    border-white/10 or border-neutral-800
+Subtle:     border-white/5
+Focus:      border-violet-500
+```
+
+### Status Colors
+
+```
+Success:    text-emerald-400, bg-emerald-500/10
+Warning:    text-amber-400, bg-amber-500/10
+Error:      text-red-400, bg-red-500/10
+Info:       text-blue-400, bg-blue-500/10
+```
+
+---
+
+## Typography
+
+### Font Family
+
+- Primary: `font-sans` (Inter)
+- Headings: Use same family, differentiate with weight
+
+### Weights
+
+- Headings: `font-medium` or `font-semibold` (never `font-bold` except for strong emphasis)
+- Body: `font-normal`
+- Labels: `font-medium`
+
+### Sizes
+
+```
+Page title:   text-xl font-semibold tracking-tight
+Section:      text-lg font-medium
+Body:         text-sm
+Small/Label:  text-xs
+Metadata:     text-xs text-neutral-500
+```
+
+### Tracking
+
+- Headings: `tracking-tight`
+- Body: default
+
+---
+
+## Spacing
+
+### Padding Scale
+
+```
+Compact:    p-2, px-2 py-1
+Default:    p-3, px-3 py-2
+Comfortable: p-4, px-4 py-3
+Spacious:   p-6
+```
+
+### Gaps
+
+```
+Tight:      gap-1, gap-2
+Default:    gap-3, gap-4
+Sections:   gap-6, gap-8
+```
+
+### Margins
+
+- Use generous vertical spacing between sections
+- Let content breathe — don't pack tightly
+
+---
+
+## Border Radius
+
+**Critical: Linear uses minimal, sharp corners**
+
+```
+None:       rounded-none (for full-bleed elements)
+Subtle:     rounded (4px) — default for most elements
+Standard:   rounded-md (6px) — max for cards, containers
+```
+
+**Never use:**
+
+- `rounded-lg`, `rounded-xl`, `rounded-2xl` on UI elements
+- `rounded-full` on containers (only for avatars, status dots)
+
+---
+
+## Components
+
+### Buttons
+
+**Primary:**
+
+```html
+<button
+  class="px-3 py-1.5 text-sm font-medium text-white bg-violet-600 rounded transition-colors duration-150 hover:bg-violet-500 active:bg-violet-700"
+>
+  Action
+</button>
+```
+
+**Secondary:**
+
+```html
+<button
+  class="px-3 py-1.5 text-sm font-medium rounded border transition-colors duration-150 bg-white/5 hover:bg-white/10 active:bg-white/15 text-neutral-300 hover:text-white border-white/10"
+>
+  Action
+</button>
+```
+
+**Ghost:**
+
+```html
+<button
+  class="px-3 py-1.5 text-sm rounded transition-colors duration-150 hover:bg-white/5 active:bg-white/10 text-neutral-400 hover:text-white"
+>
+  Action
+</button>
+```
+
+**Danger:**
+
+```html
+<button
+  class="px-3 py-1.5 text-sm font-medium text-white rounded transition-colors duration-150 bg-red-600/80 hover:bg-red-600"
+>
+  Delete
+</button>
+```
+
+### Inputs
+
+```html
+<input
+  class="px-3 py-2 w-full text-sm text-white rounded border transition-colors duration-150 bg-neutral-900 border-white/10 placeholder-neutral-500 focus:border-violet-500 focus:ring-1 focus:ring-violet-500/50 focus:outline-none"
+/>
+```
+
+### Select/Dropdown
+
+```html
+<select
+  class="px-3 py-2 text-sm text-white rounded border bg-neutral-900 border-white/10 focus:border-violet-500 focus:ring-1 focus:ring-violet-500/50 focus:outline-none"
+></select>
+```
+
+### Cards
+
+```html
+<div class="p-4 rounded-md border bg-neutral-900 border-white/10">
+  <!-- content -->
+</div>
+```
+
+**Elevated card (modals, dropdowns):**
+
+```html
+<div
+  class="p-4 rounded-md border shadow-xl bg-neutral-900 border-white/10 shadow-black/50"
+>
+  <!-- content -->
+</div>
+```
+
+### Sidebar Item
+
+```html
+<a
+  class="flex gap-2 items-center px-2 py-1.5 text-sm rounded transition-colors duration-150 text-neutral-400 hover:text-white hover:bg-white/5"
+>
+  <Icon class="w-4 h-4" />
+  <span>Label</span>
+</a>
+```
+
+**Active state:**
+
+```html
+<a
+  class="flex gap-2 items-center px-2 py-1.5 text-sm text-white rounded bg-white/10"
+></a>
+```
+
+### List Item / Row
+
+```html
+<div
+  class="flex gap-3 items-center px-3 py-2 border-b transition-colors duration-150 hover:bg-white/5 border-white/5"
+></div>
+```
+
+### Badge / Tag
+
+```html
+<span
+  class="inline-flex items-center px-2 py-0.5 text-xs font-medium text-violet-300 rounded bg-violet-500/20"
+>
+  Label
+</span>
+```
+
+**Neutral:**
+
+```html
+<span
+  class="inline-flex items-center px-2 py-0.5 text-xs font-medium rounded bg-white/10 text-neutral-300"
+>
+  Label
+</span>
+```
+
+### Avatar
+
+```html
+<div
+  class="flex justify-center items-center w-6 h-6 text-xs font-medium text-white bg-gradient-to-br from-violet-500 to-fuchsia-500 rounded-full"
+>
+  JD
+</div>
+```
+
+### Tooltip
+
+```html
+<div class="px-2 py-1 text-xs text-white rounded shadow-lg bg-neutral-800">
+  Tooltip text
+</div>
+```
+
+### Modal / Dialog
+
+```html
+<div class="flex fixed inset-0 justify-center items-center bg-black/60">
+  <div
+    class="p-6 w-full max-w-md rounded-md border shadow-2xl bg-neutral-900 border-white/10 shadow-black/50"
+  >
+    <h2 class="mb-4 text-lg font-medium text-white">Title</h2>
+    <!-- content -->
+  </div>
+</div>
+```
+
+### Command Palette / Search
+
+```html
+<div
+  class="overflow-hidden w-full max-w-xl rounded-md border shadow-2xl bg-neutral-900 border-white/10 shadow-black/50"
+>
+  <input
+    class="px-4 py-3 w-full text-sm text-white bg-transparent border-b border-white/10 placeholder-neutral-500 focus:outline-none"
+    placeholder="Search..."
+  />
+  <div class="overflow-y-auto max-h-80">
+    <!-- results -->
+  </div>
+</div>
+```
+
+---
+
+## Transitions & Animations
+
+### Durations
+
+```
+Fast:       duration-100 (micro-interactions)
+Default:    duration-150 (hovers, focus states)
+Smooth:     duration-200 (panels, modals)
+```
+
+**Never exceed 300ms for UI interactions**
+
+### Easing
+
+- Default: `ease-out` or default
+- For expanding: `ease-in-out`
+
+### What to animate
+
+- Color changes on hover/focus
+- Opacity for fade in/out
+- Transform for subtle scale or position
+
+### What NOT to animate
+
+- Decorative flourishes
+- Bouncy/elastic effects
+- Anything longer than 300ms
+
+---
+
+## Icons
+
+- Size: `w-4 h-4` (16px) for inline, `w-5 h-5` (20px) for standalone
+- Color: `text-neutral-400` default, `text-white` on hover/active
+- Use consistent icon set (Lucide, Heroicons)
+- Stroke width: 1.5-2px
+
+---
+
+## Focus States
+
+All interactive elements must have visible focus:
+
+```
+focus:outline-none focus:ring-1 focus:ring-violet-500/50 focus:border-violet-500
+```
+
+Or for elements without borders:
+
+```
+focus:outline-none focus:ring-2 focus:ring-violet-500/50 focus:ring-offset-2 focus:ring-offset-neutral-900
+```
+
+---
+
+## Anti-Patterns (AVOID)
+
+### Colors
+
+- ❌ Gradient backgrounds (`bg-gradient-to-*`) except for branded elements like logos
+- ❌ Multiple accent colors in the same view
+- ❌ Pure black (`bg-black`) as primary background
+- ❌ Bright/saturated colors for large surfaces
+
+### Radius
+
+- ❌ `rounded-lg`, `rounded-xl`, `rounded-2xl` on UI containers
+- ❌ `rounded-full` on buttons, cards, containers
+
+### Typography
+
+- ❌ `font-bold` in body text (use `font-medium` or `font-semibold`)
+- ❌ ALL CAPS for body text (only for tiny labels if at all)
+- ❌ Decorative fonts
+
+### Effects
+
+- ❌ Heavy drop shadows
+- ❌ Glowing/neon effects
+- ❌ Blur effects on primary content
+- ❌ Animations longer than 300ms
+- ❌ Bounce/elastic easings
+
+### Layout
+
+- ❌ Cramped spacing
+- ❌ Excessive visual separators
+- ❌ Decorative dividers
+
+---
+
+## Dark Mode Only Considerations
+
+Since this system is dark-mode-first:
+
+- Test contrast ratios for accessibility (WCAG AA minimum)
+- Ensure text remains readable on all surface levels
+- Use opacity-based colors for consistency across themes
+- Primary text should be `text-white` not a gray
+
+---
+
+## Example: Issue Row (Linear-style)
+
+```html
+<div
+  class="flex gap-3 items-center px-3 py-2 border-b transition-colors duration-150 cursor-pointer group hover:bg-white/5 border-white/5"
+>
+  <!-- Priority indicator -->
+  <div class="w-1 h-4 bg-amber-500 rounded-full"></div>
+
+  <!-- Checkbox -->
+  <input
+    type="checkbox"
+    class="w-4 h-4 bg-transparent rounded border-white/20 checked:bg-violet-500 checked:border-violet-500 focus:ring-violet-500/50"
+  />
+
+  <!-- Issue ID -->
+  <span class="font-mono text-xs text-neutral-500">ENG-123</span>
+
+  <!-- Title -->
+  <span class="flex-1 text-sm text-white truncate"
+    >Implement user authentication flow</span
+  >
+
+  <!-- Status badge -->
+  <span
+    class="px-2 py-0.5 text-xs font-medium text-violet-300 rounded bg-violet-500/20"
+    >In Progress</span
+  >
+
+  <!-- Assignee -->
+  <div
+    class="w-5 h-5 bg-gradient-to-br from-cyan-500 to-blue-500 rounded-full"
+  ></div>
+
+  <!-- Date -->
+  <span class="text-xs text-neutral-500">2d ago</span>
+</div>
+```
+
+---
+
+## Checklist for Component Audit
+
+When refactoring existing components, verify:
+
+- [ ] Background uses neutral-900/950, not black or grays outside palette
+- [ ] Borders use `border-white/10` or `border-neutral-800`
+- [ ] Border radius is `rounded` or `rounded-md` max
+- [ ] Text uses correct hierarchy (white → neutral-400 → neutral-500)
+- [ ] Accent color is violet, used only for interactive states
+- [ ] Transitions are 150-200ms, colors only
+- [ ] No gradient backgrounds (except branded elements)
+- [ ] Focus states are visible and use violet ring
+- [ ] Hover states use opacity shifts (`bg-white/5`, `bg-white/10`)
+- [ ] Icons are 16-20px, neutral-400 default color
+- [ ] Font weights are normal/medium/semibold (no bold)
