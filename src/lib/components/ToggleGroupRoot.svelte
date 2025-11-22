@@ -28,6 +28,7 @@
   } = $props();
 
   let containerRef: HTMLDivElement | null = $state(null);
+  let isInitialLoad = $state(true);
 
   // Use Svelte tweened stores for smooth animation
   const indicatorLeft = tweened(0, { duration: 200, easing: cubicOut });
@@ -76,10 +77,17 @@
     const newLeft = buttonRect.left - containerRect.left;
     const newWidth = buttonRect.width;
 
-    // Animate all properties simultaneously
-    indicatorLeft.set(newLeft);
-    indicatorWidth.set(newWidth);
-    indicatorOpacity.set(1);
+    // Animate all properties simultaneously (skip animation on initial load)
+    if (isInitialLoad) {
+      indicatorLeft.set(newLeft, { duration: 0 });
+      indicatorWidth.set(newWidth, { duration: 0 });
+      indicatorOpacity.set(1, { duration: 0 });
+      isInitialLoad = false;
+    } else {
+      indicatorLeft.set(newLeft);
+      indicatorWidth.set(newWidth);
+      indicatorOpacity.set(1);
+    }
   }
 
   $effect(() => {
