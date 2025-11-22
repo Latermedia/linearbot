@@ -1,6 +1,6 @@
 <script lang="ts">
-	import { Badge } from '$lib/components/ui/badge';
-	import { Card } from '$lib/components/ui/card';
+	import Badge from '$lib/components/ui/badge.svelte';
+	import Card from '$lib/components/ui/card.svelte';
 	import { cn } from '$lib/utils';
 	import type { ProjectSummary, TeamSummary, DomainSummary } from '../project-data';
 
@@ -179,8 +179,11 @@
 	{/if}
 
 	<!-- Legend -->
-	<Card class="p-4 mt-6">
-		<h4 class="text-sm font-semibold mb-2">Legend</h4>
+	<Card class="mt-6">
+		<div class="px-4 pt-4">
+			<div class="font-semibold text-sm mb-3">Legend</div>
+		</div>
+		<div class="px-4 pb-4">
 		<div class="flex flex-wrap gap-4 text-xs">
 			<div class="flex items-center gap-2">
 				<div class="w-4 h-4 bg-blue-500 rounded"></div>
@@ -203,6 +206,7 @@
 				<span>Stale (7+ days)</span>
 			</div>
 		</div>
+		</CardContent>
 	</Card>
 </div>
 

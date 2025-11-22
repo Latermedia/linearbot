@@ -1,7 +1,7 @@
 <script lang="ts">
 	import { onMount } from 'svelte';
 	import { theme } from '$lib/stores/theme';
-	import { Button } from '$lib/components/ui/button';
+	import Button from '$lib/components/ui/button.svelte';
 	import { Sun, Moon } from 'lucide-svelte';
 
 	onMount(() => {

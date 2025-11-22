@@ -1,6 +1,6 @@
 <script lang="ts">
-	import { Badge } from '$lib/components/ui/badge';
-	import { Card } from '$lib/components/ui/card';
+	import Badge from '$lib/components/ui/badge.svelte';
+	import Card from '$lib/components/ui/card.svelte';
 	import type { ProjectSummary, TeamSummary, DomainSummary } from '../project-data';
 
 	let { 
@@ -45,11 +45,12 @@
 <div class="space-y-8">
 	{#if groupBy === 'team'}
 		{#each teams as team}
-			<Card class="p-6">
-				<div class="mb-4 flex items-center justify-between">
-					<h3 class="text-xl font-semibold">{team.teamName}</h3>
+			<Card class="px-4 py-4">
+				<div class="flex items-center justify-between mb-4">
+					<div class="font-semibold text-xl">{team.teamName}</div>
 					<Badge variant="outline">{team.projects.length} projects</Badge>
 				</div>
+				<div>
 
 				<div class="overflow-x-auto">
 					<table class="w-full">
@@ -101,15 +102,17 @@
 						</tbody>
 					</table>
 				</div>
+				</div>
 			</Card>
 		{/each}
 	{:else}
 		{#each domains as domain}
-			<Card class="p-6">
-				<div class="mb-4 flex items-center justify-between">
-					<h3 class="text-xl font-semibold">{domain.domainName}</h3>
+			<Card class="px-4 py-4">
+				<div class="flex items-center justify-between mb-4">
+					<div class="font-semibold text-xl">{domain.domainName}</div>
 					<Badge variant="outline">{domain.projects.length} projects</Badge>
 				</div>
+				<div>
 
 				<div class="overflow-x-auto">
 					<table class="w-full">
@@ -160,6 +163,7 @@
 							{/each}
 						</tbody>
 					</table>
+				</div>
 				</div>
 			</Card>
 		{/each}
