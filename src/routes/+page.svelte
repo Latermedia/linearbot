@@ -9,7 +9,6 @@
   } from "$lib/stores/database";
   import ProjectsTable from "$lib/components/ProjectsTable.svelte";
   import GanttChart from "$lib/components/GanttChart.svelte";
-  import RefreshButton from "$lib/components/RefreshButton.svelte";
   import * as ToggleGroup from "$lib/components/ui/toggle-group";
   import Card from "$lib/components/ui/card.svelte";
   import Skeleton from "$lib/components/ui/skeleton.svelte";
@@ -39,60 +38,85 @@
     domains = $domainsStore;
     projects = $projectsStore;
   }
+
+  // Calculate health metrics
+  $: staleProjectsCount =
+    browser && projects.size > 0
+      ? Array.from(projects.values()).filter((p) => p.isStaleUpdate).length
+      : 0;
+  $: mismatchedStatusCount =
+    browser && projects.size > 0
+      ? Array.from(projects.values()).filter((p) => p.hasStatusMismatch).length
+      : 0;
+  $: missingLeadCount =
+    browser && projects.size > 0
+      ? Array.from(projects.values()).filter((p) => p.missingLead).length
+      : 0;
 </script>
 
 <div class="space-y-6">
-  <!-- Header with controls -->
-  <div
-    class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4"
-  >
-    <div>
-      <h2
-        class="text-xl font-semibold tracking-tight text-neutral-900 dark:text-white"
-      >
-        Project Timeline
-      </h2>
-      <p class="text-neutral-600 dark:text-neutral-400 text-sm mt-1">
-        View active projects across teams and domains
-      </p>
-    </div>
-    <RefreshButton />
-  </div>
-
   <!-- Stats summary -->
   {#if !loading && !error && teams.length > 0}
-    <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
-      <Card>
-        <div class="text-xs text-neutral-500 dark:text-neutral-500 mb-1">
+    <div class="flex flex-wrap gap-4">
+      <Card class="max-w-[200px]">
+        <div class="mb-1 text-xs text-neutral-500 dark:text-neutral-300">
           Total Teams
         </div>
         <div class="text-2xl font-semibold text-neutral-900 dark:text-white">
           {teams.length}
         </div>
       </Card>
-      <Card>
-        <div class="text-xs text-neutral-500 dark:text-neutral-500 mb-1">
+      <Card class="max-w-[200px]">
+        <div class="mb-1 text-xs text-neutral-500 dark:text-neutral-300">
           Active Projects
         </div>
         <div class="text-2xl font-semibold text-neutral-900 dark:text-white">
           {projects.size}
         </div>
       </Card>
-      <Card>
-        <div class="text-xs text-neutral-500 dark:text-neutral-500 mb-1">
-          Domains
+      <Card class="max-w-[200px]">
+        <div class="mb-1 text-xs text-neutral-500 dark:text-neutral-300">
+          Average Projects/Team
         </div>
         <div class="text-2xl font-semibold text-neutral-900 dark:text-white">
-          {domains.length}
+          {(projects.size / teams.length).toFixed(2)}
+        </div>
+      </Card>
+      <Card class="max-w-[200px]">
+        <div class="mb-1 text-xs text-neutral-500 dark:text-neutral-300">
+          Missing Updates
+        </div>
+        <div class="text-2xl font-semibold text-neutral-900 dark:text-white">
+          {staleProjectsCount}
+        </div>
+      </Card>
+      <Card class="max-w-[200px]">
+        <div class="mb-1 text-xs text-neutral-500 dark:text-neutral-300">
+          Status Mismatches
+        </div>
+        <div class="text-2xl font-semibold text-neutral-900 dark:text-white">
+          {mismatchedStatusCount}
+        </div>
+      </Card>
+      <Card class="max-w-[200px]">
+        <div class="mb-1 text-xs text-neutral-500 dark:text-neutral-300">
+          Missing Leads
+        </div>
+        <div class="text-2xl font-semibold text-neutral-900 dark:text-white">
+          {missingLeadCount}
         </div>
       </Card>
     </div>
   {/if}
 
   <!-- Sticky controls wrapper -->
-  <div class="sticky top-[60px] z-30 backdrop-blur-sm bg-white/95 dark:bg-neutral-950/95 -mx-4 sm:-mx-6 lg:-mx-8 px-4 sm:px-6 lg:px-8 pt-1 -mt-1">
+  <div
+    class="sticky top-[60px] z-30 backdrop-blur-sm bg-white/95 dark:bg-neutral-950/95 -mx-4 sm:-mx-6 lg:-mx-8 px-4 sm:px-6 lg:px-8 pt-1 -mt-1"
+  >
     <!-- View controls -->
-    <div class="py-2 flex flex-col sm:flex-row gap-4 items-start sm:items-center">
+    <div
+      class="flex flex-col gap-4 items-start py-2 sm:flex-row sm:items-center"
+    >
       <!-- View type toggle -->
       <ToggleGroup.Root bind:value={viewType} variant="outline" type="single">
         <ToggleGroup.Item value="table" aria-label="Table view">
@@ -119,31 +143,31 @@
   {#if loading}
     <div class="space-y-4">
       <Card>
-        <Skeleton class="h-8 w-48 mb-4" />
+        <Skeleton class="mb-4 w-48 h-8" />
         <div class="space-y-3">
-          <Skeleton class="h-12 w-full" />
-          <Skeleton class="h-12 w-full" />
-          <Skeleton class="h-12 w-full" />
-          <Skeleton class="h-12 w-full" />
+          <Skeleton class="w-full h-12" />
+          <Skeleton class="w-full h-12" />
+          <Skeleton class="w-full h-12" />
+          <Skeleton class="w-full h-12" />
         </div>
       </Card>
     </div>
   {:else if error}
     <Card class="border-red-500/50">
-      <div class="text-sm font-medium text-red-600 dark:text-red-400 mb-3">
+      <div class="mb-3 text-sm font-medium text-red-600 dark:text-red-400">
         Error Loading Data
       </div>
-      <p class="text-neutral-700 dark:text-neutral-400 mb-3">{error}</p>
+      <p class="mb-3 text-neutral-700 dark:text-neutral-400">{error}</p>
       <p class="text-sm text-neutral-600 dark:text-neutral-500">
         Make sure the database is synced. Run: <code
-          class="bg-neutral-100 dark:bg-neutral-800 px-2 py-1 rounded font-mono text-xs text-neutral-700 dark:text-neutral-300"
+          class="px-2 py-1 font-mono text-xs rounded bg-neutral-100 dark:bg-neutral-800 text-neutral-700 dark:text-neutral-300"
           >bun run sync</code
         >
       </p>
     </Card>
   {:else if teams.length === 0}
     <Card>
-      <div class="text-sm font-medium text-neutral-900 dark:text-white mb-3">
+      <div class="mb-3 text-sm font-medium text-neutral-900 dark:text-white">
         No Projects Found
       </div>
       <p class="text-neutral-700 dark:text-neutral-400">
@@ -151,11 +175,9 @@
         projects.
       </p>
     </Card>
+  {:else if viewType === "table"}
+    <ProjectsTable {teams} {domains} {groupBy} />
   {:else}
-    {#if viewType === "table"}
-      <ProjectsTable {teams} {domains} {groupBy} />
-    {:else}
-      <GanttChart {teams} {domains} {groupBy} />
-    {/if}
+    <GanttChart {teams} {domains} {groupBy} />
   {/if}
 </div>
