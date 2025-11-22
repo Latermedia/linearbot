@@ -1,5 +1,6 @@
 <script lang="ts">
   import { onMount } from "svelte";
+  import { browser } from "$app/environment";
   import type { ProjectSummary } from "../project-data";
   import Badge from "./ui/badge.svelte";
   import { cn } from "$lib/utils";
@@ -12,6 +13,8 @@
     onclose: () => void;
   } = $props();
 
+  let projectUrl = $state<string | null>(null);
+
   function formatDate(date: Date | string | null): string {
     if (!date) return "N/A";
     const d = typeof date === "string" ? new Date(date) : date;
@@ -23,8 +26,42 @@
   }
 
   function getProgressPercent(project: ProjectSummary): number {
-    if (project.totalIssues === 0) return 0;
+    if (!project.totalIssues || project.totalIssues === 0) return 0;
     return Math.round((project.completedIssues / project.totalIssues) * 100);
+  }
+
+  function getCompletedPercent(project: ProjectSummary): number {
+    if (!project.totalIssues || project.totalIssues === 0) return 0;
+    return (project.completedIssues / project.totalIssues) * 100;
+  }
+
+  function getWIPPercent(project: ProjectSummary): number {
+    if (!project.totalIssues || project.totalIssues === 0) return 0;
+    return (project.inProgressIssues / project.totalIssues) * 100;
+  }
+
+  function getHealthDisplay(health: string | null): { 
+    text: string; 
+    variant: "default" | "destructive" | "secondary" | "outline";
+    colorClass: string;
+  } {
+    if (!health) {
+      return { text: "—", variant: "outline", colorClass: "" };
+    }
+    
+    const healthLower = health.toLowerCase();
+    if (healthLower === "ontrack" || healthLower === "on track") {
+      return { text: "On Track", variant: "default", colorClass: "!text-green-600 dark:!text-green-500" };
+    }
+    if (healthLower === "atrisk" || healthLower === "at risk") {
+      return { text: "At Risk", variant: "default", colorClass: "!text-amber-600 dark:!text-amber-500" };
+    }
+    if (healthLower === "offtrack" || healthLower === "off track") {
+      return { text: "Off Track", variant: "destructive", colorClass: "" };
+    }
+    
+    // Fallback for any other values
+    return { text: health, variant: "outline", colorClass: "" };
   }
 
   function handleKeydown(event: KeyboardEvent): void {
@@ -40,9 +77,31 @@
     }
   }
 
+  async function fetchProjectUrl() {
+    if (!browser) return;
+    try {
+      const response = await fetch("/api/issues/with-projects");
+      if (response.ok) {
+        const data = await response.json();
+        const projectIssue = data.issues?.find((issue: any) => issue.project_id === project.projectId);
+        if (projectIssue?.url) {
+          // Extract workspace from issue URL
+          const workspaceMatch = projectIssue.url.match(/https:\/\/linear\.app\/([^\/]+)/);
+          if (workspaceMatch) {
+            const workspace = workspaceMatch[1];
+            projectUrl = `https://linear.app/${workspace}/project/${project.projectId}`;
+          }
+        }
+      }
+    } catch (error) {
+      // Silently fail - link just won't be available
+    }
+  }
+
   onMount(() => {
     document.addEventListener("keydown", handleKeydown);
     document.body.style.overflow = "hidden";
+    fetchProjectUrl();
     return () => {
       document.removeEventListener("keydown", handleKeydown);
       document.body.style.overflow = "";
@@ -74,8 +133,20 @@
               <span class="text-amber-500">⚠️</span>
             {/if}
           </h2>
-          <div class="text-xs text-neutral-400">
-            Project ID: {project.projectId}
+          <div class="flex items-center gap-3">
+            <div class="text-xs text-neutral-400">
+              Project ID: {project.projectId}
+            </div>
+            {#if projectUrl}
+              <a
+                href={projectUrl}
+                target="_blank"
+                rel="noopener noreferrer"
+                class="text-xs text-violet-400 hover:text-violet-300 transition-colors duration-150 underline"
+              >
+                Open in Linear →
+              </a>
+            {/if}
           </div>
         </div>
         <button
@@ -107,17 +178,40 @@
             >{getProgressPercent(project)}%</span
           >
         </div>
-        <div class="h-2 w-full rounded-full bg-white/10 overflow-hidden">
-          <div
-            class="h-full bg-violet-500/50 dark:bg-violet-500/60 transition-all duration-300"
-            style={`width: ${getProgressPercent(project)}%`}
-          ></div>
-        </div>
-        <div class="flex gap-4 mt-2 text-xs text-neutral-400">
-          <span>{project.completedIssues} completed</span>
-          <span>{project.inProgressIssues} in progress</span>
-          <span>{project.totalIssues} total</span>
-        </div>
+        {#if true}
+          {@const completedPercent = getCompletedPercent(project)}
+          {@const wipPercent = getWIPPercent(project)}
+          <div class="space-y-1.5">
+            <div class="flex items-center gap-2">
+              <div
+                class="flex-1 h-2 bg-neutral-200 dark:bg-neutral-800 rounded overflow-hidden relative"
+              >
+                {#if completedPercent > 0}
+                  <div
+                    class="h-full bg-violet-500 transition-colors duration-150 absolute left-0 top-0"
+                    style={`width: ${completedPercent}%`}
+                  ></div>
+                {/if}
+                {#if wipPercent > 0}
+                  <div
+                    class="h-full bg-amber-500 transition-colors duration-150 absolute top-0"
+                    style={`width: ${wipPercent}%; left: ${completedPercent}%`}
+                  ></div>
+                {/if}
+              </div>
+            </div>
+            <div class="flex items-center justify-between text-xs text-neutral-400">
+              <span>
+                {#if project.inProgressIssues > 0}
+                  {project.inProgressIssues} in progress
+                {:else}
+                  <span class="text-neutral-500">0 in progress</span>
+                {/if}
+              </span>
+              <span>{project.completedIssues}/{project.totalIssues}</span>
+            </div>
+          </div>
+        {/if}
       </div>
 
       <!-- Dates Section -->
@@ -151,6 +245,17 @@
           </div>
         </div>
       {/if}
+
+      <!-- Project Health -->
+      <div class="mb-6">
+        <div class="text-xs text-neutral-500 mb-1">Project Health</div>
+        {#if true}
+          {@const healthDisplay = getHealthDisplay(project.projectHealth)}
+          <Badge variant={healthDisplay.variant} class={healthDisplay.colorClass}>
+            {healthDisplay.text}
+          </Badge>
+        {/if}
+      </div>
 
       <!-- Project State -->
       <div class="mb-6">
