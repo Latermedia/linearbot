@@ -159,7 +159,7 @@
                         <span
                           class="text-amber-400 text-sm"
                           title="Health check failed"
-                          >⚠</span
+                          >⚠️</span
                         >
                       {/if}
                     </td>
@@ -272,6 +272,7 @@
                   {@const completedPercent = getCompletedPercent(project)}
                   {@const wipPercent = getWIPPercent(project)}
                   {@const hasIssues = hasHealthIssues(project)}
+                  {@const healthDisplay = getHealthDisplay(project.projectHealth)}
                   <tr
                     class="border-b border-neutral-200 dark:border-white/5 hover:bg-neutral-50 dark:hover:bg-white/5 transition-colors duration-150 cursor-pointer"
                     onmouseenter={(e) => handleRowMouseEnter(e, project)}
@@ -286,7 +287,7 @@
                         <span
                           class="text-amber-400 text-sm"
                           title="Health check failed"
-                          >⚠</span
+                          >⚠️</span
                         >
                       {/if}
                     </td>
@@ -361,7 +362,6 @@
   <!-- Hover tooltip -->
   {#if hoveredProject}
     {@const progress = getProgressPercent(hoveredProject)}
-    {@const hasWarnings = hasHealthIssues(hoveredProject)}
     <div
       class="fixed z-50 px-3 py-2 text-xs text-white rounded border shadow-lg pointer-events-none bg-neutral-800 border-white/10"
       style={`left: ${tooltipPosition.x + 10}px; top: ${tooltipPosition.y + 10}px; max-width: 200px;`}
@@ -377,9 +377,6 @@
         {/if}
         {#if hoveredProject.projectState}
           <div>State: {hoveredProject.projectState}</div>
-        {/if}
-        {#if hasWarnings}
-          <div class="mt-1 text-amber-400">⚠️ Has issues</div>
         {/if}
       </div>
     </div>
