@@ -25,6 +25,7 @@ export interface LinearIssueData {
   projectId: string | null;
   projectName: string | null;
   projectState: string | null;
+  projectHealth: string | null;
   projectUpdatedAt: Date | null;
   projectLeadId: string | null;
   projectLeadName: string | null;
@@ -239,6 +240,7 @@ export class LinearAPIClient {
                 id
                 name
                 state
+                health
                 updatedAt
                 lead {
                   id
@@ -302,6 +304,7 @@ export class LinearAPIClient {
             projectId: issue.project?.id || null,
             projectName: issue.project?.name || null,
             projectState: issue.project?.state || null,
+            projectHealth: issue.project?.health || null,
             projectUpdatedAt: issue.project?.updatedAt
               ? new Date(issue.project.updatedAt)
               : null,

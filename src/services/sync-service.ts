@@ -176,6 +176,7 @@ export async function performSync(
         project_id: issue.projectId,
         project_name: issue.projectName,
         project_state: issue.projectState,
+        project_health: issue.projectHealth,
         project_updated_at: issue.projectUpdatedAt
           ? issue.projectUpdatedAt.toISOString()
           : null,
@@ -211,6 +212,16 @@ export async function performSync(
   } catch (error) {
     const errorMessage = error instanceof Error ? error.message : "An unknown error occurred";
     console.error(`[SYNC] Sync error: ${errorMessage}`, error);
+    
+    // Check if it's a schema mismatch error
+    const isSchemaError = errorMessage.includes("values for") && errorMessage.includes("columns") ||
+                         errorMessage.includes("no such column") ||
+                         errorMessage.includes("table_info");
+    
+    const finalError = isSchemaError 
+      ? `${errorMessage}\n\n💡 Tip: This looks like a schema mismatch. Try resetting the database:\n   bun run reset-db`
+      : errorMessage;
+    
     return {
       success: false,
       newCount: 0,
@@ -219,7 +230,7 @@ export async function performSync(
       issueCount: 0,
       projectCount: 0,
       projectIssueCount: 0,
-      error: errorMessage,
+      error: finalError,
     };
   }
 }
