@@ -11,6 +11,10 @@
     DomainSummary,
   } from "../project-data";
   import { X, Copy, Loader2 } from "lucide-svelte";
+  import {
+    getProgressPercent,
+    hasDiscrepancies,
+  } from "$lib/utils/project-helpers";
 
   let {
     team,
@@ -24,7 +28,7 @@
     onclose: () => void;
   } = $props();
 
-  let previewContainer: HTMLDivElement = $state();
+  let previewContainer: HTMLDivElement | undefined = $state();
   let isCopying = $state(false);
   let copyStatus: "idle" | "success" | "error" = $state("idle");
   let copyMessage = $state("");
@@ -183,17 +187,6 @@
     };
   }
 
-  function getProgressPercent(project: ProjectSummary): number {
-    if (project.totalIssues === 0) return 0;
-    return Math.round((project.completedIssues / project.totalIssues) * 100);
-  }
-
-  function hasDiscrepancies(project: ProjectSummary): boolean {
-    return (
-      project.hasStatusMismatch || project.isStaleUpdate || project.missingLead
-    );
-  }
-
   function getCurrentDayPosition(): number | null {
     const now = new Date();
     now.setHours(0, 0, 0, 0);
@@ -211,7 +204,8 @@
 
   const currentDayPercent = getCurrentDayPosition();
   const displayName = groupBy === "team" ? team?.teamName : domain?.domainName;
-  const projects = groupBy === "team" ? team?.projects || [] : domain?.projects || [];
+  const projects =
+    groupBy === "team" ? team?.projects || [] : domain?.projects || [];
 
   async function copyToPNG() {
     if (!browser || !previewContainer || isCopying) return;
@@ -316,7 +310,7 @@
 </script>
 
 <div
-  class="modal-backdrop fixed inset-0 z-50 flex items-center justify-center bg-black/60"
+  class="flex fixed inset-0 z-50 justify-center items-center modal-backdrop bg-black/60"
   onclick={handleBackdropClick}
   onkeydown={handleBackdropKeydown}
   role="dialog"
@@ -325,42 +319,45 @@
   tabindex="-1"
 >
   <div
-    class="w-full h-full max-h-screen overflow-hidden flex flex-col rounded-md border shadow-2xl bg-white dark:bg-neutral-900 border-neutral-200 dark:border-white/10 shadow-black/50 m-4"
+    class="flex overflow-hidden flex-col m-4 w-full h-full max-h-screen bg-white rounded border shadow-2xl dark:bg-neutral-900 border-neutral-200 dark:border-white/10 shadow-black/50"
     onclick={(e) => e.stopPropagation()}
     onkeydown={(e) => e.stopPropagation()}
-    role="document"
+    role="presentation"
   >
     <!-- Header -->
-    <div class="flex items-center justify-between p-6 border-b border-neutral-200 dark:border-white/10">
+    <div
+      class="flex justify-between items-center p-6 border-b border-neutral-200 dark:border-white/10"
+    >
       <div class="flex-1">
         <h2
           id="modal-title"
-          class="text-xl font-semibold text-neutral-900 dark:text-white mb-1"
+          class="mb-1 text-xl font-semibold text-neutral-900 dark:text-white"
         >
           Export: {displayName}
         </h2>
         <div class="text-sm text-neutral-600 dark:text-neutral-400">
-          {projects.length} {projects.length === 1 ? "project" : "projects"}
+          {projects.length}
+          {projects.length === 1 ? "project" : "projects"}
         </div>
       </div>
 
       <!-- Export Controls -->
-      <div class="flex items-center gap-4 mr-4">
-        <label class="flex items-center gap-2 cursor-pointer">
+      <div class="flex gap-4 items-center mr-4">
+        <label class="flex gap-2 items-center cursor-pointer">
           <input
             type="checkbox"
             bind:checked={showTodayIndicator}
-            class="w-4 h-4 rounded border-neutral-300 dark:border-white/20 text-violet-600 focus:ring-violet-500 focus:ring-2 dark:bg-neutral-800 dark:checked:bg-violet-600"
+            class="w-4 h-4 text-violet-600 rounded border-neutral-300 dark:border-white/20 focus:ring-violet-500 focus:ring-2 dark:bg-neutral-800 dark:checked:bg-violet-600"
           />
           <span class="text-sm text-neutral-700 dark:text-neutral-300">
             Show today's date
           </span>
         </label>
-        <label class="flex items-center gap-2 cursor-pointer">
+        <label class="flex gap-2 items-center cursor-pointer">
           <input
             type="checkbox"
             bind:checked={showWarnings}
-            class="w-4 h-4 rounded border-neutral-300 dark:border-white/20 text-violet-600 focus:ring-violet-500 focus:ring-2 dark:bg-neutral-800 dark:checked:bg-violet-600"
+            class="w-4 h-4 text-violet-600 rounded border-neutral-300 dark:border-white/20 focus:ring-violet-500 focus:ring-2 dark:bg-neutral-800 dark:checked:bg-violet-600"
           />
           <span class="text-sm text-neutral-700 dark:text-neutral-300">
             Show warnings
@@ -369,7 +366,7 @@
       </div>
 
       <button
-        class="text-neutral-400 hover:text-neutral-900 dark:hover:text-white transition-colors duration-150"
+        class="transition-colors duration-150 text-neutral-400 hover:text-neutral-900 dark:hover:text-white"
         onclick={onclose}
         aria-label="Close modal"
       >
@@ -378,7 +375,7 @@
     </div>
 
     <!-- Preview Area -->
-    <div class="flex-1 overflow-auto bg-neutral-50 dark:bg-neutral-950 p-6">
+    <div class="overflow-auto flex-1 p-6 bg-neutral-50 dark:bg-neutral-950">
       <div
         bind:this={previewContainer}
         data-export-preview
@@ -391,7 +388,8 @@
             <div style="position: absolute; inset: 0;">
               {#each monthLabels as month}
                 <div
-                  style="display: flex; position: absolute; top: 0; bottom: 0; align-items: center; font-size: 0.75rem; font-weight: 500; color: #525252; left: {month.startPercent}%; width: {month.endPercent - month.startPercent}%;"
+                  style="display: flex; position: absolute; top: 0; bottom: 0; align-items: center; font-size: 0.75rem; font-weight: 500; color: #525252; left: {month.startPercent}%; width: {month.endPercent -
+                    month.startPercent}%;"
                 >
                   <div style="padding: 0 0.5rem;">{month.month}</div>
                 </div>
@@ -421,11 +419,15 @@
         <!-- Projects -->
         <div style="display: flex; flex-direction: column; gap: 0.375rem;">
           {#if groupBy === "team" && team}
-            <h3 style="margin-bottom: 0.75rem; font-size: 1.125rem; font-weight: 500; color: #171717;">
+            <h3
+              style="margin-bottom: 0.75rem; font-size: 1.125rem; font-weight: 500; color: #171717;"
+            >
               {team.teamName}
             </h3>
           {:else if domain}
-            <h3 style="display: flex; gap: 0.5rem; align-items: center; margin-bottom: 0.75rem; font-size: 1.125rem; font-weight: 500; color: #171717;">
+            <h3
+              style="display: flex; gap: 0.5rem; align-items: center; margin-bottom: 0.75rem; font-size: 1.125rem; font-weight: 500; color: #171717;"
+            >
               {domain.domainName}
               <Badge variant="outline">{domain.projects.length} projects</Badge>
             </h3>
@@ -439,16 +441,28 @@
             <!-- Timeline bar -->
             <div style="position: relative; height: 3rem;">
               <div
-                style="position: absolute; height: 2.5rem; border-radius: 0.375rem; display: flex; align-items: center; padding: 0 1.5rem; font-size: 0.75rem; font-weight: 500; overflow: hidden; background-color: #525252; color: #ffffff; left: {position.startPercent}%; width: {position.widthPercent}%; ${position.extendsBefore && position.extendsAfter ? "mask-image: linear-gradient(to right, transparent 0px, black 24px, black calc(100% - 24px), transparent 100%); -webkit-mask-image: linear-gradient(to right, transparent 0px, black 24px, black calc(100% - 24px), transparent 100%);" : ""} ${position.extendsBefore && !position.extendsAfter ? "mask-image: linear-gradient(to right, transparent 0px, black 24px); -webkit-mask-image: linear-gradient(to right, transparent 0px, black 24px);" : ""} ${!position.extendsBefore && position.extendsAfter ? "mask-image: linear-gradient(to left, transparent 0px, black 24px); -webkit-mask-image: linear-gradient(to left, transparent 0px, black 24px);" : ""}"
+                style="position: absolute; height: 2.5rem; border-radius: 0.375rem; display: flex; align-items: center; padding: 0 1.5rem; font-size: 0.75rem; font-weight: 500; overflow: hidden; background-color: #525252; color: #ffffff; left: {position.startPercent}%; width: {position.widthPercent}%; ${position.extendsBefore &&
+                position.extendsAfter
+                  ? 'mask-image: linear-gradient(to right, transparent 0px, black 24px, black calc(100% - 24px), transparent 100%); -webkit-mask-image: linear-gradient(to right, transparent 0px, black 24px, black calc(100% - 24px), transparent 100%);'
+                  : ''} ${position.extendsBefore && !position.extendsAfter
+                  ? 'mask-image: linear-gradient(to right, transparent 0px, black 24px); -webkit-mask-image: linear-gradient(to right, transparent 0px, black 24px);'
+                  : ''} ${!position.extendsBefore && position.extendsAfter
+                  ? 'mask-image: linear-gradient(to left, transparent 0px, black 24px); -webkit-mask-image: linear-gradient(to left, transparent 0px, black 24px);'
+                  : ''}"
               >
                 <!-- Progress fill background -->
                 <div
                   style="position: absolute; inset: 0; border-radius: 0.375rem; background-color: rgba(139, 92, 246, 0.4); width: {progress}%;"
                 ></div>
                 <!-- Project name overlay -->
-                <span style="position: relative; z-index: 10; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; display: flex; align-items: center; gap: 0.375rem;">
+                <span
+                  style="position: relative; z-index: 10; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; display: flex; align-items: center; gap: 0.375rem;"
+                >
                   {#if hasWarnings}
-                    <span style="color: #fbbf24; font-size: 0.875rem; flex-shrink: 0;">⚠️</span>
+                    <span
+                      style="color: #fbbf24; font-size: 0.875rem; flex-shrink: 0;"
+                      >⚠️</span
+                    >
                   {/if}
                   {project.projectName}
                 </span>
@@ -460,7 +474,9 @@
     </div>
 
     <!-- Footer -->
-    <div class="flex items-center justify-between p-6 border-t border-neutral-200 dark:border-white/10">
+    <div
+      class="flex justify-between items-center p-6 border-t border-neutral-200 dark:border-white/10"
+    >
       <div class="flex-1">
         {#if copyStatus === "success"}
           <div class="text-sm text-green-600 dark:text-green-400">
@@ -472,15 +488,11 @@
           </div>
         {/if}
       </div>
-      <div class="flex items-center gap-3">
+      <div class="flex gap-3 items-center">
         <Button variant="outline" onclick={onclose} disabled={isCopying}>
           Cancel
         </Button>
-        <Button
-          variant="default"
-          onclick={copyToPNG}
-          disabled={isCopying}
-        >
+        <Button variant="default" onclick={copyToPNG} disabled={isCopying}>
           {#if isCopying}
             <Loader2 class="w-4 h-4 animate-spin" />
             Copying...
@@ -508,4 +520,3 @@
     animation: spin 1s linear infinite;
   }
 </style>
-

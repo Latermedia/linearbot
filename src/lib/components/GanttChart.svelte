@@ -8,7 +8,10 @@
   import GanttExportModal from "./GanttExportModal.svelte";
   import GanttProjectBar from "./GanttProjectBar.svelte";
   import GanttSectionHeader from "./GanttSectionHeader.svelte";
-  import { formatDateFull, getProgressPercent } from "$lib/utils/project-helpers";
+  import {
+    formatDateFull,
+    getProgressPercent,
+  } from "$lib/utils/project-helpers";
 
   let {
     teams = [],
@@ -170,8 +173,9 @@
     );
 
     // Check if dates extend beyond visible range
-    const extendsBefore = startDays < 0;
-    const extendsAfter = endDays > 89;
+    // Don't fade if within 2 days of the range boundaries (directionally accurate)
+    const extendsBefore = startDays < -2;
+    const extendsAfter = endDays > 92;
 
     // Clamp to visible range (0-89 days)
     const clampedStart = Math.max(0, Math.min(startDays, 89));
@@ -206,7 +210,7 @@
     console.log("[GanttChart] teams.length:", teams.length);
     console.log("[GanttChart] domains.length:", domains.length);
     console.log("[GanttChart] groups.length:", groups.length);
-    
+
     if (groups.length > 0) {
       if (groupBy === "team") {
         const sections = teams.map((team) => ({
@@ -235,7 +239,10 @@
             projectName: p.projectName,
           })),
         }));
-        console.log("[GanttChart] Sections (by domain, abstracted with title):", sectionsWithTitle);
+        console.log(
+          "[GanttChart] Sections (by domain, abstracted with title):",
+          sectionsWithTitle
+        );
       }
     } else {
       console.warn("[GanttChart] groups is empty! groupBy:", groupBy);

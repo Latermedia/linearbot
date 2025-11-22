@@ -41,7 +41,31 @@ export function hasDomainMappings(): boolean {
 }
 
 export function getDomainForTeam(teamKey: string): DomainName | null {
-  return TEAM_TO_DOMAIN[teamKey] || null;
+  // Try exact match first
+  if (TEAM_TO_DOMAIN[teamKey]) {
+    return TEAM_TO_DOMAIN[teamKey];
+  }
+  
+  // Try case-insensitive match
+  const upperKey = teamKey.toUpperCase();
+  if (TEAM_TO_DOMAIN[upperKey]) {
+    return TEAM_TO_DOMAIN[upperKey];
+  }
+  
+  // Try finding by case-insensitive key match
+  const matchingKey = Object.keys(TEAM_TO_DOMAIN).find(
+    key => key.toUpperCase() === upperKey
+  );
+  
+  if (matchingKey) {
+    return TEAM_TO_DOMAIN[matchingKey];
+  }
+  
+  if (teamKey === "APP" || teamKey.toLowerCase() === "app") {
+    console.log('[getDomainForTeam] No match for team:', teamKey, 'Available keys:', Object.keys(TEAM_TO_DOMAIN));
+  }
+  
+  return null;
 }
 
 export function getTeamsForDomain(domain: DomainName): string[] {

@@ -26,6 +26,8 @@ export async function getStartedIssues(): Promise<Issue[]> {
 export async function getIssuesWithProjects(): Promise<Issue[]> {
 	const response = await fetch('/api/issues/with-projects');
 	if (!response.ok) {
+		const errorText = await response.text();
+		console.error('[getIssuesWithProjects] Error response:', errorText);
 		throw new Error('Failed to fetch issues with projects');
 	}
 	const data = await response.json();

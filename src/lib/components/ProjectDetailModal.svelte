@@ -3,7 +3,13 @@
   import { browser } from "$app/environment";
   import type { ProjectSummary } from "../project-data";
   import Badge from "./ui/badge.svelte";
-  import { cn } from "$lib/utils";
+  import {
+    formatDateFull,
+    getProgressPercent,
+    getCompletedPercent,
+    getWIPPercent,
+    getHealthDisplay,
+  } from "$lib/utils/project-helpers";
 
   let {
     project,
@@ -14,55 +20,6 @@
   } = $props();
 
   let projectUrl = $state<string | null>(null);
-
-  function formatDate(date: Date | string | null): string {
-    if (!date) return "N/A";
-    const d = typeof date === "string" ? new Date(date) : date;
-    return d.toLocaleDateString("en-US", {
-      month: "short",
-      day: "numeric",
-      year: "numeric",
-    });
-  }
-
-  function getProgressPercent(project: ProjectSummary): number {
-    if (!project.totalIssues || project.totalIssues === 0) return 0;
-    return Math.round((project.completedIssues / project.totalIssues) * 100);
-  }
-
-  function getCompletedPercent(project: ProjectSummary): number {
-    if (!project.totalIssues || project.totalIssues === 0) return 0;
-    return (project.completedIssues / project.totalIssues) * 100;
-  }
-
-  function getWIPPercent(project: ProjectSummary): number {
-    if (!project.totalIssues || project.totalIssues === 0) return 0;
-    return (project.inProgressIssues / project.totalIssues) * 100;
-  }
-
-  function getHealthDisplay(health: string | null): { 
-    text: string; 
-    variant: "default" | "destructive" | "secondary" | "outline";
-    colorClass: string;
-  } {
-    if (!health) {
-      return { text: "—", variant: "outline", colorClass: "" };
-    }
-    
-    const healthLower = health.toLowerCase();
-    if (healthLower === "ontrack" || healthLower === "on track") {
-      return { text: "On Track", variant: "default", colorClass: "!text-green-600 dark:!text-green-500" };
-    }
-    if (healthLower === "atrisk" || healthLower === "at risk") {
-      return { text: "At Risk", variant: "default", colorClass: "!text-amber-600 dark:!text-amber-500" };
-    }
-    if (healthLower === "offtrack" || healthLower === "off track") {
-      return { text: "Off Track", variant: "destructive", colorClass: "" };
-    }
-    
-    // Fallback for any other values
-    return { text: health, variant: "outline", colorClass: "" };
-  }
 
   function handleKeydown(event: KeyboardEvent): void {
     if (event.key === "Escape") {
@@ -232,12 +189,12 @@
       <div class="grid grid-cols-2 gap-4 mb-6">
         <div>
           <div class="text-xs text-neutral-500 mb-1">Start Date</div>
-          <div class="text-sm text-white">{formatDate(project.startDate)}</div>
+          <div class="text-sm text-white">{formatDateFull(project.startDate)}</div>
         </div>
         <div>
           <div class="text-xs text-neutral-500 mb-1">Estimated End Date</div>
           <div class="text-sm text-white">
-            {formatDate(project.estimatedEndDate)}
+            {formatDateFull(project.estimatedEndDate)}
           </div>
         </div>
       </div>
@@ -279,7 +236,7 @@
         </div>
         {#if project.projectUpdatedAt}
           <div class="text-xs text-neutral-500 mt-1">
-            Last updated: {formatDate(project.projectUpdatedAt)}
+            Last updated: {formatDateFull(project.projectUpdatedAt)}
           </div>
         {/if}
       </div>
@@ -334,7 +291,7 @@
       <div>
         <div class="text-xs text-neutral-500 mb-1">Last Activity</div>
         <div class="text-sm text-white">
-          {formatDate(project.lastActivityDate)}
+          {formatDateFull(project.lastActivityDate)}
         </div>
       </div>
     </div>

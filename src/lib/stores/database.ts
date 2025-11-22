@@ -27,11 +27,19 @@ async function loadConfig() {
 		if (response.ok) {
 			const config = await response.json();
 			if (config.teamDomainMappings) {
+				console.log('[loadConfig] Initializing domain mappings:', Object.keys(config.teamDomainMappings).length, 'teams');
 				initializeDomainMappings(config.teamDomainMappings);
+				const { getAllDomains } = await import('../../utils/domain-mapping');
+				const domains = getAllDomains();
+				console.log('[loadConfig] Available domains:', domains);
+			} else {
+				console.warn('[loadConfig] No teamDomainMappings in config');
 			}
+		} else {
+			console.error('[loadConfig] Config API returned status:', response.status);
 		}
 	} catch (error) {
-		console.warn('Failed to load config:', error);
+		console.error('[loadConfig] Failed to load config:', error);
 	}
 }
 
@@ -61,6 +69,7 @@ function createDatabaseStore() {
 					lastSync: new Date()
 				}));
 			} catch (error) {
+				console.error('[databaseStore] Load error:', error);
 				update((state) => ({
 					...state,
 					loading: false,
@@ -83,14 +92,12 @@ export const databaseStore = createDatabaseStore();
 
 // Derived stores for processed data
 export const projectsStore = derived(databaseStore, ($db) => {
-	if (!browser) return new Map<string, ProjectSummary>();
-	if ($db.loading || $db.error) return new Map<string, ProjectSummary>();
+	if (!browser || $db.loading || $db.error) return new Map<string, ProjectSummary>();
 	return processProjects($db.issues);
 });
 
 export const teamsStore = derived([databaseStore, projectsStore], ([$db, $projects]) => {
-	if (!browser) return [];
-	if ($db.loading || $db.error) return [];
+	if (!browser || $db.loading || $db.error) return [];
 	return groupProjectsByTeams($projects, $db.issues);
 });
 

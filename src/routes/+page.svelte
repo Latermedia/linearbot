@@ -13,45 +13,43 @@
   import Card from "$lib/components/ui/card.svelte";
   import Skeleton from "$lib/components/ui/skeleton.svelte";
 
-  let groupBy: "team" | "domain" = "team";
-  let viewType: "table" | "gantt" = "table";
+  let groupBy = $state<"team" | "domain">("team");
+  let viewType = $state<"table" | "gantt">("table");
 
-  // Initialize with default values for SSR
-  let loading = true;
-  let error: string | null = null;
-  let lastSync: Date | null = null;
-  let teams: any[] = [];
-  let domains: any[] = [];
-  let projects: Map<string, any> = new Map();
-
-  // Only load data in browser
+  // Load data on mount
   onMount(() => {
-    if (browser) {
-      databaseStore.load();
-    }
+    databaseStore.load();
   });
 
-  // Subscribe to stores only in browser
-  $: if (browser) {
-    ({ loading, error, lastSync } = $databaseStore);
-    teams = $teamsStore;
-    domains = $domainsStore;
-    projects = $projectsStore;
-  }
+  // Subscribe to stores (stores handle browser checks internally)
+  // In runes mode, access stores in reactive contexts
+  // Use $derived to create reactive values from stores
+  const loading = $derived($databaseStore.loading);
+  const error = $derived($databaseStore.error);
+  const lastSync = $derived($databaseStore.lastSync);
+
+  // Create reactive derived values from stores
+  // This ensures they update when stores change
+  const teams = $derived.by(() => $teamsStore);
+  const domains = $derived.by(() => $domainsStore);
+  const projects = $derived.by(() => $projectsStore);
 
   // Calculate health metrics
-  $: staleProjectsCount =
-    browser && projects.size > 0
+  const staleProjectsCount = $derived(
+    projects.size > 0
       ? Array.from(projects.values()).filter((p) => p.isStaleUpdate).length
-      : 0;
-  $: mismatchedStatusCount =
-    browser && projects.size > 0
+      : 0
+  );
+  const mismatchedStatusCount = $derived(
+    projects.size > 0
       ? Array.from(projects.values()).filter((p) => p.hasStatusMismatch).length
-      : 0;
-  $: missingLeadCount =
-    browser && projects.size > 0
+      : 0
+  );
+  const missingLeadCount = $derived(
+    projects.size > 0
       ? Array.from(projects.values()).filter((p) => p.missingLead).length
-      : 0;
+      : 0
+  );
 </script>
 
 <div class="space-y-6">
