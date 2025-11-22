@@ -179,12 +179,16 @@ export class LinearAPIClient {
     if (projectIds.length === 0) return [];
 
     const issues: LinearIssueData[] = [];
+    const totalProjects = projectIds.length;
 
     // Fetch issues for each project (Linear doesn't support OR in project filters)
-    for (const projectId of projectIds) {
+    for (let projectIndex = 0; projectIndex < projectIds.length; projectIndex++) {
+      const projectId = projectIds[projectIndex];
       let hasMore = true;
       let cursor: string | undefined;
       let pageCount = 0;
+      let projectIssues: LinearIssueData[] = [];
+      let projectName: string | null = null;
 
       const query = `
         query GetProjectIssues($first: Int!, $after: String, $projectId: ID!) {
@@ -261,8 +265,13 @@ export class LinearAPIClient {
           // Skip duplicates (issue might already be in started issues)
           if (issues.some((i) => i.id === issue.id)) continue;
 
+          // Capture project name from first issue
+          if (!projectName && issue.project?.name) {
+            projectName = issue.project.name;
+          }
+
           const lastComment = issue.comments?.nodes?.[0];
-          issues.push({
+          const issueData = {
             id: issue.id,
             identifier: issue.identifier,
             title: issue.title,
@@ -293,12 +302,21 @@ export class LinearAPIClient {
               : null,
             projectLeadId: issue.project?.lead?.id || null,
             projectLeadName: issue.project?.lead?.name || null,
-          });
+          };
+          
+          issues.push(issueData);
+          projectIssues.push(issueData);
         }
 
         hasMore = data.pageInfo.hasNextPage;
         cursor = data.pageInfo.endCursor ?? undefined;
         pageCount++;
+
+        // Log progress for this project during pagination
+        const projectDisplayName = projectName || projectId;
+        const currentCount = projectIssues.length;
+        const pageSize = data.nodes.length;
+        console.log(`[SYNC] Project ${projectIndex + 1}/${totalProjects} (${projectDisplayName}, ID: ${projectId}): ${currentCount} issues (${pageSize} in this page)`);
 
         if (onProgress) {
           onProgress(issues.length, data.nodes.length);
@@ -312,6 +330,11 @@ export class LinearAPIClient {
           break;
         }
       }
+
+      // Log summary for this project
+      const projectDisplayName = projectName || projectId;
+      const finalCount = projectIssues.length;
+      console.log(`[SYNC] Project ${projectIndex + 1}/${totalProjects} summary: ${projectDisplayName} (ID: ${projectId}) - ${finalCount} issues`);
     }
 
     return issues;

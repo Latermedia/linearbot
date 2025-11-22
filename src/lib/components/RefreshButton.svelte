@@ -7,58 +7,84 @@
 
   let { lastSync = null }: { lastSync?: Date | null } = $props();
 
-  const THROTTLE_MS = 10 * 60 * 1000; // 10 minutes
-  const POLL_INTERVAL = 5000; // 5 seconds
-  const STORAGE_KEY = "linear-bot-last-sync";
+  const POLL_INTERVAL = 1000; // Poll every 1 second when syncing
+  const STATUS_POLL_INTERVAL = 5000; // Poll status every 5 seconds when idle
 
-  let canRefresh = true;
-  let timeUntilRefresh = 0;
-  let intervalId: number | undefined;
+  let syncStatus = $state<"idle" | "syncing" | "error">("idle");
+  let isRefreshing = $state(false);
+  let serverLastSyncTime: number | null = null;
   let pollIntervalId: number | undefined;
-  let isRefreshing = false;
+  let statusPollIntervalId: number | undefined;
+  let errorMessage = $state<string | null>(null);
 
-  function checkThrottle() {
+  async function checkSyncStatus() {
     if (!browser) return;
 
-    const lastSyncTime = localStorage.getItem(STORAGE_KEY);
-    if (!lastSyncTime) {
-      canRefresh = true;
-      timeUntilRefresh = 0;
-      return;
-    }
+    try {
+      const response = await fetch("/api/sync/status");
+      if (response.ok) {
+        const data = await response.json();
+        const wasSyncing = syncStatus === "syncing" || isRefreshing;
+        syncStatus = data.status;
+        serverLastSyncTime = data.lastSyncTime;
+        errorMessage = data.error || null;
 
-    const lastSyncDate = new Date(lastSyncTime);
-    const now = new Date();
-    const elapsed = now.getTime() - lastSyncDate.getTime();
-
-    if (elapsed >= THROTTLE_MS) {
-      canRefresh = true;
-      timeUntilRefresh = 0;
-    } else {
-      canRefresh = false;
-      timeUntilRefresh = Math.ceil((THROTTLE_MS - elapsed) / 1000);
+        // If sync completed (was syncing, now idle), reload data
+        if (wasSyncing && syncStatus === "idle" && serverLastSyncTime) {
+          isRefreshing = false;
+          await databaseStore.load();
+        } else if (syncStatus === "error" && isRefreshing) {
+          isRefreshing = false;
+          // Clear error after 5 seconds
+          setTimeout(() => {
+            if (syncStatus === "error") {
+              errorMessage = null;
+            }
+          }, 5000);
+        } else if (syncStatus === "idle" && !data.isRunning) {
+          // Make sure isRefreshing is false when server says idle
+          isRefreshing = false;
+        }
+      }
+    } catch (error) {
+      console.debug("Status poll error:", error);
     }
   }
 
   async function handleRefresh() {
-    if (!canRefresh || !browser || isRefreshing) return;
+    if (!browser || isRefreshing || syncStatus === "syncing") return;
 
     isRefreshing = true;
-    localStorage.setItem(STORAGE_KEY, new Date().toISOString());
-    canRefresh = false;
+    errorMessage = null;
 
     try {
-      await databaseStore.load();
-    } finally {
-      isRefreshing = false;
-      checkThrottle();
-    }
-  }
+      const response = await fetch("/api/sync", {
+        method: "POST",
+      });
 
-  function formatTime(seconds: number): string {
-    const mins = Math.floor(seconds / 60);
-    const secs = seconds % 60;
-    return `${mins}:${secs.toString().padStart(2, "0")}`;
+      const data = await response.json();
+
+      if (!response.ok) {
+        isRefreshing = false;
+        // Rate limited or already syncing
+        if (response.status === 429 || response.status === 409) {
+          errorMessage = data.message || "Sync not available";
+          // Still check status to get accurate state
+          await checkSyncStatus();
+        } else {
+          errorMessage = data.message || "Failed to start sync";
+          syncStatus = "error";
+        }
+        return;
+      }
+
+      // Sync started, begin polling
+      syncStatus = "syncing";
+    } catch (error) {
+      errorMessage = error instanceof Error ? error.message : "Failed to start sync";
+      isRefreshing = false;
+      syncStatus = "error";
+    }
   }
 
   function formatLastSync(date: Date | null): string {
@@ -90,63 +116,45 @@
     });
   }
 
-  // Poll for database updates
-  async function pollForUpdates() {
-    if (!browser || isRefreshing) return;
-
-    try {
-      // Check if there are new updates available
-      const response = await fetch("/api/issues/latest-update");
-
-      if (response.ok) {
-        const data = await response.json();
-        if (data.latest && lastSync) {
-          const latestUpdate = new Date(data.latest);
-          if (latestUpdate > lastSync) {
-            // New data available, auto-refresh
-            await databaseStore.load();
-          }
-        }
-      }
-    } catch (error) {
-      // Silently fail polling errors
-      console.debug("Poll error:", error);
-    }
-  }
-
   // Only run in browser
   onMount(() => {
-    checkThrottle();
+    // Initial status check
+    checkSyncStatus();
 
-    // Countdown timer for throttle
-    if (!canRefresh) {
-      intervalId = setInterval(() => {
-        timeUntilRefresh--;
-        if (timeUntilRefresh <= 0) {
-          checkThrottle();
-          if (canRefresh && intervalId) {
-            clearInterval(intervalId);
-            intervalId = undefined;
-          }
-        }
-      }, 1000) as unknown as number;
-    }
-
-    // Start polling for updates
-    pollIntervalId = setInterval(
-      pollForUpdates,
-      POLL_INTERVAL
+    // Poll status periodically when idle
+    statusPollIntervalId = setInterval(
+      checkSyncStatus,
+      STATUS_POLL_INTERVAL
     ) as unknown as number;
 
     return () => {
-      if (intervalId) clearInterval(intervalId);
       if (pollIntervalId) clearInterval(pollIntervalId);
+      if (statusPollIntervalId) clearInterval(statusPollIntervalId);
+    };
+  });
+
+  // Poll more frequently when syncing
+  $effect(() => {
+    if (!browser) return;
+
+    if (syncStatus === "syncing" && !pollIntervalId) {
+      pollIntervalId = setInterval(checkSyncStatus, POLL_INTERVAL) as unknown as number;
+    } else if (syncStatus !== "syncing" && pollIntervalId) {
+      clearInterval(pollIntervalId);
+      pollIntervalId = undefined;
+    }
+
+    return () => {
+      if (pollIntervalId) {
+        clearInterval(pollIntervalId);
+        pollIntervalId = undefined;
+      }
     };
   });
 
   onDestroy(() => {
-    if (intervalId) clearInterval(intervalId);
     if (pollIntervalId) clearInterval(pollIntervalId);
+    if (statusPollIntervalId) clearInterval(statusPollIntervalId);
   });
 </script>
 
@@ -163,15 +171,15 @@
   </div>
   <Button
     onclick={handleRefresh}
-    disabled={!canRefresh || isRefreshing}
+    disabled={isRefreshing || syncStatus === "syncing"}
     variant="secondary"
     size="sm"
   >
-    <RefreshCw class={`h-4 w-4 ${isRefreshing ? "animate-spin" : ""}`} />
-    {#if isRefreshing}
-      Refreshing...
-    {:else if !canRefresh}
-      Refresh in {formatTime(timeUntilRefresh)}
+    <RefreshCw class={`h-4 w-4 ${isRefreshing || syncStatus === "syncing" ? "animate-spin" : ""}`} />
+    {#if syncStatus === "syncing" || isRefreshing}
+      Syncing...
+    {:else if syncStatus === "error"}
+      {errorMessage || "Sync Error"}
     {:else}
       Refresh Data
     {/if}

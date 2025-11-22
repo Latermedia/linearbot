@@ -5,10 +5,12 @@
 	let {
 		value,
 		class: className,
+		children,
 		...restProps
 	}: {
 		value: string;
 		class?: string;
+		children?: import("svelte").Snippet;
 		[key: string]: any;
 	} = $props();
 
@@ -34,6 +36,6 @@
 	)}
 	{...restProps}
 >
-	<slot />
+	{@render children?.()}
 </button>
 

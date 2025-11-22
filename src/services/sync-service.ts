@@ -40,9 +40,11 @@ export async function performSync(
 
     // Connect to Linear
     const linearClient = createLinearClient();
+    console.log('[SYNC] Testing Linear API connection...');
     const connected = await linearClient.testConnection();
 
     if (!connected) {
+      console.error('[SYNC] Failed to connect to Linear API');
       return {
         success: false,
         newCount: 0,
@@ -54,16 +56,22 @@ export async function performSync(
         error: "Failed to connect to Linear. Check your API key.",
       };
     }
+    console.log('[SYNC] Linear API connection successful');
 
     // Fetch issues
     const allIssues = await linearClient.fetchStartedIssues((count) => {
       callbacks?.onIssueCountUpdate?.(count);
     });
+    console.log(`[SYNC] Fetched ${allIssues.length} started issues from Linear`);
 
     // Filter ignored teams
     const startedIssues = allIssues.filter(
       (issue) => !ignoredTeamKeys.includes(issue.teamKey)
     );
+    if (ignoredTeamKeys.length > 0) {
+      const filteredCount = allIssues.length - startedIssues.length;
+      console.log(`[SYNC] Filtered out ${filteredCount} issues from ${ignoredTeamKeys.length} ignored team(s)`);
+    }
 
     // Phase 2: Fetch all issues for projects with active work (optional)
     let projectIssues: typeof allIssues = [];
@@ -78,6 +86,7 @@ export async function performSync(
 
       projectCount = activeProjectIds.size;
       callbacks?.onProjectCountUpdate?.(projectCount);
+      console.log(`[SYNC] Found ${projectCount} active project(s) with started issues`);
 
       if (activeProjectIds.size > 0) {
         projectIssues = await linearClient.fetchIssuesByProjects(
@@ -86,6 +95,7 @@ export async function performSync(
             callbacks?.onProjectIssueCountUpdate?.(count);
           }
         );
+        console.log(`[SYNC] Fetched ${projectIssues.length} issues from ${projectCount} project(s)`);
       }
     }
 
@@ -95,9 +105,15 @@ export async function performSync(
       allIssuesMap.set(issue.id, issue);
     }
     const issues = Array.from(allIssuesMap.values());
+    const totalBeforeDedup = startedIssues.length + projectIssues.length;
+    const duplicatesRemoved = totalBeforeDedup - issues.length;
+    if (duplicatesRemoved > 0) {
+      console.log(`[SYNC] Deduplicated: ${duplicatesRemoved} duplicate issue(s) removed (${totalBeforeDedup} → ${issues.length})`);
+    }
 
     // Store in database
     const existingIds = getExistingIssueIds();
+    console.log(`[SYNC] Found ${existingIds.size} existing issue(s) in database`);
 
     let newIssues = 0;
     let updatedIssues = 0;
@@ -146,13 +162,17 @@ export async function performSync(
     // Remove ignored teams from database
     if (ignoredTeamKeys.length > 0) {
       deleteIssuesByTeams(ignoredTeamKeys);
+      console.log(`[SYNC] Removed issues from ${ignoredTeamKeys.length} ignored team(s)`);
     }
 
     // Get total count
     const total = getTotalIssueCount();
+    console.log(`[SYNC] Database now contains ${total} total issue(s)`);
 
     // Count started issues for reporting
     const startedCount = issues.filter((i) => i.stateType === "started").length;
+
+    console.log(`[SYNC] Summary - New: ${newIssues}, Updated: ${updatedIssues}, Started: ${startedCount}, Projects: ${projectCount}, Project Issues: ${projectIssues.length}`);
 
     return {
       success: true,
@@ -164,6 +184,8 @@ export async function performSync(
       projectIssueCount: projectIssues.length,
     };
   } catch (error) {
+    const errorMessage = error instanceof Error ? error.message : "An unknown error occurred";
+    console.error(`[SYNC] Sync error: ${errorMessage}`, error);
     return {
       success: false,
       newCount: 0,
@@ -172,7 +194,7 @@ export async function performSync(
       issueCount: 0,
       projectCount: 0,
       projectIssueCount: 0,
-      error: error instanceof Error ? error.message : "An unknown error occurred",
+      error: errorMessage,
     };
   }
 }

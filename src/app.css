@@ -1,6 +1,6 @@
 @import 'tailwindcss';
-@custom-variant dark (&:where(.dark, .dark *));
 @import './lib/styles/theme.css';
+@custom-variant dark (&:where(.dark, .dark *));
 
 :root {
 	font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Roboto', 'Oxygen', 'Ubuntu',
