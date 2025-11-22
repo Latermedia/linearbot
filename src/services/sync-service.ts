@@ -21,6 +21,7 @@ export interface SyncCallbacks {
   onIssueCountUpdate?: (count: number) => void;
   onProjectCountUpdate?: (count: number) => void;
   onProjectIssueCountUpdate?: (count: number) => void;
+  onProgressPercent?: (percent: number) => void;
 }
 
 /**
@@ -40,6 +41,7 @@ export async function performSync(
 
     // Connect to Linear
     const linearClient = createLinearClient();
+    callbacks?.onProgressPercent?.(0);
     console.log('[SYNC] Testing Linear API connection...');
     const connected = await linearClient.testConnection();
 
@@ -58,7 +60,7 @@ export async function performSync(
     }
     console.log('[SYNC] Linear API connection successful');
 
-    // Fetch issues
+    // Fetch issues (step 1 of N+1 where N is number of projects)
     const allIssues = await linearClient.fetchStartedIssues((count) => {
       callbacks?.onIssueCountUpdate?.(count);
     });
@@ -89,14 +91,37 @@ export async function performSync(
       console.log(`[SYNC] Found ${projectCount} active project(s) with started issues`);
 
       if (activeProjectIds.size > 0) {
+        // Total steps = 1 (started issues) + N (projects)
+        const totalSteps = 1 + projectCount;
+        
+        // Step 1 complete (started issues)
+        callbacks?.onProgressPercent?.(Math.round((1 / totalSteps) * 100));
+        
         projectIssues = await linearClient.fetchIssuesByProjects(
           Array.from(activeProjectIds),
-          (count) => {
+          (count, pageSize, projectIndex, totalProjects) => {
             callbacks?.onProjectIssueCountUpdate?.(count);
+            // Update progress when starting a new project (pageSize is undefined at start)
+            // When projectIndex is 0, we're starting the first project (1 step done: started issues)
+            // When projectIndex is 1, we've completed project 0 (2 steps done: started + project 0)
+            if (projectIndex !== undefined && totalProjects !== undefined && totalSteps > 0 && pageSize === undefined) {
+              // Completed steps: 1 (started issues) + projectIndex (completed projects)
+              const completedSteps = 1 + projectIndex;
+              const percent = Math.min(Math.round((completedSteps / totalSteps) * 100), 99);
+              callbacks?.onProgressPercent?.(percent);
+            }
           }
         );
+        // All projects complete - set to 100%
+        callbacks?.onProgressPercent?.(100);
         console.log(`[SYNC] Fetched ${projectIssues.length} issues from ${projectCount} project(s)`);
+      } else {
+        // No projects, sync is complete
+        callbacks?.onProgressPercent?.(100);
       }
+    } else {
+      // No project sync, sync is complete after started issues
+      callbacks?.onProgressPercent?.(100);
     }
 
     // Combine all issues and deduplicate
@@ -111,7 +136,7 @@ export async function performSync(
       console.log(`[SYNC] Deduplicated: ${duplicatesRemoved} duplicate issue(s) removed (${totalBeforeDedup} → ${issues.length})`);
     }
 
-    // Store in database
+    // Store in database (final step, already at 100% if no projects, otherwise maintain)
     const existingIds = getExistingIssueIds();
     console.log(`[SYNC] Found ${existingIds.size} existing issue(s) in database`);
 

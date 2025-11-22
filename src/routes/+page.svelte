@@ -55,7 +55,7 @@
         View active projects across teams and domains
       </p>
     </div>
-    <RefreshButton {lastSync} />
+    <RefreshButton />
   </div>
 
   <!-- Stats summary -->

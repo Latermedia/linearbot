@@ -5,14 +5,13 @@
   import { databaseStore } from "../stores/database";
   import { RefreshCw } from "lucide-svelte";
 
-  let { lastSync = null }: { lastSync?: Date | null } = $props();
-
   const POLL_INTERVAL = 1000; // Poll every 1 second when syncing
   const STATUS_POLL_INTERVAL = 5000; // Poll status every 5 seconds when idle
 
   let syncStatus = $state<"idle" | "syncing" | "error">("idle");
   let isRefreshing = $state(false);
-  let serverLastSyncTime: number | null = null;
+  let serverLastSyncTime: number | null = $state(null);
+  let progressPercent = $state<number | null>(null);
   let pollIntervalId: number | undefined;
   let statusPollIntervalId: number | undefined;
   let errorMessage = $state<string | null>(null);
@@ -27,6 +26,7 @@
         const wasSyncing = syncStatus === "syncing" || isRefreshing;
         syncStatus = data.status;
         serverLastSyncTime = data.lastSyncTime;
+        progressPercent = data.progressPercent ?? null;
         errorMessage = data.error || null;
 
         // If sync completed (was syncing, now idle), reload data
@@ -86,6 +86,11 @@
       syncStatus = "error";
     }
   }
+
+  // Convert server timestamp to Date for display
+  const lastSyncDate = $derived(
+    serverLastSyncTime ? new Date(serverLastSyncTime) : null
+  );
 
   function formatLastSync(date: Date | null): string {
     if (!date) return "Never synced";
@@ -158,33 +163,32 @@
   });
 </script>
 
-<div class="flex flex-col sm:flex-row items-start sm:items-center gap-4">
-  <div class="text-sm">
-    <div class="text-neutral-600 dark:text-neutral-400">
-      Last sync: <span class="font-medium text-neutral-900 dark:text-white"
-        >{formatLastSync(lastSync)}</span
-      >
-    </div>
-    <div class="text-xs text-neutral-500 dark:text-neutral-500">
-      {formatDateTime(lastSync)}
-    </div>
-  </div>
-  <Button
-    onclick={handleRefresh}
-    disabled={isRefreshing || syncStatus === "syncing"}
-    variant="secondary"
-    size="sm"
-  >
-    <RefreshCw class={`h-4 w-4 ${isRefreshing || syncStatus === "syncing" ? "animate-spin" : ""}`} />
-    {#if syncStatus === "syncing" || isRefreshing}
-      Syncing...
-    {:else if syncStatus === "error"}
-      {errorMessage || "Sync Error"}
+  <div class="flex flex-col items-end gap-1">
+    <Button
+      onclick={handleRefresh}
+      disabled={isRefreshing || syncStatus === "syncing"}
+      variant="secondary"
+      size="sm"
+    >
+      <RefreshCw class={`h-4 w-4 ${isRefreshing || syncStatus === "syncing" ? "animate-spin" : ""}`} />
+      {#if syncStatus === "syncing" || isRefreshing}
+        Syncing...
+      {:else if syncStatus === "error"}
+        {errorMessage || "Sync Error"}
+      {:else}
+        Sync now
+      {/if}
+    </Button>
+    {#if syncStatus === "syncing" && progressPercent !== null}
+      <div class="text-xs text-neutral-500 dark:text-neutral-500">
+        {progressPercent}%
+      </div>
     {:else}
-      Refresh Data
+      <div class="text-xs text-neutral-500 dark:text-neutral-500">
+        Last sync: {formatLastSync(lastSyncDate)}
+      </div>
     {/if}
-  </Button>
-</div>
+  </div>
 
 <style>
   @keyframes spin {

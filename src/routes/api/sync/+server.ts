@@ -47,10 +47,15 @@ export const POST: RequestHandler = async () => {
 		isRunning: true,
 		status: 'syncing',
 		error: undefined,
+		progressPercent: 0,
 	});
 
 	// Run sync asynchronously
-	performSync(true)
+	performSync(true, {
+		onProgressPercent: (percent) => {
+			setSyncState({ progressPercent: percent });
+		},
+	})
 		.then((result) => {
 			const duration = Date.now() - syncStartTime;
 			if (result.success) {
@@ -59,6 +64,7 @@ export const POST: RequestHandler = async () => {
 					isRunning: false,
 					status: 'idle',
 					lastSyncTime: Date.now(),
+					progressPercent: undefined,
 				});
 			} else {
 				console.error(`[SYNC] Failed after ${duration}ms: ${result.error || 'Sync failed'}`);
@@ -66,6 +72,7 @@ export const POST: RequestHandler = async () => {
 					isRunning: false,
 					status: 'error',
 					error: result.error || 'Sync failed',
+					progressPercent: undefined,
 				});
 			}
 		})
@@ -77,6 +84,7 @@ export const POST: RequestHandler = async () => {
 				isRunning: false,
 				status: 'error',
 				error: errorMessage,
+				progressPercent: undefined,
 			});
 		});
 

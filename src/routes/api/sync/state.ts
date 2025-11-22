@@ -6,6 +6,7 @@ export interface SyncState {
 	lastSyncTime: number | null;
 	status: 'idle' | 'syncing' | 'error';
 	error?: string;
+	progressPercent?: number;
 }
 
 let syncState: SyncState = {

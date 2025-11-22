@@ -9,6 +9,7 @@ export const GET: RequestHandler = async () => {
 		isRunning: syncState.isRunning,
 		lastSyncTime: syncState.lastSyncTime,
 		error: syncState.error,
+		progressPercent: syncState.progressPercent,
 	});
 };
 

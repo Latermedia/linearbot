@@ -174,7 +174,7 @@ export class LinearAPIClient {
 
   async fetchIssuesByProjects(
     projectIds: string[],
-    onProgress?: (current: number, pageSize: number) => void
+    onProgress?: (current: number, pageSize?: number, projectIndex?: number, totalProjects?: number) => void
   ): Promise<LinearIssueData[]> {
     if (projectIds.length === 0) return [];
 
@@ -189,6 +189,11 @@ export class LinearAPIClient {
       let pageCount = 0;
       let projectIssues: LinearIssueData[] = [];
       let projectName: string | null = null;
+
+      // Notify start of project
+      if (onProgress) {
+        onProgress(issues.length, undefined, projectIndex, totalProjects);
+      }
 
       const query = `
         query GetProjectIssues($first: Int!, $after: String, $projectId: ID!) {
@@ -319,7 +324,7 @@ export class LinearAPIClient {
         console.log(`[SYNC] Project ${projectIndex + 1}/${totalProjects} (${projectDisplayName}, ID: ${projectId}): ${currentCount} issues (${pageSize} in this page)`);
 
         if (onProgress) {
-          onProgress(issues.length, data.nodes.length);
+          onProgress(issues.length, data.nodes.length, projectIndex, totalProjects);
         }
 
         // Safety break
