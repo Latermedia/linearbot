@@ -375,6 +375,12 @@
               onmousemove={(e) => handleBarMouseMove(e)}
               onmouseleave={handleBarMouseLeave}
               onclick={() => handleBarClick(project)}
+              onkeydown={(e) => {
+                if (e.key === "Enter" || e.key === " ") {
+                  e.preventDefault();
+                  handleBarClick(project);
+                }
+              }}
               role="button"
               tabindex="0"
             >
@@ -443,6 +449,12 @@
               onmousemove={(e) => handleBarMouseMove(e)}
               onmouseleave={handleBarMouseLeave}
               onclick={() => handleBarClick(project)}
+              onkeydown={(e) => {
+                if (e.key === "Enter" || e.key === " ") {
+                  e.preventDefault();
+                  handleBarClick(project);
+                }
+              }}
               role="button"
               tabindex="0"
             >
