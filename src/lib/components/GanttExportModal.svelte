@@ -29,6 +29,7 @@
   let copyStatus: "idle" | "success" | "error" = $state("idle");
   let copyMessage = $state("");
   let showTodayIndicator = $state(false);
+  let showWarnings = $state(false);
 
   // Calculate current quarter start date (same as GanttChart)
   function getQuarterStart(): Date {
@@ -187,6 +188,12 @@
     return Math.round((project.completedIssues / project.totalIssues) * 100);
   }
 
+  function hasDiscrepancies(project: ProjectSummary): boolean {
+    return (
+      project.hasStatusMismatch || project.isStaleUpdate || project.missingLead
+    );
+  }
+
   function getCurrentDayPosition(): number | null {
     const now = new Date();
     now.setHours(0, 0, 0, 0);
@@ -335,6 +342,16 @@
             Show today's date
           </span>
         </label>
+        <label class="flex items-center gap-2 cursor-pointer">
+          <input
+            type="checkbox"
+            bind:checked={showWarnings}
+            class="w-4 h-4 rounded border-neutral-300 dark:border-white/20 text-violet-600 focus:ring-violet-500 focus:ring-2 dark:bg-neutral-800 dark:checked:bg-violet-600"
+          />
+          <span class="text-sm text-neutral-700 dark:text-neutral-300">
+            Show warnings
+          </span>
+        </label>
       </div>
 
       <button
@@ -403,6 +420,7 @@
           {#each projects as project}
             {@const position = getProjectPosition(project)}
             {@const progress = getProgressPercent(project)}
+            {@const hasWarnings = showWarnings && hasDiscrepancies(project)}
 
             <!-- Timeline bar -->
             <div style="position: relative; height: 3rem;">
@@ -414,7 +432,12 @@
                   style="position: absolute; inset: 0; border-radius: 0.375rem; background-color: rgba(139, 92, 246, 0.4); width: {progress}%;"
                 ></div>
                 <!-- Project name overlay -->
-                <span style="position: relative; z-index: 10; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;">{project.projectName}</span>
+                <span style="position: relative; z-index: 10; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; display: flex; align-items: center; gap: 0.375rem;">
+                  {#if hasWarnings}
+                    <span style="color: #fbbf24; font-size: 0.875rem; flex-shrink: 0;">⚠️</span>
+                  {/if}
+                  {project.projectName}
+                </span>
               </div>
             </div>
           {/each}
