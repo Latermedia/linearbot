@@ -121,6 +121,7 @@ export function upsertIssue(issue: {
   project_id: string | null;
   project_name: string | null;
   project_state: string | null;
+  project_health: string | null;
   project_updated_at: string | null;
   project_lead_id: string | null;
   project_lead_name: string | null;
@@ -133,7 +134,7 @@ export function upsertIssue(issue: {
       assignee_id, assignee_name, creator_id, creator_name,
       priority, estimate, last_comment_at,
       created_at, updated_at, url,
-      project_id, project_name, project_state, project_updated_at,
+      project_id, project_name, project_state, project_health, project_updated_at,
       project_lead_id, project_lead_name
     ) VALUES (
       ?, ?, ?, ?, ?, ?, ?,
@@ -141,7 +142,7 @@ export function upsertIssue(issue: {
       ?, ?, ?, ?,
       ?, ?, ?,
       ?, ?, ?,
-      ?, ?, ?, ?,
+      ?, ?, ?, ?, ?,
       ?, ?
     )
     ON CONFLICT(id) DO UPDATE SET
@@ -166,6 +167,7 @@ export function upsertIssue(issue: {
       project_id = excluded.project_id,
       project_name = excluded.project_name,
       project_state = excluded.project_state,
+      project_health = excluded.project_health,
       project_updated_at = excluded.project_updated_at,
       project_lead_id = excluded.project_lead_id,
       project_lead_name = excluded.project_lead_name
@@ -195,6 +197,7 @@ export function upsertIssue(issue: {
     issue.project_id,
     issue.project_name,
     issue.project_state,
+    issue.project_health,
     issue.project_updated_at,
     issue.project_lead_id,
     issue.project_lead_name

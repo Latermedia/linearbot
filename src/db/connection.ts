@@ -1,5 +1,5 @@
 import { Database } from "bun:sqlite";
-import { initializeDatabase } from "./schema.js";
+import { initializeDatabase, validateSchema, resetDatabase } from "./schema.js";
 import { join } from "path";
 import { existsSync } from "fs";
 
@@ -22,7 +22,22 @@ export function getDatabase(): Database {
       
       console.log(`[DB] Initializing database schema...`);
       initializeDatabase(dbInstance);
-      console.log(`[DB] Database schema initialized`);
+      
+      // Validate schema after initialization
+      const validation = validateSchema(dbInstance);
+      if (!validation.valid) {
+        console.warn(`[DB] Schema validation failed: ${validation.error}`);
+        console.log(`[DB] Attempting to auto-fix by resetting database...`);
+        resetDatabase(dbInstance);
+        const revalidation = validateSchema(dbInstance);
+        if (!revalidation.valid) {
+          console.error(`[DB] Schema validation still failed after reset: ${revalidation.error}`);
+          throw new Error(`Database schema validation failed: ${revalidation.error}`);
+        }
+        console.log(`[DB] Schema validation passed after reset`);
+      } else {
+        console.log(`[DB] Database schema initialized and validated`);
+      }
     } catch (error) {
       const errorMsg = error instanceof Error ? error.message : String(error);
       console.error(`[DB] Failed to create database connection: ${errorMsg}`);
@@ -36,5 +51,12 @@ export function closeDatabase(): void {
   if (dbInstance) {
     dbInstance.close();
     dbInstance = null;
+  }
+}
+
+export function resetDatabaseConnection(): void {
+  if (dbInstance) {
+    resetDatabase(dbInstance);
+    dbInstance = null; // Force reconnection on next getDatabase() call
   }
 }

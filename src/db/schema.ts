@@ -24,6 +24,7 @@ export interface Issue {
   project_id: string | null;
   project_name: string | null;
   project_state: string | null;
+  project_health: string | null;
   project_updated_at: string | null;
   project_lead_id: string | null;
   project_lead_name: string | null;
@@ -34,6 +35,65 @@ export interface CommentLog {
   issue_id: string;
   comment_type: string;
   commented_at: string;
+}
+
+/**
+ * Expected columns in the issues table (in order)
+ */
+const EXPECTED_ISSUES_COLUMNS = [
+  'id', 'identifier', 'title', 'description', 'team_id', 'team_name', 'team_key',
+  'state_id', 'state_name', 'state_type',
+  'assignee_id', 'assignee_name', 'creator_id', 'creator_name',
+  'priority', 'estimate', 'last_comment_at',
+  'created_at', 'updated_at', 'url',
+  'project_id', 'project_name', 'project_state', 'project_health', 'project_updated_at',
+  'project_lead_id', 'project_lead_name'
+];
+
+/**
+ * Validate that the issues table has the expected schema
+ */
+export function validateSchema(db: Database): { valid: boolean; error?: string } {
+  try {
+    const columns = db.prepare("PRAGMA table_info(issues)").all() as Array<{ name: string; type: string }>;
+    const columnNames = columns.map(col => col.name);
+    
+    // Check if all expected columns exist
+    const missingColumns = EXPECTED_ISSUES_COLUMNS.filter(col => !columnNames.includes(col));
+    
+    if (missingColumns.length > 0) {
+      return {
+        valid: false,
+        error: `Missing columns: ${missingColumns.join(', ')}`
+      };
+    }
+    
+    // Check column count matches
+    if (columnNames.length !== EXPECTED_ISSUES_COLUMNS.length) {
+      return {
+        valid: false,
+        error: `Column count mismatch: expected ${EXPECTED_ISSUES_COLUMNS.length}, found ${columnNames.length}`
+      };
+    }
+    
+    return { valid: true };
+  } catch (error) {
+    return {
+      valid: false,
+      error: error instanceof Error ? error.message : 'Unknown error validating schema'
+    };
+  }
+}
+
+/**
+ * Reset the database by deleting all tables and recreating them
+ */
+export function resetDatabase(db: Database): void {
+  console.log('[DB] Resetting database...');
+  db.run("DROP TABLE IF EXISTS comment_log");
+  db.run("DROP TABLE IF EXISTS issues");
+  initializeDatabase(db);
+  console.log('[DB] Database reset complete');
 }
 
 export function initializeDatabase(db: Database): void {
@@ -66,6 +126,7 @@ export function initializeDatabase(db: Database): void {
       project_id TEXT,
       project_name TEXT,
       project_state TEXT,
+      project_health TEXT,
       project_updated_at TEXT,
       project_lead_id TEXT,
       project_lead_name TEXT
@@ -80,6 +141,11 @@ export function initializeDatabase(db: Database): void {
   }
   try {
     db.run(`ALTER TABLE issues ADD COLUMN project_lead_name TEXT`);
+  } catch (e) {
+    // Column already exists, ignore
+  }
+  try {
+    db.run(`ALTER TABLE issues ADD COLUMN project_health TEXT`);
   } catch (e) {
     // Column already exists, ignore
   }
