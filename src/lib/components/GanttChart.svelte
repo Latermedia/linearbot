@@ -1,6 +1,7 @@
 <script lang="ts">
   import Badge from "$lib/components/ui/badge.svelte";
   import Card from "$lib/components/ui/card.svelte";
+  import Button from "$lib/components/ui/button.svelte";
   import { cn } from "$lib/utils";
   import type {
     ProjectSummary,
@@ -8,6 +9,8 @@
     DomainSummary,
   } from "../project-data";
   import ProjectDetailModal from "./ProjectDetailModal.svelte";
+  import GanttExportModal from "./GanttExportModal.svelte";
+  import { Image } from "lucide-svelte";
 
   let {
     teams = [],
@@ -24,6 +27,9 @@
   let selectedProject: ProjectSummary | null = $state(null);
   let hoveredProject: ProjectSummary | null = $state(null);
   let tooltipPosition = $state({ x: 0, y: 0 });
+  let hoveredSection: string | null = $state(null);
+  let exportTeam: TeamSummary | null = $state(null);
+  let exportDomain: DomainSummary | null = $state(null);
 
   // Calculate current quarter start date
   function getQuarterStart(): Date {
@@ -239,6 +245,22 @@
     selectedProject = null;
   }
 
+  function openExportModal(team?: TeamSummary, domain?: DomainSummary): void {
+    exportTeam = team || null;
+    exportDomain = domain || null;
+  }
+
+  function closeExportModal(): void {
+    exportTeam = null;
+    exportDomain = null;
+  }
+
+  function getSectionKey(team?: TeamSummary, domain?: DomainSummary): string {
+    if (team) return `team-${team.teamId}`;
+    if (domain) return `domain-${domain.domainName}`;
+    return "";
+  }
+
   // Get current day position
   function getCurrentDayPosition(): number | null {
     const now = new Date();
@@ -305,28 +327,49 @@
   <!-- Projects grouped by team or domain -->
   {#if groupBy === "team"}
     {#each teams as team}
-      <div class="mb-6 space-y-3">
-        <h3 class="mb-4 text-lg font-medium text-neutral-900 dark:text-white">
-          {team.teamName}
-        </h3>
+      {@const sectionKey = getSectionKey(team)}
+      <div
+        class="mb-5 space-y-1.5 group"
+        role="group"
+        onmouseenter={() => (hoveredSection = sectionKey)}
+        onmouseleave={() => (hoveredSection = null)}
+      >
+        <div class="flex relative gap-2 items-center mb-3">
+          <h3 class="text-lg font-medium text-neutral-900 dark:text-white">
+            {team.teamName}
+          </h3>
+          <Button
+            variant="ghost"
+            size="icon-sm"
+            class={cn(
+              "opacity-0 group-hover:opacity-100 transition-opacity duration-150",
+              hoveredSection === sectionKey && "opacity-100"
+            )}
+            onclick={() => openExportModal(team)}
+            aria-label="Export team timeline"
+          >
+            <Image class="w-4 h-4" />
+          </Button>
+        </div>
         {#each team.projects as project}
           {@const position = getProjectPosition(project)}
           {@const progress = getProgressPercent(project)}
           {@const hasWarnings = hasDiscrepancies(project)}
 
           <!-- Timeline bar -->
-          <div class="relative h-8">
+          <div class="relative h-12">
             <div
               class={cn(
-                "absolute h-6 rounded-md flex items-center px-6 cursor-pointer transition-all duration-150",
+                "absolute h-10 rounded-md flex items-center px-6 cursor-pointer transition-all duration-150",
                 "bg-neutral-600 dark:bg-neutral-700 text-white text-xs font-medium overflow-hidden",
                 "hover:bg-neutral-500 dark:hover:bg-neutral-600 hover:shadow-sm"
               )}
               style={`
                 left: ${position.startPercent}%; 
                 width: ${position.widthPercent}%;
-                ${position.extendsBefore ? "mask-image: linear-gradient(to right, transparent 0px, black 32px); -webkit-mask-image: linear-gradient(to right, transparent 0px, black 32px);" : ""}
-                ${position.extendsAfter ? (position.extendsBefore ? "mask-image: linear-gradient(to right, transparent 0px, black 32px, black calc(100% - 32px), transparent 100%); -webkit-mask-image: linear-gradient(to right, transparent 0px, black 32px, black calc(100% - 32px), transparent 100%);" : "mask-image: linear-gradient(to left, transparent 0px, black 32px); -webkit-mask-image: linear-gradient(to left, transparent 0px, black 32px);") : ""}
+                ${position.extendsBefore && position.extendsAfter ? "mask-image: linear-gradient(to right, transparent 0px, black 24px, black calc(100% - 24px), transparent 100%); -webkit-mask-image: linear-gradient(to right, transparent 0px, black 24px, black calc(100% - 24px), transparent 100%);" : ""}
+                ${position.extendsBefore && !position.extendsAfter ? "mask-image: linear-gradient(to right, transparent 0px, black 24px); -webkit-mask-image: linear-gradient(to right, transparent 0px, black 24px);" : ""}
+                ${!position.extendsBefore && position.extendsAfter ? "mask-image: linear-gradient(to left, transparent 0px, black 24px); -webkit-mask-image: linear-gradient(to left, transparent 0px, black 24px);" : ""}
               `}
               onmouseenter={(e) => handleBarMouseEnter(e, project)}
               onmousemove={(e) => handleBarMouseMove(e)}
@@ -349,31 +392,52 @@
     {/each}
   {:else}
     {#each domains as domain}
-      <div class="mb-6 space-y-3">
-        <h3
-          class="flex gap-2 items-center mb-4 text-lg font-medium text-neutral-900 dark:text-white"
-        >
-          {domain.domainName}
-          <Badge variant="outline">{domain.projects.length} projects</Badge>
-        </h3>
+      {@const sectionKey = getSectionKey(undefined, domain)}
+      <div
+        class="mb-5 space-y-1.5 group"
+        role="group"
+        onmouseenter={() => (hoveredSection = sectionKey)}
+        onmouseleave={() => (hoveredSection = null)}
+      >
+        <div class="flex relative gap-2 items-center mb-3">
+          <h3
+            class="flex gap-2 items-center text-lg font-medium text-neutral-900 dark:text-white"
+          >
+            {domain.domainName}
+            <Badge variant="outline">{domain.projects.length} projects</Badge>
+          </h3>
+          <Button
+            variant="ghost"
+            size="icon-sm"
+            class={cn(
+              "opacity-0 group-hover:opacity-100 transition-opacity duration-150",
+              hoveredSection === sectionKey && "opacity-100"
+            )}
+            onclick={() => openExportModal(undefined, domain)}
+            aria-label="Export domain timeline"
+          >
+            <Image class="w-4 h-4" />
+          </Button>
+        </div>
         {#each domain.projects as project}
           {@const position = getProjectPosition(project)}
           {@const progress = getProgressPercent(project)}
           {@const hasWarnings = hasDiscrepancies(project)}
 
           <!-- Timeline bar -->
-          <div class="relative h-8">
+          <div class="relative h-12">
             <div
               class={cn(
-                "absolute h-6 rounded-md flex items-center px-6 cursor-pointer transition-all duration-150",
+                "absolute h-10 rounded-md flex items-center px-6 cursor-pointer transition-all duration-150",
                 "bg-neutral-600 dark:bg-neutral-700 text-white text-xs font-medium overflow-hidden",
                 "hover:bg-neutral-500 dark:hover:bg-neutral-600 hover:shadow-sm"
               )}
               style={`
                 left: ${position.startPercent}%; 
                 width: ${position.widthPercent}%;
-                ${position.extendsBefore ? "mask-image: linear-gradient(to right, transparent 0px, black 32px); -webkit-mask-image: linear-gradient(to right, transparent 0px, black 32px);" : ""}
-                ${position.extendsAfter ? (position.extendsBefore ? "mask-image: linear-gradient(to right, transparent 0px, black 32px, black calc(100% - 32px), transparent 100%); -webkit-mask-image: linear-gradient(to right, transparent 0px, black 32px, black calc(100% - 32px), transparent 100%);" : "mask-image: linear-gradient(to left, transparent 0px, black 32px); -webkit-mask-image: linear-gradient(to left, transparent 0px, black 32px);") : ""}
+                ${position.extendsBefore && position.extendsAfter ? "mask-image: linear-gradient(to right, transparent 0px, black 24px, black calc(100% - 24px), transparent 100%); -webkit-mask-image: linear-gradient(to right, transparent 0px, black 24px, black calc(100% - 24px), transparent 100%);" : ""}
+                ${position.extendsBefore && !position.extendsAfter ? "mask-image: linear-gradient(to right, transparent 0px, black 24px); -webkit-mask-image: linear-gradient(to right, transparent 0px, black 24px);" : ""}
+                ${!position.extendsBefore && position.extendsAfter ? "mask-image: linear-gradient(to left, transparent 0px, black 24px); -webkit-mask-image: linear-gradient(to left, transparent 0px, black 24px);" : ""}
               `}
               onmouseenter={(e) => handleBarMouseEnter(e, project)}
               onmousemove={(e) => handleBarMouseMove(e)}
@@ -420,8 +484,18 @@
     </div>
   {/if}
 
-  <!-- Modal -->
+  <!-- Project Detail Modal -->
   {#if selectedProject}
     <ProjectDetailModal project={selectedProject} onclose={closeModal} />
+  {/if}
+
+  <!-- Export Modal -->
+  {#if exportTeam || exportDomain}
+    <GanttExportModal
+      team={exportTeam || undefined}
+      domain={exportDomain || undefined}
+      {groupBy}
+      onclose={closeExportModal}
+    />
   {/if}
 </div>

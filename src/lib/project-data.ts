@@ -11,6 +11,7 @@ export interface ProjectSummary {
 	projectId: string;
 	projectName: string;
 	projectState: string | null;
+	projectHealth: string | null;
 	projectUpdatedAt: string | null;
 	totalIssues: number;
 	issuesByState: Map<string, number>;
@@ -159,6 +160,7 @@ export function processProjects(issues: Issue[]): Map<string, ProjectSummary> {
 			projectId,
 			projectName: firstIssue.project_name || 'Unknown Project',
 			projectState: firstIssue.project_state,
+			projectHealth: firstIssue.project_health,
 			projectUpdatedAt: firstIssue.project_updated_at,
 			totalIssues: projectIssues.length,
 			issuesByState,

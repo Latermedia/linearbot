@@ -81,7 +81,8 @@
       // Sync started, begin polling
       syncStatus = "syncing";
     } catch (error) {
-      errorMessage = error instanceof Error ? error.message : "Failed to start sync";
+      errorMessage =
+        error instanceof Error ? error.message : "Failed to start sync";
       isRefreshing = false;
       syncStatus = "error";
     }
@@ -143,7 +144,10 @@
     if (!browser) return;
 
     if (syncStatus === "syncing" && !pollIntervalId) {
-      pollIntervalId = setInterval(checkSyncStatus, POLL_INTERVAL) as unknown as number;
+      pollIntervalId = setInterval(
+        checkSyncStatus,
+        POLL_INTERVAL
+      ) as unknown as number;
     } else if (syncStatus !== "syncing" && pollIntervalId) {
       clearInterval(pollIntervalId);
       pollIntervalId = undefined;
@@ -163,32 +167,36 @@
   });
 </script>
 
-  <div class="flex flex-col items-end gap-1">
-    <Button
-      onclick={handleRefresh}
-      disabled={isRefreshing || syncStatus === "syncing"}
-      variant="secondary"
-      size="sm"
-    >
-      <RefreshCw class={`h-4 w-4 ${isRefreshing || syncStatus === "syncing" ? "animate-spin" : ""}`} />
-      {#if syncStatus === "syncing" || isRefreshing}
-        Syncing...
-      {:else if syncStatus === "error"}
-        {errorMessage || "Sync Error"}
-      {:else}
-        Sync now
-      {/if}
-    </Button>
-    {#if syncStatus === "syncing" && progressPercent !== null}
-      <div class="text-xs text-neutral-500 dark:text-neutral-500">
-        {progressPercent}%
-      </div>
+<div class="flex flex-col gap-1 items-end">
+  <Button
+    onclick={handleRefresh}
+    disabled={isRefreshing || syncStatus === "syncing"}
+    variant="secondary"
+    size="sm"
+  >
+    <RefreshCw
+      class={`h-4 w-4 ${isRefreshing || syncStatus === "syncing" ? "animate-spin" : ""}`}
+    />
+    {#if syncStatus === "syncing" || isRefreshing}
+      Syncing...
     {:else}
-      <div class="text-xs text-neutral-500 dark:text-neutral-500">
-        Last sync: {formatLastSync(lastSyncDate)}
-      </div>
+      Sync now
     {/if}
-  </div>
+  </Button>
+  {#if syncStatus === "syncing" && progressPercent !== null}
+    <div class="text-xs text-neutral-500 dark:text-neutral-500">
+      {progressPercent}%
+    </div>
+  {:else if syncStatus === "error" && errorMessage}
+    <div class="text-xs text-red-600 dark:text-red-400">
+      {errorMessage}
+    </div>
+  {:else}
+    <div class="text-xs text-neutral-500 dark:text-neutral-500">
+      Last sync: {formatLastSync(lastSyncDate)}
+    </div>
+  {/if}
+</div>
 
 <style>
   @keyframes spin {

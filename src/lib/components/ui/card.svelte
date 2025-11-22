@@ -13,7 +13,7 @@
 <div
   bind:this={ref}
   class={cn(
-    "bg-white dark:bg-neutral-900 text-neutral-900 dark:text-white flex flex-col border border-neutral-200 dark:border-white/10 rounded-md p-4 transition-colors duration-150",
+    "bg-white dark:bg-neutral-900 text-neutral-900 dark:text-white flex flex-col border border-neutral-200 dark:border-white/10 rounded-md px-4 py-3 transition-colors duration-150",
     className
   )}
   {...restProps}
