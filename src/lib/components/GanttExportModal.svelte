@@ -293,6 +293,16 @@
     }
   }
 
+  function handleBackdropKeydown(event: KeyboardEvent): void {
+    if (event.key === "Enter" || event.key === " ") {
+      event.preventDefault();
+      const target = event.target as HTMLElement;
+      if (target.classList.contains("modal-backdrop")) {
+        onclose();
+      }
+    }
+  }
+
   onMount(() => {
     if (browser) {
       document.addEventListener("keydown", handleKeydown);
@@ -308,13 +318,17 @@
 <div
   class="modal-backdrop fixed inset-0 z-50 flex items-center justify-center bg-black/60"
   onclick={handleBackdropClick}
+  onkeydown={handleBackdropKeydown}
   role="dialog"
   aria-modal="true"
   aria-labelledby="modal-title"
+  tabindex="-1"
 >
   <div
     class="w-full h-full max-h-screen overflow-hidden flex flex-col rounded-md border shadow-2xl bg-white dark:bg-neutral-900 border-neutral-200 dark:border-white/10 shadow-black/50 m-4"
     onclick={(e) => e.stopPropagation()}
+    onkeydown={(e) => e.stopPropagation()}
+    role="document"
   >
     <!-- Header -->
     <div class="flex items-center justify-between p-6 border-b border-neutral-200 dark:border-white/10">
