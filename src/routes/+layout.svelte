@@ -2,10 +2,12 @@
   import "../app.css";
   import { browser } from "$app/environment";
   import { onMount } from "svelte";
+  import type { Snippet } from "svelte";
   import { theme } from "$lib/stores/theme";
   import ThemeToggle from "$lib/components/ThemeToggle.svelte";
   import DevMenuModal from "$lib/components/DevMenuModal.svelte";
 
+  let { children }: { children: Snippet } = $props();
   let showDevMenu = $state(false);
 
   // Initialize theme
@@ -86,7 +88,7 @@
   </header>
 
   <main class="max-w-[1600px] mx-auto px-4 sm:px-6 lg:px-8 py-8">
-    <slot />
+    {@render children()}
   </main>
 
   <footer
