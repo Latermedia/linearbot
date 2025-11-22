@@ -13,7 +13,6 @@
   import * as ToggleGroup from "$lib/components/ui/toggle-group";
   import Card from "$lib/components/ui/card.svelte";
   import Skeleton from "$lib/components/ui/skeleton.svelte";
-  import Separator from "$lib/components/ui/separator.svelte";
 
   let groupBy: "team" | "domain" = "team";
   let viewType: "table" | "gantt" = "table";
@@ -90,29 +89,30 @@
     </div>
   {/if}
 
-  <Separator />
+  <!-- Sticky controls wrapper -->
+  <div class="sticky top-[60px] z-30 backdrop-blur-sm bg-white/95 dark:bg-neutral-950/95 -mx-4 sm:-mx-6 lg:-mx-8 px-4 sm:px-6 lg:px-8 pt-1 -mt-1">
+    <!-- View controls -->
+    <div class="py-2 flex flex-col sm:flex-row gap-4 items-start sm:items-center">
+      <!-- View type toggle -->
+      <ToggleGroup.Root bind:value={viewType} variant="outline" type="single">
+        <ToggleGroup.Item value="table" aria-label="Table view">
+          Table
+        </ToggleGroup.Item>
+        <ToggleGroup.Item value="gantt" aria-label="Gantt view">
+          Gantt
+        </ToggleGroup.Item>
+      </ToggleGroup.Root>
 
-  <!-- View controls -->
-  <div class="flex flex-col sm:flex-row gap-4 items-start sm:items-center">
-    <!-- View type toggle -->
-    <ToggleGroup.Root bind:value={viewType} variant="outline" type="single">
-      <ToggleGroup.Item value="table" aria-label="Table view">
-        Table
-      </ToggleGroup.Item>
-      <ToggleGroup.Item value="gantt" aria-label="Gantt view">
-        Gantt
-      </ToggleGroup.Item>
-    </ToggleGroup.Root>
-
-    <!-- Group by toggle -->
-    <ToggleGroup.Root bind:value={groupBy} variant="outline" type="single">
-      <ToggleGroup.Item value="team" aria-label="Group by teams">
-        Teams
-      </ToggleGroup.Item>
-      <ToggleGroup.Item value="domain" aria-label="Group by domains">
-        Domains
-      </ToggleGroup.Item>
-    </ToggleGroup.Root>
+      <!-- Group by toggle -->
+      <ToggleGroup.Root bind:value={groupBy} variant="outline" type="single">
+        <ToggleGroup.Item value="team" aria-label="Group by teams">
+          Teams
+        </ToggleGroup.Item>
+        <ToggleGroup.Item value="domain" aria-label="Group by domains">
+          Domains
+        </ToggleGroup.Item>
+      </ToggleGroup.Root>
+    </div>
   </div>
 
   <!-- Main content -->
