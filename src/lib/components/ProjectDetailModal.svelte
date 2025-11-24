@@ -30,9 +30,11 @@
   let {
     project,
     onclose,
+    hideWarnings = false,
   }: {
     project: ProjectSummary;
     onclose: () => void;
+    hideWarnings?: boolean;
   } = $props();
 
   let projectUrl = $state<string | null>(null);
@@ -145,7 +147,7 @@
           class="flex gap-2 items-center text-xl font-medium text-white"
         >
           {project.projectName}
-          {#if project.hasStatusMismatch || project.isStaleUpdate || project.missingLead || project.hasViolations}
+          {#if !hideWarnings && (project.hasStatusMismatch || project.isStaleUpdate || project.missingLead || project.hasViolations)}
             <span
               class="text-amber-500"
               title={[
@@ -219,7 +221,7 @@
                 title="Sum of all issue estimates (story points) in the project"
               >
                 Total Points
-                {#if project.missingPoints > 0}
+                {#if !hideWarnings && project.missingPoints > 0}
                   <span
                     class="text-amber-400"
                     title="{project.missingPoints} issues missing estimates"
@@ -229,7 +231,7 @@
               </div>
               <div class="text-sm text-white">
                 {Math.round(project.totalPoints)}
-                {#if project.missingPoints > 0}
+                {#if !hideWarnings && project.missingPoints > 0}
                   <span class="ml-1 text-xs text-amber-400">
                     ({project.missingPoints} missing)
                   </span>
@@ -374,7 +376,7 @@
             <div class="mb-1 text-xs text-neutral-500">Status</div>
             <div class="flex gap-2 items-center text-sm text-white">
               {project.projectState || "Not set"}
-              {#if project.hasStatusMismatch}
+              {#if !hideWarnings && project.hasStatusMismatch}
                 <span
                   class="text-amber-500"
                   title="Status Mismatch: Project status doesn't match active work"
@@ -593,7 +595,7 @@
                         <div class="flex gap-1.5 justify-end items-center">
                           {#if issue.estimate}
                             {Math.round(issue.estimate)}
-                          {:else}
+                          {:else if !hideWarnings}
                             <span
                               class="text-amber-400"
                               title="Missing estimate">⚠️</span
@@ -607,7 +609,7 @@
                         <div class="flex gap-1.5 justify-end items-center">
                           {#if issue.priority && issue.priority > 0}
                             {issue.priority}
-                          {:else}
+                          {:else if !hideWarnings}
                             <span
                               class="text-amber-400"
                               title="Missing priority">⚠️</span
@@ -619,7 +621,7 @@
                         class="px-2 py-1.5 text-right w-[110px] min-w-[110px]"
                       >
                         <div class="flex gap-1.5 justify-end items-center">
-                          {#if hasOldComment}
+                          {#if !hideWarnings && hasOldComment}
                             <span
                               class="text-amber-400 shrink-0"
                               title="No comment since last business day"
@@ -627,7 +629,7 @@
                             >
                           {/if}
                           <span
-                            class={hasOldComment
+                            class={!hideWarnings && hasOldComment
                               ? "text-amber-400"
                               : "text-neutral-300"}>{commentRecency}</span
                           >
