@@ -98,21 +98,30 @@ function createDatabaseStore() {
 export const databaseStore = createDatabaseStore();
 
 // Derived stores for processed data
-export const projectsStore = derived(databaseStore, ($db) => {
+export const projectsStore = writable<Map<string, ProjectSummary>>(new Map());
+
+// Load projects when database store loads
+databaseStore.subscribe(async ($db) => {
 	if (!browser || $db.loading || $db.error) {
 		console.log('[projectsStore] Skipping - browser:', browser, 'loading:', $db.loading, 'error:', $db.error);
-		return new Map<string, ProjectSummary>();
+		projectsStore.set(new Map<string, ProjectSummary>());
+		return;
 	}
-	console.log('[projectsStore] Processing', $db.issues.length, 'issues into projects...');
-	const projects = processProjects($db.issues);
-	console.log('[projectsStore] Processed projects count:', projects.size);
-	console.log('[projectsStore] Sample project IDs:', Array.from(projects.keys()).slice(0, 5));
-	return projects;
+	console.log('[projectsStore] Loading projects from database...');
+	try {
+		const projects = await processProjects();
+		console.log('[projectsStore] Loaded projects count:', projects.size);
+		console.log('[projectsStore] Sample project IDs:', Array.from(projects.keys()).slice(0, 5));
+		projectsStore.set(projects);
+	} catch (error) {
+		console.error('[projectsStore] Error loading projects:', error);
+		projectsStore.set(new Map<string, ProjectSummary>());
+	}
 });
 
 export const teamsStore = derived([databaseStore, projectsStore], ([$db, $projects]) => {
-	if (!browser || $db.loading || $db.error) {
-		console.log('[teamsStore] Skipping - browser:', browser, 'loading:', $db.loading, 'error:', $db.error);
+	if (!browser || $db.loading || $db.error || $projects.size === 0) {
+		console.log('[teamsStore] Skipping - browser:', browser, 'loading:', $db.loading, 'error:', $db.error, 'projects:', $projects.size);
 		return [];
 	}
 	console.log('[teamsStore] Grouping', $projects.size, 'projects into teams...');

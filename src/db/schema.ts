@@ -40,6 +40,45 @@ export interface CommentLog {
   commented_at: string;
 }
 
+export interface Project {
+  project_id: string;
+  project_name: string;
+  project_state: string | null;
+  project_health: string | null;
+  project_updated_at: string | null;
+  project_lead_id: string | null;
+  project_lead_name: string | null;
+  total_issues: number;
+  completed_issues: number;
+  in_progress_issues: number;
+  engineer_count: number;
+  missing_estimate_count: number;
+  missing_priority_count: number;
+  no_recent_comment_count: number;
+  wip_age_violation_count: number;
+  missing_description_count: number;
+  total_points: number;
+  missing_points: number;
+  average_cycle_time: number | null;
+  average_lead_time: number | null;
+  linear_progress: number | null;
+  velocity: number;
+  estimate_accuracy: number | null;
+  days_per_story_point: number | null;
+  has_status_mismatch: number;
+  is_stale_update: number;
+  missing_lead: number;
+  has_violations: number;
+  missing_health: number;
+  start_date: string | null;
+  last_activity_date: string;
+  estimated_end_date: string | null;
+  issues_by_state: string;
+  engineers: string;
+  teams: string;
+  velocity_by_team: string;
+}
+
 /**
  * Expected columns in the issues table (in order)
  */
@@ -94,6 +133,7 @@ export function validateSchema(db: Database): { valid: boolean; error?: string }
 export function resetDatabase(db: Database): void {
   console.log('[DB] Resetting database...');
   db.run("DROP TABLE IF EXISTS comment_log");
+  db.run("DROP TABLE IF EXISTS projects");
   db.run("DROP TABLE IF EXISTS issues");
   initializeDatabase(db);
   console.log('[DB] Database reset complete');
@@ -192,6 +232,48 @@ export function initializeDatabase(db: Database): void {
     // Column already exists, ignore
   }
 
+  // Create projects table with computed metrics
+  db.run(`
+    CREATE TABLE IF NOT EXISTS projects (
+      project_id TEXT PRIMARY KEY,
+      project_name TEXT NOT NULL,
+      project_state TEXT,
+      project_health TEXT,
+      project_updated_at TEXT,
+      project_lead_id TEXT,
+      project_lead_name TEXT,
+      total_issues INTEGER NOT NULL,
+      completed_issues INTEGER NOT NULL,
+      in_progress_issues INTEGER NOT NULL,
+      engineer_count INTEGER NOT NULL,
+      missing_estimate_count INTEGER NOT NULL,
+      missing_priority_count INTEGER NOT NULL,
+      no_recent_comment_count INTEGER NOT NULL,
+      wip_age_violation_count INTEGER NOT NULL,
+      missing_description_count INTEGER NOT NULL,
+      total_points REAL NOT NULL,
+      missing_points INTEGER NOT NULL,
+      average_cycle_time REAL,
+      average_lead_time REAL,
+      linear_progress REAL,
+      velocity REAL NOT NULL,
+      estimate_accuracy REAL,
+      days_per_story_point REAL,
+      has_status_mismatch INTEGER NOT NULL,
+      is_stale_update INTEGER NOT NULL,
+      missing_lead INTEGER NOT NULL,
+      has_violations INTEGER NOT NULL,
+      missing_health INTEGER NOT NULL,
+      start_date TEXT,
+      last_activity_date TEXT NOT NULL,
+      estimated_end_date TEXT,
+      issues_by_state TEXT NOT NULL,
+      engineers TEXT NOT NULL,
+      teams TEXT NOT NULL,
+      velocity_by_team TEXT NOT NULL
+    )
+  `);
+
   // Create comment log table to track bot comments
   db.run(`
     CREATE TABLE IF NOT EXISTS comment_log (
@@ -232,5 +314,10 @@ export function initializeDatabase(db: Database): void {
   db.run(`
     CREATE INDEX IF NOT EXISTS idx_comment_log_type_date 
     ON comment_log(comment_type, commented_at)
+  `);
+
+  db.run(`
+    CREATE INDEX IF NOT EXISTS idx_projects_project_id 
+    ON projects(project_id)
   `);
 }

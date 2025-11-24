@@ -10,19 +10,11 @@
     getCompletedPercent,
     getWIPPercent,
     getHealthDisplay,
-    calculateTotalPoints,
-    calculateAverageCycleTime,
-    calculateAverageLeadTime,
     calculateProjectAge,
     formatTimeDays,
     formatProjectAge,
-    calculateVelocity,
     formatVelocity,
-    calculateVelocityByTeam,
-    calculateLinearProgress,
     formatPercent,
-    calculateEstimateAccuracy,
-    getVelocityTrendDisplay,
     calculateWIPAge,
     formatWIPAge,
     calculateIssueAccuracyRatio,
@@ -115,72 +107,9 @@
     }
   }
 
-  // Calculate metrics from projectIssues
-  const metrics = $derived.by(() => {
-    if (projectIssues.length === 0) {
-      return {
-        totalPoints: { total: 0, missing: 0 },
-        averageCycleTime: null,
-        averageLeadTime: null,
-        projectAge: calculateProjectAge(project.startDate),
-        linearProgress: null,
-        velocity: 0,
-        velocityByTeam: new Map<string, number>(),
-        estimateAccuracy: null,
-        daysPerStoryPoint: null,
-      };
-    }
-
-    // Calculate days per story point for accuracy calculations
-    const completedIssues = projectIssues
-      .filter((issue) => {
-        const stateName = issue.state_name?.toLowerCase() || "";
-        return stateName.includes("done") || stateName.includes("completed");
-      })
-      .filter(
-        (issue) => issue.estimate !== null && issue.estimate !== undefined
-      );
-
-    let daysPerStoryPoint: number | null = null;
-    if (completedIssues.length > 0) {
-      let totalStoryPoints = 0;
-      let totalDays = 0;
-      let issuesWithData = 0;
-
-      for (const issue of completedIssues) {
-        if (!issue.estimate) continue;
-        const startTime = issue.started_at
-          ? new Date(issue.started_at).getTime()
-          : new Date(issue.created_at).getTime();
-        const completedTime = issue.completed_at
-          ? new Date(issue.completed_at).getTime()
-          : new Date(issue.updated_at).getTime();
-        const actualDays = (completedTime - startTime) / (1000 * 60 * 60 * 24);
-
-        if (actualDays > 0) {
-          totalStoryPoints += issue.estimate;
-          totalDays += actualDays;
-          issuesWithData++;
-        }
-      }
-
-      if (issuesWithData > 0 && totalStoryPoints > 0) {
-        daysPerStoryPoint = totalDays / totalStoryPoints;
-      }
-    }
-
-    return {
-      totalPoints: calculateTotalPoints(projectIssues),
-      averageCycleTime: calculateAverageCycleTime(projectIssues),
-      averageLeadTime: calculateAverageLeadTime(projectIssues),
-      projectAge: calculateProjectAge(project.startDate),
-      linearProgress: calculateLinearProgress(projectIssues),
-      velocity: calculateVelocity(projectIssues, project.startDate),
-      velocityByTeam: calculateVelocityByTeam(projectIssues, project.startDate),
-      estimateAccuracy: calculateEstimateAccuracy(projectIssues),
-      daysPerStoryPoint,
-    };
-  });
+  // Use pre-computed metrics from project (computed during sync)
+  // Only compute projectAge on-demand since it depends on current time
+  const projectAge = $derived(calculateProjectAge(project.startDate));
 
   onMount(() => {
     document.addEventListener("keydown", handleKeydown);
@@ -329,19 +258,19 @@
                 title="Sum of all issue estimates (story points) in the project"
               >
                 Total Points
-                {#if metrics.totalPoints.missing > 0}
+                {#if project.missingPoints > 0}
                   <span
                     class="text-amber-400"
-                    title="{metrics.totalPoints
-                      .missing} issues missing estimates">⚠️</span
+                    title="{project.missingPoints} issues missing estimates"
+                    >⚠️</span
                   >
                 {/if}
               </div>
               <div class="text-sm text-white">
-                {Math.round(metrics.totalPoints.total)}
-                {#if metrics.totalPoints.missing > 0}
+                {Math.round(project.totalPoints)}
+                {#if project.missingPoints > 0}
                   <span class="ml-1 text-xs text-amber-400">
-                    ({metrics.totalPoints.missing} missing)
+                    ({project.missingPoints} missing)
                   </span>
                 {/if}
               </div>
@@ -354,11 +283,11 @@
                 Velocity
               </div>
               <div class="flex gap-2 items-center text-sm text-white">
-                {formatVelocity(metrics.velocity)} issues/week
+                {formatVelocity(project.velocity)} issues/week
                 <span class="text-green-500">→</span>
               </div>
             </div>
-            {#if metrics.averageCycleTime !== null}
+            {#if project.averageCycleTime !== null}
               <div>
                 <div
                   class="mb-1 text-xs text-neutral-500"
@@ -367,7 +296,20 @@
                   Avg Cycle Time
                 </div>
                 <div class="text-sm text-white">
-                  {formatTimeDays(metrics.averageCycleTime)}
+                  {formatTimeDays(project.averageCycleTime)}
+                </div>
+              </div>
+            {/if}
+            {#if project.averageLeadTime !== null}
+              <div>
+                <div
+                  class="mb-1 text-xs text-neutral-500"
+                  title="Average time from when an issue was created to when it was completed"
+                >
+                  Avg Lead Time
+                </div>
+                <div class="text-sm text-white">
+                  {formatTimeDays(project.averageLeadTime)}
                 </div>
               </div>
             {/if}
@@ -379,25 +321,25 @@
                 Project Age
               </div>
               <div class="text-sm text-white">
-                {formatProjectAge(metrics.projectAge)}
+                {formatProjectAge(projectAge)}
               </div>
             </div>
-            {#if metrics.estimateAccuracy !== null}
+            {#if project.estimateAccuracy !== null}
               <div>
                 <div
                   class="mb-1 text-xs text-neutral-500"
-                  title="Percentage of completed issues where actual cycle time (started → completed) was within 20% of estimated time. Story points are converted to days using your team's average velocity{metrics.daysPerStoryPoint
-                    ? ` (${metrics.daysPerStoryPoint.toFixed(1)} days per point)`
+                  title="Percentage of completed issues where actual cycle time (started → completed) was within 20% of estimated time. Story points are converted to days using your team's average velocity{project.daysPerStoryPoint
+                    ? ` (${project.daysPerStoryPoint.toFixed(1)} days per point)`
                     : ''}. Accuracy measures how well estimates predict actual completion time."
                 >
                   Estimate Accuracy
                 </div>
                 <div class="text-sm text-white">
-                  {formatPercent(metrics.estimateAccuracy)}
+                  {formatPercent(project.estimateAccuracy)}
                 </div>
               </div>
             {/if}
-            {#if metrics.linearProgress !== null}
+            {#if project.linearProgress !== null}
               <div>
                 <div
                   class="mb-1 text-xs text-neutral-500"
@@ -407,12 +349,12 @@
                   <span class="text-neutral-600">(by points)</span>
                 </div>
                 <div class="text-sm text-white">
-                  {formatPercent(metrics.linearProgress * 100)}
+                  {formatPercent(project.linearProgress * 100)}
                 </div>
               </div>
             {/if}
           </div>
-          {#if metrics.velocityByTeam.size > 0}
+          {#if project.velocityByTeam.size > 0}
             <div class="pt-3 mt-3 border-t border-white/5">
               <div
                 class="mb-2 text-xs text-neutral-500"
@@ -421,7 +363,7 @@
                 Velocity by Team
               </div>
               <div class="space-y-1">
-                {#each Array.from(metrics.velocityByTeam.entries()) as [team, velocity]}
+                {#each Array.from(project.velocityByTeam.entries()) as [team, velocity]}
                   <div class="flex justify-between items-center text-xs">
                     <span class="text-neutral-400">{team}</span>
                     <span class="text-neutral-300"
@@ -564,7 +506,7 @@
                 return a[0].localeCompare(b[0]);
               }
             )}
-            {@const columnCount = metrics.daysPerStoryPoint !== null ? 7 : 6}
+            {@const columnCount = project.daysPerStoryPoint !== null ? 7 : 6}
             <table class="w-full text-xs min-w-[680px]">
               <thead>
                 <tr class="border-b border-white/10">
@@ -592,7 +534,7 @@
                     class="px-2 py-1.5 font-medium text-right text-neutral-400 w-[70px] min-w-[70px]"
                     >WIP Age</th
                   >
-                  {#if metrics.daysPerStoryPoint !== null}
+                  {#if project.daysPerStoryPoint !== null}
                     <th
                       class="px-2 py-1.5 font-medium text-right text-neutral-400 w-[120px] min-w-[120px]"
                       title="Ratio of actual time to estimated time. 1.0x = perfect match. < 1.0x = faster than estimated, > 1.0x = slower than estimated. Green = within 30%, Yellow = 30-70% off, Red = 70%+ off."
@@ -624,10 +566,10 @@
                     })()}
                     {@const wipAge = calculateWIPAge(issue, isCompleted)}
                     {@const issueAccuracyRatio =
-                      metrics.daysPerStoryPoint !== null && isCompleted
+                      project.daysPerStoryPoint !== null && isCompleted
                         ? calculateIssueAccuracyRatio(
                             issue,
-                            metrics.daysPerStoryPoint
+                            project.daysPerStoryPoint
                           )
                         : null}
                     {@const commentRecency = formatCommentRecency(
@@ -735,7 +677,7 @@
                       >
                         {formatWIPAge(wipAge)}
                       </td>
-                      {#if metrics.daysPerStoryPoint !== null}
+                      {#if project.daysPerStoryPoint !== null}
                         <td
                           class="px-2 py-1.5 text-right w-[120px] min-w-[120px]"
                         >

@@ -1,5 +1,5 @@
 import { getDatabase } from "./connection.js";
-import type { Issue } from "./schema.js";
+import type { Issue, Project } from "./schema.js";
 
 /**
  * Centralized database queries for the Linear bot.
@@ -248,5 +248,136 @@ export function deleteIssuesByTeams(teamKeys: string[]): void {
     DELETE FROM issues WHERE team_key IN (${placeholders})
   `);
   query.run(...teamKeys);
+}
+
+/**
+ * Get all projects with computed metrics
+ */
+export function getAllProjects(): Project[] {
+  const db = getDatabase();
+  const query = db.prepare(`SELECT * FROM projects`);
+  return query.all() as Project[];
+}
+
+/**
+ * Get a single project by ID
+ */
+export function getProjectById(projectId: string): Project | null {
+  const db = getDatabase();
+  const query = db.prepare(`SELECT * FROM projects WHERE project_id = ?`);
+  const result = query.get(projectId) as Project | undefined;
+  return result || null;
+}
+
+/**
+ * Upsert a project (insert or update)
+ */
+export function upsertProject(project: Project): void {
+  const db = getDatabase();
+  const query = db.prepare(`
+    INSERT INTO projects (
+      project_id, project_name, project_state, project_health, project_updated_at,
+      project_lead_id, project_lead_name,
+      total_issues, completed_issues, in_progress_issues, engineer_count,
+      missing_estimate_count, missing_priority_count, no_recent_comment_count,
+      wip_age_violation_count, missing_description_count,
+      total_points, missing_points, average_cycle_time, average_lead_time,
+      linear_progress, velocity, estimate_accuracy, days_per_story_point,
+      has_status_mismatch, is_stale_update, missing_lead, has_violations, missing_health,
+      start_date, last_activity_date, estimated_end_date,
+      issues_by_state, engineers, teams, velocity_by_team
+    ) VALUES (
+      ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?
+    )
+    ON CONFLICT(project_id) DO UPDATE SET
+      project_name = excluded.project_name,
+      project_state = excluded.project_state,
+      project_health = excluded.project_health,
+      project_updated_at = excluded.project_updated_at,
+      project_lead_id = excluded.project_lead_id,
+      project_lead_name = excluded.project_lead_name,
+      total_issues = excluded.total_issues,
+      completed_issues = excluded.completed_issues,
+      in_progress_issues = excluded.in_progress_issues,
+      engineer_count = excluded.engineer_count,
+      missing_estimate_count = excluded.missing_estimate_count,
+      missing_priority_count = excluded.missing_priority_count,
+      no_recent_comment_count = excluded.no_recent_comment_count,
+      wip_age_violation_count = excluded.wip_age_violation_count,
+      missing_description_count = excluded.missing_description_count,
+      total_points = excluded.total_points,
+      missing_points = excluded.missing_points,
+      average_cycle_time = excluded.average_cycle_time,
+      average_lead_time = excluded.average_lead_time,
+      linear_progress = excluded.linear_progress,
+      velocity = excluded.velocity,
+      estimate_accuracy = excluded.estimate_accuracy,
+      days_per_story_point = excluded.days_per_story_point,
+      has_status_mismatch = excluded.has_status_mismatch,
+      is_stale_update = excluded.is_stale_update,
+      missing_lead = excluded.missing_lead,
+      has_violations = excluded.has_violations,
+      missing_health = excluded.missing_health,
+      start_date = excluded.start_date,
+      last_activity_date = excluded.last_activity_date,
+      estimated_end_date = excluded.estimated_end_date,
+      issues_by_state = excluded.issues_by_state,
+      engineers = excluded.engineers,
+      teams = excluded.teams,
+      velocity_by_team = excluded.velocity_by_team
+  `);
+
+  query.run(
+    project.project_id,
+    project.project_name,
+    project.project_state,
+    project.project_health,
+    project.project_updated_at,
+    project.project_lead_id,
+    project.project_lead_name,
+    project.total_issues,
+    project.completed_issues,
+    project.in_progress_issues,
+    project.engineer_count,
+    project.missing_estimate_count,
+    project.missing_priority_count,
+    project.no_recent_comment_count,
+    project.wip_age_violation_count,
+    project.missing_description_count,
+    project.total_points,
+    project.missing_points,
+    project.average_cycle_time,
+    project.average_lead_time,
+    project.linear_progress,
+    project.velocity,
+    project.estimate_accuracy,
+    project.days_per_story_point,
+    project.has_status_mismatch,
+    project.is_stale_update,
+    project.missing_lead,
+    project.has_violations,
+    project.missing_health,
+    project.start_date,
+    project.last_activity_date,
+    project.estimated_end_date,
+    project.issues_by_state,
+    project.engineers,
+    project.teams,
+    project.velocity_by_team
+  );
+}
+
+/**
+ * Delete projects that no longer exist (by project IDs)
+ */
+export function deleteProjectsByProjectIds(projectIds: string[]): void {
+  if (projectIds.length === 0) return;
+  
+  const db = getDatabase();
+  const placeholders = projectIds.map(() => "?").join(",");
+  const query = db.prepare(`
+    DELETE FROM projects WHERE project_id IN (${placeholders})
+  `);
+  query.run(...projectIds);
 }
 
