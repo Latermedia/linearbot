@@ -4,11 +4,10 @@
   import type { ProjectSummary } from "../project-data";
   import type { Issue } from "../../db/schema";
   import Badge from "./ui/badge.svelte";
+  import ProgressBar from "./ProgressBar.svelte";
   import {
     formatDateFull,
     getProgressPercent,
-    getCompletedPercent,
-    getWIPPercent,
     getHealthDisplay,
     calculateProjectAge,
     formatTimeDays,
@@ -204,50 +203,7 @@
           <div class="mb-2">
             <span class="text-sm font-medium text-neutral-300">Progress</span>
           </div>
-          {#if true}
-            {@const completedPercent = getCompletedPercent(project)}
-            {@const wipPercent = getWIPPercent(project)}
-            {@const progressPercent = getProgressPercent(project)}
-            <div class="space-y-1.5">
-              <div class="flex gap-2 items-center">
-                <div
-                  class="overflow-hidden relative flex-1 h-2 rounded bg-neutral-200 dark:bg-neutral-800"
-                >
-                  {#if completedPercent > 0}
-                    <div
-                      class="absolute top-0 left-0 h-full bg-violet-500 transition-colors duration-150"
-                      style={`width: ${completedPercent}%`}
-                    ></div>
-                  {/if}
-                  {#if wipPercent > 0}
-                    <div
-                      class="absolute top-0 h-full bg-amber-500 transition-colors duration-150"
-                      style={`width: ${wipPercent}%; left: ${completedPercent}%`}
-                    ></div>
-                  {/if}
-                  <span
-                    class="absolute top-0 right-0 text-[10px] font-semibold text-neutral-300 dark:text-neutral-400 leading-none -translate-y-full pb-0.5"
-                  >
-                    {progressPercent}%
-                  </span>
-                </div>
-              </div>
-              <div
-                class="flex items-center justify-between text-xs text-neutral-400"
-              >
-                <span>
-                  {#if project.inProgressIssues > 0}
-                    {project.inProgressIssues} in progress
-                  {:else}
-                    <span class="text-neutral-500">0 in progress</span>
-                  {/if}
-                </span>
-                <span class="font-medium"
-                  >{project.completedIssues}/{project.totalIssues}</span
-                >
-              </div>
-            </div>
-          {/if}
+          <ProgressBar {project} />
         </div>
 
         <!-- Metrics Section -->
@@ -554,7 +510,7 @@
                   <tr>
                     <td colspan={columnCount} class="px-2 py-2.5">
                       <span
-                        class="text-xs font-semibold text-neutral-400 -ml-1"
+                        class="-ml-1 text-xs font-semibold text-neutral-400"
                       >
                         {state} ({issues.length})
                       </span>

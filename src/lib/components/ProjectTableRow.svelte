@@ -1,15 +1,12 @@
 <script lang="ts">
   import Badge from "$lib/components/ui/badge.svelte";
+  import ProgressBar from "./ProgressBar.svelte";
   import type { ProjectSummary } from "../project-data";
   import {
     formatDate,
     formatRelativeDate,
-    getProgressPercent,
-    getCompletedPercent,
-    getWIPPercent,
     hasHealthIssues,
     getHealthDisplay,
-    getBacklogCount,
   } from "$lib/utils/project-helpers";
 
   let {
@@ -26,12 +23,8 @@
     onclick?: () => void;
   } = $props();
 
-  const completedPercent = $derived(getCompletedPercent(project));
-  const wipPercent = $derived(getWIPPercent(project));
-  const progressPercent = $derived(getProgressPercent(project));
   const hasIssues = $derived(hasHealthIssues(project) || project.hasViolations);
   const healthDisplay = $derived(getHealthDisplay(project.projectHealth));
-  const backlogCount = $derived(getBacklogCount(project));
 </script>
 
 <tr
@@ -59,41 +52,7 @@
     {/if}
   </td>
   <td class="py-3 px-2 w-[180px]">
-    <div class="space-y-1.5">
-      <div class="flex items-center gap-2">
-        <div
-          class="flex-1 h-2 bg-neutral-200 dark:bg-neutral-800 rounded overflow-hidden relative"
-        >
-          {#if completedPercent > 0}
-            <div
-              class="h-full bg-violet-500 transition-colors duration-150 absolute left-0 top-0"
-              style={`width: ${completedPercent}%`}
-            ></div>
-          {/if}
-          {#if wipPercent > 0}
-            <div
-              class="h-full bg-amber-500 transition-colors duration-150 absolute top-0"
-              style={`width: ${wipPercent}%; left: ${completedPercent}%`}
-            ></div>
-          {/if}
-          <span
-            class="absolute top-0 right-0 text-[10px] font-semibold text-neutral-700 dark:text-neutral-300 leading-none -translate-y-full pb-0.5"
-          >
-            {progressPercent}%
-          </span>
-        </div>
-      </div>
-      <div class="flex items-center justify-between text-xs text-neutral-600 dark:text-neutral-400">
-        <span>
-          {#if project.inProgressIssues > 0}
-            {project.inProgressIssues} in progress
-          {:else}
-            <span class="text-neutral-400 dark:text-neutral-600">0 in progress</span>
-          {/if}
-        </span>
-        <span class="font-medium">{project.completedIssues}/{project.totalIssues}</span>
-      </div>
-    </div>
+    <ProgressBar {project} percentageSize="text-[10px]" />
   </td>
   <td class="py-3 px-2 w-[100px]">
     {#if project.projectState}

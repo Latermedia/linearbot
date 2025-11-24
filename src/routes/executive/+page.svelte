@@ -7,12 +7,11 @@
   import Card from "$lib/components/ui/card.svelte";
   import Skeleton from "$lib/components/ui/skeleton.svelte";
   import Badge from "$lib/components/ui/badge.svelte";
+  import ProgressBar from "$lib/components/ProgressBar.svelte";
+  import ProjectDetailModal from "$lib/components/ProjectDetailModal.svelte";
   import type { ProjectSummary } from "$lib/project-data";
   import type { Issue } from "../../db/schema";
   import {
-    getProgressPercent,
-    getCompletedPercent,
-    getWIPPercent,
     getRecentProgress,
     formatDateFull,
     getHealthDisplay,
@@ -95,6 +94,16 @@
       return { project, recentProgress };
     });
   });
+
+  let selectedProject: ProjectSummary | null = $state(null);
+
+  function handleProjectClick(project: ProjectSummary): void {
+    selectedProject = project;
+  }
+
+  function closeModal(): void {
+    selectedProject = null;
+  }
 </script>
 
 <div class="space-y-6">
@@ -187,14 +196,14 @@
   {:else}
     <div class="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
       {#each projectsWithProgress as { project, recentProgress }}
-        {@const progress = getProgressPercent(project)}
-        {@const completedPercent = getCompletedPercent(project)}
-        {@const wipPercent = getWIPPercent(project)}
         {@const healthDisplay = getHealthDisplay(project.projectHealth)}
         {@const teamsArray = Array.from(project.teams)}
         {@const engineersArray = Array.from(project.engineers)}
 
-        <Card class="p-6">
+        <Card
+          class="p-6 cursor-pointer hover:bg-neutral-50 dark:hover:bg-neutral-900 transition-colors"
+          onclick={() => handleProjectClick(project)}
+        >
           <!-- Project Header -->
           <div class="mb-4">
             <h3
@@ -202,61 +211,16 @@
             >
               {project.projectName}
             </h3>
-            {#if project.projectLeadName}
-              <p class="text-sm text-neutral-600 dark:text-neutral-400">
-                Lead: {project.projectLeadName}
-              </p>
-            {/if}
           </div>
 
           <!-- Progress Bar -->
           <div class="mb-4">
-            <div class="space-y-1.5">
-              <div class="flex gap-2 items-center">
-                <div
-                  class="overflow-hidden relative flex-1 h-2 rounded bg-neutral-200 dark:bg-neutral-800"
-                >
-                  {#if completedPercent > 0}
-                    <div
-                      class="absolute top-0 left-0 h-full bg-violet-500 transition-colors duration-150"
-                      style={`width: ${completedPercent}%`}
-                    ></div>
-                  {/if}
-                  {#if wipPercent > 0}
-                    <div
-                      class="absolute top-0 h-full bg-amber-500 transition-colors duration-150"
-                      style={`width: ${wipPercent}%; left: ${completedPercent}%`}
-                    ></div>
-                  {/if}
-                  <span
-                    class="absolute top-0 right-0 text-[10px] font-semibold text-neutral-700 dark:text-neutral-300 leading-none -translate-y-full pb-0.5"
-                  >
-                    {progress}%
-                  </span>
-                </div>
-              </div>
-              <div
-                class="flex justify-between items-center text-xs text-neutral-600 dark:text-neutral-400"
-              >
-                <span>
-                  {#if project.inProgressIssues > 0}
-                    {project.inProgressIssues} in progress
-                  {:else}
-                    <span class="text-neutral-400 dark:text-neutral-600"
-                      >0 in progress</span
-                    >
-                  {/if}
-                </span>
-                <span class="font-medium"
-                  >{project.completedIssues}/{project.totalIssues}</span
-                >
-              </div>
-            </div>
+            <ProgressBar {project} />
           </div>
 
           <!-- Recent Progress (Last 2 Weeks) -->
           {#if recentProgress}
-            <div class="p-3 mb-4 rounded-lg bg-neutral-50 dark:bg-neutral-900">
+            <div class="mb-4">
               <div class="mb-1 text-xs text-neutral-500 dark:text-neutral-400">
                 Progress (Last 2 Weeks)
               </div>
@@ -343,3 +307,8 @@
     </div>
   {/if}
 </div>
+
+<!-- Project Detail Modal -->
+{#if selectedProject}
+  <ProjectDetailModal project={selectedProject} onclose={closeModal} />
+{/if}
