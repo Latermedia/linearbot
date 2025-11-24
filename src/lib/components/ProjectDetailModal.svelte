@@ -120,8 +120,6 @@
 >
   <div
     class="w-full max-w-4xl max-h-[90vh] rounded-md border shadow-2xl bg-neutral-900 border-white/10 shadow-black/50 m-4 flex flex-col"
-    onclick={(e) => e.stopPropagation()}
-    onkeydown={(e) => e.stopPropagation()}
     role="document"
   >
     <!-- Fixed Header -->
