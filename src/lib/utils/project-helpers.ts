@@ -600,3 +600,49 @@ export function getAccuracyColorClass(ratio: number | null): string {
     return "text-red-400";
   }
 }
+
+/**
+ * Calculate recent progress over the last N days
+ * Returns number of issues completed and percentage increase
+ */
+export function getRecentProgress(
+  project: ProjectSummary,
+  issues: Issue[],
+  days: number = 14
+): { completed: number; percentage: number } {
+  const cutoffDate = new Date();
+  cutoffDate.setDate(cutoffDate.getDate() - days);
+
+  // Get all issues for this project
+  const projectIssues = issues.filter((i) => i.project_id === project.projectId);
+
+  // Count issues completed in the date range
+  const recentlyCompleted = projectIssues.filter((issue) => {
+    const stateName = issue.state_name?.toLowerCase() || "";
+    const isCompleted = stateName.includes("done") || stateName.includes("completed");
+    if (!isCompleted) return false;
+
+    const completedDate = issue.completed_at
+      ? new Date(issue.completed_at)
+      : issue.updated_at
+      ? new Date(issue.updated_at)
+      : null;
+
+    return completedDate && completedDate >= cutoffDate;
+  }).length;
+
+  // Calculate percentage increase
+  const totalCompleted = project.completedIssues;
+  const previousCompleted = totalCompleted - recentlyCompleted;
+  const percentage =
+    previousCompleted > 0
+      ? ((recentlyCompleted / previousCompleted) * 100)
+      : recentlyCompleted > 0
+      ? 100
+      : 0;
+
+  return {
+    completed: recentlyCompleted,
+    percentage: Math.round(percentage * 10) / 10, // Round to 1 decimal
+  };
+}

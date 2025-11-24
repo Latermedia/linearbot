@@ -32,6 +32,7 @@ export interface LinearIssueData {
   projectUpdatedAt: Date | null;
   projectLeadId: string | null;
   projectLeadName: string | null;
+  projectLabels: string[];
 }
 
 export class LinearAPIClient {
@@ -98,6 +99,11 @@ export class LinearAPIClient {
               name
               state
               updatedAt
+              labels {
+                nodes {
+                  name
+                }
+              }
               lead {
                 id
                 name
@@ -159,6 +165,7 @@ export class LinearAPIClient {
             : null,
           projectLeadId: issue.project?.lead?.id || null,
           projectLeadName: issue.project?.lead?.name || null,
+          projectLabels: issue.project?.labels?.nodes?.map((l: { name: string }) => l.name) || [],
         });
       }
 
@@ -254,6 +261,11 @@ export class LinearAPIClient {
                 state
                 health
                 updatedAt
+                labels {
+                  nodes {
+                    name
+                  }
+                }
                 lead {
                   id
                   name
@@ -325,6 +337,7 @@ export class LinearAPIClient {
               : null,
             projectLeadId: issue.project?.lead?.id || null,
             projectLeadName: issue.project?.lead?.name || null,
+            projectLabels: issue.project?.labels?.nodes?.map((l: { name: string }) => l.name) || [],
           };
           
           issues.push(issueData);

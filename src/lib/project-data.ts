@@ -39,6 +39,7 @@ export interface ProjectSummary {
 	estimateAccuracy: number | null;
 	daysPerStoryPoint: number | null;
 	velocityByTeam: Map<string, number>;
+	labels: string[];
 }
 
 export interface TeamSummary {
@@ -107,6 +108,7 @@ function projectToSummary(project: Project): ProjectSummary {
 		estimateAccuracy: project.estimate_accuracy,
 		daysPerStoryPoint: project.days_per_story_point,
 		velocityByTeam,
+		labels: project.labels ? JSON.parse(project.labels) : [],
 	};
 }
 

@@ -154,8 +154,17 @@ export async function performSync(
 
     // Combine all issues and deduplicate
     const allIssuesMap = new Map<string, (typeof allIssues)[0]>();
+    // Track project labels from Linear API
+    const projectLabelsMap = new Map<string, string[]>();
     for (const issue of [...startedIssues, ...projectIssues]) {
       allIssuesMap.set(issue.id, issue);
+      // Collect project labels
+      if (issue.projectId && issue.projectLabels && issue.projectLabels.length > 0) {
+        // Use the labels from any issue (they should be the same for all issues in a project)
+        if (!projectLabelsMap.has(issue.projectId)) {
+          projectLabelsMap.set(issue.projectId, issue.projectLabels);
+        }
+      }
     }
     const issues = Array.from(allIssuesMap.values());
     const totalBeforeDedup = startedIssues.length + projectIssues.length;
@@ -231,7 +240,7 @@ export async function performSync(
 
     // Compute and store project metrics
     console.log(`[SYNC] Computing project metrics...`);
-    const computedProjectCount = await computeAndStoreProjects();
+    const computedProjectCount = await computeAndStoreProjects(projectLabelsMap);
     console.log(`[SYNC] Computed metrics for ${computedProjectCount} project(s)`);
 
     console.log(`[SYNC] Summary - New: ${newIssues}, Updated: ${updatedIssues}, Started: ${startedCount}, Projects: ${projectCount}, Project Issues: ${projectIssues.length}, Computed Projects: ${computedProjectCount}`);
@@ -274,7 +283,7 @@ export async function performSync(
 /**
  * Compute project metrics from issues and store in projects table
  */
-async function computeAndStoreProjects(): Promise<number> {
+async function computeAndStoreProjects(projectLabelsMap?: Map<string, string[]>): Promise<number> {
   const allIssues = getAllIssues();
   
   // Group issues by project
@@ -438,6 +447,10 @@ async function computeAndStoreProjects(): Promise<number> {
     const teamsJson = JSON.stringify(Array.from(teams));
     const velocityByTeamJson = JSON.stringify(Object.fromEntries(velocityByTeam));
 
+    // Get project labels from map or default to empty array
+    const projectLabels = projectLabelsMap?.get(projectId) || [];
+    const labelsJson = projectLabels.length > 0 ? JSON.stringify(projectLabels) : null;
+
     const project: Project = {
       project_id: projectId,
       project_name: firstIssue.project_name || 'Unknown Project',
@@ -475,6 +488,7 @@ async function computeAndStoreProjects(): Promise<number> {
       engineers: engineersJson,
       teams: teamsJson,
       velocity_by_team: velocityByTeamJson,
+      labels: labelsJson,
     };
 
     upsertProject(project);

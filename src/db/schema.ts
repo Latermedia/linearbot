@@ -77,6 +77,7 @@ export interface Project {
   engineers: string;
   teams: string;
   velocity_by_team: string;
+  labels: string | null;
 }
 
 /**
@@ -232,6 +233,13 @@ export function initializeDatabase(db: Database): void {
     // Column already exists, ignore
   }
 
+  // Add labels column to projects table if it doesn't exist (migration)
+  try {
+    db.run(`ALTER TABLE projects ADD COLUMN labels TEXT`);
+  } catch (e) {
+    // Column already exists, ignore
+  }
+
   // Create projects table with computed metrics
   db.run(`
     CREATE TABLE IF NOT EXISTS projects (
@@ -270,7 +278,8 @@ export function initializeDatabase(db: Database): void {
       issues_by_state TEXT NOT NULL,
       engineers TEXT NOT NULL,
       teams TEXT NOT NULL,
-      velocity_by_team TEXT NOT NULL
+      velocity_by_team TEXT NOT NULL,
+      labels TEXT
     )
   `);
 

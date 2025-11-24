@@ -201,15 +201,13 @@
       <div class="p-6 pt-6">
         <!-- Progress Section -->
         <div class="mb-6">
-          <div class="flex justify-between items-center mb-2">
+          <div class="mb-2">
             <span class="text-sm font-medium text-neutral-300">Progress</span>
-            <span class="text-sm text-neutral-400"
-              >{getProgressPercent(project)}%</span
-            >
           </div>
           {#if true}
             {@const completedPercent = getCompletedPercent(project)}
             {@const wipPercent = getWIPPercent(project)}
+            {@const progressPercent = getProgressPercent(project)}
             <div class="space-y-1.5">
               <div class="flex gap-2 items-center">
                 <div
@@ -227,10 +225,15 @@
                       style={`width: ${wipPercent}%; left: ${completedPercent}%`}
                     ></div>
                   {/if}
+                  <span
+                    class="absolute top-0 right-0 text-[10px] font-semibold text-neutral-300 dark:text-neutral-400 leading-none -translate-y-full pb-0.5"
+                  >
+                    {progressPercent}%
+                  </span>
                 </div>
               </div>
               <div
-                class="flex justify-between items-center text-xs text-neutral-400"
+                class="flex items-center justify-between text-xs text-neutral-400"
               >
                 <span>
                   {#if project.inProgressIssues > 0}
@@ -239,7 +242,9 @@
                     <span class="text-neutral-500">0 in progress</span>
                   {/if}
                 </span>
-                <span>{project.completedIssues}/{project.totalIssues}</span>
+                <span class="font-medium"
+                  >{project.completedIssues}/{project.totalIssues}</span
+                >
               </div>
             </div>
           {/if}

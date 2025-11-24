@@ -3,7 +3,9 @@
   import { browser } from "$app/environment";
   import { onMount } from "svelte";
   import type { Snippet } from "svelte";
+  import { page } from "$app/stores";
   import { theme } from "$lib/stores/theme";
+  import { presentationMode } from "$lib/stores/presentation";
   import ThemeToggle from "$lib/components/ThemeToggle.svelte";
   import DevMenuModal from "$lib/components/DevMenuModal.svelte";
 
@@ -73,12 +75,36 @@
   >
     <div class="max-w-[1600px] mx-auto px-4 sm:px-6 lg:px-8 py-4">
       <div class="flex justify-between items-center">
-        <div class="flex gap-3 items-center">
+        <div class="flex gap-6 items-center">
           <h1
             class="text-xl font-semibold tracking-tight text-neutral-900 dark:text-white"
           >
             LinearBot
           </h1>
+          {#if !$presentationMode}
+            <nav class="flex gap-1 items-center">
+              <a
+                href="/"
+                onclick={() => presentationMode.set(false)}
+                class="px-3 py-1.5 text-sm font-medium rounded transition-colors
+                  {$page.url.pathname === '/' 
+                    ? 'bg-neutral-100 dark:bg-neutral-800 text-neutral-900 dark:text-white' 
+                    : 'text-neutral-600 dark:text-neutral-400 hover:text-neutral-900 dark:hover:text-white hover:bg-neutral-50 dark:hover:bg-neutral-900'}"
+              >
+                Dashboard
+              </a>
+              <a
+                href="/executive"
+                onclick={() => presentationMode.set(false)}
+                class="px-3 py-1.5 text-sm font-medium rounded transition-colors
+                  {$page.url.pathname === '/executive' 
+                    ? 'bg-neutral-100 dark:bg-neutral-800 text-neutral-900 dark:text-white' 
+                    : 'text-neutral-600 dark:text-neutral-400 hover:text-neutral-900 dark:hover:text-white hover:bg-neutral-50 dark:hover:bg-neutral-900'}"
+              >
+                Executive
+              </a>
+            </nav>
+          {/if}
         </div>
         <div class="flex gap-4 items-center">
           <ThemeToggle />

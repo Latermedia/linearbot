@@ -285,9 +285,9 @@ export function upsertProject(project: Project): void {
       linear_progress, velocity, estimate_accuracy, days_per_story_point,
       has_status_mismatch, is_stale_update, missing_lead, has_violations, missing_health,
       start_date, last_activity_date, estimated_end_date,
-      issues_by_state, engineers, teams, velocity_by_team
+      issues_by_state, engineers, teams, velocity_by_team, labels
     ) VALUES (
-      ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?
+      ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?
     )
     ON CONFLICT(project_id) DO UPDATE SET
       project_name = excluded.project_name,
@@ -324,7 +324,8 @@ export function upsertProject(project: Project): void {
       issues_by_state = excluded.issues_by_state,
       engineers = excluded.engineers,
       teams = excluded.teams,
-      velocity_by_team = excluded.velocity_by_team
+      velocity_by_team = excluded.velocity_by_team,
+      labels = excluded.labels
   `);
 
   query.run(
@@ -363,7 +364,8 @@ export function upsertProject(project: Project): void {
     project.issues_by_state,
     project.engineers,
     project.teams,
-    project.velocity_by_team
+    project.velocity_by_team,
+    project.labels
   );
 }
 
@@ -379,5 +381,36 @@ export function deleteProjectsByProjectIds(projectIds: string[]): void {
     DELETE FROM projects WHERE project_id IN (${placeholders})
   `);
   query.run(...projectIds);
+}
+
+/**
+ * Get projects filtered by label name
+ */
+export function getProjectsByLabel(labelName: string): Project[] {
+  const db = getDatabase();
+  const query = db.prepare(`
+    SELECT * FROM projects
+    WHERE labels IS NOT NULL
+    AND labels LIKE ?
+  `);
+  // Search for label in JSON array string
+  const searchPattern = `%"${labelName}"%`;
+  return query.all(searchPattern) as Project[];
+}
+
+/**
+ * Get projects that are "in progress" (project_state contains "progress" or "started")
+ */
+export function getInProgressProjects(): Project[] {
+  const db = getDatabase();
+  const query = db.prepare(`
+    SELECT * FROM projects
+    WHERE project_state IS NOT NULL
+    AND (
+      LOWER(project_state) LIKE '%progress%'
+      OR LOWER(project_state) LIKE '%started%'
+    )
+  `);
+  return query.all() as Project[];
 }
 

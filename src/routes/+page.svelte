@@ -1,12 +1,14 @@
 <script lang="ts">
   import { onMount } from "svelte";
   import { browser } from "$app/environment";
+  import { goto } from "$app/navigation";
   import {
     databaseStore,
     teamsStore,
     domainsStore,
     projectsStore,
   } from "$lib/stores/database";
+  import { presentationMode } from "$lib/stores/presentation";
   import ProjectsTable from "$lib/components/ProjectsTable.svelte";
   import GanttChart from "$lib/components/GanttChart.svelte";
   import * as ToggleGroup from "$lib/components/ui/toggle-group";
@@ -19,6 +21,36 @@
   // Load data on mount
   onMount(() => {
     databaseStore.load();
+  });
+
+  // Secret executive view shortcut: Ctrl+Shift+E (Windows/Linux) or Cmd+Shift+E (Mac)
+  $effect(() => {
+    if (!browser) return;
+
+    function handleKeydown(event: KeyboardEvent) {
+      const isMac = navigator.platform.toUpperCase().indexOf('MAC') >= 0;
+      const keyLower = event.key.toLowerCase();
+      
+      // Check for shortcut: Cmd+Shift+E (Mac) or Ctrl+Shift+E (Windows/Linux)
+      const modifierPressed = isMac 
+        ? (event.metaKey && event.shiftKey && !event.altKey && !event.ctrlKey)
+        : (event.ctrlKey && event.shiftKey && !event.altKey && !event.metaKey);
+      
+      if (modifierPressed && keyLower === "e") {
+        event.preventDefault();
+        event.stopPropagation();
+        event.stopImmediatePropagation();
+        presentationMode.set(true);
+        goto("/executive");
+        return false;
+      }
+    }
+
+    document.addEventListener("keydown", handleKeydown, { capture: true, passive: false });
+    
+    return () => {
+      document.removeEventListener("keydown", handleKeydown, { capture: true } as any);
+    };
   });
 
   // Subscribe to stores (stores handle browser checks internally)

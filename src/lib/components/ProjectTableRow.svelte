@@ -28,6 +28,7 @@
 
   const completedPercent = $derived(getCompletedPercent(project));
   const wipPercent = $derived(getWIPPercent(project));
+  const progressPercent = $derived(getProgressPercent(project));
   const hasIssues = $derived(hasHealthIssues(project) || project.hasViolations);
   const healthDisplay = $derived(getHealthDisplay(project.projectHealth));
   const backlogCount = $derived(getBacklogCount(project));
@@ -75,6 +76,11 @@
               style={`width: ${wipPercent}%; left: ${completedPercent}%`}
             ></div>
           {/if}
+          <span
+            class="absolute top-0 right-0 text-[10px] font-semibold text-neutral-700 dark:text-neutral-300 leading-none -translate-y-full pb-0.5"
+          >
+            {progressPercent}%
+          </span>
         </div>
       </div>
       <div class="flex items-center justify-between text-xs text-neutral-600 dark:text-neutral-400">
@@ -85,13 +91,8 @@
             <span class="text-neutral-400 dark:text-neutral-600">0 in progress</span>
           {/if}
         </span>
-        <span>{project.completedIssues}/{project.totalIssues}</span>
+        <span class="font-medium">{project.completedIssues}/{project.totalIssues}</span>
       </div>
-      {#if backlogCount > 0}
-        <div class="text-xs text-neutral-500 dark:text-neutral-500">
-          {backlogCount} in backlog
-        </div>
-      {/if}
     </div>
   </td>
   <td class="py-3 px-2 w-[100px]">
