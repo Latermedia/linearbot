@@ -34,7 +34,7 @@ export function getStartedIssues(): Issue[] {
  */
 export function getStartedIssuesByTeams(teamKeys: string[]): Issue[] {
   if (teamKeys.length === 0) return [];
-  
+
   const db = getDatabase();
   const placeholders = teamKeys.map(() => "?").join(",");
   const query = db.prepare(`
@@ -51,21 +51,23 @@ export function getStartedIssuesByTeams(teamKeys: string[]): Issue[] {
  */
 export function getIssuesWithProjects(): Issue[] {
   const db = getDatabase();
-  console.log('[getIssuesWithProjects] Querying database for issues with projects...');
-  
+  console.log(
+    "[getIssuesWithProjects] Querying database for issues with projects..."
+  );
+
   // First check total count
   const totalCountQuery = db.prepare(`SELECT COUNT(*) as count FROM issues`);
   const totalCount = (totalCountQuery.get() as { count: number }).count;
-  console.log('[getIssuesWithProjects] Total issues in database:', totalCount);
-  
+  console.log("[getIssuesWithProjects] Total issues in database:", totalCount);
+
   const query = db.prepare(`
     SELECT * FROM issues
     WHERE project_id IS NOT NULL
     ORDER BY team_name, project_name, identifier
   `);
   const results = query.all() as Issue[];
-  console.log('[getIssuesWithProjects] Issues with projects:', results.length);
-  
+  console.log("[getIssuesWithProjects] Issues with projects:", results.length);
+
   return results;
 }
 
@@ -241,7 +243,7 @@ export function getIssuesByProject(projectId: string): Issue[] {
  */
 export function deleteIssuesByTeams(teamKeys: string[]): void {
   if (teamKeys.length === 0) return;
-  
+
   const db = getDatabase();
   const placeholders = teamKeys.map(() => "?").join(",");
   const query = db.prepare(`
@@ -277,7 +279,7 @@ export function upsertProject(project: Project): void {
   const query = db.prepare(`
     INSERT INTO projects (
       project_id, project_name, project_state, project_health, project_updated_at,
-      project_lead_id, project_lead_name,
+      project_lead_id, project_lead_name, project_description,
       total_issues, completed_issues, in_progress_issues, engineer_count,
       missing_estimate_count, missing_priority_count, no_recent_comment_count,
       wip_age_violation_count, missing_description_count,
@@ -287,7 +289,7 @@ export function upsertProject(project: Project): void {
       start_date, last_activity_date, estimated_end_date,
       issues_by_state, engineers, teams, velocity_by_team, labels
     ) VALUES (
-      ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?
+      ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?
     )
     ON CONFLICT(project_id) DO UPDATE SET
       project_name = excluded.project_name,
@@ -296,6 +298,7 @@ export function upsertProject(project: Project): void {
       project_updated_at = excluded.project_updated_at,
       project_lead_id = excluded.project_lead_id,
       project_lead_name = excluded.project_lead_name,
+      project_description = excluded.project_description,
       total_issues = excluded.total_issues,
       completed_issues = excluded.completed_issues,
       in_progress_issues = excluded.in_progress_issues,
@@ -336,6 +339,7 @@ export function upsertProject(project: Project): void {
     project.project_updated_at,
     project.project_lead_id,
     project.project_lead_name,
+    project.project_description,
     project.total_issues,
     project.completed_issues,
     project.in_progress_issues,
@@ -374,7 +378,7 @@ export function upsertProject(project: Project): void {
  */
 export function deleteProjectsByProjectIds(projectIds: string[]): void {
   if (projectIds.length === 0) return;
-  
+
   const db = getDatabase();
   const placeholders = projectIds.map(() => "?").join(",");
   const query = db.prepare(`
@@ -413,4 +417,3 @@ export function getInProgressProjects(): Project[] {
   `);
   return query.all() as Project[];
 }
-

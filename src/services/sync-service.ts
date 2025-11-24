@@ -70,11 +70,11 @@ export async function performSync(
     // Connect to Linear
     const linearClient = createLinearClient();
     callbacks?.onProgressPercent?.(0);
-    console.log('[SYNC] Testing Linear API connection...');
+    console.log("[SYNC] Testing Linear API connection...");
     const connected = await linearClient.testConnection();
 
     if (!connected) {
-      console.error('[SYNC] Failed to connect to Linear API');
+      console.error("[SYNC] Failed to connect to Linear API");
       return {
         success: false,
         newCount: 0,
@@ -86,13 +86,15 @@ export async function performSync(
         error: "Failed to connect to Linear. Check your API key.",
       };
     }
-    console.log('[SYNC] Linear API connection successful');
+    console.log("[SYNC] Linear API connection successful");
 
     // Fetch issues (step 1 of N+1 where N is number of projects)
     const allIssues = await linearClient.fetchStartedIssues((count) => {
       callbacks?.onIssueCountUpdate?.(count);
     });
-    console.log(`[SYNC] Fetched ${allIssues.length} started issues from Linear`);
+    console.log(
+      `[SYNC] Fetched ${allIssues.length} started issues from Linear`
+    );
 
     // Filter ignored teams
     const startedIssues = allIssues.filter(
@@ -100,49 +102,75 @@ export async function performSync(
     );
     if (ignoredTeamKeys.length > 0) {
       const filteredCount = allIssues.length - startedIssues.length;
-      console.log(`[SYNC] Filtered out ${filteredCount} issues from ${ignoredTeamKeys.length} ignored team(s)`);
+      console.log(
+        `[SYNC] Filtered out ${filteredCount} issues from ${ignoredTeamKeys.length} ignored team(s)`
+      );
     }
 
     // Phase 2: Fetch all issues for projects with active work (optional)
     let projectIssues: typeof allIssues = [];
     let projectCount = 0;
+    const activeProjectIds = new Set<string>();
+    const projectDescriptionsMap = new Map<string, string | null>();
 
     if (includeProjectSync) {
-      const activeProjectIds = new Set(
+      const projectIdsFromIssues = new Set(
         startedIssues
           .filter((issue) => issue.projectId)
           .map((issue) => issue.projectId as string)
       );
 
-      projectCount = activeProjectIds.size;
-      callbacks?.onProjectCountUpdate?.(projectCount);
-      console.log(`[SYNC] Found ${projectCount} active project(s) with started issues`);
+      // Add to activeProjectIds set
+      for (const id of projectIdsFromIssues) {
+        activeProjectIds.add(id);
+      }
 
-      if (activeProjectIds.size > 0) {
+      projectCount = projectIdsFromIssues.size;
+      callbacks?.onProjectCountUpdate?.(projectCount);
+      console.log(
+        `[SYNC] Found ${projectCount} active project(s) with started issues`
+      );
+
+      if (projectIdsFromIssues.size > 0) {
         // Total steps = 1 (started issues) + N (projects)
         const totalSteps = 1 + projectCount;
-        
+
         // Step 1 complete (started issues)
         callbacks?.onProgressPercent?.(Math.round((1 / totalSteps) * 100));
-        
+
+        // Fetch issues and descriptions together - descriptions are fetched inline during issue fetching
         projectIssues = await linearClient.fetchIssuesByProjects(
-          Array.from(activeProjectIds),
+          Array.from(projectIdsFromIssues),
           (count, pageSize, projectIndex, totalProjects) => {
             callbacks?.onProjectIssueCountUpdate?.(count);
             // Update progress when starting a new project (pageSize is undefined at start)
             // When projectIndex is 0, we're starting the first project (1 step done: started issues)
             // When projectIndex is 1, we've completed project 0 (2 steps done: started + project 0)
-            if (projectIndex !== undefined && totalProjects !== undefined && totalSteps > 0 && pageSize === undefined) {
+            if (
+              projectIndex !== undefined &&
+              totalProjects !== undefined &&
+              totalSteps > 0 &&
+              pageSize === undefined
+            ) {
               // Completed steps: 1 (started issues) + projectIndex (completed projects)
               const completedSteps = 1 + projectIndex;
-              const percent = Math.min(Math.round((completedSteps / totalSteps) * 100), 99);
+              const percent = Math.min(
+                Math.round((completedSteps / totalSteps) * 100),
+                99
+              );
               callbacks?.onProgressPercent?.(percent);
             }
-          }
+          },
+          projectDescriptionsMap
         );
         // All projects complete - set to 100%
         callbacks?.onProgressPercent?.(100);
-        console.log(`[SYNC] Fetched ${projectIssues.length} issues from ${projectCount} project(s)`);
+        console.log(
+          `[SYNC] Fetched ${projectIssues.length} issues from ${projectCount} project(s)`
+        );
+        console.log(
+          `[SYNC] Fetched descriptions for ${projectDescriptionsMap.size} project(s)`
+        );
       } else {
         // No projects, sync is complete
         callbacks?.onProgressPercent?.(100);
@@ -159,7 +187,11 @@ export async function performSync(
     for (const issue of [...startedIssues, ...projectIssues]) {
       allIssuesMap.set(issue.id, issue);
       // Collect project labels
-      if (issue.projectId && issue.projectLabels && issue.projectLabels.length > 0) {
+      if (
+        issue.projectId &&
+        issue.projectLabels &&
+        issue.projectLabels.length > 0
+      ) {
         // Use the labels from any issue (they should be the same for all issues in a project)
         if (!projectLabelsMap.has(issue.projectId)) {
           projectLabelsMap.set(issue.projectId, issue.projectLabels);
@@ -170,12 +202,16 @@ export async function performSync(
     const totalBeforeDedup = startedIssues.length + projectIssues.length;
     const duplicatesRemoved = totalBeforeDedup - issues.length;
     if (duplicatesRemoved > 0) {
-      console.log(`[SYNC] Deduplicated: ${duplicatesRemoved} duplicate issue(s) removed (${totalBeforeDedup} → ${issues.length})`);
+      console.log(
+        `[SYNC] Deduplicated: ${duplicatesRemoved} duplicate issue(s) removed (${totalBeforeDedup} → ${issues.length})`
+      );
     }
 
     // Store in database (final step, already at 100% if no projects, otherwise maintain)
     const existingIds = getExistingIssueIds();
-    console.log(`[SYNC] Found ${existingIds.size} existing issue(s) in database`);
+    console.log(
+      `[SYNC] Found ${existingIds.size} existing issue(s) in database`
+    );
 
     let newIssues = 0;
     let updatedIssues = 0;
@@ -210,7 +246,9 @@ export async function performSync(
         created_at: issue.createdAt.toISOString(),
         updated_at: issue.updatedAt.toISOString(),
         started_at: issue.startedAt ? issue.startedAt.toISOString() : null,
-        completed_at: issue.completedAt ? issue.completedAt.toISOString() : null,
+        completed_at: issue.completedAt
+          ? issue.completedAt.toISOString()
+          : null,
         canceled_at: issue.canceledAt ? issue.canceledAt.toISOString() : null,
         url: issue.url,
         project_id: issue.projectId,
@@ -228,7 +266,9 @@ export async function performSync(
     // Remove ignored teams from database
     if (ignoredTeamKeys.length > 0) {
       deleteIssuesByTeams(ignoredTeamKeys);
-      console.log(`[SYNC] Removed issues from ${ignoredTeamKeys.length} ignored team(s)`);
+      console.log(
+        `[SYNC] Removed issues from ${ignoredTeamKeys.length} ignored team(s)`
+      );
     }
 
     // Get total count
@@ -240,10 +280,17 @@ export async function performSync(
 
     // Compute and store project metrics
     console.log(`[SYNC] Computing project metrics...`);
-    const computedProjectCount = await computeAndStoreProjects(projectLabelsMap);
-    console.log(`[SYNC] Computed metrics for ${computedProjectCount} project(s)`);
+    const computedProjectCount = await computeAndStoreProjects(
+      projectLabelsMap,
+      projectDescriptionsMap
+    );
+    console.log(
+      `[SYNC] Computed metrics for ${computedProjectCount} project(s)`
+    );
 
-    console.log(`[SYNC] Summary - New: ${newIssues}, Updated: ${updatedIssues}, Started: ${startedCount}, Projects: ${projectCount}, Project Issues: ${projectIssues.length}, Computed Projects: ${computedProjectCount}`);
+    console.log(
+      `[SYNC] Summary - New: ${newIssues}, Updated: ${updatedIssues}, Started: ${startedCount}, Projects: ${projectCount}, Project Issues: ${projectIssues.length}, Computed Projects: ${computedProjectCount}`
+    );
 
     return {
       success: true,
@@ -255,18 +302,21 @@ export async function performSync(
       projectIssueCount: projectIssues.length,
     };
   } catch (error) {
-    const errorMessage = error instanceof Error ? error.message : "An unknown error occurred";
+    const errorMessage =
+      error instanceof Error ? error.message : "An unknown error occurred";
     console.error(`[SYNC] Sync error: ${errorMessage}`, error);
-    
+
     // Check if it's a schema mismatch error
-    const isSchemaError = errorMessage.includes("values for") && errorMessage.includes("columns") ||
-                         errorMessage.includes("no such column") ||
-                         errorMessage.includes("table_info");
-    
-    const finalError = isSchemaError 
+    const isSchemaError =
+      (errorMessage.includes("values for") &&
+        errorMessage.includes("columns")) ||
+      errorMessage.includes("no such column") ||
+      errorMessage.includes("table_info");
+
+    const finalError = isSchemaError
       ? `${errorMessage}\n\n💡 Tip: This looks like a schema mismatch. Try resetting the database:\n   bun run reset-db`
       : errorMessage;
-    
+
     return {
       success: false,
       newCount: 0,
@@ -283,9 +333,12 @@ export async function performSync(
 /**
  * Compute project metrics from issues and store in projects table
  */
-async function computeAndStoreProjects(projectLabelsMap?: Map<string, string[]>): Promise<number> {
+async function computeAndStoreProjects(
+  projectLabelsMap?: Map<string, string[]>,
+  projectDescriptionsMap?: Map<string, string | null>
+): Promise<number> {
   const allIssues = getAllIssues();
-  
+
   // Group issues by project
   const projectGroups = new Map<string, Issue[]>();
   for (const issue of allIssues) {
@@ -321,10 +374,16 @@ async function computeAndStoreProjects(projectLabelsMap?: Map<string, string[]>)
       issuesByState.set(stateName, (issuesByState.get(stateName) || 0) + 1);
 
       // Count completed and in-progress
-      if (stateName.toLowerCase().includes('done') || stateName.toLowerCase().includes('completed')) {
+      if (
+        stateName.toLowerCase().includes("done") ||
+        stateName.toLowerCase().includes("completed")
+      ) {
         completedCount++;
       }
-      if (stateName.toLowerCase() === 'in progress' || issue.state_type === 'started') {
+      if (
+        stateName.toLowerCase() === "in progress" ||
+        issue.state_type === "started"
+      ) {
         inProgressCount++;
       }
 
@@ -363,7 +422,10 @@ async function computeAndStoreProjects(projectLabelsMap?: Map<string, string[]>)
     }
 
     // Calculate flags
-    const hasStatusMismatchFlag = hasStatusMismatch(firstIssue.project_state, projectIssues);
+    const hasStatusMismatchFlag = hasStatusMismatch(
+      firstIssue.project_state,
+      projectIssues
+    );
     const isStaleUpdateFlag = isStaleUpdate(lastActivityDate);
     const missingLeadFlag = isMissingLead(
       firstIssue.project_state,
@@ -379,14 +441,21 @@ async function computeAndStoreProjects(projectLabelsMap?: Map<string, string[]>)
     const averageLeadTime = calculateAverageLeadTime(projectIssues);
     const linearProgress = calculateLinearProgress(projectIssues);
     const velocity = calculateVelocity(projectIssues, earliestCreatedAt);
-    const velocityByTeam = calculateVelocityByTeam(projectIssues, earliestCreatedAt);
+    const velocityByTeam = calculateVelocityByTeam(
+      projectIssues,
+      earliestCreatedAt
+    );
     const estimateAccuracy = calculateEstimateAccuracy(projectIssues);
 
     // Calculate days per story point for accuracy
-    const completedIssues = projectIssues.filter((issue) => {
-      const stateName = issue.state_name?.toLowerCase() || "";
-      return stateName.includes("done") || stateName.includes("completed");
-    }).filter((issue) => issue.estimate !== null && issue.estimate !== undefined);
+    const completedIssues = projectIssues
+      .filter((issue) => {
+        const stateName = issue.state_name?.toLowerCase() || "";
+        return stateName.includes("done") || stateName.includes("completed");
+      })
+      .filter(
+        (issue) => issue.estimate !== null && issue.estimate !== undefined
+      );
 
     let daysPerStoryPoint: number | null = null;
     if (completedIssues.length > 0) {
@@ -420,9 +489,13 @@ async function computeAndStoreProjects(projectLabelsMap?: Map<string, string[]>)
     let estimatedEndDate: string | null = null;
     if (earliestCreatedAt) {
       const remainingIssues = projectIssues.length - completedCount;
-      const daysElapsed = Math.max(1, (Date.now() - new Date(earliestCreatedAt).getTime()) / (1000 * 60 * 60 * 24));
+      const daysElapsed = Math.max(
+        1,
+        (Date.now() - new Date(earliestCreatedAt).getTime()) /
+          (1000 * 60 * 60 * 24)
+      );
       const velocityPerDay = completedCount / daysElapsed;
-      
+
       if (velocityPerDay > 0) {
         const daysToComplete = remainingIssues / velocityPerDay;
         const estimated = new Date();
@@ -445,20 +518,27 @@ async function computeAndStoreProjects(projectLabelsMap?: Map<string, string[]>)
     const issuesByStateJson = JSON.stringify(Object.fromEntries(issuesByState));
     const engineersJson = JSON.stringify(Array.from(engineers));
     const teamsJson = JSON.stringify(Array.from(teams));
-    const velocityByTeamJson = JSON.stringify(Object.fromEntries(velocityByTeam));
+    const velocityByTeamJson = JSON.stringify(
+      Object.fromEntries(velocityByTeam)
+    );
 
     // Get project labels from map or default to empty array
     const projectLabels = projectLabelsMap?.get(projectId) || [];
-    const labelsJson = projectLabels.length > 0 ? JSON.stringify(projectLabels) : null;
+    const labelsJson =
+      projectLabels.length > 0 ? JSON.stringify(projectLabels) : null;
+
+    // Get project description from map
+    const projectDescription = projectDescriptionsMap?.get(projectId) || null;
 
     const project: Project = {
       project_id: projectId,
-      project_name: firstIssue.project_name || 'Unknown Project',
+      project_name: firstIssue.project_name || "Unknown Project",
       project_state: firstIssue.project_state,
       project_health: firstIssue.project_health,
       project_updated_at: firstIssue.project_updated_at,
       project_lead_id: firstIssue.project_lead_id,
       project_lead_name: firstIssue.project_lead_name,
+      project_description: projectDescription,
       total_issues: projectIssues.length,
       completed_issues: completedCount,
       in_progress_issues: inProgressCount,
@@ -499,12 +579,13 @@ async function computeAndStoreProjects(projectLabelsMap?: Map<string, string[]>)
   const projectsToDelete = allProjects
     .filter((p) => !activeProjectIds.has(p.project_id))
     .map((p) => p.project_id);
-  
+
   if (projectsToDelete.length > 0) {
     deleteProjectsByProjectIds(projectsToDelete);
-    console.log(`[SYNC] Deleted ${projectsToDelete.length} inactive project(s)`);
+    console.log(
+      `[SYNC] Deleted ${projectsToDelete.length} inactive project(s)`
+    );
   }
 
   return activeProjectIds.size;
 }
-

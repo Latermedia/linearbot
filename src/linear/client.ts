@@ -191,7 +191,8 @@ export class LinearAPIClient {
 
   async fetchIssuesByProjects(
     projectIds: string[],
-    onProgress?: (current: number, pageSize?: number, projectIndex?: number, totalProjects?: number) => void
+    onProgress?: (current: number, pageSize?: number, projectIndex?: number, totalProjects?: number) => void,
+    projectDescriptionsMap?: Map<string, string | null>
   ): Promise<LinearIssueData[]> {
     if (projectIds.length === 0) return [];
 
@@ -371,6 +372,17 @@ export class LinearAPIClient {
       const projectDisplayName = projectName || projectId;
       const finalCount = projectIssues.length;
       console.log(`[SYNC] Project ${projectIndex + 1}/${totalProjects} summary: ${projectDisplayName} (ID: ${projectId}) - ${finalCount} issues`);
+      
+      // Fetch project description along the way
+      if (projectDescriptionsMap !== undefined) {
+        try {
+          const description = await this.fetchProjectDescription(projectId);
+          projectDescriptionsMap.set(projectId, description);
+        } catch (error) {
+          console.error(`[SYNC] Failed to fetch description for project ${projectId}:`, error);
+          projectDescriptionsMap.set(projectId, null);
+        }
+      }
     }
 
     return issues;

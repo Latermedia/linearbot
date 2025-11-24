@@ -8,6 +8,7 @@ export interface ProjectSummary {
 	projectState: string | null;
 	projectHealth: string | null;
 	projectUpdatedAt: string | null;
+	projectDescription: string | null;
 	totalIssues: number;
 	issuesByState: Map<string, number>;
 	engineerCount: number;
@@ -77,6 +78,7 @@ function projectToSummary(project: Project): ProjectSummary {
 		projectState: project.project_state,
 		projectHealth: project.project_health,
 		projectUpdatedAt: project.project_updated_at,
+		projectDescription: project.project_description,
 		totalIssues: project.total_issues,
 		issuesByState,
 		engineerCount: project.engineer_count,
