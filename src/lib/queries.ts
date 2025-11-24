@@ -24,14 +24,17 @@ export async function getStartedIssues(): Promise<Issue[]> {
 }
 
 export async function getIssuesWithProjects(): Promise<Issue[]> {
+	console.log('[getIssuesWithProjects] Fetching from /api/issues/with-projects...');
 	const response = await fetch('/api/issues/with-projects');
+	console.log('[getIssuesWithProjects] Response status:', response.status, response.statusText);
 	if (!response.ok) {
 		const errorText = await response.text();
 		console.error('[getIssuesWithProjects] Error response:', errorText);
 		throw new Error('Failed to fetch issues with projects');
 	}
 	const data = await response.json();
-	return data.issues;
+	console.log('[getIssuesWithProjects] Received data:', { issueCount: data.issues?.length || 0 });
+	return data.issues || [];
 }
 
 export async function getStartedProjectIssuesWithAssignees(): Promise<Issue[]> {

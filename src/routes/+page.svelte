@@ -30,9 +30,26 @@
 
   // Create reactive derived values from stores
   // This ensures they update when stores change
-  const teams = $derived.by(() => $teamsStore);
-  const domains = $derived.by(() => $domainsStore);
-  const projects = $derived.by(() => $projectsStore);
+  const teams = $derived.by(() => {
+    const t = $teamsStore;
+    console.log(
+      "[+page.svelte] teams derived - length:",
+      t.length,
+      "teams:",
+      t.map((team) => ({ name: team.teamName, projects: team.projects.length }))
+    );
+    return t;
+  });
+  const domains = $derived.by(() => {
+    const d = $domainsStore;
+    console.log("[+page.svelte] domains derived - length:", d.length);
+    return d;
+  });
+  const projects = $derived.by(() => {
+    const p = $projectsStore;
+    console.log("[+page.svelte] projects derived - size:", p.size);
+    return p;
+  });
 
   // Calculate health metrics
   const staleProjectsCount = $derived(

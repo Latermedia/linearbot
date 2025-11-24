@@ -61,7 +61,14 @@ function createDatabaseStore() {
 				await loadConfig();
 
 				// Then load issues
+				console.log('[databaseStore] Loading issues...');
 				const issues = await getIssuesWithProjects();
+				console.log('[databaseStore] Loaded issues count:', issues.length);
+				console.log('[databaseStore] Sample issues:', issues.slice(0, 3).map(i => ({
+					id: i.id,
+					project_id: i.project_id,
+					team_key: i.team_key
+				})));
 				update((state) => ({
 					...state,
 					loading: false,
@@ -92,13 +99,27 @@ export const databaseStore = createDatabaseStore();
 
 // Derived stores for processed data
 export const projectsStore = derived(databaseStore, ($db) => {
-	if (!browser || $db.loading || $db.error) return new Map<string, ProjectSummary>();
-	return processProjects($db.issues);
+	if (!browser || $db.loading || $db.error) {
+		console.log('[projectsStore] Skipping - browser:', browser, 'loading:', $db.loading, 'error:', $db.error);
+		return new Map<string, ProjectSummary>();
+	}
+	console.log('[projectsStore] Processing', $db.issues.length, 'issues into projects...');
+	const projects = processProjects($db.issues);
+	console.log('[projectsStore] Processed projects count:', projects.size);
+	console.log('[projectsStore] Sample project IDs:', Array.from(projects.keys()).slice(0, 5));
+	return projects;
 });
 
 export const teamsStore = derived([databaseStore, projectsStore], ([$db, $projects]) => {
-	if (!browser || $db.loading || $db.error) return [];
-	return groupProjectsByTeams($projects, $db.issues);
+	if (!browser || $db.loading || $db.error) {
+		console.log('[teamsStore] Skipping - browser:', browser, 'loading:', $db.loading, 'error:', $db.error);
+		return [];
+	}
+	console.log('[teamsStore] Grouping', $projects.size, 'projects into teams...');
+	const teams = groupProjectsByTeams($projects, $db.issues);
+	console.log('[teamsStore] Grouped into', teams.length, 'teams');
+	console.log('[teamsStore] Teams:', teams.map(t => ({ name: t.teamName, projectCount: t.projects.length })));
+	return teams;
 });
 
 export const domainsStore = derived(teamsStore, ($teams) => {

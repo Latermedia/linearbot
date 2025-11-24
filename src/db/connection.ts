@@ -26,15 +26,12 @@ export function getDatabase(): Database {
       // Validate schema after initialization
       const validation = validateSchema(dbInstance);
       if (!validation.valid) {
-        console.warn(`[DB] Schema validation failed: ${validation.error}`);
-        console.log(`[DB] Attempting to auto-fix by resetting database...`);
-        resetDatabase(dbInstance);
-        const revalidation = validateSchema(dbInstance);
-        if (!revalidation.valid) {
-          console.error(`[DB] Schema validation still failed after reset: ${revalidation.error}`);
-          throw new Error(`Database schema validation failed: ${revalidation.error}`);
-        }
-        console.log(`[DB] Schema validation passed after reset`);
+        console.error(`[DB] ⚠️ Schema validation failed: ${validation.error}`);
+        console.error(`[DB] ⚠️ Database will NOT be auto-reset to prevent data loss.`);
+        console.error(`[DB] ⚠️ If you need to reset, run: bun run reset-db`);
+        console.error(`[DB] ⚠️ Continuing with existing database structure...`);
+        // Don't auto-reset - too dangerous! User must explicitly reset
+        // throw new Error(`Database schema validation failed: ${validation.error}`);
       } else {
         console.log(`[DB] Database schema initialized and validated`);
       }

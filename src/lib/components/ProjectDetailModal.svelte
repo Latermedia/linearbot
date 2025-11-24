@@ -10,12 +10,19 @@
     getCompletedPercent,
     getWIPPercent,
     getHealthDisplay,
-    formatVelocity,
+    calculateTotalPoints,
+    calculateAverageCycleTime,
+    calculateAverageLeadTime,
+    calculateProjectAge,
     formatTimeDays,
-    getVelocityTrendDisplay,
-    formatPercent,
     formatProjectAge,
-    getStalenessDisplay,
+    calculateVelocity,
+    formatVelocity,
+    calculateVelocityByTeam,
+    calculateLinearProgress,
+    formatPercent,
+    calculateEstimateAccuracy,
+    getVelocityTrendDisplay,
   } from "$lib/utils/project-helpers";
 
   let {
@@ -96,6 +103,33 @@
       issuesLoading = false;
     }
   }
+
+  // Calculate metrics from projectIssues
+  const metrics = $derived.by(() => {
+    if (projectIssues.length === 0) {
+      return {
+        totalPoints: { total: 0, missing: 0 },
+        averageCycleTime: null,
+        averageLeadTime: null,
+        projectAge: calculateProjectAge(project.startDate),
+        linearProgress: null,
+        velocity: 0,
+        velocityByTeam: new Map<string, number>(),
+        estimateAccuracy: null,
+      };
+    }
+
+    return {
+      totalPoints: calculateTotalPoints(projectIssues),
+      averageCycleTime: calculateAverageCycleTime(projectIssues),
+      averageLeadTime: calculateAverageLeadTime(projectIssues),
+      projectAge: calculateProjectAge(project.startDate),
+      linearProgress: calculateLinearProgress(projectIssues),
+      velocity: calculateVelocity(projectIssues, project.startDate),
+      velocityByTeam: calculateVelocityByTeam(projectIssues, project.startDate),
+      estimateAccuracy: calculateEstimateAccuracy(projectIssues),
+    };
+  });
 
   onMount(() => {
     document.addEventListener("keydown", handleKeydown);
@@ -183,16 +217,6 @@
     <!-- Scrollable Content -->
     <div class="overflow-y-auto flex-1">
       <div class="p-6 pt-6">
-        <!-- Project Description -->
-        {#if project.projectDescription}
-          <div class="mb-6">
-            <div class="mb-1 text-xs text-neutral-500">Description</div>
-            <div class="text-sm text-white whitespace-pre-wrap">
-              {project.projectDescription}
-            </div>
-          </div>
-        {/if}
-
         <!-- Progress Section -->
         <div class="mb-6">
           <div class="flex justify-between items-center mb-2">
@@ -245,25 +269,26 @@
         >
           <div class="mb-3 text-sm font-medium text-neutral-300">Metrics</div>
           <div class="grid grid-cols-2 gap-4">
+            <!-- Left Column -->
             <div>
               <div
                 class="flex gap-1 items-center mb-1 text-xs text-neutral-500"
                 title="Sum of all issue estimates (story points) in the project"
               >
                 Total Points
-                {#if project.missingEstimateCount > 0}
+                {#if metrics.totalPoints.missing > 0}
                   <span
                     class="text-amber-400"
-                    title="{project.missingEstimateCount} issues missing estimates"
-                    >⚠️</span
+                    title="{metrics.totalPoints
+                      .missing} issues missing estimates">⚠️</span
                   >
                 {/if}
               </div>
               <div class="text-sm text-white">
-                {Math.round(project.totalPoints)}
-                {#if project.missingEstimateCount > 0}
+                {Math.round(metrics.totalPoints.total)}
+                {#if metrics.totalPoints.missing > 0}
                   <span class="ml-1 text-xs text-amber-400">
-                    ({project.missingEstimateCount} missing)
+                    ({metrics.totalPoints.missing} missing)
                   </span>
                 {/if}
               </div>
@@ -271,29 +296,16 @@
             <div>
               <div
                 class="mb-1 text-xs text-neutral-500"
-                title="Average number of issues completed per week, calculated from completed issues and project duration"
+                title="Average number of issues completed per week"
               >
                 Velocity
               </div>
               <div class="flex gap-2 items-center text-sm text-white">
-                {formatVelocity(project.weeklyVelocity)} issues/week
-                {#if project.velocityTrend !== "unknown"}
-                  {@const trend = getVelocityTrendDisplay(
-                    project.velocityTrend
-                  )}
-                  <span
-                    class={trend.colorClass}
-                    title={project.velocityTrend === "increasing"
-                      ? "Velocity is increasing compared to historical average"
-                      : project.velocityTrend === "decreasing"
-                        ? "Velocity is decreasing compared to historical average"
-                        : "Velocity is stable compared to historical average"}
-                    >{trend.icon}</span
-                  >
-                {/if}
+                {formatVelocity(metrics.velocity)} issues/week
+                <span class="text-green-500">→</span>
               </div>
             </div>
-            {#if project.averageCycleTime !== null}
+            {#if metrics.averageCycleTime !== null}
               <div>
                 <div
                   class="mb-1 text-xs text-neutral-500"
@@ -302,11 +314,11 @@
                   Avg Cycle Time
                 </div>
                 <div class="text-sm text-white">
-                  {formatTimeDays(project.averageCycleTime)}
+                  {formatTimeDays(metrics.averageCycleTime)}
                 </div>
               </div>
             {/if}
-            {#if project.averageLeadTime !== null}
+            {#if metrics.averageLeadTime !== null}
               <div>
                 <div
                   class="mb-1 text-xs text-neutral-500"
@@ -315,22 +327,22 @@
                   Avg Lead Time
                 </div>
                 <div class="text-sm text-white">
-                  {formatTimeDays(project.averageLeadTime)}
+                  {formatTimeDays(metrics.averageLeadTime)}
                 </div>
               </div>
             {/if}
             <div>
               <div
                 class="mb-1 text-xs text-neutral-500"
-                title="Number of days since the project started (using project start date or earliest issue creation date)"
+                title="Number of days since the project started"
               >
                 Project Age
               </div>
               <div class="text-sm text-white">
-                {formatProjectAge(project.projectAge)}
+                {formatProjectAge(metrics.projectAge)}
               </div>
             </div>
-            {#if project.estimateAccuracy !== null}
+            {#if metrics.estimateAccuracy !== null}
               <div>
                 <div
                   class="mb-1 text-xs text-neutral-500"
@@ -339,31 +351,26 @@
                   Estimate Accuracy
                 </div>
                 <div class="text-sm text-white">
-                  {formatPercent(project.estimateAccuracy)}
+                  {formatPercent(metrics.estimateAccuracy)}
                 </div>
               </div>
             {/if}
-            {#if project.projectProgress !== null}
+            {#if metrics.linearProgress !== null}
               <div>
                 <div
                   class="mb-1 text-xs text-neutral-500"
-                  title="Linear's calculated progress based on completed story points divided by total story points. This differs from issue count progress if estimates vary significantly between completed and remaining issues."
+                  title="Linear's calculated progress based on completed story points divided by total story points"
                 >
                   Linear Progress
                   <span class="text-neutral-600">(by points)</span>
                 </div>
                 <div class="text-sm text-white">
-                  {formatPercent(project.projectProgress * 100)}
+                  {formatPercent(metrics.linearProgress * 100)}
                 </div>
-                {#if project.projectProgress * 100 < getProgressPercent(project) / 10}
-                  <div class="mt-1 text-xs text-amber-400">
-                    ⚠️ Low vs issue count ({getProgressPercent(project)}%)
-                  </div>
-                {/if}
               </div>
             {/if}
           </div>
-          {#if project.teamVelocities.size > 0}
+          {#if metrics.velocityByTeam.size > 0}
             <div class="pt-3 mt-3 border-t border-white/5">
               <div
                 class="mb-2 text-xs text-neutral-500"
@@ -372,7 +379,7 @@
                 Velocity by Team
               </div>
               <div class="space-y-1">
-                {#each Array.from(project.teamVelocities.entries()) as [team, velocity]}
+                {#each Array.from(metrics.velocityByTeam.entries()) as [team, velocity]}
                   <div class="flex justify-between items-center text-xs">
                     <span class="text-neutral-400">{team}</span>
                     <span class="text-neutral-300"
@@ -390,17 +397,13 @@
           <div>
             <div class="mb-1 text-xs text-neutral-500">Start Date</div>
             <div class="text-sm text-white">
-              {formatDateFull(project.projectStartDate || project.startDate)}
+              {formatDateFull(project.startDate)}
             </div>
           </div>
           <div>
-            <div class="mb-1 text-xs text-neutral-500">
-              {project.projectTargetDate ? "Target Date" : "Estimated End Date"}
-            </div>
+            <div class="mb-1 text-xs text-neutral-500">Estimated End Date</div>
             <div class="text-sm text-white">
-              {formatDateFull(
-                project.projectTargetDate || project.estimatedEndDate
-              )}
+              {formatDateFull(project.estimatedEndDate)}
             </div>
           </div>
         </div>

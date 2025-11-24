@@ -51,12 +51,22 @@ export function getStartedIssuesByTeams(teamKeys: string[]): Issue[] {
  */
 export function getIssuesWithProjects(): Issue[] {
   const db = getDatabase();
+  console.log('[getIssuesWithProjects] Querying database for issues with projects...');
+  
+  // First check total count
+  const totalCountQuery = db.prepare(`SELECT COUNT(*) as count FROM issues`);
+  const totalCount = (totalCountQuery.get() as { count: number }).count;
+  console.log('[getIssuesWithProjects] Total issues in database:', totalCount);
+  
   const query = db.prepare(`
     SELECT * FROM issues
     WHERE project_id IS NOT NULL
     ORDER BY team_name, project_name, identifier
   `);
-  return query.all() as Issue[];
+  const results = query.all() as Issue[];
+  console.log('[getIssuesWithProjects] Issues with projects:', results.length);
+  
+  return results;
 }
 
 /**
@@ -202,6 +212,19 @@ export function upsertIssue(issue: {
     issue.project_lead_id,
     issue.project_lead_name
   );
+}
+
+/**
+ * Get all issues for a specific project
+ */
+export function getIssuesByProject(projectId: string): Issue[] {
+  const db = getDatabase();
+  const query = db.prepare(`
+    SELECT * FROM issues
+    WHERE project_id = ?
+    ORDER BY team_name, identifier
+  `);
+  return query.all(projectId) as Issue[];
 }
 
 /**
