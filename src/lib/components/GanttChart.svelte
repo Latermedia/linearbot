@@ -19,11 +19,13 @@
     domains = [],
     groupBy = "team" as "team" | "domain",
     showScale = true,
+    hideWarnings = false,
   }: {
     teams?: TeamSummary[];
     domains?: DomainSummary[];
     groupBy?: "team" | "domain";
     showScale?: boolean;
+    hideWarnings?: boolean;
   } = $props();
 
   let selectedProject: ProjectSummary | null = $state(null);
@@ -380,6 +382,7 @@
         <GanttProjectBar
           {project}
           {position}
+          {hideWarnings}
           onmouseenter={(e) => handleBarMouseEnter(e, project)}
           onmousemove={handleBarMouseMove}
           onmouseleave={handleBarMouseLeave}
@@ -406,7 +409,7 @@
         <div>
           End: {formatDateFull(hoveredProject.estimatedEndDate)}
         </div>
-        {#if violations.length > 0}
+        {#if !hideWarnings && violations.length > 0}
           <div class="mt-1.5 pt-1.5 border-t border-white/10">
             <div class="mb-0.5 text-neutral-400">Violations:</div>
             <div class="space-y-0.5">
@@ -422,7 +425,7 @@
 
   <!-- Project Detail Modal -->
   {#if selectedProject}
-    <ProjectDetailModal project={selectedProject} onclose={closeModal} />
+    <ProjectDetailModal project={selectedProject} onclose={closeModal} {hideWarnings} />
   {/if}
 
   <!-- Export Modal -->

@@ -2,20 +2,39 @@
   import { onMount } from "svelte";
   import { browser } from "$app/environment";
   import { goto } from "$app/navigation";
-  import { databaseStore, projectsStore } from "$lib/stores/database";
+  import {
+    databaseStore,
+    projectsStore,
+    teamsStore,
+    domainsStore,
+  } from "$lib/stores/database";
   import { presentationMode } from "$lib/stores/presentation";
   import Card from "$lib/components/ui/card.svelte";
   import Skeleton from "$lib/components/ui/skeleton.svelte";
   import Badge from "$lib/components/ui/badge.svelte";
   import ProgressBar from "$lib/components/ProgressBar.svelte";
   import ProjectDetailModal from "$lib/components/ProjectDetailModal.svelte";
-  import type { ProjectSummary } from "$lib/project-data";
+  import ProjectsTable from "$lib/components/ProjectsTable.svelte";
+  import GanttChart from "$lib/components/GanttChart.svelte";
+  import * as ToggleGroup from "$lib/components/ui/toggle-group";
+  import type {
+    ProjectSummary,
+    TeamSummary,
+    DomainSummary,
+  } from "$lib/project-data";
   import type { Issue } from "../../db/schema";
   import {
     getRecentProgress,
     formatDateFull,
     getHealthDisplay,
   } from "$lib/utils/project-helpers";
+  import {
+    getTotalCompletedInPeriod,
+    getRecentVelocity,
+    getTotalActiveEngineers,
+  } from "$lib/utils/executive-stats";
+
+  let viewType = $state<"card" | "table" | "gantt">("card");
 
   // Load data on mount
   onMount(() => {
@@ -61,6 +80,8 @@
   const error = $derived($databaseStore.error);
   const projects = $derived($projectsStore);
   const issues = $derived($databaseStore.issues);
+  const allTeams = $derived($teamsStore);
+  const allDomains = $derived($domainsStore);
 
   // Filter projects: Executive Visibility label + in progress
   const executiveProjects = $derived.by(() => {
@@ -81,6 +102,28 @@
     });
   });
 
+  // Create a single unified group for executive projects
+  const executiveTeam = $derived.by(() => {
+    return {
+      teamId: "executive",
+      teamName: "Executive Projects",
+      teamKey: "EXEC",
+      projects: executiveProjects,
+      domain: null,
+    } as TeamSummary;
+  });
+
+  // For table/gantt views, we use a single team array
+  const executiveTeams = $derived.by(() => {
+    if (executiveProjects.length === 0) return [];
+    return [executiveTeam];
+  });
+
+  // Empty domains array since we don't group by domain in executive view
+  const executiveDomains = $derived.by(() => {
+    return [];
+  });
+
   // Calculate recent progress for each project
   const projectsWithProgress = $derived.by(() => {
     if (!issues || issues.length === 0)
@@ -93,6 +136,33 @@
       const recentProgress = getRecentProgress(project, issues, 14);
       return { project, recentProgress };
     });
+  });
+
+  // Calculate executive-level stats
+  const executiveStats = $derived.by(() => {
+    if (
+      !browser ||
+      executiveProjects.length === 0 ||
+      !issues ||
+      issues.length === 0
+    ) {
+      return {
+        totalCompleted: 0,
+        recentVelocity: 0,
+        activeEngineers: 0,
+      };
+    }
+
+    const projectIds = executiveProjects.map((p) => p.projectId);
+    const totalCompleted = getTotalCompletedInPeriod(issues, projectIds, 14);
+    const recentVelocity = getRecentVelocity(issues, projectIds, 14);
+    const activeEngineers = getTotalActiveEngineers(executiveProjects);
+
+    return {
+      totalCompleted,
+      recentVelocity,
+      activeEngineers,
+    };
   });
 
   let selectedProject: ProjectSummary | null = $state(null);
@@ -155,8 +225,58 @@
           )}%
         </div>
       </Card>
+      <Card class="max-w-[200px]">
+        <div class="mb-1 text-xs text-neutral-500 dark:text-neutral-300">
+          Issues Completed (Last 2 Weeks)
+        </div>
+        <div class="text-2xl font-semibold text-neutral-900 dark:text-white">
+          {executiveStats.totalCompleted}
+        </div>
+      </Card>
+      <Card class="max-w-[200px]">
+        <div class="mb-1 text-xs text-neutral-500 dark:text-neutral-300">
+          Recent Velocity
+        </div>
+        <div class="text-2xl font-semibold text-neutral-900 dark:text-white">
+          {executiveStats.recentVelocity.toFixed(1)}
+        </div>
+        <div class="text-xs text-neutral-600 dark:text-neutral-400">
+          issues/week
+        </div>
+      </Card>
+      <Card class="max-w-[200px]">
+        <div class="mb-1 text-xs text-neutral-500 dark:text-neutral-300">
+          Active Engineers
+        </div>
+        <div class="text-2xl font-semibold text-neutral-900 dark:text-white">
+          {executiveStats.activeEngineers}
+        </div>
+      </Card>
     </div>
   {/if}
+
+  <!-- Sticky controls wrapper -->
+  <div
+    class="sticky top-[60px] z-30 backdrop-blur-sm bg-white/95 dark:bg-neutral-950/95 -mx-4 sm:-mx-6 lg:-mx-8 px-4 sm:px-6 lg:px-8 pt-1 -mt-1"
+  >
+    <!-- View controls -->
+    <div
+      class="flex flex-col gap-4 items-start py-2 sm:flex-row sm:items-center"
+    >
+      <!-- View type toggle -->
+      <ToggleGroup.Root bind:value={viewType} variant="outline" type="single">
+        <ToggleGroup.Item value="card" aria-label="Card view">
+          Card
+        </ToggleGroup.Item>
+        <ToggleGroup.Item value="table" aria-label="Table view">
+          Table
+        </ToggleGroup.Item>
+        <ToggleGroup.Item value="gantt" aria-label="Gantt view">
+          Gantt
+        </ToggleGroup.Item>
+      </ToggleGroup.Root>
+    </div>
+  </div>
 
   <!-- Main content -->
   {#if loading}
@@ -193,7 +313,7 @@
         in progress.
       </p>
     </Card>
-  {:else}
+  {:else if viewType === "card"}
     <div class="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
       {#each projectsWithProgress as { project, recentProgress }}
         {@const healthDisplay = getHealthDisplay(project.projectHealth)}
@@ -305,6 +425,20 @@
         </Card>
       {/each}
     </div>
+  {:else if viewType === "table"}
+    <ProjectsTable
+      teams={executiveTeams}
+      domains={executiveDomains}
+      groupBy="team"
+      hideWarnings={true}
+    />
+  {:else if viewType === "gantt"}
+    <GanttChart
+      teams={executiveTeams}
+      domains={executiveDomains}
+      groupBy="team"
+      hideWarnings={true}
+    />
   {/if}
 </div>
 

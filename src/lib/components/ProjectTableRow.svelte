@@ -11,12 +11,14 @@
 
   let {
     project,
+    hideWarnings = false,
     onmouseenter,
     onmousemove,
     onmouseleave,
     onclick,
   }: {
     project: ProjectSummary;
+    hideWarnings?: boolean;
     onmouseenter?: (event: MouseEvent) => void;
     onmousemove?: (event: MouseEvent) => void;
     onmouseleave?: () => void;
@@ -37,7 +39,7 @@
   tabindex="0"
 >
   <td class="py-3 px-2 w-[32px]">
-    {#if hasIssues}
+    {#if !hideWarnings && hasIssues}
       <span class="text-amber-400 text-sm" title="Health check failed">⚠️</span>
     {/if}
   </td>

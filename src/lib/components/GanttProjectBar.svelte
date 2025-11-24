@@ -9,6 +9,7 @@
   let {
     project,
     position,
+    hideWarnings = false,
     onmouseenter,
     onmousemove,
     onmouseleave,
@@ -21,6 +22,7 @@
       extendsBefore: boolean;
       extendsAfter: boolean;
     };
+    hideWarnings?: boolean;
     onmouseenter?: (event: MouseEvent) => void;
     onmousemove?: (event: MouseEvent) => void;
     onmouseleave?: () => void;
@@ -77,7 +79,7 @@
     ></div>
     <!-- Project name overlay -->
     <span class="flex relative z-10 gap-1.5 items-center truncate">
-      {#if hasWarnings}
+      {#if !hideWarnings && hasWarnings}
         <span class="text-sm text-amber-400 shrink-0">⚠️</span>
       {/if}
       {project.projectName}

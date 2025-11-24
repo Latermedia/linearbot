@@ -15,10 +15,12 @@
     teams = [],
     domains = [],
     groupBy = "team" as "team" | "domain",
+    hideWarnings = false,
   }: {
     teams?: TeamSummary[];
     domains?: DomainSummary[];
     groupBy?: "team" | "domain";
+    hideWarnings?: boolean;
   } = $props();
 
   let selectedProject: ProjectSummary | null = $state(null);
@@ -121,6 +123,7 @@
               {#each group.projects as project}
                 <ProjectTableRow
                   {project}
+                  {hideWarnings}
                   onmouseenter={(e) => handleRowMouseEnter(e, project)}
                   onmousemove={handleRowMouseMove}
                   onmouseleave={handleRowMouseLeave}
@@ -155,7 +158,7 @@
       {#if hoveredProject.projectState}
         <div>State: {hoveredProject.projectState}</div>
       {/if}
-      {#if violations.length > 0}
+      {#if !hideWarnings && violations.length > 0}
         <div class="mt-1.5 pt-1.5 border-t border-white/10">
           <div class="mb-0.5 text-neutral-400">Violations:</div>
           <div class="space-y-0.5">
@@ -171,5 +174,5 @@
 
 <!-- Project Detail Modal -->
 {#if selectedProject}
-  <ProjectDetailModal project={selectedProject} onclose={closeModal} />
+  <ProjectDetailModal project={selectedProject} onclose={closeModal} {hideWarnings} />
 {/if}
