@@ -8,11 +8,7 @@
   import GanttExportModal from "./GanttExportModal.svelte";
   import GanttProjectBar from "./GanttProjectBar.svelte";
   import GanttSectionHeader from "./GanttSectionHeader.svelte";
-  import {
-    formatDateFull,
-    getProgressPercent,
-    getViolationSummary,
-  } from "$lib/utils/project-helpers";
+  import ProjectHoverTooltip from "./ProjectHoverTooltip.svelte";
 
   let {
     teams = [],
@@ -394,33 +390,11 @@
 
   <!-- Hover tooltip -->
   {#if hoveredProject}
-    {@const progress = getProgressPercent(hoveredProject)}
-    {@const violations = getViolationSummary(hoveredProject)}
-    <div
-      class="fixed z-50 px-3 py-2 text-xs text-white rounded border shadow-lg pointer-events-none bg-neutral-800 border-white/10"
-      style={`left: ${tooltipPosition.x + 10}px; top: ${tooltipPosition.y + 10}px; max-width: 200px;`}
-    >
-      <div class="mb-1 font-medium">{hoveredProject.projectName}</div>
-      <div class="space-y-0.5 text-neutral-300">
-        <div>Progress: {progress}%</div>
-        <div>
-          Start: {formatDateFull(hoveredProject.startDate)}
-        </div>
-        <div>
-          End: {formatDateFull(hoveredProject.estimatedEndDate)}
-        </div>
-        {#if !hideWarnings && violations.length > 0}
-          <div class="mt-1.5 pt-1.5 border-t border-white/10">
-            <div class="mb-0.5 text-neutral-400">Violations:</div>
-            <div class="space-y-0.5">
-              {#each violations as violation}
-                <div>{violation}</div>
-              {/each}
-            </div>
-          </div>
-        {/if}
-      </div>
-    </div>
+    <ProjectHoverTooltip
+      project={hoveredProject}
+      {hideWarnings}
+      position={tooltipPosition}
+    />
   {/if}
 
   <!-- Project Detail Modal -->
