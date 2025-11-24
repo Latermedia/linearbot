@@ -23,6 +23,11 @@
     formatPercent,
     calculateEstimateAccuracy,
     getVelocityTrendDisplay,
+    calculateWIPAge,
+    formatWIPAge,
+    calculateIssueAccuracyRatio,
+    formatAccuracyRatio,
+    getAccuracyColorClass,
   } from "$lib/utils/project-helpers";
 
   let {
@@ -116,7 +121,46 @@
         velocity: 0,
         velocityByTeam: new Map<string, number>(),
         estimateAccuracy: null,
+        daysPerStoryPoint: null,
       };
+    }
+
+    // Calculate days per story point for accuracy calculations
+    const completedIssues = projectIssues
+      .filter((issue) => {
+        const stateName = issue.state_name?.toLowerCase() || "";
+        return stateName.includes("done") || stateName.includes("completed");
+      })
+      .filter(
+        (issue) => issue.estimate !== null && issue.estimate !== undefined
+      );
+
+    let daysPerStoryPoint: number | null = null;
+    if (completedIssues.length > 0) {
+      let totalStoryPoints = 0;
+      let totalDays = 0;
+      let issuesWithData = 0;
+
+      for (const issue of completedIssues) {
+        if (!issue.estimate) continue;
+        const startTime = issue.started_at
+          ? new Date(issue.started_at).getTime()
+          : new Date(issue.created_at).getTime();
+        const completedTime = issue.completed_at
+          ? new Date(issue.completed_at).getTime()
+          : new Date(issue.updated_at).getTime();
+        const actualDays = (completedTime - startTime) / (1000 * 60 * 60 * 24);
+
+        if (actualDays > 0) {
+          totalStoryPoints += issue.estimate;
+          totalDays += actualDays;
+          issuesWithData++;
+        }
+      }
+
+      if (issuesWithData > 0 && totalStoryPoints > 0) {
+        daysPerStoryPoint = totalDays / totalStoryPoints;
+      }
     }
 
     return {
@@ -128,6 +172,7 @@
       velocity: calculateVelocity(projectIssues, project.startDate),
       velocityByTeam: calculateVelocityByTeam(projectIssues, project.startDate),
       estimateAccuracy: calculateEstimateAccuracy(projectIssues),
+      daysPerStoryPoint,
     };
   });
 
@@ -346,7 +391,9 @@
               <div>
                 <div
                   class="mb-1 text-xs text-neutral-500"
-                  title="Percentage of completed issues where the actual cycle time was within 20% of the estimated time"
+                  title="Percentage of completed issues where actual cycle time (started → completed) was within 20% of estimated time. Story points are converted to days using your team's average velocity{metrics.daysPerStoryPoint
+                    ? ` (${metrics.daysPerStoryPoint.toFixed(1)} days per point)`
+                    : ''}. Accuracy measures how well estimates predict actual completion time."
                 >
                   Estimate Accuracy
                 </div>
@@ -537,12 +584,39 @@
                             class="px-2 py-1.5 font-medium text-right text-neutral-400"
                             >Points</th
                           >
+                          <th
+                            class="px-2 py-1.5 font-medium text-right text-neutral-400"
+                            >WIP Age</th
+                          >
+                          {#if metrics.daysPerStoryPoint !== null}
+                            <th
+                              class="px-2 py-1.5 font-medium text-right text-neutral-400"
+                              title="Ratio of actual time to estimated time. 1.0x = perfect match. < 1.0x = faster than estimated, > 1.0x = slower than estimated. Green = within 30%, Yellow = 30-70% off, Red = 70%+ off."
+                              >Estimate Accuracy</th
+                            >
+                          {/if}
                         </tr>
                       </thead>
                       <tbody>
                         {#each issues as issue}
+                          {@const isCompleted = (() => {
+                            const stateName =
+                              issue.state_name?.toLowerCase() || "";
+                            return (
+                              stateName.includes("done") ||
+                              stateName.includes("completed")
+                            );
+                          })()}
+                          {@const wipAge = calculateWIPAge(issue, isCompleted)}
+                          {@const issueAccuracyRatio =
+                            metrics.daysPerStoryPoint !== null && isCompleted
+                              ? calculateIssueAccuracyRatio(
+                                  issue,
+                                  metrics.daysPerStoryPoint
+                                )
+                              : null}
                           <tr
-                            class="border-b transition-colors cursor-pointer border-white/5 hover:bg-white/5"
+                            class="border-b transition-colors cursor-pointer border-white/5 hover:bg-white/5 focus:outline-none"
                             onclick={() => {
                               if (issue.url && browser) {
                                 window.open(
@@ -590,6 +664,29 @@
                                 >
                               {/if}
                             </td>
+                            <td class="px-2 py-1.5 text-right text-neutral-300">
+                              {formatWIPAge(wipAge)}
+                            </td>
+                            {#if metrics.daysPerStoryPoint !== null}
+                              <td class="px-2 py-1.5 text-right">
+                                {#if issueAccuracyRatio !== null}
+                                  <span
+                                    class={getAccuracyColorClass(
+                                      issueAccuracyRatio
+                                    )}
+                                    title={issueAccuracyRatio === 1.0
+                                      ? "Perfect match! Actual time equals estimated time (1.0x)"
+                                      : issueAccuracyRatio >= 1.0
+                                        ? `Took ${((issueAccuracyRatio - 1) * 100).toFixed(0)}% longer than estimated (goal: 1.0x)`
+                                        : `Completed ${((1 - issueAccuracyRatio) * 100).toFixed(0)}% faster than estimated (goal: 1.0x)`}
+                                  >
+                                    {formatAccuracyRatio(issueAccuracyRatio)}
+                                  </span>
+                                {:else}
+                                  <span class="text-neutral-500">—</span>
+                                {/if}
+                              </td>
+                            {/if}
                           </tr>
                         {/each}
                       </tbody>

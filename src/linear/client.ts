@@ -21,6 +21,9 @@ export interface LinearIssueData {
   lastCommentAt: Date | null;
   createdAt: Date;
   updatedAt: Date;
+  startedAt: Date | null;
+  completedAt: Date | null;
+  canceledAt: Date | null;
   url: string;
   projectId: string | null;
   projectName: string | null;
@@ -64,6 +67,9 @@ export class LinearAPIClient {
             url
             createdAt
             updatedAt
+            startedAt
+            completedAt
+            canceledAt
             comments(first: 1, orderBy: createdAt) {
               nodes {
                 createdAt
@@ -141,6 +147,9 @@ export class LinearAPIClient {
             : null,
           createdAt: new Date(issue.createdAt),
           updatedAt: new Date(issue.updatedAt),
+          startedAt: issue.startedAt ? new Date(issue.startedAt) : null,
+          completedAt: issue.completedAt ? new Date(issue.completedAt) : null,
+          canceledAt: issue.canceledAt ? new Date(issue.canceledAt) : null,
           url: issue.url,
           projectId: issue.project?.id || null,
           projectName: issue.project?.name || null,
@@ -213,6 +222,9 @@ export class LinearAPIClient {
               url
               createdAt
               updatedAt
+              startedAt
+              completedAt
+              canceledAt
               comments(first: 1, orderBy: createdAt) {
                 nodes {
                   createdAt
@@ -300,6 +312,9 @@ export class LinearAPIClient {
               : null,
             createdAt: new Date(issue.createdAt),
             updatedAt: new Date(issue.updatedAt),
+            startedAt: issue.startedAt ? new Date(issue.startedAt) : null,
+            completedAt: issue.completedAt ? new Date(issue.completedAt) : null,
+            canceledAt: issue.canceledAt ? new Date(issue.canceledAt) : null,
             url: issue.url,
             projectId: issue.project?.id || null,
             projectName: issue.project?.name || null,

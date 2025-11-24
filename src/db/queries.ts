@@ -127,6 +127,9 @@ export function upsertIssue(issue: {
   last_comment_at: string | null;
   created_at: string;
   updated_at: string;
+  started_at: string | null;
+  completed_at: string | null;
+  canceled_at: string | null;
   url: string;
   project_id: string | null;
   project_name: string | null;
@@ -143,7 +146,7 @@ export function upsertIssue(issue: {
       state_id, state_name, state_type,
       assignee_id, assignee_name, creator_id, creator_name,
       priority, estimate, last_comment_at,
-      created_at, updated_at, url,
+      created_at, updated_at, started_at, completed_at, canceled_at, url,
       project_id, project_name, project_state, project_health, project_updated_at,
       project_lead_id, project_lead_name
     ) VALUES (
@@ -151,7 +154,7 @@ export function upsertIssue(issue: {
       ?, ?, ?,
       ?, ?, ?, ?,
       ?, ?, ?,
-      ?, ?, ?,
+      ?, ?, ?, ?, ?, ?,
       ?, ?, ?, ?, ?,
       ?, ?
     )
@@ -173,6 +176,9 @@ export function upsertIssue(issue: {
       estimate = excluded.estimate,
       last_comment_at = excluded.last_comment_at,
       updated_at = excluded.updated_at,
+      started_at = excluded.started_at,
+      completed_at = excluded.completed_at,
+      canceled_at = excluded.canceled_at,
       url = excluded.url,
       project_id = excluded.project_id,
       project_name = excluded.project_name,
@@ -203,6 +209,9 @@ export function upsertIssue(issue: {
     issue.last_comment_at,
     issue.created_at,
     issue.updated_at,
+    issue.started_at,
+    issue.completed_at,
+    issue.canceled_at,
     issue.url,
     issue.project_id,
     issue.project_name,

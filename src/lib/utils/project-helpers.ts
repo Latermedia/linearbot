@@ -165,10 +165,13 @@ export function calculateAverageCycleTime(issues: Issue[]): number | null {
   let count = 0;
 
   for (const issue of completedIssues) {
-    // Find when issue was started (look for state transitions or use created_at as fallback)
-    // For now, use created_at as start time since we don't track state transitions
-    const startTime = new Date(issue.created_at).getTime();
-    const completedTime = new Date(issue.updated_at).getTime();
+    // Use started_at if available, otherwise fallback to created_at
+    const startTime = issue.started_at 
+      ? new Date(issue.started_at).getTime()
+      : new Date(issue.created_at).getTime();
+    const completedTime = issue.completed_at
+      ? new Date(issue.completed_at).getTime()
+      : new Date(issue.updated_at).getTime();
     const days = (completedTime - startTime) / (1000 * 60 * 60 * 24);
     if (days > 0) {
       totalDays += days;
@@ -195,7 +198,9 @@ export function calculateAverageLeadTime(issues: Issue[]): number | null {
 
   for (const issue of completedIssues) {
     const createdTime = new Date(issue.created_at).getTime();
-    const completedTime = new Date(issue.updated_at).getTime();
+    const completedTime = issue.completed_at
+      ? new Date(issue.completed_at).getTime()
+      : new Date(issue.updated_at).getTime();
     const days = (completedTime - createdTime) / (1000 * 60 * 60 * 24);
     if (days > 0) {
       totalDays += days;
@@ -344,10 +349,14 @@ export function calculateEstimateAccuracy(issues: Issue[]): number | null {
   for (const issue of completedIssues) {
     if (!issue.estimate) continue;
 
-    // Use cycle time (time from created to completed) as actual time
-    const createdTime = new Date(issue.created_at).getTime();
-    const completedTime = new Date(issue.updated_at).getTime();
-    const actualDays = (completedTime - createdTime) / (1000 * 60 * 60 * 24);
+    // Use cycle time (started → completed) if available, otherwise fallback to created → updated
+    const startTime = issue.started_at 
+      ? new Date(issue.started_at).getTime()
+      : new Date(issue.created_at).getTime();
+    const completedTime = issue.completed_at
+      ? new Date(issue.completed_at).getTime()
+      : new Date(issue.updated_at).getTime();
+    const actualDays = (completedTime - startTime) / (1000 * 60 * 60 * 24);
 
     if (actualDays > 0) {
       totalStoryPoints += issue.estimate;
@@ -367,9 +376,13 @@ export function calculateEstimateAccuracy(issues: Issue[]): number | null {
   for (const issue of completedIssues) {
     if (!issue.estimate) continue;
 
-    const createdTime = new Date(issue.created_at).getTime();
-    const completedTime = new Date(issue.updated_at).getTime();
-    const actualDays = (completedTime - createdTime) / (1000 * 60 * 60 * 24);
+    const startTime = issue.started_at 
+      ? new Date(issue.started_at).getTime()
+      : new Date(issue.created_at).getTime();
+    const completedTime = issue.completed_at
+      ? new Date(issue.completed_at).getTime()
+      : new Date(issue.updated_at).getTime();
+    const actualDays = (completedTime - startTime) / (1000 * 60 * 60 * 24);
 
     if (actualDays <= 0) continue;
 
@@ -401,4 +414,110 @@ export function getVelocityTrendDisplay(
     return { icon: "←", colorClass: "text-red-500" };
   }
   return { icon: "—", colorClass: "text-neutral-500" };
+}
+
+/**
+ * Calculate WIP age for an issue (time from started to now/completed)
+ * 
+ * For completed issues: Only calculate if started_at exists (we need to know when it was started)
+ * For started issues: Use started_at if available, otherwise fallback to created_at
+ */
+export function calculateWIPAge(issue: Issue, isCompleted: boolean): number | null {
+  // Only calculate for started or completed issues
+  const stateName = issue.state_name?.toLowerCase() || "";
+  const isStarted = issue.state_type === "started" || stateName.includes("progress") || stateName.includes("started");
+  
+  if (!isStarted && !isCompleted) return null;
+
+  // For completed issues, we MUST have started_at to calculate WIP age
+  // (can't use created_at fallback - that would give us lead time, not WIP age)
+  if (isCompleted && !issue.started_at) {
+    return null;
+  }
+
+  // Use started_at if available, otherwise fallback to created_at (for currently started issues only)
+  const startTime = issue.started_at 
+    ? new Date(issue.started_at).getTime()
+    : (isStarted ? new Date(issue.created_at).getTime() : null);
+  
+  if (!startTime) return null;
+  
+  // For completed issues, use completed_at if available, otherwise updated_at
+  // For started issues, use now
+  const endTime = isCompleted
+    ? (issue.completed_at ? new Date(issue.completed_at).getTime() : new Date(issue.updated_at).getTime())
+    : Date.now();
+  
+  const days = (endTime - startTime) / (1000 * 60 * 60 * 24);
+  return days > 0 ? days : null;
+}
+
+/**
+ * Format WIP age as string (e.g., "5.2d", "12d")
+ */
+export function formatWIPAge(days: number | null): string {
+  if (days === null) return "—";
+  return `${days.toFixed(1)}d`;
+}
+
+/**
+ * Calculate estimate accuracy ratio for a single issue
+ * Returns ratio (actualDays / estimatedDays) or null if not applicable
+ * Examples: 1.0 = perfect match, 1.2 = 20% over, 0.8 = 20% under
+ */
+export function calculateIssueAccuracyRatio(
+  issue: Issue,
+  daysPerStoryPoint: number
+): number | null {
+  if (!issue.estimate) return null;
+  
+  const stateName = issue.state_name?.toLowerCase() || "";
+  const isCompleted = stateName.includes("done") || stateName.includes("completed");
+  if (!isCompleted) return null;
+
+  const startTime = issue.started_at 
+    ? new Date(issue.started_at).getTime()
+    : new Date(issue.created_at).getTime();
+  const completedTime = issue.completed_at
+    ? new Date(issue.completed_at).getTime()
+    : new Date(issue.updated_at).getTime();
+  const actualDays = (completedTime - startTime) / (1000 * 60 * 60 * 24);
+  
+  if (actualDays <= 0) return null;
+
+  const estimatedDays = issue.estimate * daysPerStoryPoint;
+  if (estimatedDays <= 0) return null;
+  
+  return actualDays / estimatedDays;
+}
+
+/**
+ * Format accuracy ratio as string (e.g., "1.2x", "0.8x", "1.0x")
+ */
+export function formatAccuracyRatio(ratio: number | null): string {
+  if (ratio === null) return "—";
+  return `${ratio.toFixed(1)}x`;
+}
+
+/**
+ * Get color class for accuracy ratio
+ * Green: within 30% (0.7-1.3)
+ * Yellow: 30-70% off (0.3-0.7 or 1.3-1.7)
+ * Red: 70%+ off (< 0.3 or > 1.7)
+ */
+export function getAccuracyColorClass(ratio: number | null): string {
+  if (ratio === null) return "text-neutral-500";
+  
+  // Green: within 30% (0.7 to 1.3 inclusive)
+  if (ratio >= 0.7 && ratio <= 1.3) {
+    return "text-green-400";
+  } 
+  // Yellow: 30-70% off (0.3-0.7 or 1.3-1.7)
+  else if ((ratio >= 0.3 && ratio < 0.7) || (ratio > 1.3 && ratio <= 1.7)) {
+    return "text-amber-400";
+  } 
+  // Red: 70%+ off
+  else {
+    return "text-red-400";
+  }
 }

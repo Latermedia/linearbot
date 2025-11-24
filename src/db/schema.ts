@@ -20,6 +20,9 @@ export interface Issue {
   last_comment_at: string | null;
   created_at: string;
   updated_at: string;
+  started_at: string | null;
+  completed_at: string | null;
+  canceled_at: string | null;
   url: string;
   project_id: string | null;
   project_name: string | null;
@@ -45,7 +48,7 @@ const EXPECTED_ISSUES_COLUMNS = [
   'state_id', 'state_name', 'state_type',
   'assignee_id', 'assignee_name', 'creator_id', 'creator_name',
   'priority', 'estimate', 'last_comment_at',
-  'created_at', 'updated_at', 'url',
+  'created_at', 'updated_at', 'started_at', 'completed_at', 'canceled_at', 'url',
   'project_id', 'project_name', 'project_state', 'project_health', 'project_updated_at',
   'project_lead_id', 'project_lead_name'
 ];
@@ -170,6 +173,21 @@ export function initializeDatabase(db: Database): void {
   }
   try {
     db.run(`ALTER TABLE issues ADD COLUMN last_comment_at TEXT`);
+  } catch (e) {
+    // Column already exists, ignore
+  }
+  try {
+    db.run(`ALTER TABLE issues ADD COLUMN started_at TEXT`);
+  } catch (e) {
+    // Column already exists, ignore
+  }
+  try {
+    db.run(`ALTER TABLE issues ADD COLUMN completed_at TEXT`);
+  } catch (e) {
+    // Column already exists, ignore
+  }
+  try {
+    db.run(`ALTER TABLE issues ADD COLUMN canceled_at TEXT`);
   } catch (e) {
     // Column already exists, ignore
   }
