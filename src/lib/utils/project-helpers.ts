@@ -432,8 +432,12 @@ export function calculateEstimateAccuracy(issues: Issue[]): number | null {
   // Calculate conversion factor: average days per story point
   const daysPerStoryPoint = totalDays / totalStoryPoints;
 
-  // Now check accuracy: actual days should be within 20% of (estimate * daysPerStoryPoint)
-  let accurateCount = 0;
+  // Now check accuracy using ratio-based scoring with partial credit
+  // Accurate: within 20% variance (0.8x to 1.2x inclusive) = 1.0
+  // Moderate: 20-70% variance (0.3-0.8x or 1.2-1.7x) = 0.5
+  // Inaccurate: >70% variance (<0.3x or >1.7x) = 0.0
+  let totalScore = 0;
+  let issuesWithAccuracy = 0;
 
   for (const issue of completedIssues) {
     if (!issue.estimate) continue;
@@ -449,15 +453,28 @@ export function calculateEstimateAccuracy(issues: Issue[]): number | null {
     if (actualDays <= 0) continue;
 
     const estimatedDays = issue.estimate * daysPerStoryPoint;
-    const lowerBound = estimatedDays * 0.8;
-    const upperBound = estimatedDays * 1.2;
+    if (estimatedDays <= 0) continue;
 
-    if (actualDays >= lowerBound && actualDays <= upperBound) {
-      accurateCount++;
+    const ratio = actualDays / estimatedDays;
+    issuesWithAccuracy++;
+
+    // Accurate: 0.8x to 1.2x inclusive (within 20% variance)
+    if (ratio >= 0.8 && ratio <= 1.2) {
+      totalScore += 1.0;
+    }
+    // Moderate: 0.3-0.8x or 1.2-1.7x (20-70% variance, matching yellow/amber color range)
+    else if ((ratio >= 0.3 && ratio < 0.8) || (ratio > 1.2 && ratio <= 1.7)) {
+      totalScore += 0.5;
+    }
+    // Inaccurate: <0.3x or >1.7x (>70% variance)
+    else {
+      totalScore += 0.0;
     }
   }
 
-  return (accurateCount / issuesWithData) * 100;
+  if (issuesWithAccuracy === 0) return null;
+
+  return (totalScore / issuesWithAccuracy) * 100;
 }
 
 /**
