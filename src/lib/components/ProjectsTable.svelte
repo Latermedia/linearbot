@@ -9,7 +9,7 @@
     TeamSummary,
     DomainSummary,
   } from "../project-data";
-  import { getProgressPercent } from "$lib/utils/project-helpers";
+  import { getProgressPercent, getViolationSummary } from "$lib/utils/project-helpers";
 
   let {
     teams = [],
@@ -138,6 +138,7 @@
 <!-- Hover tooltip -->
 {#if hoveredProject}
   {@const progress = getProgressPercent(hoveredProject)}
+  {@const violations = getViolationSummary(hoveredProject)}
   <div
     class="fixed z-50 px-3 py-2 text-xs text-white rounded border shadow-lg pointer-events-none bg-neutral-800 border-white/10"
     style={`left: ${tooltipPosition.x + 10}px; top: ${tooltipPosition.y + 10}px; max-width: 200px;`}
@@ -153,6 +154,16 @@
       {/if}
       {#if hoveredProject.projectState}
         <div>State: {hoveredProject.projectState}</div>
+      {/if}
+      {#if violations.length > 0}
+        <div class="mt-1.5 pt-1.5 border-t border-white/10">
+          <div class="mb-0.5 text-neutral-400">Violations:</div>
+          <div class="space-y-0.5">
+            {#each violations as violation}
+              <div>{violation}</div>
+            {/each}
+          </div>
+        </div>
       {/if}
     </div>
   </div>

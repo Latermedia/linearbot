@@ -28,7 +28,13 @@
     calculateIssueAccuracyRatio,
     formatAccuracyRatio,
     getAccuracyColorClass,
+    formatCommentRecency,
   } from "$lib/utils/project-helpers";
+  import {
+    hasMissingEstimate,
+    hasNoRecentComment,
+    hasMissingPriority,
+  } from "../../utils/issue-validators";
 
   let {
     project,
@@ -198,12 +204,12 @@
   tabindex="-1"
 >
   <div
-    class="w-full max-w-4xl max-h-[90vh] rounded-md border shadow-2xl bg-neutral-900 border-white/10 shadow-black/50 m-4 flex flex-col"
+    class="w-full max-w-4xl lg:max-w-6xl xl:max-w-7xl max-h-[90vh] rounded-md border shadow-2xl bg-neutral-900 border-white/10 shadow-black/50 m-4 flex flex-col"
     role="document"
   >
     <!-- Fixed Header -->
     <div
-      class="flex flex-shrink-0 justify-between items-start p-6 pb-4 border-b border-white/10"
+      class="flex justify-between items-start p-6 pb-4 border-b shrink-0 border-white/10"
     >
       <div class="flex-1">
         <h2
@@ -211,7 +217,7 @@
           class="flex gap-2 items-center text-xl font-medium text-white"
         >
           {project.projectName}
-          {#if project.hasStatusMismatch || project.isStaleUpdate || project.missingLead}
+          {#if project.hasStatusMismatch || project.isStaleUpdate || project.missingLead || project.hasViolations}
             <span
               class="text-amber-500"
               title={[
@@ -220,6 +226,8 @@
                 project.isStaleUpdate &&
                   "Stale Update: Project hasn't been updated in 7+ days",
                 project.missingLead && "Missing Lead: No project lead assigned",
+                project.hasViolations &&
+                  "Violations: Some issues have missing estimates, no recent comments, or missing priority",
               ]
                 .filter(Boolean)
                 .join("\n")}>⚠️</span
@@ -569,28 +577,36 @@
                     {state} ({issues.length})
                   </div>
                   <div class="overflow-x-auto">
-                    <table class="w-full text-xs">
+                    <table class="w-full text-xs min-w-[680px]">
                       <thead>
                         <tr class="border-b border-white/10">
                           <th
-                            class="px-2 py-1.5 font-medium text-left text-neutral-400"
+                            class="px-2 py-1.5 font-medium text-left text-neutral-400 w-[310px] min-w-[310px]"
                             >Title</th
                           >
                           <th
-                            class="px-2 py-1.5 font-medium text-left text-neutral-400"
+                            class="px-2 py-1.5 font-medium text-left text-neutral-400 w-[90px] min-w-[90px]"
                             >Assignee</th
                           >
                           <th
-                            class="px-2 py-1.5 font-medium text-right text-neutral-400"
+                            class="px-2 py-1.5 font-medium text-right text-neutral-400 w-[70px] min-w-[70px]"
                             >Points</th
                           >
                           <th
-                            class="px-2 py-1.5 font-medium text-right text-neutral-400"
+                            class="px-2 py-1.5 font-medium text-right text-neutral-400 w-[80px] min-w-[80px]"
+                            >Priority</th
+                          >
+                          <th
+                            class="px-2 py-1.5 font-medium text-right text-neutral-400 w-[110px] min-w-[110px]"
+                            title="Time since last comment">Last Comment</th
+                          >
+                          <th
+                            class="px-2 py-1.5 font-medium text-right text-neutral-400 w-[70px] min-w-[70px]"
                             >WIP Age</th
                           >
                           {#if metrics.daysPerStoryPoint !== null}
                             <th
-                              class="px-2 py-1.5 font-medium text-right text-neutral-400"
+                              class="px-2 py-1.5 font-medium text-right text-neutral-400 w-[120px] min-w-[120px]"
                               title="Ratio of actual time to estimated time. 1.0x = perfect match. < 1.0x = faster than estimated, > 1.0x = slower than estimated. Green = within 30%, Yellow = 30-70% off, Red = 70%+ off."
                               >Estimate Accuracy</th
                             >
@@ -615,6 +631,12 @@
                                   metrics.daysPerStoryPoint
                                 )
                               : null}
+                          {@const commentRecency = formatCommentRecency(
+                            issue.last_comment_at
+                          )}
+                          {@const hasOldComment = hasNoRecentComment(issue)}
+                          {@const missingEstimate = hasMissingEstimate(issue)}
+                          {@const missingPriority = hasMissingPriority(issue)}
                           <tr
                             class="border-b transition-colors cursor-pointer border-white/5 hover:bg-white/5 focus:outline-none"
                             onclick={() => {
@@ -643,32 +665,87 @@
                               }
                             }}
                           >
-                            <td class="px-2 py-1.5 text-neutral-200">
+                            <td
+                              class="px-2 py-1.5 text-neutral-200 w-[310px] min-w-[310px] max-w-[310px]"
+                            >
                               <div
-                                class="max-w-md truncate"
+                                class="overflow-hidden truncate whitespace-nowrap text-ellipsis"
                                 title={issue.title}
                               >
                                 {issue.title}
                               </div>
                             </td>
-                            <td class="px-2 py-1.5 text-neutral-400">
-                              {issue.assignee_name || "Unassigned"}
+                            <td
+                              class="px-2 py-1.5 text-neutral-400 w-[90px] min-w-[90px] max-w-[90px]"
+                            >
+                              <div
+                                class="overflow-hidden truncate whitespace-nowrap text-ellipsis"
+                                title={issue.assignee_name || "Unassigned"}
+                              >
+                                {issue.assignee_name || "Unassigned"}
+                              </div>
                             </td>
-                            <td class="px-2 py-1.5 text-right text-neutral-300">
-                              {#if issue.estimate}
-                                {Math.round(issue.estimate)}
-                              {:else}
+                            <td
+                              class="px-2 py-1.5 text-right text-neutral-300 w-[70px] min-w-[70px]"
+                            >
+                              <div
+                                class="flex gap-1.5 justify-end items-center"
+                              >
+                                {#if issue.estimate}
+                                  {Math.round(issue.estimate)}
+                                {:else}
+                                  <span
+                                    class="text-amber-400"
+                                    title="Missing estimate">⚠️</span
+                                  >
+                                {/if}
+                              </div>
+                            </td>
+                            <td
+                              class="px-2 py-1.5 text-right text-neutral-300 w-[80px] min-w-[80px]"
+                            >
+                              <div
+                                class="flex gap-1.5 justify-end items-center"
+                              >
+                                {#if issue.priority && issue.priority > 0}
+                                  {issue.priority}
+                                {:else}
+                                  <span
+                                    class="text-amber-400"
+                                    title="Missing priority">⚠️</span
+                                  >
+                                {/if}
+                              </div>
+                            </td>
+                            <td
+                              class="px-2 py-1.5 text-right w-[110px] min-w-[110px]"
+                            >
+                              <div
+                                class="flex gap-1.5 justify-end items-center"
+                              >
+                                {#if hasOldComment}
+                                  <span
+                                    class="text-amber-400 shrink-0"
+                                    title="No comment since last business day"
+                                    >⚠️</span
+                                  >
+                                {/if}
                                 <span
-                                  class="text-amber-400"
-                                  title="Missing estimate">⚠️</span
+                                  class={hasOldComment
+                                    ? "text-amber-400"
+                                    : "text-neutral-300"}>{commentRecency}</span
                                 >
-                              {/if}
+                              </div>
                             </td>
-                            <td class="px-2 py-1.5 text-right text-neutral-300">
+                            <td
+                              class="px-2 py-1.5 text-right text-neutral-300 w-[70px] min-w-[70px]"
+                            >
                               {formatWIPAge(wipAge)}
                             </td>
                             {#if metrics.daysPerStoryPoint !== null}
-                              <td class="px-2 py-1.5 text-right">
+                              <td
+                                class="px-2 py-1.5 text-right w-[120px] min-w-[120px]"
+                              >
                                 {#if issueAccuracyRatio !== null}
                                   <span
                                     class={getAccuracyColorClass(

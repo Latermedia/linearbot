@@ -38,6 +38,14 @@ export const PROJECT_THRESHOLDS = {
 } as const;
 
 /**
+ * WIP age thresholds
+ */
+export const WIP_AGE_THRESHOLDS = {
+  /** Days before considering a started issue stale (WIP age violation) */
+  WIP_AGE_DAYS: 14,
+} as const;
+
+/**
  * Multi-project thresholds for engineers
  */
 export const MULTI_PROJECT_THRESHOLDS = {

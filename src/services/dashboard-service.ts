@@ -1,6 +1,6 @@
 import { getDatabase } from "../db/connection.js";
 import { getDomainForTeam } from "../utils/domain-mapping.js";
-import { WIP_THRESHOLDS, PROJECT_THRESHOLDS, COMMENT_THRESHOLDS } from "../constants/thresholds.js";
+import { WIP_THRESHOLDS, PROJECT_THRESHOLDS } from "../constants/thresholds.js";
 import type { Issue } from "../db/schema.js";
 import type {
   AssigneeViolation,
@@ -8,17 +8,7 @@ import type {
   EngineerMultiProjectViolation,
   DashboardData,
 } from "../types/violations.js";
-
-/**
- * Check if issue has no recent comment (>24 hours)
- */
-function hasNoRecentComment(issue: Issue): boolean {
-  if (!issue.last_comment_at) return true;
-  const lastComment = new Date(issue.last_comment_at);
-  const now = new Date();
-  const hoursDiff = (now.getTime() - lastComment.getTime()) / (1000 * 60 * 60);
-  return hoursDiff > COMMENT_THRESHOLDS.RECENT_HOURS;
-}
+import { hasNoRecentComment } from "../utils/issue-validators.js";
 
 /**
  * Calculate violation counts for a set of issues

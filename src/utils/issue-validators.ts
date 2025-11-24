@@ -1,18 +1,51 @@
 import type { Issue } from "../db/schema.js";
-import { COMMENT_THRESHOLDS } from "../constants/thresholds.js";
+import { COMMENT_THRESHOLDS, WIP_AGE_THRESHOLDS } from "../constants/thresholds.js";
 
 /**
- * Check if issue has no recent comment (>24 hours by default)
+ * Get the cutoff date for business day comment checking
+ * Monday: check since Thursday (72+ hours ago)
+ * Tuesday: check since Friday (72+ hours ago)
+ * Wednesday-Friday: check since previous business day (48+ hours ago)
+ * Saturday/Sunday: same as Friday (check since Wednesday)
+ */
+function getBusinessDayCutoff(): Date {
+  const now = new Date();
+  const dayOfWeek = now.getDay(); // 0 = Sunday, 1 = Monday, ..., 6 = Saturday
+  const cutoff = new Date(now);
+  
+  if (dayOfWeek === 0) {
+    // Sunday: check since Thursday (4 days ago, but only 1 business day, same as Monday)
+    cutoff.setDate(cutoff.getDate() - 4);
+  } else if (dayOfWeek === 1) {
+    // Monday: check since Thursday (4 days ago, but only 1 business day)
+    cutoff.setDate(cutoff.getDate() - 4);
+  } else if (dayOfWeek === 2) {
+    // Tuesday: check since Friday (4 days ago, but only 1 business day)
+    cutoff.setDate(cutoff.getDate() - 4);
+  } else {
+    // Wednesday-Friday, Saturday: check since previous business day (2 days ago)
+    cutoff.setDate(cutoff.getDate() - 2);
+  }
+  
+  // Set to end of day to be inclusive
+  cutoff.setHours(23, 59, 59, 999);
+  return cutoff;
+}
+
+/**
+ * Check if issue has no recent comment (using business days only)
+ * Monday: checks for comment since Thursday (72+ hours)
+ * Tuesday: checks for comment since Friday (72+ hours)
+ * Wednesday-Friday: checks for comment since previous business day (48+ hours)
  */
 export function hasNoRecentComment(
   issue: Issue,
-  hoursThreshold: number = COMMENT_THRESHOLDS.RECENT_HOURS
+  hoursThreshold?: number // Deprecated, kept for API compatibility
 ): boolean {
   if (!issue.last_comment_at) return true;
   const lastComment = new Date(issue.last_comment_at);
-  const now = new Date();
-  const hoursDiff = (now.getTime() - lastComment.getTime()) / (1000 * 60 * 60);
-  return hoursDiff > hoursThreshold;
+  const cutoff = getBusinessDayCutoff();
+  return lastComment < cutoff;
 }
 
 /**
@@ -65,6 +98,24 @@ export function countViolations(issues: Issue[]): ViolationCounts {
     missingPriority,
     total: missingEstimate + noRecentComment + missingPriority,
   };
+}
+
+/**
+ * Check if issue has WIP age violation (started >14 days ago)
+ */
+export function hasWIPAgeViolation(issue: Issue): boolean {
+  if (!issue.started_at) return false;
+  const startedDate = new Date(issue.started_at);
+  const now = new Date();
+  const daysDiff = (now.getTime() - startedDate.getTime()) / (1000 * 60 * 60 * 24);
+  return daysDiff > WIP_AGE_THRESHOLDS.WIP_AGE_DAYS;
+}
+
+/**
+ * Check if issue is missing description
+ */
+export function hasMissingDescription(issue: Issue): boolean {
+  return !issue.description || issue.description.trim() === "";
 }
 
 /**

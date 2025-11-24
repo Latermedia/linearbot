@@ -45,6 +45,27 @@ export function formatRelativeDate(dateStr: string | null): string {
 }
 
 /**
+ * Format comment recency (time since last comment) in hours/days
+ * Returns "Never" if no comment, or relative time like "2h ago", "3d ago"
+ */
+export function formatCommentRecency(lastCommentAt: string | null): string {
+  if (!lastCommentAt) return "Never";
+  const lastComment = new Date(lastCommentAt);
+  const now = new Date();
+  const diffMs = now.getTime() - lastComment.getTime();
+  const diffHours = Math.floor(diffMs / (1000 * 60 * 60));
+  const diffDays = Math.floor(diffMs / (1000 * 60 * 60 * 24));
+
+  if (diffHours < 1) return "<1h ago";
+  if (diffHours < 24) return `${diffHours}h ago`;
+  if (diffDays === 1) return "1d ago";
+  if (diffDays < 7) return `${diffDays}d ago`;
+  if (diffDays < 30) return `${Math.floor(diffDays / 7)}w ago`;
+  if (diffDays < 365) return `${Math.floor(diffDays / 30)}mo ago`;
+  return `${Math.floor(diffDays / 365)}y ago`;
+}
+
+/**
  * Calculate progress percentage (rounded)
  */
 export function getProgressPercent(project: ProjectSummary): number {
@@ -94,6 +115,47 @@ export function getBacklogCount(project: ProjectSummary): number {
     }
   }
   return count;
+}
+
+/**
+ * Get violation summary as array of strings
+ * Returns empty array if no violations
+ */
+export function getViolationSummary(project: ProjectSummary): string[] {
+  const violations: string[] = [];
+
+  // Project-level violations
+  if (project.missingLead) {
+    violations.push("Missing project lead");
+  }
+  if (project.isStaleUpdate) {
+    violations.push("Missing project update (7+ days)");
+  }
+  if (project.hasStatusMismatch) {
+    violations.push("Status mismatch");
+  }
+  if (project.missingHealth) {
+    violations.push("Missing project health");
+  }
+
+  // Issue-level violations (only include if count > 0)
+  if (project.missingEstimateCount > 0) {
+    violations.push(`${project.missingEstimateCount} missing points`);
+  }
+  if (project.missingPriorityCount > 0) {
+    violations.push(`${project.missingPriorityCount} missing priority`);
+  }
+  if (project.noRecentCommentCount > 0) {
+    violations.push(`${project.noRecentCommentCount} no recent comment`);
+  }
+  if (project.wipAgeViolationCount > 0) {
+    violations.push(`${project.wipAgeViolationCount} WIP age violation`);
+  }
+  if (project.missingDescriptionCount > 0) {
+    violations.push(`${project.missingDescriptionCount} missing description`);
+  }
+
+  return violations;
 }
 
 /**

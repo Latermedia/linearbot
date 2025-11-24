@@ -6,7 +6,14 @@ import {
 	isMissingLead
 } from '../utils/status-helpers';
 import { getDomainForTeam, getAllDomains } from '../utils/domain-mapping';
-import { hasViolations } from '../utils/issue-validators';
+import {
+	hasViolations,
+	hasMissingEstimate,
+	hasMissingPriority,
+	hasNoRecentComment,
+	hasWIPAgeViolation,
+	hasMissingDescription
+} from '../utils/issue-validators';
 
 export interface ProjectSummary {
 	projectId: string;
@@ -29,6 +36,12 @@ export interface ProjectSummary {
 	startDate: string | null;
 	estimatedEndDate: string | null;
 	hasViolations: boolean;
+	missingHealth: boolean;
+	missingEstimateCount: number;
+	missingPriorityCount: number;
+	noRecentCommentCount: number;
+	wipAgeViolationCount: number;
+	missingDescriptionCount: number;
 }
 
 export interface TeamSummary {
@@ -158,6 +171,21 @@ export function processProjects(issues: Issue[]): Map<string, ProjectSummary> {
 			}
 		}
 
+		// Calculate violation counts
+		let missingEstimateCount = 0;
+		let missingPriorityCount = 0;
+		let noRecentCommentCount = 0;
+		let wipAgeViolationCount = 0;
+		let missingDescriptionCount = 0;
+
+		for (const issue of projectIssues) {
+			if (hasMissingEstimate(issue)) missingEstimateCount++;
+			if (hasMissingPriority(issue)) missingPriorityCount++;
+			if (hasNoRecentComment(issue)) noRecentCommentCount++;
+			if (hasWIPAgeViolation(issue)) wipAgeViolationCount++;
+			if (hasMissingDescription(issue)) missingDescriptionCount++;
+		}
+
 		const projectSummary: ProjectSummary = {
 			projectId,
 			projectName: firstIssue.project_name || 'Unknown Project',
@@ -178,7 +206,13 @@ export function processProjects(issues: Issue[]): Map<string, ProjectSummary> {
 			inProgressIssues: inProgressCount,
 			startDate: earliestCreatedAt,
 			estimatedEndDate: null,
-			hasViolations: false
+			hasViolations: false,
+			missingHealth: !firstIssue.project_health,
+			missingEstimateCount,
+			missingPriorityCount,
+			noRecentCommentCount,
+			wipAgeViolationCount,
+			missingDescriptionCount
 		};
 
 		// Calculate flags
