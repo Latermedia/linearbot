@@ -477,6 +477,37 @@ export class LinearAPIClient {
       return false;
     }
   }
+
+  async fetchProjectDescription(projectId: string): Promise<string | null> {
+    try {
+      const query = `
+        query GetProjectDescription($projectId: String!) {
+          project(id: $projectId) {
+            id
+            description
+          }
+        }
+      `;
+
+      const response: any = await this.client.client.rawRequest(query, {
+        projectId,
+      });
+
+      const project = response.data?.project;
+      if (!project) {
+        return null;
+      }
+
+      return project.description || null;
+    } catch (error) {
+      console.error(
+        `Failed to fetch project description for ${projectId}:`,
+        error instanceof Error ? error.message : error
+      );
+      return null;
+    }
+  }
+
 }
 
 export function createLinearClient(apiKey?: string): LinearAPIClient {

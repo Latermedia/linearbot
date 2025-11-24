@@ -38,6 +38,7 @@
   } = $props();
 
   let projectUrl = $state<string | null>(null);
+  let projectDescription = $state<string | null>(null);
   let projectIssues = $state<Issue[]>([]);
   let issuesLoading = $state(true);
 
@@ -89,6 +90,21 @@
     }
   }
 
+  async function fetchProjectDescription() {
+    if (!browser) return;
+    try {
+      const response = await fetch(
+        `/api/projects/${project.projectId}/description`
+      );
+      if (response.ok) {
+        const data = await response.json();
+        projectDescription = data.description || null;
+      }
+    } catch (error) {
+      // Silently fail - description just won't be available
+    }
+  }
+
   async function fetchProjectIssues() {
     if (!browser) return;
     try {
@@ -116,6 +132,7 @@
     document.addEventListener("keydown", handleKeydown);
     document.body.style.overflow = "hidden";
     fetchProjectUrl();
+    fetchProjectDescription();
     fetchProjectIssues();
     return () => {
       document.removeEventListener("keydown", handleKeydown);
@@ -141,7 +158,7 @@
     <div
       class="flex justify-between items-start p-6 pb-4 border-b shrink-0 border-white/10"
     >
-      <div class="flex-1">
+      <div class="flex-1 min-w-0">
         <h2
           id="modal-title"
           class="flex gap-2 items-center text-xl font-medium text-white"
@@ -174,6 +191,11 @@
             </a>
           {/if}
         </h2>
+        {#if projectDescription}
+          <div class="mt-1.5 text-sm text-neutral-400">
+            {projectDescription}
+          </div>
+        {/if}
       </div>
       <button
         class="transition-colors duration-150 text-neutral-400 hover:text-white"
