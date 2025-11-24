@@ -6,6 +6,7 @@ import {
 	isMissingLead
 } from '../utils/status-helpers';
 import { getDomainForTeam, getAllDomains } from '../utils/domain-mapping';
+import { hasViolations } from '../utils/issue-validators';
 
 export interface ProjectSummary {
 	projectId: string;
@@ -27,6 +28,7 @@ export interface ProjectSummary {
 	inProgressIssues: number;
 	startDate: string | null;
 	estimatedEndDate: string | null;
+	hasViolations: boolean;
 }
 
 export interface TeamSummary {
@@ -175,7 +177,8 @@ export function processProjects(issues: Issue[]): Map<string, ProjectSummary> {
 			completedIssues: completedCount,
 			inProgressIssues: inProgressCount,
 			startDate: earliestCreatedAt,
-			estimatedEndDate: null
+			estimatedEndDate: null,
+			hasViolations: false
 		};
 
 		// Calculate flags
@@ -186,6 +189,7 @@ export function processProjects(issues: Issue[]): Map<string, ProjectSummary> {
 			projectSummary.projectLeadName,
 			projectIssues
 		);
+		projectSummary.hasViolations = hasViolations(projectIssues);
 
 		// Estimate completion date
 		if (earliestCreatedAt) {

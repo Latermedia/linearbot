@@ -28,7 +28,7 @@
   } = $props();
 
   const progress = $derived(getProgressPercent(project));
-  const hasWarnings = $derived(hasDiscrepancies(project));
+  const hasWarnings = $derived(hasDiscrepancies(project) || project.hasViolations);
 
   // Generate mask-image CSS for fade effect when extending beyond range
   const maskStyle = $derived(() => {

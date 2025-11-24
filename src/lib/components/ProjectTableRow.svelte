@@ -28,7 +28,7 @@
 
   const completedPercent = $derived(getCompletedPercent(project));
   const wipPercent = $derived(getWIPPercent(project));
-  const hasIssues = $derived(hasHealthIssues(project));
+  const hasIssues = $derived(hasHealthIssues(project) || project.hasViolations);
   const healthDisplay = $derived(getHealthDisplay(project.projectHealth));
   const backlogCount = $derived(getBacklogCount(project));
 </script>
