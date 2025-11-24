@@ -35,6 +35,14 @@ export interface LinearIssueData {
   projectLabels: string[];
 }
 
+export interface ProjectUpdate {
+  id: string;
+  createdAt: string;
+  updatedAt: string;
+  body: string;
+  health: string | null;
+}
+
 export class LinearAPIClient {
   private client: LinearClient;
 
@@ -192,7 +200,8 @@ export class LinearAPIClient {
   async fetchIssuesByProjects(
     projectIds: string[],
     onProgress?: (current: number, pageSize?: number, projectIndex?: number, totalProjects?: number) => void,
-    projectDescriptionsMap?: Map<string, string | null>
+    projectDescriptionsMap?: Map<string, string | null>,
+    projectUpdatesMap?: Map<string, ProjectUpdate[]>
   ): Promise<LinearIssueData[]> {
     if (projectIds.length === 0) return [];
 
@@ -383,6 +392,17 @@ export class LinearAPIClient {
           projectDescriptionsMap.set(projectId, null);
         }
       }
+      
+      // Fetch project updates along the way
+      if (projectUpdatesMap !== undefined) {
+        try {
+          const updates = await this.fetchProjectUpdates(projectId);
+          projectUpdatesMap.set(projectId, updates);
+        } catch (error) {
+          console.error(`[SYNC] Failed to fetch updates for project ${projectId}:`, error);
+          projectUpdatesMap.set(projectId, []);
+        }
+      }
     }
 
     return issues;
@@ -517,6 +537,44 @@ export class LinearAPIClient {
         error instanceof Error ? error.message : error
       );
       return null;
+    }
+  }
+
+  async fetchProjectUpdates(projectId: string): Promise<ProjectUpdate[]> {
+    try {
+      const query = `
+        query GetProjectUpdates($projectId: String!) {
+          project(id: $projectId) {
+            id
+            projectUpdates {
+              nodes {
+                id
+                createdAt
+                updatedAt
+                body
+                health
+              }
+            }
+          }
+        }
+      `;
+
+      const response: any = await this.client.client.rawRequest(query, {
+        projectId,
+      });
+
+      const project = response.data?.project;
+      if (!project || !project.projectUpdates) {
+        return [];
+      }
+
+      return project.projectUpdates.nodes || [];
+    } catch (error) {
+      console.error(
+        `Failed to fetch project updates for ${projectId}:`,
+        error instanceof Error ? error.message : error
+      );
+      return [];
     }
   }
 

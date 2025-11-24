@@ -136,11 +136,6 @@
       resetSuccess = true;
       // Reload data after reset
       await databaseStore.load();
-      
-      // Close modal after a short delay
-      setTimeout(() => {
-        onclose();
-      }, 1500);
     } catch (error) {
       resetError = error instanceof Error ? error.message : "Failed to reset database";
     } finally {

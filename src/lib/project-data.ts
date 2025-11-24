@@ -1,6 +1,7 @@
 import type { Issue, Project } from '../db/schema';
 import { getAllProjects } from './queries';
 import { getDomainForTeam, getAllDomains } from '../utils/domain-mapping';
+import type { ProjectUpdate } from '../linear/client';
 
 export interface ProjectSummary {
 	projectId: string;
@@ -41,6 +42,7 @@ export interface ProjectSummary {
 	daysPerStoryPoint: number | null;
 	velocityByTeam: Map<string, number>;
 	labels: string[];
+	projectUpdates: ProjectUpdate[];
 }
 
 export interface TeamSummary {
@@ -71,6 +73,11 @@ function projectToSummary(project: Project): ProjectSummary {
 	const velocityByTeam = new Map<string, number>(
 		Object.entries(JSON.parse(project.velocity_by_team))
 	);
+	
+	// Parse project updates from JSON
+	const projectUpdates: ProjectUpdate[] = project.project_updates
+		? JSON.parse(project.project_updates)
+		: [];
 
 	return {
 		projectId: project.project_id,
@@ -111,6 +118,7 @@ function projectToSummary(project: Project): ProjectSummary {
 		daysPerStoryPoint: project.days_per_story_point,
 		velocityByTeam,
 		labels: project.labels ? JSON.parse(project.labels) : [],
+		projectUpdates,
 	};
 }
 

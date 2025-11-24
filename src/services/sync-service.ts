@@ -1,4 +1,4 @@
-import { createLinearClient } from "../linear/client.js";
+import { createLinearClient, type ProjectUpdate } from "../linear/client.js";
 import {
   getExistingIssueIds,
   upsertIssue,
@@ -112,6 +112,7 @@ export async function performSync(
     let projectCount = 0;
     const activeProjectIds = new Set<string>();
     const projectDescriptionsMap = new Map<string, string | null>();
+    const projectUpdatesMap = new Map<string, ProjectUpdate[]>();
 
     if (includeProjectSync) {
       const projectIdsFromIssues = new Set(
@@ -161,7 +162,8 @@ export async function performSync(
               callbacks?.onProgressPercent?.(percent);
             }
           },
-          projectDescriptionsMap
+          projectDescriptionsMap,
+          projectUpdatesMap
         );
         // All projects complete - set to 100%
         callbacks?.onProgressPercent?.(100);
@@ -170,6 +172,9 @@ export async function performSync(
         );
         console.log(
           `[SYNC] Fetched descriptions for ${projectDescriptionsMap.size} project(s)`
+        );
+        console.log(
+          `[SYNC] Fetched updates for ${projectUpdatesMap.size} project(s)`
         );
       } else {
         // No projects, sync is complete
@@ -282,7 +287,8 @@ export async function performSync(
     console.log(`[SYNC] Computing project metrics...`);
     const computedProjectCount = await computeAndStoreProjects(
       projectLabelsMap,
-      projectDescriptionsMap
+      projectDescriptionsMap,
+      projectUpdatesMap
     );
     console.log(
       `[SYNC] Computed metrics for ${computedProjectCount} project(s)`
@@ -335,7 +341,8 @@ export async function performSync(
  */
 async function computeAndStoreProjects(
   projectLabelsMap?: Map<string, string[]>,
-  projectDescriptionsMap?: Map<string, string | null>
+  projectDescriptionsMap?: Map<string, string | null>,
+  projectUpdatesMap?: Map<string, ProjectUpdate[]>
 ): Promise<number> {
   const allIssues = getAllIssues();
 
@@ -530,6 +537,15 @@ async function computeAndStoreProjects(
     // Get project description from map
     const projectDescription = projectDescriptionsMap?.get(projectId) || null;
 
+    // Get project updates from map, sort by createdAt descending (newest first), and serialize to JSON
+    const projectUpdates = projectUpdatesMap?.get(projectId) || [];
+    const sortedUpdates = projectUpdates.sort(
+      (a, b) =>
+        new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()
+    );
+    const projectUpdatesJson =
+      sortedUpdates.length > 0 ? JSON.stringify(sortedUpdates) : null;
+
     const project: Project = {
       project_id: projectId,
       project_name: firstIssue.project_name || "Unknown Project",
@@ -569,6 +585,7 @@ async function computeAndStoreProjects(
       teams: teamsJson,
       velocity_by_team: velocityByTeamJson,
       labels: labelsJson,
+      project_updates: projectUpdatesJson,
     };
 
     upsertProject(project);

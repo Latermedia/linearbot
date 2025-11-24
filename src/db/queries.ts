@@ -287,9 +287,9 @@ export function upsertProject(project: Project): void {
       linear_progress, velocity, estimate_accuracy, days_per_story_point,
       has_status_mismatch, is_stale_update, missing_lead, has_violations, missing_health,
       start_date, last_activity_date, estimated_end_date,
-      issues_by_state, engineers, teams, velocity_by_team, labels
+      issues_by_state, engineers, teams, velocity_by_team, labels, project_updates
     ) VALUES (
-      ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?
+      ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?
     )
     ON CONFLICT(project_id) DO UPDATE SET
       project_name = excluded.project_name,
@@ -328,7 +328,8 @@ export function upsertProject(project: Project): void {
       engineers = excluded.engineers,
       teams = excluded.teams,
       velocity_by_team = excluded.velocity_by_team,
-      labels = excluded.labels
+      labels = excluded.labels,
+      project_updates = excluded.project_updates
   `);
 
   query.run(
@@ -369,7 +370,8 @@ export function upsertProject(project: Project): void {
     project.engineers,
     project.teams,
     project.velocity_by_team,
-    project.labels
+    project.labels,
+    project.project_updates
   );
 }
 

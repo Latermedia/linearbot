@@ -7,6 +7,7 @@
   import ProgressBar from "./ProgressBar.svelte";
   import {
     formatDateFull,
+    formatRelativeDate,
     getProgressPercent,
     getHealthDisplay,
     calculateProjectAge,
@@ -40,6 +41,7 @@
   let projectUrl = $state<string | null>(null);
   let projectIssues = $state<Issue[]>([]);
   let issuesLoading = $state(true);
+  let showAllHealthUpdates = $state(false);
 
   function handleKeydown(event: KeyboardEvent): void {
     if (event.key === "Escape") {
@@ -363,16 +365,109 @@
         <!-- Project Metadata (flex wrap layout) -->
         <div class="flex flex-wrap gap-6 mb-6">
           <!-- Project Health -->
-          <div>
-            <div class="mb-1 text-xs text-neutral-500">Project Health</div>
-            {#if true}
-              {@const healthDisplay = getHealthDisplay(project.projectHealth)}
-              <Badge
-                variant={healthDisplay.variant}
-                class={healthDisplay.colorClass}
+          <div class="w-full">
+            <div class="mb-2 text-xs text-neutral-500">Project Health</div>
+            {#if project.projectUpdates && project.projectUpdates.length > 0}
+              {@const latestUpdate = project.projectUpdates[0]}
+              {@const updateHealthDisplay = latestUpdate.health
+                ? getHealthDisplay(latestUpdate.health)
+                : null}
+              {@const updateDate = new Date(latestUpdate.createdAt)}
+              {@const daysSinceUpdate = Math.floor(
+                (Date.now() - updateDate.getTime()) / (1000 * 60 * 60 * 24)
+              )}
+              {@const isStaleHealth = daysSinceUpdate > 7}
+
+              {#if isStaleHealth && !hideWarnings}
+                <div
+                  class="flex gap-2 items-center mb-2 text-xs text-amber-500"
+                >
+                  <span>⚠️</span>
+                  <span>Health update is {daysSinceUpdate} days old</span>
+                </div>
+              {/if}
+
+              {#if showAllHealthUpdates}
+                <div class="space-y-3">
+                  {#each project.projectUpdates as update}
+                    {@const currentUpdateHealthDisplay = update.health
+                      ? getHealthDisplay(update.health)
+                      : null}
+                    <div
+                      class="p-3 rounded-md border bg-neutral-800/50 border-white/5"
+                    >
+                      <div class="flex gap-2 items-center mb-2">
+                        {#if currentUpdateHealthDisplay}
+                          <Badge
+                            variant={currentUpdateHealthDisplay.variant}
+                            class={currentUpdateHealthDisplay.colorClass}
+                          >
+                            {currentUpdateHealthDisplay.text}
+                          </Badge>
+                        {/if}
+                        <span class="text-xs text-neutral-500">
+                          {formatRelativeDate(update.createdAt)}
+                        </span>
+                      </div>
+                      <div
+                        class="text-sm leading-relaxed whitespace-pre-wrap text-neutral-200"
+                      >
+                        {update.body}
+                      </div>
+                    </div>
+                  {/each}
+                  <button
+                    onclick={() => (showAllHealthUpdates = false)}
+                    class="mt-2 text-xs text-violet-400 underline transition-colors duration-150 cursor-pointer hover:text-violet-300"
+                  >
+                    Show only latest update
+                  </button>
+                </div>
+              {:else}
+                <div
+                  class="p-3 rounded-md border bg-neutral-800/50 border-white/5"
+                >
+                  <div class="flex gap-2 items-center mb-2">
+                    {#if updateHealthDisplay}
+                      <Badge
+                        variant={updateHealthDisplay.variant}
+                        class={updateHealthDisplay.colorClass}
+                      >
+                        {updateHealthDisplay.text}
+                      </Badge>
+                    {/if}
+                    <span class="text-xs text-neutral-500">
+                      {formatRelativeDate(latestUpdate.createdAt)}
+                    </span>
+                  </div>
+                  <div
+                    class="text-sm leading-relaxed whitespace-pre-wrap text-neutral-200"
+                  >
+                    {latestUpdate.body}
+                  </div>
+                  {#if project.projectUpdates.length > 1}
+                    <button
+                      onclick={() => (showAllHealthUpdates = true)}
+                      class="mt-2 text-xs text-violet-400 underline transition-colors duration-150 cursor-pointer hover:text-violet-300"
+                    >
+                      +{project.projectUpdates.length - 1} more update{project
+                        .projectUpdates.length -
+                        1 ===
+                      1
+                        ? ""
+                        : "s"}
+                    </button>
+                  {/if}
+                </div>
+              {/if}
+            {:else}
+              <div
+                class="p-3 rounded-md border bg-neutral-800/50 border-white/5"
               >
-                {healthDisplay.text}
-              </Badge>
+                <p class="text-sm text-neutral-400">
+                  No health updates available
+                </p>
+              </div>
             {/if}
           </div>
 
