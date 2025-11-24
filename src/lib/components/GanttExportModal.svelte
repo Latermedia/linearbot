@@ -436,7 +436,7 @@
           {#each projects as project}
             {@const position = getProjectPosition(project)}
             {@const progress = getProgressPercent(project)}
-            {@const hasWarnings = showWarnings && hasDiscrepancies(project)}
+            {@const hasWarnings = showWarnings && (hasDiscrepancies(project) || project.hasViolations)}
 
             <!-- Timeline bar -->
             <div style="position: relative; height: 3rem;">
