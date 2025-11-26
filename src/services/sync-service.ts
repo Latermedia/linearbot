@@ -1,4 +1,4 @@
-import { createLinearClient, type ProjectUpdate, RateLimitError } from "../linear/client.js";
+import { createLinearClient, type ProjectUpdate, RateLimitError, type LinearIssueData } from "../linear/client.js";
 import {
   getExistingIssueIds,
   upsertIssue,
@@ -15,6 +15,7 @@ import {
   savePartialSyncState,
   clearPartialSyncState,
   getSyncMetadata,
+  getStartedIssues,
   type PartialSyncState,
 } from "../db/queries.js";
 import type { Issue, Project } from "../db/schema.js";
@@ -58,6 +59,45 @@ export interface SyncCallbacks {
   onProjectCountUpdate?: (count: number) => void;
   onProjectIssueCountUpdate?: (count: number) => void;
   onProgressPercent?: (percent: number) => void;
+}
+
+/**
+ * Convert database Issue format to LinearIssueData format
+ */
+function convertDbIssueToLinearFormat(dbIssue: Issue): LinearIssueData {
+  return {
+    id: dbIssue.id,
+    identifier: dbIssue.identifier,
+    title: dbIssue.title,
+    description: dbIssue.description,
+    teamId: dbIssue.team_id,
+    teamName: dbIssue.team_name,
+    teamKey: dbIssue.team_key,
+    stateId: dbIssue.state_id,
+    stateName: dbIssue.state_name,
+    stateType: dbIssue.state_type,
+    assigneeId: dbIssue.assignee_id,
+    assigneeName: dbIssue.assignee_name,
+    creatorId: dbIssue.creator_id,
+    creatorName: dbIssue.creator_name,
+    priority: dbIssue.priority,
+    estimate: dbIssue.estimate,
+    lastCommentAt: dbIssue.last_comment_at ? new Date(dbIssue.last_comment_at) : null,
+    createdAt: new Date(dbIssue.created_at),
+    updatedAt: new Date(dbIssue.updated_at),
+    startedAt: dbIssue.started_at ? new Date(dbIssue.started_at) : null,
+    completedAt: dbIssue.completed_at ? new Date(dbIssue.completed_at) : null,
+    canceledAt: dbIssue.canceled_at ? new Date(dbIssue.canceled_at) : null,
+    url: dbIssue.url,
+    projectId: dbIssue.project_id,
+    projectName: dbIssue.project_name,
+    projectState: dbIssue.project_state,
+    projectHealth: dbIssue.project_health,
+    projectUpdatedAt: dbIssue.project_updated_at ? new Date(dbIssue.project_updated_at) : null,
+    projectLeadId: dbIssue.project_lead_id,
+    projectLeadName: dbIssue.project_lead_name,
+    projectLabels: [], // Database doesn't store project labels, but that's okay for determining project IDs
+  };
 }
 
 /**
@@ -215,15 +255,15 @@ export async function performSync(
     console.log("[SYNC] Linear API connection successful");
 
     // Fetch issues (step 1 of N+1 where N is number of projects)
-    // Skip if resuming and initial sync is complete
     // Declare variables at function scope so they're accessible in catch blocks
-    let allIssues: typeof linearClient.fetchStartedIssues extends (...args: any[]) => Promise<infer R> ? R : never = [];
-    let startedIssues: typeof allIssues = [];
-    let projectIssues: typeof allIssues = [];
+    let allIssues: LinearIssueData[] = [];
+    let startedIssues: LinearIssueData[] = [];
+    let projectIssues: LinearIssueData[] = [];
     let cumulativeNewCount = 0;
     let cumulativeUpdatedCount = 0;
     
     if (!isResuming || !existingPartialSync || existingPartialSync.initialIssuesSync === 'incomplete') {
+      // Fetch started issues from Linear API
       try {
         allIssues = await linearClient.fetchStartedIssues((count) => {
           callbacks?.onIssueCountUpdate?.(count);
@@ -258,6 +298,15 @@ export async function performSync(
         }
         throw error;
       }
+    } else {
+      // Resuming with initial sync complete - load started issues from database
+      // to determine which projects to sync
+      console.log("[SYNC] Loading started issues from database for project sync determination");
+      const dbStartedIssues = getStartedIssues();
+      allIssues = dbStartedIssues.map(convertDbIssueToLinearFormat);
+      console.log(
+        `[SYNC] Loaded ${allIssues.length} started issues from database`
+      );
     }
 
     // Filter ignored teams
@@ -272,7 +321,8 @@ export async function performSync(
     }
 
     // Write started issues to database immediately after fetching
-    if (startedIssues.length > 0) {
+    // Skip writing if resuming with initial sync complete (they're already in the database)
+    if (startedIssues.length > 0 && (!isResuming || !existingPartialSync || existingPartialSync.initialIssuesSync === 'incomplete')) {
       console.log(`[SYNC] Writing ${startedIssues.length} started issues to database...`);
       const counts = writeIssuesToDatabase(startedIssues);
       cumulativeNewCount += counts.newCount;
@@ -280,6 +330,8 @@ export async function performSync(
       console.log(
         `[SYNC] Wrote started issues - New: ${counts.newCount}, Updated: ${counts.updatedCount}`
       );
+    } else if (isResuming && existingPartialSync && existingPartialSync.initialIssuesSync === 'complete') {
+      console.log(`[SYNC] Skipping write of started issues (already in database from previous sync)`);
     }
 
     // Phase 2: Fetch all issues for projects with active work (optional)
