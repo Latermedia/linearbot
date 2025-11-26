@@ -10,7 +10,8 @@
     "reset-db": "bun run scripts/reset-db.ts",
     "dev": "bun --bun vite dev",
     "build": "vite build",
-    "preview": "bun --bun vite preview"
+    "preview": "bun --bun vite preview",
+    "start": "node build/index.js"
   },
   "dependencies": {
     "@inquirer/prompts": "^7.9.0",

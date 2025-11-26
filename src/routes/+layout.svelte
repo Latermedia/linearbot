@@ -6,16 +6,20 @@
   import { page } from "$app/stores";
   import { theme } from "$lib/stores/theme";
   import { presentationMode } from "$lib/stores/presentation";
+  import { isAuthenticated, checkAuth } from "$lib/stores/auth";
   import ThemeToggle from "$lib/components/ThemeToggle.svelte";
   import DevMenuModal from "$lib/components/DevMenuModal.svelte";
+  import Button from "$lib/components/ui/button.svelte";
+  import { goto } from "$app/navigation";
 
   let { children }: { children: Snippet } = $props();
   let showDevMenu = $state(false);
 
-  // Initialize theme
+  // Initialize theme and check auth
   onMount(() => {
     if (browser) {
       theme.initialize();
+      checkAuth();
 
       // Unregister any existing service workers (from old LibSQL client)
       if ("serviceWorker" in navigator) {
@@ -67,6 +71,24 @@
       }
     }
   });
+
+  // Client-side route protection (for SPA navigation)
+  $effect(() => {
+    if (!browser) return;
+    
+    // Skip auth check on login page
+    if ($page.url.pathname === "/login") {
+      return;
+    }
+
+    // Check auth status and redirect if not authenticated
+    checkAuth().then((authenticated) => {
+      if (!authenticated && $page.url.pathname !== "/login") {
+        const redirectTo = $page.url.pathname + $page.url.search;
+        goto(`/login?redirect=${encodeURIComponent(redirectTo)}`);
+      }
+    });
+  });
 </script>
 
 <div class="min-h-screen bg-white dark:bg-neutral-950">
@@ -108,6 +130,19 @@
         </div>
         <div class="flex gap-4 items-center">
           <ThemeToggle />
+          {#if $isAuthenticated}
+            <Button
+              variant="outline"
+              size="sm"
+              onclick={async () => {
+                await fetch("/api/auth/logout", { method: "POST" });
+                isAuthenticated.set(false);
+                goto("/login");
+              }}
+            >
+              Logout
+            </Button>
+          {/if}
         </div>
       </div>
     </div>

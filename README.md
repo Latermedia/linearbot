@@ -36,6 +36,9 @@ Create `.env`:
 ```bash
 LINEAR_API_KEY=your_linear_api_key_here
 
+# Required: Password for application access
+APP_PASSWORD=your_secure_password_here
+
 # Optional: Exclude teams from sync
 IGNORED_TEAM_KEYS=CS,MUX
 

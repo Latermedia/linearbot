@@ -18,3 +18,7 @@ GOALS.md
 
 # Team domain mappings (use TEAM_DOMAIN_MAPPINGS env var instead)
 team-domain-mappings.json
+
+# Deployment platform files
+.vercel
+.env.vercel

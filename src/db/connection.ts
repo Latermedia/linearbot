@@ -7,12 +7,14 @@ let dbInstance: Database | null = null;
 
 export function getDatabase(): Database {
   if (!dbInstance) {
-    const dbPath = "linear-bot.db";
-    const fullPath = join(process.cwd(), dbPath);
-    const dbExists = existsSync(fullPath);
+    // Use /data directory on Fly.io (persistent volume), fallback to current directory for local dev
+    const dataDir = process.env.DATABASE_PATH || process.cwd();
+    const dbPath = join(dataDir, "linear-bot.db");
+    const dbExists = existsSync(dbPath);
     
     console.log(`[DB] Creating database connection...`);
-    console.log(`[DB] Database path: ${fullPath}`);
+    console.log(`[DB] Database path: ${dbPath}`);
+    console.log(`[DB] Data directory: ${dataDir}`);
     console.log(`[DB] File exists: ${dbExists}`);
     console.log(`[DB] Runtime: ${typeof Bun !== 'undefined' ? 'Bun' : 'Node.js'}`);
     
