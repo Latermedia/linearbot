@@ -8,6 +8,13 @@ const SYNC_INTERVAL_MS = 10 * 60 * 1000; // 10 minutes
  */
 async function runScheduledSync(): Promise<void> {
   try {
+    // Skip sync in local development mode
+    const isProduction = process.env.NODE_ENV === "production";
+    if (!isProduction) {
+      console.log("[SCHEDULER] Scheduled sync skipped in local development mode");
+      return;
+    }
+
     // Check if sync already running
     const metadata = getSyncMetadata();
     if (metadata?.sync_status === "syncing") {
