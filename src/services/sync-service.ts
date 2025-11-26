@@ -14,6 +14,7 @@ import {
   getPartialSyncState,
   savePartialSyncState,
   clearPartialSyncState,
+  getSyncMetadata,
   type PartialSyncState,
 } from "../db/queries.js";
 import type { Issue, Project } from "../db/schema.js";
@@ -57,6 +58,97 @@ export interface SyncCallbacks {
   onProjectCountUpdate?: (count: number) => void;
   onProjectIssueCountUpdate?: (count: number) => void;
   onProgressPercent?: (percent: number) => void;
+}
+
+/**
+ * Write issues to database and return counts
+ */
+function writeIssuesToDatabase(
+  issues: Array<{
+    id: string;
+    identifier: string;
+    title: string;
+    description: string | null;
+    teamId: string;
+    teamName: string;
+    teamKey: string;
+    stateId: string;
+    stateName: string;
+    stateType: string;
+    assigneeId: string | null;
+    assigneeName: string | null;
+    creatorId: string | null;
+    creatorName: string | null;
+    priority: number | null;
+    estimate: number | null;
+    lastCommentAt: Date | null;
+    createdAt: Date;
+    updatedAt: Date;
+    startedAt: Date | null;
+    completedAt: Date | null;
+    canceledAt: Date | null;
+    url: string;
+    projectId: string | null;
+    projectName: string | null;
+    projectState: string | null;
+    projectHealth: string | null;
+    projectUpdatedAt: Date | null;
+    projectLeadId: string | null;
+    projectLeadName: string | null;
+  }>
+): { newCount: number; updatedCount: number } {
+  const existingIds = getExistingIssueIds();
+  let newCount = 0;
+  let updatedCount = 0;
+
+  for (const issue of issues) {
+    if (existingIds.has(issue.id)) {
+      updatedCount++;
+    } else {
+      newCount++;
+    }
+
+    upsertIssue({
+      id: issue.id,
+      identifier: issue.identifier,
+      title: issue.title,
+      description: issue.description,
+      team_id: issue.teamId,
+      team_name: issue.teamName,
+      team_key: issue.teamKey,
+      state_id: issue.stateId,
+      state_name: issue.stateName,
+      state_type: issue.stateType,
+      assignee_id: issue.assigneeId,
+      assignee_name: issue.assigneeName,
+      creator_id: issue.creatorId,
+      creator_name: issue.creatorName,
+      priority: issue.priority,
+      estimate: issue.estimate,
+      last_comment_at: issue.lastCommentAt
+        ? issue.lastCommentAt.toISOString()
+        : null,
+      created_at: issue.createdAt.toISOString(),
+      updated_at: issue.updatedAt.toISOString(),
+      started_at: issue.startedAt ? issue.startedAt.toISOString() : null,
+      completed_at: issue.completedAt
+        ? issue.completedAt.toISOString()
+        : null,
+      canceled_at: issue.canceledAt ? issue.canceledAt.toISOString() : null,
+      url: issue.url,
+      project_id: issue.projectId,
+      project_name: issue.projectName,
+      project_state: issue.projectState,
+      project_health: issue.projectHealth,
+      project_updated_at: issue.projectUpdatedAt
+        ? issue.projectUpdatedAt.toISOString()
+        : null,
+      project_lead_id: issue.projectLeadId,
+      project_lead_name: issue.projectLeadName,
+    });
+  }
+
+  return { newCount, updatedCount };
 }
 
 /**
@@ -124,8 +216,12 @@ export async function performSync(
 
     // Fetch issues (step 1 of N+1 where N is number of projects)
     // Skip if resuming and initial sync is complete
+    // Declare variables at function scope so they're accessible in catch blocks
     let allIssues: typeof linearClient.fetchStartedIssues extends (...args: any[]) => Promise<infer R> ? R : never = [];
     let startedIssues: typeof allIssues = [];
+    let projectIssues: typeof allIssues = [];
+    let cumulativeNewCount = 0;
+    let cumulativeUpdatedCount = 0;
     
     if (!isResuming || !existingPartialSync || existingPartialSync.initialIssuesSync === 'incomplete') {
       try {
@@ -137,7 +233,8 @@ export async function performSync(
         );
       } catch (error) {
         if (error instanceof RateLimitError) {
-          // Save partial sync state before exiting
+          // Write any partial data we might have before exiting
+          // (In this case, we have none since fetch failed, but structure is ready)
           const partialState: PartialSyncState = {
             initialIssuesSync: 'incomplete',
             projectSyncs: [],
@@ -147,11 +244,12 @@ export async function performSync(
           console.error(`[SYNC] ${errorMsg}`);
           setSyncStatus('error');
           updateSyncMetadata({ sync_error: errorMsg, sync_progress_percent: null });
+          const total = getTotalIssueCount();
           return {
             success: false,
-            newCount: 0,
-            updatedCount: 0,
-            totalCount: 0,
+            newCount: cumulativeNewCount,
+            updatedCount: cumulativeUpdatedCount,
+            totalCount: total,
             issueCount: 0,
             projectCount: 0,
             projectIssueCount: 0,
@@ -173,8 +271,18 @@ export async function performSync(
       );
     }
 
+    // Write started issues to database immediately after fetching
+    if (startedIssues.length > 0) {
+      console.log(`[SYNC] Writing ${startedIssues.length} started issues to database...`);
+      const counts = writeIssuesToDatabase(startedIssues);
+      cumulativeNewCount += counts.newCount;
+      cumulativeUpdatedCount += counts.updatedCount;
+      console.log(
+        `[SYNC] Wrote started issues - New: ${counts.newCount}, Updated: ${counts.updatedCount}`
+      );
+    }
+
     // Phase 2: Fetch all issues for projects with active work (optional)
-    let projectIssues: typeof allIssues = [];
     let projectCount = 0;
     const activeProjectIds = new Set<string>();
     const projectDescriptionsMap = new Map<string, string | null>();
@@ -261,6 +369,17 @@ export async function performSync(
             projectUpdatesMap
           );
           
+          // Write project issues to database immediately after successful fetch
+          if (projectIssues.length > 0) {
+            console.log(`[SYNC] Writing ${projectIssues.length} project issues to database...`);
+            const counts = writeIssuesToDatabase(projectIssues);
+            cumulativeNewCount += counts.newCount;
+            cumulativeUpdatedCount += counts.updatedCount;
+            console.log(
+              `[SYNC] Wrote project issues - New: ${counts.newCount}, Updated: ${counts.updatedCount}`
+            );
+          }
+          
           // Mark all synced projects as complete
           for (const projectId of projectsToSync) {
             const statusIndex = projectSyncStatuses.findIndex((p) => p.projectId === projectId);
@@ -291,6 +410,19 @@ export async function performSync(
             `[SYNC] Fetched updates for ${projectUpdatesMap.size} project(s)`
           );
         } catch (error) {
+          // Even if there's an error, write any project issues we successfully fetched
+          // (Note: if fetchIssuesByProjects throws, projectIssues will likely be empty,
+          // but we write anyway in case there's partial data)
+          if (projectIssues.length > 0) {
+            console.log(`[SYNC] Writing ${projectIssues.length} partially fetched project issues to database...`);
+            const counts = writeIssuesToDatabase(projectIssues);
+            cumulativeNewCount += counts.newCount;
+            cumulativeUpdatedCount += counts.updatedCount;
+            console.log(
+              `[SYNC] Wrote partial project issues - New: ${counts.newCount}, Updated: ${counts.updatedCount}`
+            );
+          }
+          
           if (error instanceof RateLimitError) {
             // Save partial sync state before exiting
             const partialState: PartialSyncState = {
@@ -303,14 +435,16 @@ export async function performSync(
             console.log(`[SYNC] Saved partial sync state: ${JSON.stringify(partialState)}`);
             setSyncStatus('error');
             updateSyncMetadata({ sync_error: errorMsg, sync_progress_percent: null });
+            const total = getTotalIssueCount();
+            const startedCount = startedIssues.filter((i) => i.stateType === "started").length;
             return {
               success: false,
-              newCount: 0,
-              updatedCount: 0,
-              totalCount: 0,
-              issueCount: 0,
-              projectCount: 0,
-              projectIssueCount: 0,
+              newCount: cumulativeNewCount,
+              updatedCount: cumulativeUpdatedCount,
+              totalCount: total,
+              issueCount: startedCount,
+              projectCount: projectSyncStatuses.filter(p => p.status === 'complete').length,
+              projectIssueCount: projectIssues.length,
               error: errorMsg,
             };
           }
@@ -327,12 +461,18 @@ export async function performSync(
       setSyncProgress(100);
     }
 
-    // Combine all issues and deduplicate
-    const allIssuesMap = new Map<string, (typeof allIssues)[0]>();
-    // Track project labels from Linear API
+    // Remove ignored teams from database (do this once at the end)
+    if (ignoredTeamKeys.length > 0) {
+      deleteIssuesByTeams(ignoredTeamKeys);
+      console.log(
+        `[SYNC] Removed issues from ${ignoredTeamKeys.length} ignored team(s)`
+      );
+    }
+
+    // Collect project labels from fetched issues for project metrics computation
+    // (Issues are already written to database incrementally above)
     const projectLabelsMap = new Map<string, string[]>();
     for (const issue of [...startedIssues, ...projectIssues]) {
-      allIssuesMap.set(issue.id, issue);
       // Collect project labels
       if (
         issue.projectId &&
@@ -345,85 +485,13 @@ export async function performSync(
         }
       }
     }
-    const issues = Array.from(allIssuesMap.values());
-    const totalBeforeDedup = startedIssues.length + projectIssues.length;
-    const duplicatesRemoved = totalBeforeDedup - issues.length;
-    if (duplicatesRemoved > 0) {
-      console.log(
-        `[SYNC] Deduplicated: ${duplicatesRemoved} duplicate issue(s) removed (${totalBeforeDedup} → ${issues.length})`
-      );
-    }
 
-    // Store in database (final step, already at 100% if no projects, otherwise maintain)
-    const existingIds = getExistingIssueIds();
-    console.log(
-      `[SYNC] Found ${existingIds.size} existing issue(s) in database`
-    );
-
-    let newIssues = 0;
-    let updatedIssues = 0;
-
-    for (const issue of issues) {
-      if (existingIds.has(issue.id)) {
-        updatedIssues++;
-      } else {
-        newIssues++;
-      }
-
-      upsertIssue({
-        id: issue.id,
-        identifier: issue.identifier,
-        title: issue.title,
-        description: issue.description,
-        team_id: issue.teamId,
-        team_name: issue.teamName,
-        team_key: issue.teamKey,
-        state_id: issue.stateId,
-        state_name: issue.stateName,
-        state_type: issue.stateType,
-        assignee_id: issue.assigneeId,
-        assignee_name: issue.assigneeName,
-        creator_id: issue.creatorId,
-        creator_name: issue.creatorName,
-        priority: issue.priority,
-        estimate: issue.estimate,
-        last_comment_at: issue.lastCommentAt
-          ? issue.lastCommentAt.toISOString()
-          : null,
-        created_at: issue.createdAt.toISOString(),
-        updated_at: issue.updatedAt.toISOString(),
-        started_at: issue.startedAt ? issue.startedAt.toISOString() : null,
-        completed_at: issue.completedAt
-          ? issue.completedAt.toISOString()
-          : null,
-        canceled_at: issue.canceledAt ? issue.canceledAt.toISOString() : null,
-        url: issue.url,
-        project_id: issue.projectId,
-        project_name: issue.projectName,
-        project_state: issue.projectState,
-        project_health: issue.projectHealth,
-        project_updated_at: issue.projectUpdatedAt
-          ? issue.projectUpdatedAt.toISOString()
-          : null,
-        project_lead_id: issue.projectLeadId,
-        project_lead_name: issue.projectLeadName,
-      });
-    }
-
-    // Remove ignored teams from database
-    if (ignoredTeamKeys.length > 0) {
-      deleteIssuesByTeams(ignoredTeamKeys);
-      console.log(
-        `[SYNC] Removed issues from ${ignoredTeamKeys.length} ignored team(s)`
-      );
-    }
-
-    // Get total count
+    // Get total count from database (issues already written incrementally)
     const total = getTotalIssueCount();
     console.log(`[SYNC] Database now contains ${total} total issue(s)`);
 
     // Count started issues for reporting
-    const startedCount = issues.filter((i) => i.stateType === "started").length;
+    const startedCount = startedIssues.filter((i) => i.stateType === "started").length;
 
     // Compute and store project metrics
     console.log(`[SYNC] Computing project metrics...`);
@@ -437,7 +505,7 @@ export async function performSync(
     );
 
     console.log(
-      `[SYNC] Summary - New: ${newIssues}, Updated: ${updatedIssues}, Started: ${startedCount}, Projects: ${projectCount}, Project Issues: ${projectIssues.length}, Computed Projects: ${computedProjectCount}`
+      `[SYNC] Summary - New: ${cumulativeNewCount}, Updated: ${cumulativeUpdatedCount}, Started: ${startedCount}, Projects: ${projectCount}, Project Issues: ${projectIssues.length}, Computed Projects: ${computedProjectCount}`
     );
 
     // Update sync metadata on success
@@ -454,8 +522,8 @@ export async function performSync(
 
     return {
       success: true,
-      newCount: newIssues,
-      updatedCount: updatedIssues,
+      newCount: cumulativeNewCount,
+      updatedCount: cumulativeUpdatedCount,
       totalCount: total,
       issueCount: startedCount,
       projectCount: computedProjectCount,
@@ -493,14 +561,17 @@ export async function performSync(
         sync_error: errorMsg,
         sync_progress_percent: null,
       });
+      // Return actual counts of what was written (data is written incrementally)
+      const total = getTotalIssueCount();
+      const startedCount = startedIssues.length > 0 ? startedIssues.filter((i) => i.stateType === "started").length : 0;
       return {
         success: false,
-        newCount: 0,
-        updatedCount: 0,
-        totalCount: 0,
-        issueCount: 0,
+        newCount: cumulativeNewCount,
+        updatedCount: cumulativeUpdatedCount,
+        totalCount: total,
+        issueCount: startedCount,
         projectCount: 0,
-        projectIssueCount: 0,
+        projectIssueCount: projectIssues.length,
         error: errorMsg,
       };
     }
