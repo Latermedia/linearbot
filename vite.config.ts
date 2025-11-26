@@ -1,9 +1,8 @@
 import { sveltekit } from "@sveltejs/kit/vite";
 import { defineConfig } from "vite";
-import { bunSqliteShim } from "./vite-plugin-bun-sqlite-shim.js";
 
 export default defineConfig({
-  plugins: [bunSqliteShim(), sveltekit()],
+  plugins: [sveltekit()],
   server: {
     fs: {
       allow: ["."],
