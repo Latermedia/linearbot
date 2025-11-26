@@ -8,6 +8,9 @@ import {
   getAllProjects,
   upsertProject,
   deleteProjectsByProjectIds,
+  updateSyncMetadata,
+  setSyncStatus,
+  setSyncProgress,
 } from "../db/queries.js";
 import type { Issue, Project } from "../db/schema.js";
 import { isProjectActive } from "../utils/status-helpers.js";
@@ -62,6 +65,10 @@ export async function performSync(
   callbacks?: SyncCallbacks
 ): Promise<SyncResult> {
   try {
+    // Update sync status to 'syncing'
+    setSyncStatus('syncing');
+    updateSyncMetadata({ sync_error: null, sync_progress_percent: 0 });
+    
     // Get ignored team keys
     const ignoredTeamKeys = process.env.IGNORED_TEAM_KEYS
       ? process.env.IGNORED_TEAM_KEYS.split(",").map((key) => key.trim())
@@ -70,11 +77,15 @@ export async function performSync(
     // Connect to Linear
     const linearClient = createLinearClient();
     callbacks?.onProgressPercent?.(0);
+    setSyncProgress(0);
     console.log("[SYNC] Testing Linear API connection...");
     const connected = await linearClient.testConnection();
 
     if (!connected) {
+      const errorMsg = "Failed to connect to Linear. Check your API key.";
       console.error("[SYNC] Failed to connect to Linear API");
+      setSyncStatus('error');
+      updateSyncMetadata({ sync_error: errorMsg, sync_progress_percent: null });
       return {
         success: false,
         newCount: 0,
@@ -83,7 +94,7 @@ export async function performSync(
         issueCount: 0,
         projectCount: 0,
         projectIssueCount: 0,
-        error: "Failed to connect to Linear. Check your API key.",
+        error: errorMsg,
       };
     }
     console.log("[SYNC] Linear API connection successful");
@@ -144,29 +155,31 @@ export async function performSync(
           Array.from(projectIdsFromIssues),
           (count, pageSize, projectIndex, totalProjects) => {
             callbacks?.onProjectIssueCountUpdate?.(count);
-            // Update progress when starting a new project (pageSize is undefined at start)
-            // When projectIndex is 0, we're starting the first project (1 step done: started issues)
-            // When projectIndex is 1, we've completed project 0 (2 steps done: started + project 0)
-            if (
-              projectIndex !== undefined &&
-              totalProjects !== undefined &&
-              totalSteps > 0 &&
-              pageSize === undefined
-            ) {
-              // Completed steps: 1 (started issues) + projectIndex (completed projects)
-              const completedSteps = 1 + projectIndex;
-              const percent = Math.min(
-                Math.round((completedSteps / totalSteps) * 100),
-                99
-              );
-              callbacks?.onProgressPercent?.(percent);
-            }
+        // Update progress when starting a new project (pageSize is undefined at start)
+        // When projectIndex is 0, we're starting the first project (1 step done: started issues)
+        // When projectIndex is 1, we've completed project 0 (2 steps done: started + project 0)
+        if (
+          projectIndex !== undefined &&
+          totalProjects !== undefined &&
+          totalSteps > 0 &&
+          pageSize === undefined
+        ) {
+          // Completed steps: 1 (started issues) + projectIndex (completed projects)
+          const completedSteps = 1 + projectIndex;
+          const percent = Math.min(
+            Math.round((completedSteps / totalSteps) * 100),
+            99
+          );
+          callbacks?.onProgressPercent?.(percent);
+          setSyncProgress(percent);
+        }
           },
           projectDescriptionsMap,
           projectUpdatesMap
         );
         // All projects complete - set to 100%
         callbacks?.onProgressPercent?.(100);
+        setSyncProgress(100);
         console.log(
           `[SYNC] Fetched ${projectIssues.length} issues from ${projectCount} project(s)`
         );
@@ -179,10 +192,12 @@ export async function performSync(
       } else {
         // No projects, sync is complete
         callbacks?.onProgressPercent?.(100);
+        setSyncProgress(100);
       }
     } else {
       // No project sync, sync is complete after started issues
       callbacks?.onProgressPercent?.(100);
+      setSyncProgress(100);
     }
 
     // Combine all issues and deduplicate
@@ -298,6 +313,15 @@ export async function performSync(
       `[SYNC] Summary - New: ${newIssues}, Updated: ${updatedIssues}, Started: ${startedCount}, Projects: ${projectCount}, Project Issues: ${projectIssues.length}, Computed Projects: ${computedProjectCount}`
     );
 
+    // Update sync metadata on success
+    const syncTime = new Date().toISOString();
+    setSyncStatus('idle');
+    updateSyncMetadata({
+      last_sync_time: syncTime,
+      sync_error: null,
+      sync_progress_percent: null,
+    });
+
     return {
       success: true,
       newCount: newIssues,
@@ -322,6 +346,13 @@ export async function performSync(
     const finalError = isSchemaError
       ? `${errorMessage}\n\n💡 Tip: This looks like a schema mismatch. Try resetting the database:\n   bun run reset-db`
       : errorMessage;
+
+    // Update sync metadata on error
+    setSyncStatus('error');
+    updateSyncMetadata({
+      sync_error: finalError,
+      sync_progress_percent: null,
+    });
 
     return {
       success: false,

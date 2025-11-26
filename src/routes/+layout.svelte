@@ -9,6 +9,7 @@
   import { isAuthenticated, checkAuth } from "$lib/stores/auth";
   import ThemeToggle from "$lib/components/ThemeToggle.svelte";
   import DevMenuModal from "$lib/components/DevMenuModal.svelte";
+  import SyncIndicator from "$lib/components/SyncIndicator.svelte";
   import Button from "$lib/components/ui/button.svelte";
   import { goto } from "$app/navigation";
 
@@ -129,6 +130,7 @@
           {/if}
         </div>
         <div class="flex gap-4 items-center">
+          <SyncIndicator />
           <ThemeToggle />
           {#if $isAuthenticated}
             <Button

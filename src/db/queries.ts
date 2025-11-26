@@ -419,3 +419,79 @@ export function getInProgressProjects(): Project[] {
   `);
   return query.all() as Project[];
 }
+
+/**
+ * Sync metadata interface
+ */
+export interface SyncMetadata {
+  id: number;
+  last_sync_time: string | null;
+  sync_status: 'idle' | 'syncing' | 'error';
+  sync_error: string | null;
+  sync_progress_percent: number | null;
+}
+
+/**
+ * Get sync metadata from database
+ */
+export function getSyncMetadata(): SyncMetadata | null {
+  const db = getDatabase();
+  const query = db.prepare(`SELECT * FROM sync_metadata WHERE id = 1`);
+  const result = query.get() as SyncMetadata | undefined;
+  return result || null;
+}
+
+/**
+ * Update sync metadata in database
+ */
+export function updateSyncMetadata(updates: {
+  last_sync_time?: string | null;
+  sync_status?: 'idle' | 'syncing' | 'error';
+  sync_error?: string | null;
+  sync_progress_percent?: number | null;
+}): void {
+  const db = getDatabase();
+  const fields: string[] = [];
+  const values: (string | number | null)[] = [];
+
+  if (updates.last_sync_time !== undefined) {
+    fields.push('last_sync_time = ?');
+    values.push(updates.last_sync_time);
+  }
+  if (updates.sync_status !== undefined) {
+    fields.push('sync_status = ?');
+    values.push(updates.sync_status);
+  }
+  if (updates.sync_error !== undefined) {
+    fields.push('sync_error = ?');
+    values.push(updates.sync_error);
+  }
+  if (updates.sync_progress_percent !== undefined) {
+    fields.push('sync_progress_percent = ?');
+    values.push(updates.sync_progress_percent);
+  }
+
+  if (fields.length === 0) return;
+
+  values.push(1); // id = 1
+  const query = db.prepare(`
+    UPDATE sync_metadata 
+    SET ${fields.join(', ')}
+    WHERE id = ?
+  `);
+  query.run(...values);
+}
+
+/**
+ * Helper to set sync status
+ */
+export function setSyncStatus(status: 'idle' | 'syncing' | 'error'): void {
+  updateSyncMetadata({ sync_status: status });
+}
+
+/**
+ * Helper to set sync progress
+ */
+export function setSyncProgress(percent: number | null): void {
+  updateSyncMetadata({ sync_progress_percent: percent });
+}

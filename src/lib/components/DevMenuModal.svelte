@@ -21,6 +21,7 @@
   let syncStatus = $state<"idle" | "syncing" | "error">("idle");
   let isRefreshing = $state(false);
   let serverLastSyncTime: number | null = $state(null);
+  let previousLastSyncTime: number | null = $state(null);
   let progressPercent = $state<number | null>(null);
   let pollIntervalId: number | undefined;
   let statusPollIntervalId: number | undefined;
@@ -57,19 +58,40 @@
       if (response.ok) {
         const data = await response.json();
         const wasSyncing = syncStatus === "syncing" || isRefreshing;
+        const previousSyncTime = serverLastSyncTime;
+        
         syncStatus = data.status;
         serverLastSyncTime = data.lastSyncTime;
         progressPercent = data.progressPercent ?? null;
         syncErrorMessage = data.error || null;
 
-        // If sync completed (was syncing, now idle), reload data
-        if (wasSyncing && syncStatus === "idle" && serverLastSyncTime) {
+        // Detect if lastSyncTime changed (sync completed, either manual or automatic)
+        const syncTimeChanged = 
+          serverLastSyncTime !== null && 
+          previousSyncTime !== null && 
+          serverLastSyncTime !== previousSyncTime;
+        
+        const isNewSync = 
+          serverLastSyncTime !== null && 
+          previousSyncTime === null;
+
+        // If sync completed (was syncing, now idle) OR sync time changed (automatic sync), reload data
+        if (
+          (wasSyncing && syncStatus === "idle" && serverLastSyncTime) ||
+          (syncStatus === "idle" && (syncTimeChanged || isNewSync))
+        ) {
           isRefreshing = false;
+          previousLastSyncTime = serverLastSyncTime;
           await databaseStore.load();
         } else if (syncStatus === "error" && isRefreshing) {
           isRefreshing = false;
         } else if (syncStatus === "idle" && !data.isRunning) {
           isRefreshing = false;
+        }
+        
+        // Update previous sync time if it changed
+        if (serverLastSyncTime !== previousSyncTime) {
+          previousLastSyncTime = serverLastSyncTime;
         }
       }
     } catch (error) {

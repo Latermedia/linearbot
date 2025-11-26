@@ -344,6 +344,22 @@ export function initializeDatabase(db: Database): void {
     )
   `);
 
+  // Create sync metadata table to track sync status and timing
+  db.run(`
+    CREATE TABLE IF NOT EXISTS sync_metadata (
+      id INTEGER PRIMARY KEY CHECK (id = 1),
+      last_sync_time TEXT,
+      sync_status TEXT NOT NULL DEFAULT 'idle',
+      sync_error TEXT,
+      sync_progress_percent INTEGER
+    )
+  `);
+  
+  // Initialize sync_metadata if it doesn't exist
+  db.run(`
+    INSERT OR IGNORE INTO sync_metadata (id, sync_status) VALUES (1, 'idle')
+  `);
+
   // Create indices for better query performance
   db.run(`
     CREATE INDEX IF NOT EXISTS idx_issues_team_id 

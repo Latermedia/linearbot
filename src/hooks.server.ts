@@ -1,5 +1,10 @@
 import { redirect, type Handle } from '@sveltejs/kit';
 import { verifySession, getSessionCookieName } from '$lib/auth.js';
+import { initializeStartup } from './services/startup.js';
+
+// Initialize startup tasks (database, sync scheduler, initial sync)
+// This runs once when the module is first imported
+initializeStartup();
 
 export const handle: Handle = async ({ event, resolve }) => {
 	const { url, cookies } = event;
