@@ -1,7 +1,7 @@
 import { performSync } from "./sync-service.js";
-import { getSyncMetadata } from "../db/queries.js";
+import { getSyncMetadata, getPartialSyncState } from "../db/queries.js";
 
-const SYNC_INTERVAL_MS = 10 * 60 * 1000; // 10 minutes
+const SYNC_INTERVAL_MS = 30 * 60 * 1000; // 30 minutes
 
 /**
  * Run a scheduled sync (shared logic for both cron and interval)
@@ -20,6 +20,20 @@ async function runScheduledSync(): Promise<void> {
     if (metadata?.sync_status === "syncing") {
       console.log("[SCHEDULER] Sync already in progress, skipping scheduled sync");
       return;
+    }
+
+    // Check for recent errors (not rate limit related)
+    // If there's an error that's not rate limit related, skip retry and wait for next scheduled sync
+    if (metadata?.sync_status === "error" && metadata?.sync_error) {
+      const errorMsg = metadata.sync_error.toLowerCase();
+      const isRateLimitError = errorMsg.includes("rate limit");
+      const hasPartialSync = getPartialSyncState() !== null;
+      
+      // Only skip if it's a non-rate-limit error and no partial sync exists
+      if (!isRateLimitError && !hasPartialSync) {
+        console.log("[SCHEDULER] Previous sync had non-rate-limit error, skipping retry until next scheduled sync");
+        return;
+      }
     }
 
     console.log("[SCHEDULER] Triggering scheduled sync...");
@@ -43,12 +57,12 @@ async function runScheduledSync(): Promise<void> {
  * Initialize the sync scheduler with a cron job or interval that runs every 10 minutes
  */
 export function initializeSyncScheduler(): void {
-  console.log("[SYNC-SCHEDULER] Initializing sync scheduler (every 10 minutes)");
+  console.log("[SYNC-SCHEDULER] Initializing sync scheduler (every 30 minutes)");
 
   // Check if Bun.cron is available (Bun-specific API)
   if (typeof Bun !== "undefined" && typeof Bun.cron === "function") {
     try {
-      Bun.cron("*/10 * * * *", runScheduledSync);
+      Bun.cron("*/30 * * * *", runScheduledSync);
       console.log("[SYNC-SCHEDULER] Using Bun.cron for scheduled syncs");
       return;
     } catch (error) {

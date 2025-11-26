@@ -7,6 +7,11 @@
   let syncStatus = $state<"idle" | "syncing" | "error">("idle");
   let isRunning = $state(false);
   let progressPercent = $state<number | null>(null);
+  let error = $state<string | null>(null);
+  let hasPartialSync = $state(false);
+  let partialSyncProgress = $state<{ completed: number; total: number } | null>(
+    null
+  );
   let pollIntervalId: number | undefined;
 
   // Animated progress value for smooth transitions
@@ -21,6 +26,9 @@
         const data = await response.json();
         syncStatus = data.status || "idle";
         isRunning = data.isRunning || false;
+        error = data.error || null;
+        hasPartialSync = data.hasPartialSync || false;
+        partialSyncProgress = data.partialSyncProgress || null;
         const newProgress = data.progressPercent ?? 0;
         if (newProgress !== progressPercent) {
           progressPercent = newProgress;
@@ -49,7 +57,19 @@
   });
 
   const isSyncing = $derived(syncStatus === "syncing" || isRunning);
+  const hasError = $derived(syncStatus === "error" || hasPartialSync);
   const displayProgress = $derived($animatedProgress);
+
+  // Build tooltip text
+  const tooltipText = $derived(() => {
+    if (hasPartialSync && partialSyncProgress) {
+      return `Partial sync: ${partialSyncProgress.completed} of ${partialSyncProgress.total} projects completed. ${error || "Will resume on next sync."}`;
+    }
+    if (error) {
+      return error;
+    }
+    return null;
+  });
 
   // Animation delays for each block in the 3x3 grid
   // Creates a sequential wave effect similar to Linear's sync indicator
@@ -57,17 +77,22 @@
   const delays = [0.0, 0.15, 0.3, 0.15, 0.3, 0.45, 0.3, 0.45, 0.6];
 </script>
 
-{#if isSyncing}
+{#if isSyncing || hasError}
   <div
     class="flex relative items-center text-sm text-neutral-600 dark:text-neutral-400"
   >
     <!-- Container with progress bar background -->
     <div
-      class="relative px-3 py-1.5 overflow-clip rounded-md sync-container bg-neutral-100 dark:bg-white/5"
+      class="relative px-3 py-1.5 overflow-clip rounded-md sync-container bg-neutral-100 dark:bg-white/5 {hasError
+        ? 'border border-red-500/50'
+        : ''}"
+      title={tooltipText() || undefined}
     >
       <!-- Progress bar fill -->
       <div
-        class="absolute inset-0 rounded-l-md transition-all duration-300 ease-out bg-gray-500/15 dark:bg-gray-500/25"
+        class="absolute inset-0 rounded-l-md transition-all duration-300 ease-out {hasError
+          ? 'bg-red-500/20 dark:bg-red-500/30'
+          : 'bg-gray-500/15 dark:bg-gray-500/25'}"
         style="width: {displayProgress}%;"
       ></div>
 
@@ -77,12 +102,24 @@
         <div class="grid grid-cols-3 gap-0.5 w-4 h-4">
           {#each Array(9) as _, i}
             <div
-              class="sync-block w-full h-full rounded-[1px] bg-current"
+              class="sync-block w-full h-full rounded-[1px] {hasError
+                ? 'text-red-500'
+                : 'bg-current'}"
               style="animation-delay: {delays[i]}s;"
             ></div>
           {/each}
         </div>
-        <span class="text-xs font-medium whitespace-nowrap"> Syncing... </span>
+        <span
+          class="text-xs font-medium whitespace-nowrap {hasError
+            ? 'text-red-600 dark:text-red-400'
+            : ''}"
+        >
+          {hasError
+            ? hasPartialSync
+              ? "Partial sync"
+              : "Sync error"
+            : "Syncing..."}
+        </span>
       </div>
     </div>
   </div>
@@ -112,11 +149,5 @@
     box-shadow:
       inset 0 1px 2px 0 rgb(0 0 0 / 0.05),
       inset 0 0 0 1px rgb(0 0 0 / 0.05);
-  }
-
-  .dark .sync-container {
-    box-shadow:
-      inset 0 1px 2px 0 rgb(0 0 0 / 0.2),
-      inset 0 0 0 1px rgb(255 255 255 / 0.05);
   }
 </style>

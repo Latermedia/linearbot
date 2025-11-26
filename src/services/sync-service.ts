@@ -1,4 +1,4 @@
-import { createLinearClient, type ProjectUpdate } from "../linear/client.js";
+import { createLinearClient, type ProjectUpdate, RateLimitError } from "../linear/client.js";
 import {
   getExistingIssueIds,
   upsertIssue,
@@ -11,6 +11,10 @@ import {
   updateSyncMetadata,
   setSyncStatus,
   setSyncProgress,
+  getPartialSyncState,
+  savePartialSyncState,
+  clearPartialSyncState,
+  type PartialSyncState,
 } from "../db/queries.js";
 import type { Issue, Project } from "../db/schema.js";
 import { isProjectActive } from "../utils/status-helpers.js";
@@ -64,7 +68,24 @@ export async function performSync(
   includeProjectSync: boolean = true,
   callbacks?: SyncCallbacks
 ): Promise<SyncResult> {
+  // Wrap entire function in try-catch to ensure we never crash the app
   try {
+    // Check for existing partial sync state
+    const existingPartialSync = getPartialSyncState();
+    const isResuming = existingPartialSync !== null;
+    
+    if (isResuming) {
+      console.log("[SYNC] Resuming partial sync from previous attempt");
+      // Only resume if the error was rate limit related
+      const metadata = getSyncMetadata();
+      const lastError = metadata?.sync_error || "";
+      if (!lastError.includes("rate limit") && !lastError.includes("Rate limit")) {
+        console.log("[SYNC] Previous error was not rate limit related, clearing partial sync state");
+        clearPartialSyncState();
+        setSyncStatus('idle');
+      }
+    }
+
     // Update sync status to 'syncing'
     setSyncStatus('syncing');
     updateSyncMetadata({ sync_error: null, sync_progress_percent: 0 });
@@ -86,6 +107,8 @@ export async function performSync(
       console.error("[SYNC] Failed to connect to Linear API");
       setSyncStatus('error');
       updateSyncMetadata({ sync_error: errorMsg, sync_progress_percent: null });
+      // Clear partial sync state for non-rate-limit errors
+      clearPartialSyncState();
       return {
         success: false,
         newCount: 0,
@@ -100,18 +123,50 @@ export async function performSync(
     console.log("[SYNC] Linear API connection successful");
 
     // Fetch issues (step 1 of N+1 where N is number of projects)
-    const allIssues = await linearClient.fetchStartedIssues((count) => {
-      callbacks?.onIssueCountUpdate?.(count);
-    });
-    console.log(
-      `[SYNC] Fetched ${allIssues.length} started issues from Linear`
-    );
+    // Skip if resuming and initial sync is complete
+    let allIssues: typeof linearClient.fetchStartedIssues extends (...args: any[]) => Promise<infer R> ? R : never = [];
+    let startedIssues: typeof allIssues = [];
+    
+    if (!isResuming || !existingPartialSync || existingPartialSync.initialIssuesSync === 'incomplete') {
+      try {
+        allIssues = await linearClient.fetchStartedIssues((count) => {
+          callbacks?.onIssueCountUpdate?.(count);
+        });
+        console.log(
+          `[SYNC] Fetched ${allIssues.length} started issues from Linear`
+        );
+      } catch (error) {
+        if (error instanceof RateLimitError) {
+          // Save partial sync state before exiting
+          const partialState: PartialSyncState = {
+            initialIssuesSync: 'incomplete',
+            projectSyncs: [],
+          };
+          savePartialSyncState(partialState);
+          const errorMsg = "Rate limit exceeded during initial issues sync";
+          console.error(`[SYNC] ${errorMsg}`);
+          setSyncStatus('error');
+          updateSyncMetadata({ sync_error: errorMsg, sync_progress_percent: null });
+          return {
+            success: false,
+            newCount: 0,
+            updatedCount: 0,
+            totalCount: 0,
+            issueCount: 0,
+            projectCount: 0,
+            projectIssueCount: 0,
+            error: errorMsg,
+          };
+        }
+        throw error;
+      }
+    }
 
     // Filter ignored teams
-    const startedIssues = allIssues.filter(
+    startedIssues = allIssues.filter(
       (issue) => !ignoredTeamKeys.includes(issue.teamKey)
     );
-    if (ignoredTeamKeys.length > 0) {
+    if (ignoredTeamKeys.length > 0 && allIssues.length > 0) {
       const filteredCount = allIssues.length - startedIssues.length;
       console.log(
         `[SYNC] Filtered out ${filteredCount} issues from ${ignoredTeamKeys.length} ignored team(s)`
@@ -144,6 +199,33 @@ export async function performSync(
       );
 
       if (projectIdsFromIssues.size > 0) {
+        // Determine which projects to sync based on partial sync state
+        let projectsToSync: string[] = Array.from(projectIdsFromIssues);
+        let projectSyncStatuses: Array<{ projectId: string; status: 'complete' | 'incomplete' }> = [];
+        
+        if (isResuming && existingPartialSync) {
+          // Filter to only incomplete projects
+          const completedProjectIds = new Set(
+            existingPartialSync.projectSyncs
+              .filter((p) => p.status === 'complete')
+              .map((p) => p.projectId)
+          );
+          projectsToSync = projectsToSync.filter((id) => !completedProjectIds.has(id));
+          // Initialize statuses from existing state
+          projectSyncStatuses = existingPartialSync.projectSyncs.filter((p) => 
+            projectIdsFromIssues.has(p.projectId)
+          );
+          console.log(
+            `[SYNC] Resuming: ${projectsToSync.length} projects remaining (${completedProjectIds.size} already completed)`
+          );
+        } else {
+          // Initialize all projects as incomplete
+          projectSyncStatuses = Array.from(projectIdsFromIssues).map((id) => ({
+            projectId: id,
+            status: 'incomplete' as const,
+          }));
+        }
+
         // Total steps = 1 (started issues) + N (projects)
         const totalSteps = 1 + projectCount;
 
@@ -151,44 +233,89 @@ export async function performSync(
         callbacks?.onProgressPercent?.(Math.round((1 / totalSteps) * 100));
 
         // Fetch issues and descriptions together - descriptions are fetched inline during issue fetching
-        projectIssues = await linearClient.fetchIssuesByProjects(
-          Array.from(projectIdsFromIssues),
-          (count, pageSize, projectIndex, totalProjects) => {
-            callbacks?.onProjectIssueCountUpdate?.(count);
-        // Update progress when starting a new project (pageSize is undefined at start)
-        // When projectIndex is 0, we're starting the first project (1 step done: started issues)
-        // When projectIndex is 1, we've completed project 0 (2 steps done: started + project 0)
-        if (
-          projectIndex !== undefined &&
-          totalProjects !== undefined &&
-          totalSteps > 0 &&
-          pageSize === undefined
-        ) {
-          // Completed steps: 1 (started issues) + projectIndex (completed projects)
-          const completedSteps = 1 + projectIndex;
-          const percent = Math.min(
-            Math.round((completedSteps / totalSteps) * 100),
-            99
+        try {
+          projectIssues = await linearClient.fetchIssuesByProjects(
+            projectsToSync,
+            (count, pageSize, projectIndex, totalProjects) => {
+              callbacks?.onProjectIssueCountUpdate?.(count);
+          // Update progress when starting a new project (pageSize is undefined at start)
+          // When projectIndex is 0, we're starting the first project (1 step done: started issues)
+          // When projectIndex is 1, we've completed project 0 (2 steps done: started + project 0)
+          if (
+            projectIndex !== undefined &&
+            totalProjects !== undefined &&
+            totalSteps > 0 &&
+            pageSize === undefined
+          ) {
+            // Completed steps: 1 (started issues) + projectIndex (completed projects)
+            const completedSteps = 1 + projectIndex;
+            const percent = Math.min(
+              Math.round((completedSteps / totalSteps) * 100),
+              99
+            );
+            callbacks?.onProgressPercent?.(percent);
+            setSyncProgress(percent);
+          }
+            },
+            projectDescriptionsMap,
+            projectUpdatesMap
           );
-          callbacks?.onProgressPercent?.(percent);
-          setSyncProgress(percent);
+          
+          // Mark all synced projects as complete
+          for (const projectId of projectsToSync) {
+            const statusIndex = projectSyncStatuses.findIndex((p) => p.projectId === projectId);
+            if (statusIndex >= 0) {
+              projectSyncStatuses[statusIndex].status = 'complete';
+            } else {
+              projectSyncStatuses.push({ projectId, status: 'complete' });
+            }
+          }
+          
+          // Save partial sync state after each project batch (in case of interruption)
+          const partialState: PartialSyncState = {
+            initialIssuesSync: 'complete',
+            projectSyncs: projectSyncStatuses,
+          };
+          savePartialSyncState(partialState);
+          
+          // All projects complete - set to 100%
+          callbacks?.onProgressPercent?.(100);
+          setSyncProgress(100);
+          console.log(
+            `[SYNC] Fetched ${projectIssues.length} issues from ${projectCount} project(s)`
+          );
+          console.log(
+            `[SYNC] Fetched descriptions for ${projectDescriptionsMap.size} project(s)`
+          );
+          console.log(
+            `[SYNC] Fetched updates for ${projectUpdatesMap.size} project(s)`
+          );
+        } catch (error) {
+          if (error instanceof RateLimitError) {
+            // Save partial sync state before exiting
+            const partialState: PartialSyncState = {
+              initialIssuesSync: 'complete',
+              projectSyncs: projectSyncStatuses,
+            };
+            savePartialSyncState(partialState);
+            const errorMsg = "Rate limit exceeded during project issues sync";
+            console.error(`[SYNC] ${errorMsg}`);
+            console.log(`[SYNC] Saved partial sync state: ${JSON.stringify(partialState)}`);
+            setSyncStatus('error');
+            updateSyncMetadata({ sync_error: errorMsg, sync_progress_percent: null });
+            return {
+              success: false,
+              newCount: 0,
+              updatedCount: 0,
+              totalCount: 0,
+              issueCount: 0,
+              projectCount: 0,
+              projectIssueCount: 0,
+              error: errorMsg,
+            };
+          }
+          throw error;
         }
-          },
-          projectDescriptionsMap,
-          projectUpdatesMap
-        );
-        // All projects complete - set to 100%
-        callbacks?.onProgressPercent?.(100);
-        setSyncProgress(100);
-        console.log(
-          `[SYNC] Fetched ${projectIssues.length} issues from ${projectCount} project(s)`
-        );
-        console.log(
-          `[SYNC] Fetched descriptions for ${projectDescriptionsMap.size} project(s)`
-        );
-        console.log(
-          `[SYNC] Fetched updates for ${projectUpdatesMap.size} project(s)`
-        );
       } else {
         // No projects, sync is complete
         callbacks?.onProgressPercent?.(100);
@@ -321,6 +448,9 @@ export async function performSync(
       sync_error: null,
       sync_progress_percent: null,
     });
+    
+    // Clear partial sync state on successful completion
+    clearPartialSyncState();
 
     return {
       success: true,
@@ -332,9 +462,48 @@ export async function performSync(
       projectIssueCount: projectIssues.length,
     };
   } catch (error) {
+    // Always ensure we update sync state, even on unexpected errors
     const errorMessage =
       error instanceof Error ? error.message : "An unknown error occurred";
     console.error(`[SYNC] Sync error: ${errorMessage}`, error);
+
+    // Check if it's a rate limit error
+    const isRateLimit = error instanceof RateLimitError || 
+      (errorMessage.includes("Rate limit") || errorMessage.includes("rate limit") || errorMessage.includes("RATELIMITED"));
+    
+    if (isRateLimit) {
+      // Save partial sync state for rate limit errors
+      const existingPartialSync = getPartialSyncState();
+      if (!existingPartialSync) {
+        // Try to determine what phase we were in
+        // If we got here, we likely completed initial issues sync but failed on projects
+        const partialState: PartialSyncState = {
+          initialIssuesSync: 'complete', // Assume complete since we got past initial sync
+          projectSyncs: [],
+        };
+        savePartialSyncState(partialState);
+        console.log(`[SYNC] Saved partial sync state (fallback): ${JSON.stringify(partialState)}`);
+      } else {
+        console.log(`[SYNC] Partial sync state already exists: ${JSON.stringify(existingPartialSync)}`);
+      }
+      const errorMsg = "Rate limit exceeded during sync";
+      console.log(`[SYNC] Detected rate limit error, saving state and exiting gracefully`);
+      setSyncStatus('error');
+      updateSyncMetadata({
+        sync_error: errorMsg,
+        sync_progress_percent: null,
+      });
+      return {
+        success: false,
+        newCount: 0,
+        updatedCount: 0,
+        totalCount: 0,
+        issueCount: 0,
+        projectCount: 0,
+        projectIssueCount: 0,
+        error: errorMsg,
+      };
+    }
 
     // Check if it's a schema mismatch error
     const isSchemaError =
@@ -348,6 +517,8 @@ export async function performSync(
       : errorMessage;
 
     // Update sync metadata on error
+    // For non-rate-limit errors, clear partial sync state
+    clearPartialSyncState();
     setSyncStatus('error');
     updateSyncMetadata({
       sync_error: finalError,

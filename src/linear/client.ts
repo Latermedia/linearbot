@@ -1,6 +1,51 @@
 import { LinearClient } from "@linear/sdk";
 import { PAGINATION, TIMEOUTS } from "../constants/thresholds.js";
 
+/**
+ * Custom error for rate limit detection
+ */
+export class RateLimitError extends Error {
+  constructor(message: string = "Rate limit exceeded") {
+    super(message);
+    this.name = "RateLimitError";
+  }
+}
+
+/**
+ * Check if an error from Linear SDK is a rate limit error
+ * Linear SDK wraps rate limit errors with type "Ratelimited" and extensions.statusCode 429
+ */
+function isRateLimitError(error: any): boolean {
+  // Check direct status code
+  if (error?.statusCode === 429 || error?.response?.status === 429) {
+    return true;
+  }
+  
+  // Check Linear SDK error structure - the SDK sets type: "Ratelimited"
+  if (error?.type === "Ratelimited" || error?.type === "ratelimited") {
+    return true;
+  }
+  
+  // Check GraphQL error extensions - Linear returns statusCode 429 in extensions
+  if (error?.response?.errors?.[0]?.extensions?.statusCode === 429 ||
+      error?.response?.errors?.[0]?.extensions?.code === "RATELIMITED") {
+    return true;
+  }
+  
+  // Check error message for rate limit indicators (most reliable fallback)
+  const errorMessage = String(error?.message || error?.error || "");
+  if (
+    errorMessage.includes("Rate limit") ||
+    errorMessage.includes("rate limit") ||
+    errorMessage.includes("RATELIMITED") ||
+    errorMessage.includes("ratelimited")
+  ) {
+    return true;
+  }
+  
+  return false;
+}
+
 export interface LinearIssueData {
   id: string;
   identifier: string;
@@ -127,10 +172,19 @@ export class LinearAPIClient {
     `;
 
     while (hasMore) {
-      const response: any = await this.client.client.rawRequest(query, {
-        first: PAGINATION.GRAPHQL_PAGE_SIZE,
-        after: cursor,
-      });
+      let response: any;
+      try {
+        response = await this.client.client.rawRequest(query, {
+          first: PAGINATION.GRAPHQL_PAGE_SIZE,
+          after: cursor,
+        });
+      } catch (error: any) {
+        // Check for rate limit using comprehensive detection
+        if (isRateLimitError(error)) {
+          throw new RateLimitError("Linear API rate limit exceeded");
+        }
+        throw error;
+      }
 
       const data = response.data.issues;
 
@@ -291,11 +345,20 @@ export class LinearAPIClient {
       `;
 
       while (hasMore) {
-        const response: any = await this.client.client.rawRequest(query, {
-          first: PAGINATION.GRAPHQL_PAGE_SIZE,
-          after: cursor,
-          projectId,
-        });
+        let response: any;
+        try {
+          response = await this.client.client.rawRequest(query, {
+            first: PAGINATION.GRAPHQL_PAGE_SIZE,
+            after: cursor,
+            projectId,
+          });
+        } catch (error: any) {
+          // Check for rate limit using comprehensive detection
+          if (isRateLimitError(error)) {
+            throw new RateLimitError("Linear API rate limit exceeded");
+          }
+          throw error;
+        }
 
         const data = response.data.issues;
 
@@ -387,7 +450,11 @@ export class LinearAPIClient {
         try {
           const description = await this.fetchProjectDescription(projectId);
           projectDescriptionsMap.set(projectId, description);
-        } catch (error) {
+        } catch (error: any) {
+          // Check for rate limit
+          if (error instanceof RateLimitError) {
+            throw error;
+          }
           console.error(`[SYNC] Failed to fetch description for project ${projectId}:`, error);
           projectDescriptionsMap.set(projectId, null);
         }
@@ -398,7 +465,11 @@ export class LinearAPIClient {
         try {
           const updates = await this.fetchProjectUpdates(projectId);
           projectUpdatesMap.set(projectId, updates);
-        } catch (error) {
+        } catch (error: any) {
+          // Check for rate limit
+          if (error instanceof RateLimitError) {
+            throw error;
+          }
           console.error(`[SYNC] Failed to fetch updates for project ${projectId}:`, error);
           projectUpdatesMap.set(projectId, []);
         }
@@ -511,71 +582,83 @@ export class LinearAPIClient {
   }
 
   async fetchProjectDescription(projectId: string): Promise<string | null> {
-    try {
-      const query = `
-        query GetProjectDescription($projectId: String!) {
-          project(id: $projectId) {
-            id
-            description
-          }
+    const query = `
+      query GetProjectDescription($projectId: String!) {
+        project(id: $projectId) {
+          id
+          description
         }
-      `;
+      }
+    `;
 
-      const response: any = await this.client.client.rawRequest(query, {
+    let response: any;
+    try {
+      response = await this.client.client.rawRequest(query, {
         projectId,
       });
-
-      const project = response.data?.project;
-      if (!project) {
-        return null;
+    } catch (error: any) {
+      // Check for rate limit using comprehensive detection
+      if (isRateLimitError(error)) {
+        throw new RateLimitError("Linear API rate limit exceeded");
       }
-
-      return project.description || null;
-    } catch (error) {
+      // For other errors, log but don't fail the sync - descriptions are optional
       console.error(
         `Failed to fetch project description for ${projectId}:`,
         error instanceof Error ? error.message : error
       );
       return null;
     }
+
+    const project = response.data?.project;
+    if (!project) {
+      return null;
+    }
+
+    return project.description || null;
   }
 
   async fetchProjectUpdates(projectId: string): Promise<ProjectUpdate[]> {
-    try {
-      const query = `
-        query GetProjectUpdates($projectId: String!) {
-          project(id: $projectId) {
-            id
-            projectUpdates {
-              nodes {
-                id
-                createdAt
-                updatedAt
-                body
-                health
-              }
+    const query = `
+      query GetProjectUpdates($projectId: String!) {
+        project(id: $projectId) {
+          id
+          projectUpdates {
+            nodes {
+              id
+              createdAt
+              updatedAt
+              body
+              health
             }
           }
         }
-      `;
+      }
+    `;
 
-      const response: any = await this.client.client.rawRequest(query, {
+    let response: any;
+    try {
+      response = await this.client.client.rawRequest(query, {
         projectId,
       });
-
-      const project = response.data?.project;
-      if (!project || !project.projectUpdates) {
-        return [];
+    } catch (error: any) {
+      // Check for rate limit using comprehensive detection
+      if (isRateLimitError(error)) {
+        throw new RateLimitError("Linear API rate limit exceeded");
       }
-
-      return project.projectUpdates.nodes || [];
-    } catch (error) {
+      // For other errors, log but don't fail the sync - project updates are optional
       console.error(
         `Failed to fetch project updates for ${projectId}:`,
         error instanceof Error ? error.message : error
       );
       return [];
     }
+
+    const project = response.data?.project;
+    if (!project || !project.projectUpdates) {
+      return [];
+    }
+
+    return project.projectUpdates.nodes || [];
   }
 
 }

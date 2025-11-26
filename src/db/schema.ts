@@ -351,9 +351,17 @@ export function initializeDatabase(db: Database): void {
       last_sync_time TEXT,
       sync_status TEXT NOT NULL DEFAULT 'idle',
       sync_error TEXT,
-      sync_progress_percent INTEGER
+      sync_progress_percent INTEGER,
+      partial_sync_state TEXT
     )
   `);
+  
+  // Add partial_sync_state column if it doesn't exist (migration)
+  try {
+    db.run(`ALTER TABLE sync_metadata ADD COLUMN partial_sync_state TEXT`);
+  } catch (e) {
+    // Column already exists, ignore
+  }
   
   // Initialize sync_metadata if it doesn't exist
   db.run(`
