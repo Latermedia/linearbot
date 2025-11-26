@@ -10,9 +10,12 @@ await server.init({
 	read: (file) => Bun.file(file)
 });
 
+// Note: Startup initialization happens in src/hooks.server.ts
+// which is automatically executed when SvelteKit handles requests
+
 Bun.serve({
 	port,
-	fetch: server.respond
+	fetch: (request) => server.respond(request)
 });
 
 console.log(`Server running on port ${port}`);
