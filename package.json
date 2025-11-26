@@ -11,7 +11,7 @@
     "dev": "bun --bun vite dev",
     "build": "bun --bun vite build",
     "preview": "bun --bun vite preview",
-    "start": "bun run server.js"
+    "start": "bun --bun run server.js"
   },
   "dependencies": {
     "@inquirer/prompts": "^7.9.0",

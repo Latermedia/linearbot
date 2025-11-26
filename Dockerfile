@@ -12,7 +12,7 @@ FROM base AS build
 WORKDIR /app
 COPY --from=deps /app/node_modules ./node_modules
 COPY . .
-RUN bun run build
+RUN bun --bun run build
 
 # Production image
 FROM base AS runtime
@@ -34,5 +34,5 @@ ENV NODE_ENV=production
 ENV PORT=3000
 
 # Start the application with Bun
-CMD ["bun", "run", "server.js"]
+CMD ["bun", "--bun", "run", "server.js"]
 
