@@ -110,6 +110,88 @@ Surfaces workflow issues by analyzing Linear data:
 - **Ownership Gaps** - Finds started work without clear owners to prevent work from falling through cracks
 - **Visual Planning** - Gantt chart view shows project timelines and dependencies for better capacity planning
 
+## Deployment
+
+### Deploy to Fly.io
+
+This application is configured for deployment to Fly.io using Bun runtime with a single-node, stateless setup and in-memory database.
+
+#### Prerequisites
+
+- [Fly.io CLI](https://fly.io/docs/hands-on/install-flyctl/) installed
+- Fly.io account created
+- Bun installed locally (for building)
+
+#### Steps
+
+1. **Install Fly.io CLI** (if not already installed):
+
+   ```bash
+   # macOS
+   brew install flyctl
+
+   # Other platforms: see https://fly.io/docs/hands-on/install-flyctl/
+   ```
+
+2. **Login to Fly.io**:
+
+   ```bash
+   fly auth login
+   ```
+
+3. **Create Fly.io app** (or use existing):
+
+   ```bash
+   fly apps create your-app-name
+   ```
+
+4. **Configure deployment**:
+
+   ```bash
+   # Copy the example configuration
+   cp fly.toml.example fly.toml
+
+   # Edit fly.toml and update:
+   # - app = "your-app-name"
+   # - primary_region = "iad" (or your preferred region)
+   ```
+
+5. **Set environment secrets**:
+
+   ```bash
+   fly secrets set LINEAR_API_KEY=your_linear_api_key
+   fly secrets set APP_PASSWORD=your_secure_password
+
+   # Optional secrets
+   fly secrets set IGNORED_TEAM_KEYS=CS,MUX
+   fly secrets set TEAM_DOMAIN_MAPPINGS='{"FE":"Frontend","BE":"Backend"}'
+   ```
+
+6. **Deploy**:
+
+   ```bash
+   fly deploy
+   ```
+
+7. **Verify deployment**:
+   ```bash
+   fly status
+   fly logs
+   ```
+
+#### Configuration Files
+
+- **Dockerfile** - Multi-stage Docker build using Bun runtime
+- **server.js** - Server entry point that initializes the Bun server
+- **fly.toml.example** - Template configuration file (copy to `fly.toml` and customize)
+
+#### Notes
+
+- The application uses an in-memory database, so data is lost on restart/redeploy
+- Configured for single-node deployment (`min_machines_running = 1`)
+- Uses immediate deployment strategy to prevent duplicate instances during deploys
+- Port 3000 is used internally (Fly.io handles HTTPS termination)
+
 ## License
 
 [MIT](LICENSE) © 2025 Victory Square Media Inc. dba Later

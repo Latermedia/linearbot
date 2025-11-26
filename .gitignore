@@ -22,3 +22,4 @@ team-domain-mappings.json
 # Deployment platform files
 .vercel
 .env.vercel
+fly.toml
