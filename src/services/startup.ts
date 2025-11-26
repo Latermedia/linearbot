@@ -35,23 +35,29 @@ export function initializeStartup(): void {
     console.error(`[STARTUP] Failed to initialize sync scheduler: ${errorMsg}`);
   }
 
-  // Trigger initial sync (non-blocking)
-  // Don't await - let server start serving requests immediately
-  performSync(true)
-    .then((result) => {
-      if (result.success) {
-        console.log(
-          `[STARTUP] Initial sync completed successfully - New: ${result.newCount}, Updated: ${result.updatedCount}, Total: ${result.totalCount}`
-        );
-      } else {
-        console.error(`[STARTUP] Initial sync failed: ${result.error}`);
-      }
-    })
-    .catch((error) => {
-      const errorMessage =
-        error instanceof Error ? error.message : "Unknown error";
-      console.error(`[STARTUP] Error during initial sync: ${errorMessage}`);
-    });
+  // Trigger initial sync only in production (non-blocking)
+  // In development, skip immediate sync to allow faster restarts
+  const isProduction = process.env.NODE_ENV === "production";
+  if (isProduction) {
+    // Don't await - let server start serving requests immediately
+    performSync(true)
+      .then((result) => {
+        if (result.success) {
+          console.log(
+            `[STARTUP] Initial sync completed successfully - New: ${result.newCount}, Updated: ${result.updatedCount}, Total: ${result.totalCount}`
+          );
+        } else {
+          console.error(`[STARTUP] Initial sync failed: ${result.error}`);
+        }
+      })
+      .catch((error) => {
+        const errorMessage =
+          error instanceof Error ? error.message : "Unknown error";
+        console.error(`[STARTUP] Error during initial sync: ${errorMessage}`);
+      });
+  } else {
+    console.log("[STARTUP] Skipping initial sync in development mode");
+  }
 
   console.log("[STARTUP] Startup initialization complete");
 }

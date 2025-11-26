@@ -5,14 +5,28 @@ let dbInstance: Database | null = null;
 
 export function getDatabase(): Database {
   if (!dbInstance) {
-    console.log(`[DB] Creating in-memory database connection...`);
+    const isProduction = process.env.NODE_ENV === "production";
+    const dbPath = isProduction ? ":memory:" : "linear-bot.db";
+
+    console.log(
+      `[DB] Creating ${
+        isProduction ? "in-memory" : "file-based"
+      } database connection...`
+    );
     console.log(
       `[DB] Runtime: ${typeof Bun !== "undefined" ? "Bun" : "Node.js"}`
     );
+    if (!isProduction) {
+      console.log(`[DB] Database file: ${dbPath}`);
+    }
 
     try {
-      dbInstance = new Database(":memory:");
-      console.log(`[DB] In-memory database instance created successfully`);
+      dbInstance = new Database(dbPath);
+      console.log(
+        `[DB] ${
+          isProduction ? "In-memory" : "File-based"
+        } database instance created successfully`
+      );
 
       console.log(`[DB] Initializing database schema...`);
       initializeDatabase(dbInstance);
