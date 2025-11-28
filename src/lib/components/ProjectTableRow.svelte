@@ -91,14 +91,31 @@
     {formatRelativeDate(project.lastActivityDate)}
   </td>
   <td
-    class="py-3 px-2 w-[100px] text-sm text-neutral-600 dark:text-neutral-400"
-    title="Linear's project target date"
+    class="py-3 px-2 w-[100px] text-sm"
+    class:text-amber-500={!hideWarnings && project.hasDateDiscrepancy}
+    class:dark:text-amber-400={!hideWarnings && project.hasDateDiscrepancy}
+    class:text-neutral-600={hideWarnings || !project.hasDateDiscrepancy}
+    class:dark:text-neutral-400={hideWarnings || !project.hasDateDiscrepancy}
+    title={project.hasDateDiscrepancy
+      ? "⚠️ Target differs from predicted by 30+ days"
+      : "Linear's project target date"}
   >
-    {formatDate(project.targetDate)}
+    <span class="flex gap-1 items-center">
+      {#if !hideWarnings && project.hasDateDiscrepancy}
+        <span class="text-amber-400 shrink-0">⚠️</span>
+      {/if}
+      {formatDate(project.targetDate)}
+    </span>
   </td>
   <td
-    class="py-3 px-2 w-[100px] text-sm text-neutral-600 dark:text-neutral-400"
-    title="Velocity-predicted completion date"
+    class="py-3 px-2 w-[100px] text-sm"
+    class:text-amber-500={!hideWarnings && project.hasDateDiscrepancy}
+    class:dark:text-amber-400={!hideWarnings && project.hasDateDiscrepancy}
+    class:text-neutral-600={hideWarnings || !project.hasDateDiscrepancy}
+    class:dark:text-neutral-400={hideWarnings || !project.hasDateDiscrepancy}
+    title={project.hasDateDiscrepancy
+      ? "⚠️ Predicted differs from target by 30+ days"
+      : "Velocity-predicted completion date"}
   >
     {formatDate(project.estimatedEndDate)}
   </td>

@@ -27,6 +27,7 @@ export interface ProjectSummary {
   targetDate: string | null; // Linear's explicit target date for the project
   hasViolations: boolean;
   missingHealth: boolean;
+  hasDateDiscrepancy: boolean; // Target date and predicted date differ by >30 days
   missingEstimateCount: number;
   missingPriorityCount: number;
   noRecentCommentCount: number;
@@ -103,6 +104,7 @@ function projectToSummary(project: Project): ProjectSummary {
     targetDate: project.target_date,
     hasViolations: project.has_violations === 1,
     missingHealth: project.missing_health === 1,
+    hasDateDiscrepancy: project.has_date_discrepancy === 1,
     missingEstimateCount: project.missing_estimate_count,
     missingPriorityCount: project.missing_priority_count,
     noRecentCommentCount: project.no_recent_comment_count,

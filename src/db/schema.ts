@@ -68,6 +68,7 @@ export interface Project {
   missing_lead: number;
   has_violations: number;
   missing_health: number;
+  has_date_discrepancy: number; // 1 if target date and predicted date differ by >30 days
   start_date: string | null;
   last_activity_date: string;
   estimated_end_date: string | null;
@@ -336,6 +337,14 @@ export function initializeDatabase(db: Database): void {
   } catch (e) {
     // Column already exists, ignore
   }
+  // Add has_date_discrepancy column to projects table if it doesn't exist (migration)
+  try {
+    db.run(
+      `ALTER TABLE projects ADD COLUMN has_date_discrepancy INTEGER NOT NULL DEFAULT 0`
+    );
+  } catch (e) {
+    // Column already exists, ignore
+  }
 
   // Create projects table with computed metrics
   db.run(`
@@ -370,6 +379,7 @@ export function initializeDatabase(db: Database): void {
       missing_lead INTEGER NOT NULL,
       has_violations INTEGER NOT NULL,
       missing_health INTEGER NOT NULL,
+      has_date_discrepancy INTEGER NOT NULL DEFAULT 0,
       start_date TEXT,
       last_activity_date TEXT NOT NULL,
       estimated_end_date TEXT,

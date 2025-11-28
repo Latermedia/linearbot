@@ -150,7 +150,7 @@
           class="flex gap-2 items-center text-xl font-medium text-white"
         >
           {project.projectName}
-          {#if !hideWarnings && (project.hasStatusMismatch || project.isStaleUpdate || project.missingLead || project.hasViolations)}
+          {#if !hideWarnings && (project.hasStatusMismatch || project.isStaleUpdate || project.missingLead || project.hasViolations || project.hasDateDiscrepancy)}
             <span
               class="text-amber-500"
               title={[
@@ -161,6 +161,8 @@
                 project.missingLead && "Missing Lead: No project lead assigned",
                 project.hasViolations &&
                   "Violations: Some issues have missing estimates, no recent comments, or missing priority",
+                project.hasDateDiscrepancy &&
+                  "Date Discrepancy: Target and predicted dates differ by 30+ days",
               ]
                 .filter(Boolean)
                 .join("\n")}>⚠️</span
@@ -357,23 +359,43 @@
           </div>
           <div>
             <div
-              class="mb-1 text-xs text-neutral-500"
+              class="flex gap-1 items-center mb-1 text-xs text-neutral-500"
               title="Linear's explicit target date for the project"
             >
               Target Date
+              {#if !hideWarnings && project.hasDateDiscrepancy}
+                <span
+                  class="text-amber-400"
+                  title="Differs from predicted by 30+ days">⚠️</span
+                >
+              {/if}
             </div>
-            <div class="text-sm text-white">
+            <div
+              class="text-sm"
+              class:text-amber-400={!hideWarnings && project.hasDateDiscrepancy}
+              class:text-white={hideWarnings || !project.hasDateDiscrepancy}
+            >
               {formatDateFull(project.targetDate)}
             </div>
           </div>
           <div>
             <div
-              class="mb-1 text-xs text-neutral-500"
+              class="flex gap-1 items-center mb-1 text-xs text-neutral-500"
               title="Velocity-predicted completion date"
             >
               Predicted Completion
+              {#if !hideWarnings && project.hasDateDiscrepancy}
+                <span
+                  class="text-amber-400"
+                  title="Differs from target by 30+ days">⚠️</span
+                >
+              {/if}
             </div>
-            <div class="text-sm text-white">
+            <div
+              class="text-sm"
+              class:text-amber-400={!hideWarnings && project.hasDateDiscrepancy}
+              class:text-white={hideWarnings || !project.hasDateDiscrepancy}
+            >
               {formatDateFull(project.estimatedEndDate)}
             </div>
           </div>
@@ -722,7 +744,7 @@
                             size="xs"
                           />
                         {:else}
-                          <span class="text-neutral-500 text-xs"
+                          <span class="text-xs text-neutral-500"
                             >Unassigned</span
                           >
                         {/if}

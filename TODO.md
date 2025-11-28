@@ -25,7 +25,6 @@ Planned features and known issues for LinearBot.
 
 ### Project Tracking
 
-- **Completion date comparison** — compare Linear's explicit target/due date vs velocity-predicted completion; display warning in UI if they differ by more than 1 month (our "month-ish" accuracy threshold)
 - **Status labels** — consolidate Linear status label usage
 
 ### Filtering & Configuration

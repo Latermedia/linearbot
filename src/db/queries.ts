@@ -297,11 +297,11 @@ export function upsertProject(project: Project): void {
       wip_age_violation_count, missing_description_count,
       total_points, missing_points, average_cycle_time, average_lead_time,
       linear_progress, velocity, estimate_accuracy, days_per_story_point,
-      has_status_mismatch, is_stale_update, missing_lead, has_violations, missing_health,
+      has_status_mismatch, is_stale_update, missing_lead, has_violations, missing_health, has_date_discrepancy,
       start_date, last_activity_date, estimated_end_date, target_date,
       issues_by_state, engineers, teams, velocity_by_team, labels, project_updates
     ) VALUES (
-      ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?
+      ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?
     )
     ON CONFLICT(project_id) DO UPDATE SET
       project_name = excluded.project_name,
@@ -333,6 +333,7 @@ export function upsertProject(project: Project): void {
       missing_lead = excluded.missing_lead,
       has_violations = excluded.has_violations,
       missing_health = excluded.missing_health,
+      has_date_discrepancy = excluded.has_date_discrepancy,
       start_date = excluded.start_date,
       last_activity_date = excluded.last_activity_date,
       estimated_end_date = excluded.estimated_end_date,
@@ -376,6 +377,7 @@ export function upsertProject(project: Project): void {
     project.missing_lead,
     project.has_violations,
     project.missing_health,
+    project.has_date_discrepancy,
     project.start_date,
     project.last_activity_date,
     project.estimated_end_date,

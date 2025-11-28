@@ -68,6 +68,12 @@
     if (project.missingHealth) {
       warningList.push({ label: "Missing project health", count: 1 });
     }
+    if (project.hasDateDiscrepancy) {
+      warningList.push({
+        label: "Target vs predicted differ by 30+ days",
+        count: 1,
+      });
+    }
 
     return warningList;
   });
@@ -138,6 +144,12 @@
   <!-- Dates -->
   {#if project.targetDate || project.estimatedEndDate}
     <div class="pt-2 mb-3 border-t border-neutral-200 dark:border-neutral-800">
+      {#if !hideWarnings && project.hasDateDiscrepancy}
+        <div class="flex gap-1 items-center mb-1.5 text-[10px] text-amber-500">
+          <span>⚠️</span>
+          <span>Dates differ by 30+ days</span>
+        </div>
+      {/if}
       <div class="grid grid-cols-2 gap-2">
         {#if project.targetDate}
           <div>
@@ -147,7 +159,14 @@
             >
               Target
             </div>
-            <div class="text-xs font-medium text-neutral-900 dark:text-white">
+            <div
+              class="text-xs font-medium"
+              class:text-amber-500={!hideWarnings && project.hasDateDiscrepancy}
+              class:text-neutral-900={hideWarnings ||
+                !project.hasDateDiscrepancy}
+              class:dark:text-white={hideWarnings ||
+                !project.hasDateDiscrepancy}
+            >
               {formatDateFull(project.targetDate)}
             </div>
           </div>
@@ -160,7 +179,14 @@
             >
               Predicted
             </div>
-            <div class="text-xs font-medium text-neutral-900 dark:text-white">
+            <div
+              class="text-xs font-medium"
+              class:text-amber-500={!hideWarnings && project.hasDateDiscrepancy}
+              class:text-neutral-900={hideWarnings ||
+                !project.hasDateDiscrepancy}
+              class:dark:text-white={hideWarnings ||
+                !project.hasDateDiscrepancy}
+            >
               {formatDateFull(project.estimatedEndDate)}
             </div>
           </div>

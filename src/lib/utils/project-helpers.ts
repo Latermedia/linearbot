@@ -90,11 +90,14 @@ export function getWIPPercent(project: ProjectSummary): number {
 }
 
 /**
- * Check if project has health issues (status mismatch, stale update, or missing lead)
+ * Check if project has health issues (status mismatch, stale update, missing lead, or date discrepancy)
  */
 export function hasHealthIssues(project: ProjectSummary): boolean {
   return (
-    project.hasStatusMismatch || project.isStaleUpdate || project.missingLead
+    project.hasStatusMismatch ||
+    project.isStaleUpdate ||
+    project.missingLead ||
+    project.hasDateDiscrepancy
   );
 }
 
@@ -136,6 +139,9 @@ export function getViolationSummary(project: ProjectSummary): string[] {
   }
   if (project.missingHealth) {
     violations.push("Missing project health");
+  }
+  if (project.hasDateDiscrepancy) {
+    violations.push("Target vs predicted dates differ by 30+ days");
   }
 
   // Issue-level violations (only include if count > 0)

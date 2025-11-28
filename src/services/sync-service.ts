@@ -1074,6 +1074,15 @@ async function computeAndStoreProjects(
       }
     }
 
+    // Calculate date discrepancy flag (target vs predicted differ by >30 days)
+    let hasDateDiscrepancyFlag = false;
+    if (targetDate && estimatedEndDate) {
+      const targetMs = new Date(targetDate).getTime();
+      const predictedMs = new Date(estimatedEndDate).getTime();
+      const diffDays = Math.abs(targetMs - predictedMs) / (1000 * 60 * 60 * 24);
+      hasDateDiscrepancyFlag = diffDays > 30;
+    }
+
     // Convert Maps/Sets to JSON
     const issuesByStateJson = JSON.stringify(Object.fromEntries(issuesByState));
     const engineersJson = JSON.stringify(Array.from(engineers));
@@ -1130,6 +1139,7 @@ async function computeAndStoreProjects(
       missing_lead: missingLeadFlag ? 1 : 0,
       has_violations: hasViolationsFlag ? 1 : 0,
       missing_health: missingHealthFlag ? 1 : 0,
+      has_date_discrepancy: hasDateDiscrepancyFlag ? 1 : 0,
       start_date: linearStartDate || earliestStartedAt || earliestCreatedAt, // Prefer Linear's start date, then started_at, fallback to created_at
       last_activity_date: lastActivityDate,
       estimated_end_date: estimatedEndDate,
