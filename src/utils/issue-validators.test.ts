@@ -1,5 +1,10 @@
 import { describe, it, expect } from "vitest";
-import { hasMissingEstimate, hasMissingPriority } from "./issue-validators";
+import {
+  hasMissingEstimate,
+  hasMissingPriority,
+  hasWIPAgeViolation,
+  hasMissingDescription,
+} from "./issue-validators";
 import type { Issue } from "../db/schema";
 
 // Minimal mock issue for testing
@@ -37,6 +42,13 @@ const createMockIssue = (overrides: Partial<Issue> = {}): Issue => ({
   ...overrides,
 });
 
+// Helper to create a date N days ago
+function daysAgo(days: number): string {
+  const date = new Date();
+  date.setDate(date.getDate() - days);
+  return date.toISOString();
+}
+
 describe("hasMissingEstimate", () => {
   it("returns true when estimate is null", () => {
     const issue = createMockIssue({ estimate: null });
@@ -58,5 +70,54 @@ describe("hasMissingPriority", () => {
   it("returns false when priority is set", () => {
     const issue = createMockIssue({ priority: 2 });
     expect(hasMissingPriority(issue)).toBe(false);
+  });
+});
+
+describe("hasWIPAgeViolation", () => {
+  it("returns false when started_at is null", () => {
+    const issue = createMockIssue({ started_at: null });
+    expect(hasWIPAgeViolation(issue)).toBe(false);
+  });
+
+  it("returns false when started less than 14 days ago", () => {
+    const issue = createMockIssue({ started_at: daysAgo(10) });
+    expect(hasWIPAgeViolation(issue)).toBe(false);
+  });
+
+  it("returns false when started exactly 14 days ago", () => {
+    const issue = createMockIssue({ started_at: daysAgo(14) });
+    expect(hasWIPAgeViolation(issue)).toBe(false);
+  });
+
+  it("returns true when started more than 14 days ago", () => {
+    const issue = createMockIssue({ started_at: daysAgo(15) });
+    expect(hasWIPAgeViolation(issue)).toBe(true);
+  });
+
+  it("returns true when started 30 days ago", () => {
+    const issue = createMockIssue({ started_at: daysAgo(30) });
+    expect(hasWIPAgeViolation(issue)).toBe(true);
+  });
+});
+
+describe("hasMissingDescription", () => {
+  it("returns true when description is null", () => {
+    const issue = createMockIssue({ description: null });
+    expect(hasMissingDescription(issue)).toBe(true);
+  });
+
+  it("returns true when description is empty string", () => {
+    const issue = createMockIssue({ description: "" });
+    expect(hasMissingDescription(issue)).toBe(true);
+  });
+
+  it("returns true when description is whitespace only", () => {
+    const issue = createMockIssue({ description: "   " });
+    expect(hasMissingDescription(issue)).toBe(true);
+  });
+
+  it("returns false when description has content", () => {
+    const issue = createMockIssue({ description: "This is a description" });
+    expect(hasMissingDescription(issue)).toBe(false);
   });
 });

@@ -1,5 +1,5 @@
 import { getDatabase } from "./connection.js";
-import type { Issue, Project } from "./schema.js";
+import type { Issue, Project, Engineer } from "./schema.js";
 
 /**
  * Centralized database queries for the Linear bot.
@@ -418,6 +418,97 @@ export function getInProgressProjects(): Project[] {
     )
   `);
   return query.all() as Project[];
+}
+
+/**
+ * Get all engineers with computed WIP metrics
+ */
+export function getAllEngineers(): Engineer[] {
+  const db = getDatabase();
+  const query = db.prepare(`SELECT * FROM engineers ORDER BY assignee_name`);
+  return query.all() as Engineer[];
+}
+
+/**
+ * Get a single engineer by assignee ID
+ */
+export function getEngineerById(assigneeId: string): Engineer | null {
+  const db = getDatabase();
+  const query = db.prepare(`SELECT * FROM engineers WHERE assignee_id = ?`);
+  const result = query.get(assigneeId) as Engineer | undefined;
+  return result || null;
+}
+
+/**
+ * Upsert an engineer (insert or update)
+ */
+export function upsertEngineer(engineer: Engineer): void {
+  const db = getDatabase();
+  const query = db.prepare(`
+    INSERT INTO engineers (
+      assignee_id, assignee_name, team_ids, team_names,
+      wip_issue_count, wip_total_points, wip_limit_violation,
+      oldest_wip_age_days, last_activity_at,
+      missing_estimate_count, missing_priority_count,
+      no_recent_comment_count, wip_age_violation_count,
+      active_issues
+    ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+    ON CONFLICT(assignee_id) DO UPDATE SET
+      assignee_name = excluded.assignee_name,
+      team_ids = excluded.team_ids,
+      team_names = excluded.team_names,
+      wip_issue_count = excluded.wip_issue_count,
+      wip_total_points = excluded.wip_total_points,
+      wip_limit_violation = excluded.wip_limit_violation,
+      oldest_wip_age_days = excluded.oldest_wip_age_days,
+      last_activity_at = excluded.last_activity_at,
+      missing_estimate_count = excluded.missing_estimate_count,
+      missing_priority_count = excluded.missing_priority_count,
+      no_recent_comment_count = excluded.no_recent_comment_count,
+      wip_age_violation_count = excluded.wip_age_violation_count,
+      active_issues = excluded.active_issues
+  `);
+
+  query.run(
+    engineer.assignee_id,
+    engineer.assignee_name,
+    engineer.team_ids,
+    engineer.team_names,
+    engineer.wip_issue_count,
+    engineer.wip_total_points,
+    engineer.wip_limit_violation,
+    engineer.oldest_wip_age_days,
+    engineer.last_activity_at,
+    engineer.missing_estimate_count,
+    engineer.missing_priority_count,
+    engineer.no_recent_comment_count,
+    engineer.wip_age_violation_count,
+    engineer.active_issues
+  );
+}
+
+/**
+ * Delete engineers by their assignee IDs
+ */
+export function deleteEngineersByIds(assigneeIds: string[]): void {
+  if (assigneeIds.length === 0) return;
+
+  const db = getDatabase();
+  const placeholders = assigneeIds.map(() => "?").join(",");
+  const query = db.prepare(`
+    DELETE FROM engineers WHERE assignee_id IN (${placeholders})
+  `);
+  query.run(...assigneeIds);
+}
+
+/**
+ * Get all existing engineer IDs (for cleanup)
+ */
+export function getExistingEngineerIds(): Set<string> {
+  const db = getDatabase();
+  const query = db.prepare(`SELECT assignee_id FROM engineers`);
+  const rows = query.all() as { assignee_id: string }[];
+  return new Set(rows.map((row) => row.assignee_id));
 }
 
 /**

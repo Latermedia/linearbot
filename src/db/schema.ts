@@ -82,6 +82,23 @@ export interface Project {
   project_updates: string | null;
 }
 
+export interface Engineer {
+  assignee_id: string;
+  assignee_name: string;
+  team_ids: string; // JSON array
+  team_names: string; // JSON array
+  wip_issue_count: number;
+  wip_total_points: number;
+  wip_limit_violation: number; // 1 if over threshold
+  oldest_wip_age_days: number | null;
+  last_activity_at: string | null;
+  missing_estimate_count: number;
+  missing_priority_count: number;
+  no_recent_comment_count: number;
+  wip_age_violation_count: number;
+  active_issues: string; // JSON array of issue summaries
+}
+
 /**
  * Expected columns in the issues table (in order)
  */
@@ -170,6 +187,7 @@ export function validateSchema(db: Database): {
 export function resetDatabase(db: Database): void {
   console.log("[DB] Resetting database...");
   db.run("DROP TABLE IF EXISTS comment_log");
+  db.run("DROP TABLE IF EXISTS engineers");
   db.run("DROP TABLE IF EXISTS projects");
   db.run("DROP TABLE IF EXISTS issues");
   initializeDatabase(db);
@@ -333,6 +351,26 @@ export function initializeDatabase(db: Database): void {
     )
   `);
 
+  // Create engineers table with computed WIP metrics
+  db.run(`
+    CREATE TABLE IF NOT EXISTS engineers (
+      assignee_id TEXT PRIMARY KEY,
+      assignee_name TEXT NOT NULL,
+      team_ids TEXT NOT NULL,
+      team_names TEXT NOT NULL,
+      wip_issue_count INTEGER NOT NULL,
+      wip_total_points REAL NOT NULL,
+      wip_limit_violation INTEGER NOT NULL,
+      oldest_wip_age_days REAL,
+      last_activity_at TEXT,
+      missing_estimate_count INTEGER NOT NULL,
+      missing_priority_count INTEGER NOT NULL,
+      no_recent_comment_count INTEGER NOT NULL,
+      wip_age_violation_count INTEGER NOT NULL,
+      active_issues TEXT NOT NULL
+    )
+  `);
+
   // Create comment log table to track bot comments
   db.run(`
     CREATE TABLE IF NOT EXISTS comment_log (
@@ -402,5 +440,10 @@ export function initializeDatabase(db: Database): void {
   db.run(`
     CREATE INDEX IF NOT EXISTS idx_projects_project_id 
     ON projects(project_id)
+  `);
+
+  db.run(`
+    CREATE INDEX IF NOT EXISTS idx_engineers_assignee_id 
+    ON engineers(assignee_id)
   `);
 }
