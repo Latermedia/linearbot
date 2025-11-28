@@ -17,7 +17,7 @@ export interface EngineerMultiProjectViolation {
   projects: string[];
 }
 
-export interface DashboardData {
+export interface ProjectsData {
   assigneeViolations: AssigneeViolation[];
   projectViolations: ProjectViolation[];
   engineerMultiProjectViolations: EngineerMultiProjectViolation[];

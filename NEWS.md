@@ -13,11 +13,11 @@ _Initial release_
 
 ### Views
 
-- **Dashboard** — stats cards for teams, projects, and health metrics with table/Gantt toggle
+- **Projects** — stats cards for teams, projects, and health metrics with table/Gantt toggle
 - **Executive View** — projects filtered by `Executive Visibility` label with card, table, and Gantt options
 - **Engineers View** — WIP tracking and constraint violations per engineer with detail modal
 
-### Dashboard
+### Projects
 
 - Stats cards: Total Teams, Active Projects, Average Projects/Team, Missing Updates, Status Mismatches, Missing Leads
 - Sortable project table grouped by team or domain

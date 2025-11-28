@@ -6,7 +6,6 @@ Planned features and known issues for LinearBot.
 
 ### Views & Organization
 
-- **Rename Dashboard to Projects** — the main route is a projects view, rename accordingly
 - **Initiative view (`/initiatives`)** — dedicated route for initiative-level grouping; view projects grouped by strategic initiative with rollup metrics
 - **Planning view** — surface projects in planning states (`shaping`, `ready`) from Linear; separate view or filter for upcoming work not yet started
 - **Full year timeline** — extend Gantt chart to show entire year with previously completed projects; enable historical context alongside active work

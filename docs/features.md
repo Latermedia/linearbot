@@ -2,7 +2,7 @@
 
 ## Views
 
-### Dashboard
+### Projects
 
 Stats cards showing:
 

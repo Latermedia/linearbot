@@ -119,7 +119,7 @@
                   ? 'bg-neutral-100 dark:bg-neutral-800 text-neutral-900 dark:text-white'
                   : 'text-neutral-600 dark:text-neutral-400 hover:text-neutral-900 dark:hover:text-white hover:bg-neutral-50 dark:hover:bg-neutral-900'}"
               >
-                Dashboard
+                Projects
               </a>
               <a
                 href="/executive"
