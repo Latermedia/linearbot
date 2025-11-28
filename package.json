@@ -4,6 +4,7 @@
   "description": "A bot for Linear to help identify and resolve WIP constraints and other useful insights",
   "type": "module",
   "scripts": {
+    "setup": "bun run scripts/setup.ts",
     "start:cli": "bun run terminal/index.tsx",
     "dev:cli": "bun --watch terminal/index.tsx",
     "sync": "bun run scripts/sync.ts",
