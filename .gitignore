@@ -1,6 +1,7 @@
 node_modules/
 .env
 *.db
+*.db.bak
 .DS_Store
 dist/
 build/
