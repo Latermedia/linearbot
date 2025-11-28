@@ -13,6 +13,7 @@
     scrollable = false,
     header,
     children,
+    background = "bg-neutral-900",
   }: {
     title?: string;
     onclose: () => void;
@@ -21,6 +22,7 @@
     scrollable?: boolean;
     header?: Snippet;
     children?: Snippet;
+    background?: string;
   } = $props();
 
   const sizeClasses = {
@@ -83,7 +85,7 @@
   <div
     class="w-full {sizeClasses[
       size
-    ]} rounded-md border shadow-2xl bg-neutral-900 border-white/10 shadow-black/50 m-4 {scrollable
+    ]} rounded-md border shadow-2xl {background} border-white/10 shadow-black/50 m-4 {scrollable
       ? 'flex flex-col'
       : ''}"
     style={maxHeight ? `max-height: ${maxHeight}` : ""}

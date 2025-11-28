@@ -1,7 +1,7 @@
 <script lang="ts">
-  import { onMount } from "svelte";
   import { browser } from "$app/environment";
   import html2canvas from "html2canvas";
+  import Modal from "./Modal.svelte";
   import Button from "./Button.svelte";
   import Badge from "./Badge.svelte";
   import { cn } from "$lib/utils";
@@ -316,60 +316,20 @@
       isCopying = false;
     }
   }
-
-  function handleKeydown(event: KeyboardEvent): void {
-    if (event.key === "Escape") {
-      onclose();
-    }
-  }
-
-  function handleBackdropClick(event: MouseEvent): void {
-    const target = event.target as HTMLElement;
-    if (target.classList.contains("modal-backdrop")) {
-      onclose();
-    }
-  }
-
-  function handleBackdropKeydown(event: KeyboardEvent): void {
-    if (event.key === "Enter" || event.key === " ") {
-      event.preventDefault();
-      const target = event.target as HTMLElement;
-      if (target.classList.contains("modal-backdrop")) {
-        onclose();
-      }
-    }
-  }
-
-  onMount(() => {
-    if (browser) {
-      document.addEventListener("keydown", handleKeydown);
-      document.body.style.overflow = "hidden";
-      return () => {
-        document.removeEventListener("keydown", handleKeydown);
-        document.body.style.overflow = "";
-      };
-    }
-  });
 </script>
 
-<div
-  class="flex fixed inset-0 z-50 justify-center items-center modal-backdrop bg-black/60"
-  onclick={handleBackdropClick}
-  onkeydown={handleBackdropKeydown}
-  role="dialog"
-  aria-modal="true"
-  aria-labelledby="modal-title"
-  tabindex="-1"
+<Modal
+  {onclose}
+  size="full"
+  maxHeight="100vh"
+  scrollable={true}
+  background="bg-white dark:bg-neutral-900"
+  header={headerSnippet}
+  children={childrenSnippet}
 >
-  <div
-    class="flex overflow-hidden flex-col m-4 w-full h-full max-h-screen bg-white rounded border shadow-2xl dark:bg-neutral-900 border-neutral-200 dark:border-white/10 shadow-black/50"
-    onclick={(e) => e.stopPropagation()}
-    onkeydown={(e) => e.stopPropagation()}
-    role="presentation"
-  >
-    <!-- Header -->
+  {#snippet headerSnippet()}
     <div
-      class="flex justify-between items-center p-6 border-b border-neutral-200 dark:border-white/10"
+      class="flex justify-between items-center p-6 border-b border-neutral-200 dark:border-white/10 bg-white dark:bg-neutral-900"
     >
       <div class="flex-1">
         <h2
@@ -421,14 +381,16 @@
       </div>
 
       <button
-        class="transition-colors duration-150 text-neutral-400 hover:text-neutral-900 dark:hover:text-white"
+        class="inline-flex justify-center items-center p-1.5 rounded transition-colors duration-150 cursor-pointer text-neutral-400 hover:text-neutral-900 dark:hover:text-white hover:bg-white/10 dark:hover:bg-white/10"
         onclick={onclose}
         aria-label="Close modal"
       >
         <X class="w-5 h-5" />
       </button>
     </div>
+  {/snippet}
 
+  {#snippet childrenSnippet()}
     <!-- Preview Area -->
     <div class="overflow-auto flex-1 p-6 bg-neutral-50 dark:bg-neutral-950">
       <div
@@ -579,8 +541,8 @@
         </Button>
       </div>
     </div>
-  </div>
-</div>
+  {/snippet}
+</Modal>
 
 <style>
   @keyframes spin {

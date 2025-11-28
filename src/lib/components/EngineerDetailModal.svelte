@@ -1,8 +1,8 @@
 <script lang="ts">
-  import { onMount } from "svelte";
   import Badge from "./Badge.svelte";
   import IssueTable from "./IssueTable.svelte";
   import UserProfile from "./UserProfile.svelte";
+  import Modal from "./Modal.svelte";
   import { WIP_THRESHOLDS } from "../../constants/thresholds";
 
   interface IssueSummary {
@@ -43,29 +43,6 @@
     engineer: EngineerData;
     onclose: () => void;
   } = $props();
-
-  function handleKeydown(event: KeyboardEvent): void {
-    if (event.key === "Escape") {
-      onclose();
-    }
-  }
-
-  function handleBackdropClick(event: MouseEvent): void {
-    const target = event.target as HTMLElement;
-    if (target.classList.contains("modal-backdrop")) {
-      onclose();
-    }
-  }
-
-  function handleBackdropKeydown(event: KeyboardEvent): void {
-    if (event.key === "Enter" || event.key === " ") {
-      event.preventDefault();
-      const target = event.target as HTMLElement;
-      if (target.classList.contains("modal-backdrop")) {
-        onclose();
-      }
-    }
-  }
 
   function parseActiveIssues(issuesJson: string): IssueSummary[] {
     try {
@@ -127,31 +104,17 @@
       engineer.no_recent_comment_count +
       engineer.wip_age_violation_count
   );
-
-  onMount(() => {
-    document.addEventListener("keydown", handleKeydown);
-    document.body.style.overflow = "hidden";
-    return () => {
-      document.removeEventListener("keydown", handleKeydown);
-      document.body.style.overflow = "";
-    };
-  });
 </script>
 
-<div
-  class="flex fixed inset-0 z-50 justify-center items-center modal-backdrop bg-black/60"
-  onclick={handleBackdropClick}
-  onkeydown={handleBackdropKeydown}
-  role="dialog"
-  aria-modal="true"
-  aria-labelledby="modal-title"
-  tabindex="-1"
+<Modal
+  {onclose}
+  size="2xl"
+  maxHeight="90vh"
+  scrollable={true}
+  header={headerSnippet}
+  children={childrenSnippet}
 >
-  <div
-    class="w-full max-w-4xl lg:max-w-6xl xl:max-w-7xl max-h-[90vh] rounded-md border shadow-2xl bg-neutral-900 border-white/10 shadow-black/50 m-4 flex flex-col"
-    role="document"
-  >
-    <!-- Fixed Header -->
+  {#snippet headerSnippet()}
     <div
       class="flex justify-between items-start p-6 pb-4 border-b shrink-0 border-white/10"
     >
@@ -182,7 +145,7 @@
         </div>
       </div>
       <button
-        class="transition-colors duration-150 text-neutral-400 hover:text-white"
+        class="inline-flex justify-center items-center p-1.5 rounded transition-colors duration-150 cursor-pointer text-neutral-400 hover:text-white hover:bg-white/10"
         onclick={onclose}
         aria-label="Close modal"
         title="Close (ESC)"
@@ -202,66 +165,63 @@
         </svg>
       </button>
     </div>
+  {/snippet}
 
-    <!-- Scrollable Content -->
-    <div class="overflow-y-auto flex-1">
-      <div class="p-6 pt-6">
-        <!-- Summary Stats -->
-        <div class="grid grid-cols-2 gap-4 mb-6 sm:grid-cols-5">
-          <div class="p-3 rounded-md border bg-neutral-800/50 border-white/5">
-            <div class="mb-1 text-xs text-neutral-500">WIP Issues</div>
-            <div
-              class="text-2xl font-semibold {getWIPStatusClass(
-                engineer.wip_issue_count
-              )}"
-            >
-              {engineer.wip_issue_count}
-            </div>
-            <div class="text-xs {getWIPStatusClass(engineer.wip_issue_count)}">
-              {getWIPStatusText(engineer.wip_issue_count)}
-            </div>
-          </div>
-          <div class="p-3 rounded-md border bg-neutral-800/50 border-white/5">
-            <div class="mb-1 text-xs text-neutral-500">Total Points</div>
-            <div class="text-2xl font-semibold text-white">
-              {Math.round(engineer.wip_total_points)}
-            </div>
-            <div class="text-xs text-neutral-500">in progress</div>
-          </div>
-          <div class="p-3 rounded-md border bg-neutral-800/50 border-white/5">
-            <div class="mb-1 text-xs text-neutral-500">Oldest Issue</div>
-            <div class="text-2xl font-semibold text-white">
-              {formatWIPAge(engineer.oldest_wip_age_days)}
-            </div>
-            <div class="text-xs text-neutral-500">in WIP</div>
-          </div>
-          <div class="p-3 rounded-md border bg-neutral-800/50 border-white/5">
-            <div class="mb-1 text-xs text-neutral-500">Violations</div>
-            <div
-              class="text-2xl font-semibold {totalViolations > 0
-                ? 'text-amber-400'
-                : 'text-emerald-400'}"
-            >
-              {totalViolations}
-            </div>
-            <div class="text-xs text-neutral-500">issues</div>
-          </div>
-          <div class="p-3 rounded-md border bg-neutral-800/50 border-white/5">
-            <div class="mb-1 text-xs text-neutral-500">Last Activity</div>
-            <div class="text-lg font-semibold text-white">
-              {formatRelativeTime(engineer.last_activity_at)}
-            </div>
-          </div>
+  {#snippet childrenSnippet()}
+    <!-- Summary Stats -->
+    <div class="grid grid-cols-2 gap-4 mb-6 sm:grid-cols-5">
+      <div class="p-3 rounded-md border bg-neutral-800/50 border-white/5">
+        <div class="mb-1 text-xs text-neutral-500">WIP Issues</div>
+        <div
+          class="text-2xl font-semibold {getWIPStatusClass(
+            engineer.wip_issue_count
+          )}"
+        >
+          {engineer.wip_issue_count}
         </div>
-
-        <!-- Active Issues Table -->
-        <div>
-          <div class="mb-3 text-sm font-medium text-neutral-300">
-            Active Issues ({activeIssues.length})
-          </div>
-          <IssueTable issues={activeIssues} />
+        <div class="text-xs {getWIPStatusClass(engineer.wip_issue_count)}">
+          {getWIPStatusText(engineer.wip_issue_count)}
+        </div>
+      </div>
+      <div class="p-3 rounded-md border bg-neutral-800/50 border-white/5">
+        <div class="mb-1 text-xs text-neutral-500">Total Points</div>
+        <div class="text-2xl font-semibold text-white">
+          {Math.round(engineer.wip_total_points)}
+        </div>
+        <div class="text-xs text-neutral-500">in progress</div>
+      </div>
+      <div class="p-3 rounded-md border bg-neutral-800/50 border-white/5">
+        <div class="mb-1 text-xs text-neutral-500">Oldest Issue</div>
+        <div class="text-2xl font-semibold text-white">
+          {formatWIPAge(engineer.oldest_wip_age_days)}
+        </div>
+        <div class="text-xs text-neutral-500">in WIP</div>
+      </div>
+      <div class="p-3 rounded-md border bg-neutral-800/50 border-white/5">
+        <div class="mb-1 text-xs text-neutral-500">Violations</div>
+        <div
+          class="text-2xl font-semibold {totalViolations > 0
+            ? 'text-amber-400'
+            : 'text-emerald-400'}"
+        >
+          {totalViolations}
+        </div>
+        <div class="text-xs text-neutral-500">issues</div>
+      </div>
+      <div class="p-3 rounded-md border bg-neutral-800/50 border-white/5">
+        <div class="mb-1 text-xs text-neutral-500">Last Activity</div>
+        <div class="text-lg font-semibold text-white">
+          {formatRelativeTime(engineer.last_activity_at)}
         </div>
       </div>
     </div>
-  </div>
-</div>
+
+    <!-- Active Issues Table -->
+    <div>
+      <div class="mb-3 text-sm font-medium text-neutral-300">
+        Active Issues ({activeIssues.length})
+      </div>
+      <IssueTable issues={activeIssues} />
+    </div>
+  {/snippet}
+</Modal>
