@@ -1,10 +1,12 @@
 <script lang="ts">
   import Badge from "./ui/badge.svelte";
+  import UserProfile from "./UserProfile.svelte";
   import { WIP_THRESHOLDS } from "../../constants/thresholds";
 
   interface EngineerData {
     assignee_id: string;
     assignee_name: string;
+    avatar_url: string | null;
     team_ids: string;
     team_names: string;
     wip_issue_count: number;
@@ -127,9 +129,11 @@
         >
           <td class="px-4 py-3">
             <div class="flex gap-2 items-center">
-              <span class="font-medium text-white"
-                >{engineer.assignee_name}</span
-              >
+              <UserProfile
+                name={engineer.assignee_name}
+                avatarUrl={engineer.avatar_url}
+                size="sm"
+              />
               {#if engineer.wip_limit_violation}
                 <span class="text-amber-500" title="Over WIP limit">⚠️</span>
               {/if}

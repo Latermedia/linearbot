@@ -11,6 +11,7 @@
   interface EngineerData {
     assignee_id: string;
     assignee_name: string;
+    avatar_url: string | null;
     team_ids: string;
     team_names: string;
     wip_issue_count: number;

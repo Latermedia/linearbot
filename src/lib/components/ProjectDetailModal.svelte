@@ -5,6 +5,7 @@
   import type { Issue } from "../../db/schema";
   import Badge from "./ui/badge.svelte";
   import ProgressBar from "./ProgressBar.svelte";
+  import UserProfile from "./UserProfile.svelte";
   import {
     formatDateFull,
     formatRelativeDate,
@@ -578,7 +579,7 @@
                     >Title</th
                   >
                   <th
-                    class="px-2 py-1.5 font-medium text-left text-neutral-400 w-[90px] min-w-[90px]"
+                    class="px-2 py-1.5 font-medium text-left text-neutral-400 w-[120px] min-w-[120px]"
                     >Assignee</th
                   >
                   <th
@@ -680,14 +681,19 @@
                         </div>
                       </td>
                       <td
-                        class="px-2 py-1.5 text-neutral-400 w-[90px] min-w-[90px] max-w-[90px]"
+                        class="px-2 py-1.5 w-[120px] min-w-[120px] max-w-[120px]"
                       >
-                        <div
-                          class="overflow-hidden truncate whitespace-nowrap text-ellipsis"
-                          title={issue.assignee_name || "Unassigned"}
-                        >
-                          {issue.assignee_name || "Unassigned"}
-                        </div>
+                        {#if issue.assignee_name}
+                          <UserProfile
+                            name={issue.assignee_name}
+                            avatarUrl={issue.assignee_avatar_url}
+                            size="xs"
+                          />
+                        {:else}
+                          <span class="text-neutral-500 text-xs"
+                            >Unassigned</span
+                          >
+                        {/if}
                       </td>
                       <td
                         class="px-2 py-1.5 text-right text-neutral-300 w-[70px] min-w-[70px]"

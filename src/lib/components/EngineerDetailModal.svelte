@@ -2,6 +2,7 @@
   import { onMount } from "svelte";
   import Badge from "./ui/badge.svelte";
   import IssueTable from "./IssueTable.svelte";
+  import UserProfile from "./UserProfile.svelte";
   import { WIP_THRESHOLDS } from "../../constants/thresholds";
 
   interface IssueSummary {
@@ -20,6 +21,7 @@
   interface EngineerData {
     assignee_id: string;
     assignee_name: string;
+    avatar_url: string | null;
     team_ids: string;
     team_names: string;
     wip_issue_count: number;
@@ -154,19 +156,29 @@
       class="flex justify-between items-start p-6 pb-4 border-b shrink-0 border-white/10"
     >
       <div class="flex-1 min-w-0">
-        <h2
-          id="modal-title"
-          class="flex gap-2 items-center text-xl font-medium text-white"
-        >
-          {engineer.assignee_name}
-          {#if engineer.wip_limit_violation}
-            <span class="text-amber-500" title="Over WIP limit">⚠️</span>
-          {/if}
-        </h2>
-        <div class="flex flex-wrap gap-1 mt-2">
-          {#each teamNames as team}
-            <Badge variant="outline" class="text-xs">{team}</Badge>
-          {/each}
+        <div class="flex gap-3 items-center">
+          <UserProfile
+            name={engineer.assignee_name}
+            avatarUrl={engineer.avatar_url}
+            size="lg"
+            showName={false}
+          />
+          <div>
+            <h2
+              id="modal-title"
+              class="flex gap-2 items-center text-xl font-medium text-white"
+            >
+              {engineer.assignee_name}
+              {#if engineer.wip_limit_violation}
+                <span class="text-amber-500" title="Over WIP limit">⚠️</span>
+              {/if}
+            </h2>
+            <div class="flex flex-wrap gap-1 mt-1">
+              {#each teamNames as team}
+                <Badge variant="outline" class="text-xs">{team}</Badge>
+              {/each}
+            </div>
+          </div>
         </div>
       </div>
       <button

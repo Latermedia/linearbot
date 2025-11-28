@@ -11,14 +11,46 @@ export function isMockMode(): boolean {
 
 // Mock data constants
 const MOCK_ASSIGNEES = [
-  { id: "user-1", name: "Alex Chen" },
-  { id: "user-2", name: "Jordan Rivera" },
-  { id: "user-3", name: "Sam Taylor" },
-  { id: "user-4", name: "Morgan Lee" },
-  { id: "user-5", name: "Casey Kim" },
-  { id: "user-6", name: "Riley Johnson" },
-  { id: "user-7", name: "Jamie Patel" },
-  { id: "user-8", name: "Quinn Martinez" },
+  {
+    id: "user-1",
+    name: "Alex Chen",
+    avatarUrl: "https://api.dicebear.com/7.x/avataaars/svg?seed=Alex",
+  },
+  {
+    id: "user-2",
+    name: "Jordan Rivera",
+    avatarUrl: "https://api.dicebear.com/7.x/avataaars/svg?seed=Jordan",
+  },
+  {
+    id: "user-3",
+    name: "Sam Taylor",
+    avatarUrl: "https://api.dicebear.com/7.x/avataaars/svg?seed=Sam",
+  },
+  {
+    id: "user-4",
+    name: "Morgan Lee",
+    avatarUrl: "https://api.dicebear.com/7.x/avataaars/svg?seed=Morgan",
+  },
+  {
+    id: "user-5",
+    name: "Casey Kim",
+    avatarUrl: "https://api.dicebear.com/7.x/avataaars/svg?seed=Casey",
+  },
+  {
+    id: "user-6",
+    name: "Riley Johnson",
+    avatarUrl: "https://api.dicebear.com/7.x/avataaars/svg?seed=Riley",
+  },
+  {
+    id: "user-7",
+    name: "Jamie Patel",
+    avatarUrl: "https://api.dicebear.com/7.x/avataaars/svg?seed=Jamie",
+  },
+  {
+    id: "user-8",
+    name: "Quinn Martinez",
+    avatarUrl: "https://api.dicebear.com/7.x/avataaars/svg?seed=Quinn",
+  },
 ];
 
 const MOCK_TEAMS = [
@@ -315,6 +347,7 @@ export function generateMockData(): {
         stateType: state.type,
         assigneeId: assignee.id,
         assigneeName: assignee.name,
+        assigneeAvatarUrl: assignee.avatarUrl,
         creatorId: creator.id,
         creatorName: creator.name,
         priority,
@@ -367,6 +400,7 @@ export function generateMockData(): {
       stateType: state.type,
       assigneeId: assignee.id,
       assigneeName: assignee.name,
+      assigneeAvatarUrl: assignee.avatarUrl,
       creatorId: assignee.id,
       creatorName: assignee.name,
       priority: randomPick([1, 2, 3]),

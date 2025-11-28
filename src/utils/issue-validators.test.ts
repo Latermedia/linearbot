@@ -21,6 +21,7 @@ const createMockIssue = (overrides: Partial<Issue> = {}): Issue => ({
   state_type: "started",
   assignee_id: null,
   assignee_name: null,
+  assignee_avatar_url: null,
   creator_id: null,
   creator_name: null,
   priority: 2,

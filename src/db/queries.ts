@@ -122,6 +122,7 @@ export function upsertIssue(issue: {
   state_type: string;
   assignee_id: string | null;
   assignee_name: string | null;
+  assignee_avatar_url: string | null;
   creator_id: string | null;
   creator_name: string | null;
   priority: number | null;
@@ -146,7 +147,7 @@ export function upsertIssue(issue: {
     INSERT INTO issues (
       id, identifier, title, description, team_id, team_name, team_key,
       state_id, state_name, state_type,
-      assignee_id, assignee_name, creator_id, creator_name,
+      assignee_id, assignee_name, assignee_avatar_url, creator_id, creator_name,
       priority, estimate, last_comment_at,
       created_at, updated_at, started_at, completed_at, canceled_at, url,
       project_id, project_name, project_state, project_health, project_updated_at,
@@ -154,7 +155,7 @@ export function upsertIssue(issue: {
     ) VALUES (
       ?, ?, ?, ?, ?, ?, ?,
       ?, ?, ?,
-      ?, ?, ?, ?,
+      ?, ?, ?, ?, ?,
       ?, ?, ?,
       ?, ?, ?, ?, ?, ?,
       ?, ?, ?, ?, ?,
@@ -172,6 +173,7 @@ export function upsertIssue(issue: {
       state_type = excluded.state_type,
       assignee_id = excluded.assignee_id,
       assignee_name = excluded.assignee_name,
+      assignee_avatar_url = excluded.assignee_avatar_url,
       creator_id = excluded.creator_id,
       creator_name = excluded.creator_name,
       priority = excluded.priority,
@@ -204,6 +206,7 @@ export function upsertIssue(issue: {
     issue.state_type,
     issue.assignee_id,
     issue.assignee_name,
+    issue.assignee_avatar_url,
     issue.creator_id,
     issue.creator_name,
     issue.priority,
@@ -446,15 +449,16 @@ export function upsertEngineer(engineer: Engineer): void {
   const db = getDatabase();
   const query = db.prepare(`
     INSERT INTO engineers (
-      assignee_id, assignee_name, team_ids, team_names,
+      assignee_id, assignee_name, avatar_url, team_ids, team_names,
       wip_issue_count, wip_total_points, wip_limit_violation,
       oldest_wip_age_days, last_activity_at,
       missing_estimate_count, missing_priority_count,
       no_recent_comment_count, wip_age_violation_count,
       active_issues
-    ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+    ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
     ON CONFLICT(assignee_id) DO UPDATE SET
       assignee_name = excluded.assignee_name,
+      avatar_url = excluded.avatar_url,
       team_ids = excluded.team_ids,
       team_names = excluded.team_names,
       wip_issue_count = excluded.wip_issue_count,
@@ -472,6 +476,7 @@ export function upsertEngineer(engineer: Engineer): void {
   query.run(
     engineer.assignee_id,
     engineer.assignee_name,
+    engineer.avatar_url,
     engineer.team_ids,
     engineer.team_names,
     engineer.wip_issue_count,

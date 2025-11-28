@@ -13,6 +13,7 @@ export interface Issue {
   state_type: string;
   assignee_id: string | null;
   assignee_name: string | null;
+  assignee_avatar_url: string | null;
   creator_id: string | null;
   creator_name: string | null;
   priority: number;
@@ -85,6 +86,7 @@ export interface Project {
 export interface Engineer {
   assignee_id: string;
   assignee_name: string;
+  avatar_url: string | null;
   team_ids: string; // JSON array
   team_names: string; // JSON array
   wip_issue_count: number;
@@ -115,6 +117,7 @@ const EXPECTED_ISSUES_COLUMNS = [
   "state_type",
   "assignee_id",
   "assignee_name",
+  "assignee_avatar_url",
   "creator_id",
   "creator_name",
   "priority",
@@ -213,6 +216,7 @@ export function initializeDatabase(db: Database): void {
       state_type TEXT NOT NULL,
       assignee_id TEXT,
       assignee_name TEXT,
+      assignee_avatar_url TEXT,
       creator_id TEXT,
       creator_name TEXT,
       priority INTEGER NOT NULL,
@@ -256,6 +260,13 @@ export function initializeDatabase(db: Database): void {
   }
   try {
     db.run(`ALTER TABLE issues ADD COLUMN creator_name TEXT`);
+  } catch (e) {
+    // Column already exists, ignore
+  }
+
+  // Add assignee avatar column if it doesn't exist (migration)
+  try {
+    db.run(`ALTER TABLE issues ADD COLUMN assignee_avatar_url TEXT`);
   } catch (e) {
     // Column already exists, ignore
   }
@@ -356,6 +367,7 @@ export function initializeDatabase(db: Database): void {
     CREATE TABLE IF NOT EXISTS engineers (
       assignee_id TEXT PRIMARY KEY,
       assignee_name TEXT NOT NULL,
+      avatar_url TEXT,
       team_ids TEXT NOT NULL,
       team_names TEXT NOT NULL,
       wip_issue_count INTEGER NOT NULL,
@@ -370,6 +382,13 @@ export function initializeDatabase(db: Database): void {
       active_issues TEXT NOT NULL
     )
   `);
+
+  // Add avatar_url column to engineers table if it doesn't exist (migration)
+  try {
+    db.run(`ALTER TABLE engineers ADD COLUMN avatar_url TEXT`);
+  } catch (e) {
+    // Column already exists, ignore
+  }
 
   // Create comment log table to track bot comments
   db.run(`

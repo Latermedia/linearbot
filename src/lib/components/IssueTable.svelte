@@ -10,6 +10,7 @@
     hasMissingPriority,
     hasNoRecentComment,
   } from "../../utils/issue-validators";
+  import UserProfile from "./UserProfile.svelte";
 
   interface IssueData {
     id: string;
@@ -24,6 +25,7 @@
     project_name: string | null;
     // Optional fields for full Issue objects
     assignee_name?: string | null;
+    assignee_avatar_url?: string | null;
     state_name?: string;
   }
 
@@ -101,7 +103,7 @@
           >
           {#if showAssignee}
             <th
-              class="px-2 py-1.5 font-medium text-left text-neutral-400 w-[90px] min-w-[90px]"
+              class="px-2 py-1.5 font-medium text-left text-neutral-400 w-[120px] min-w-[120px]"
               >Assignee</th
             >
           {/if}
@@ -165,15 +167,16 @@
               </div>
             </td>
             {#if showAssignee}
-              <td
-                class="px-2 py-1.5 text-neutral-400 w-[90px] min-w-[90px] max-w-[90px]"
-              >
-                <div
-                  class="overflow-hidden truncate whitespace-nowrap text-ellipsis"
-                  title={issue.assignee_name || "Unassigned"}
-                >
-                  {issue.assignee_name || "Unassigned"}
-                </div>
+              <td class="px-2 py-1.5 w-[120px] min-w-[120px] max-w-[120px]">
+                {#if issue.assignee_name}
+                  <UserProfile
+                    name={issue.assignee_name}
+                    avatarUrl={issue.assignee_avatar_url}
+                    size="xs"
+                  />
+                {:else}
+                  <span class="text-neutral-500 text-xs">Unassigned</span>
+                {/if}
               </td>
             {/if}
             <td class="px-2 py-1.5 text-neutral-400 truncate max-w-[100px]">

@@ -61,6 +61,7 @@ export interface LinearIssueData {
   stateType: string;
   assigneeId: string | null;
   assigneeName: string | null;
+  assigneeAvatarUrl: string | null;
   creatorId: string | null;
   creatorName: string | null;
   priority: number;
@@ -144,6 +145,7 @@ export class LinearAPIClient {
             assignee {
               id
               name
+              avatarUrl
             }
             creator {
               id
@@ -153,6 +155,7 @@ export class LinearAPIClient {
               id
               name
               state
+              health
               updatedAt
               labels {
                 nodes {
@@ -208,6 +211,7 @@ export class LinearAPIClient {
           stateType: issue.state.type,
           assigneeId: issue.assignee?.id || null,
           assigneeName: issue.assignee?.name || null,
+          assigneeAvatarUrl: issue.assignee?.avatarUrl || null,
           creatorId: issue.creator?.id || null,
           creatorName: issue.creator?.name || null,
           priority: issue.priority,
@@ -224,6 +228,7 @@ export class LinearAPIClient {
           projectId: issue.project?.id || null,
           projectName: issue.project?.name || null,
           projectState: issue.project?.state || null,
+          projectHealth: issue.project?.health || null,
           projectUpdatedAt: issue.project?.updatedAt
             ? new Date(issue.project.updatedAt)
             : null,
@@ -328,6 +333,7 @@ export class LinearAPIClient {
               assignee {
                 id
                 name
+                avatarUrl
               }
               creator {
                 id
@@ -402,6 +408,7 @@ export class LinearAPIClient {
             stateType: issue.state.type,
             assigneeId: issue.assignee?.id || null,
             assigneeName: issue.assignee?.name || null,
+            assigneeAvatarUrl: issue.assignee?.avatarUrl || null,
             creatorId: issue.creator?.id || null,
             creatorName: issue.creator?.name || null,
             priority: issue.priority,
