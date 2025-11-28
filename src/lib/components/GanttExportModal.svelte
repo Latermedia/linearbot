@@ -195,6 +195,43 @@
     };
   }
 
+  // Calculate target date position as percentage (for showing marker in predicted mode)
+  function getTargetDatePercent(project: ProjectSummary): number | null {
+    if (!project.targetDate) return null;
+
+    const targetDate = new Date(project.targetDate);
+    const targetDays = Math.floor(
+      (targetDate.getTime() - quarterStart.getTime()) / (1000 * 60 * 60 * 24)
+    );
+
+    // Clamp to visible range
+    const clampedTarget = Math.max(0, Math.min(targetDays, 89));
+    return (clampedTarget / 90) * 100;
+  }
+
+  // Calculate target marker position relative to bar (as percentage of bar width)
+  function getTargetMarkerRelativePercent(
+    project: ProjectSummary,
+    position: { startPercent: number; widthPercent: number }
+  ): number | null {
+    if (endDateMode !== "predicted" || !project.targetDate) return null;
+
+    const targetDatePercent = getTargetDatePercent(project);
+    if (targetDatePercent === null) return null;
+
+    const barStart = position.startPercent;
+    const barEnd = position.startPercent + position.widthPercent;
+
+    // Only show if target is within or near the bar
+    if (targetDatePercent < barStart - 5 || targetDatePercent > barEnd + 5)
+      return null;
+
+    // Calculate as percentage of bar width
+    const relativePercent =
+      ((targetDatePercent - barStart) / position.widthPercent) * 100;
+    return Math.max(0, Math.min(100, relativePercent));
+  }
+
   function getCurrentDayPosition(): number | null {
     const now = new Date();
     now.setHours(0, 0, 0, 0);
@@ -457,6 +494,10 @@
             {@const hasWarnings =
               showWarnings &&
               (hasDiscrepancies(project) || project.hasViolations)}
+            {@const targetMarkerPercent = getTargetMarkerRelativePercent(
+              project,
+              position
+            )}
 
             <!-- Timeline bar -->
             <div style="position: relative; height: 3rem;">
@@ -474,6 +515,21 @@
                 <div
                   style="position: absolute; inset: 0; border-radius: 0.375rem; background-color: rgba(139, 92, 246, 0.4); width: {progress}%;"
                 ></div>
+                <!-- Target date marker (shows when in predicted mode) -->
+                {#if targetMarkerPercent !== null}
+                  <div
+                    style="position: absolute; top: 0; bottom: 0; z-index: 20; display: flex; flex-direction: column; align-items: center; justify-content: center; left: {targetMarkerPercent}%;"
+                  >
+                    <!-- Vertical line -->
+                    <div
+                      style="width: 2px; height: 100%; background-color: rgba(251, 191, 36, 0.8);"
+                    ></div>
+                    <!-- Diamond marker at top -->
+                    <div
+                      style="position: absolute; top: -4px; width: 10px; height: 10px; background-color: #fbbf24; transform: rotate(45deg); border: 1px solid #f59e0b;"
+                    ></div>
+                  </div>
+                {/if}
                 <!-- Project name overlay -->
                 <span
                   style="position: relative; z-index: 10; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; display: flex; align-items: center; gap: 0.375rem;"

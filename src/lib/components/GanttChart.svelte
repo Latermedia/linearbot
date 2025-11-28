@@ -208,6 +208,20 @@
     };
   }
 
+  // Calculate target date position as percentage (for showing marker in predicted mode)
+  function getTargetDatePercent(project: ProjectSummary): number | null {
+    if (!project.targetDate) return null;
+
+    const targetDate = new Date(project.targetDate);
+    const targetDays = Math.floor(
+      (targetDate.getTime() - quarterStart.getTime()) / (1000 * 60 * 60 * 24)
+    );
+
+    // Clamp to visible range
+    const clampedTarget = Math.max(0, Math.min(targetDays, 89));
+    return (clampedTarget / 90) * 100;
+  }
+
   const groups = $derived.by(() => {
     return groupBy === "team" ? teams : domains;
   });
@@ -384,10 +398,13 @@
       />
       {#each group.projects as project}
         {@const position = getProjectPosition(project)}
+        {@const targetDatePercent = getTargetDatePercent(project)}
         <GanttProjectBar
           {project}
           {position}
           {hideWarnings}
+          {endDateMode}
+          {targetDatePercent}
           onmouseenter={(e) => handleBarMouseEnter(e, project)}
           onmousemove={handleBarMouseMove}
           onmouseleave={handleBarMouseLeave}
