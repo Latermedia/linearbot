@@ -409,6 +409,14 @@
                         <span class="text-xs text-neutral-500">
                           {formatRelativeDate(update.createdAt)}
                         </span>
+                        {#if update.userName}
+                          <span class="text-neutral-600">•</span>
+                          <UserProfile
+                            name={update.userName}
+                            avatarUrl={update.userAvatarUrl}
+                            size="xs"
+                          />
+                        {/if}
                       </div>
                       <div
                         class="text-sm leading-relaxed whitespace-pre-wrap text-neutral-200"
@@ -440,6 +448,14 @@
                     <span class="text-xs text-neutral-500">
                       {formatRelativeDate(latestUpdate.createdAt)}
                     </span>
+                    {#if latestUpdate.userName}
+                      <span class="text-neutral-600">•</span>
+                      <UserProfile
+                        name={latestUpdate.userName}
+                        avatarUrl={latestUpdate.userAvatarUrl}
+                        size="xs"
+                      />
+                    {/if}
                   </div>
                   <div
                     class="text-sm leading-relaxed whitespace-pre-wrap text-neutral-200"

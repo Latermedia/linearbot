@@ -89,6 +89,9 @@ export interface ProjectUpdate {
   updatedAt: string;
   body: string;
   health: string | null;
+  userId: string | null;
+  userName: string | null;
+  userAvatarUrl: string | null;
 }
 
 export class LinearAPIClient {
@@ -671,6 +674,11 @@ export class LinearAPIClient {
               updatedAt
               body
               health
+              user {
+                id
+                name
+                avatarUrl
+              }
             }
           }
         }
@@ -700,7 +708,16 @@ export class LinearAPIClient {
       return [];
     }
 
-    return project.projectUpdates.nodes || [];
+    return (project.projectUpdates.nodes || []).map((node: any) => ({
+      id: node.id,
+      createdAt: node.createdAt,
+      updatedAt: node.updatedAt,
+      body: node.body,
+      health: node.health,
+      userId: node.user?.id || null,
+      userName: node.user?.name || null,
+      userAvatarUrl: node.user?.avatarUrl || null,
+    }));
   }
 }
 

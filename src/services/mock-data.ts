@@ -251,12 +251,20 @@ export function generateMockData(): {
       const updateCount = Math.floor(Math.random() * 3) + 1;
       for (let i = 0; i < updateCount; i++) {
         const updateDate = randomDate(30, i * 10);
+        // Use project lead as author if available, otherwise pick random assignee
+        const author = project.leadId
+          ? MOCK_ASSIGNEES.find((a) => a.id === project.leadId) ||
+            randomPick(MOCK_ASSIGNEES)
+          : randomPick(MOCK_ASSIGNEES);
         updates.push({
           id: generateId(),
           createdAt: updateDate.toISOString(),
           updatedAt: updateDate.toISOString(),
           body: getProjectUpdateBody(project.name, i),
           health: i === 0 ? project.health : randomPick(["onTrack", "atRisk"]),
+          userId: author.id,
+          userName: author.name,
+          userAvatarUrl: author.avatarUrl,
         });
       }
       projectUpdates.set(project.id, updates);
