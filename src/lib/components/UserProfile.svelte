@@ -75,7 +75,7 @@
 <div class="flex items-center {classes.gap}">
   <!-- Avatar -->
   <div
-    class="relative flex-shrink-0 rounded-full ring-1 shadow-md ring-white/20 shadow-black/30"
+    class="relative rounded-full ring-1 shadow-md shrink-0 ring-white/20 shadow-black/30"
   >
     {#if avatarUrl}
       <img
@@ -85,7 +85,7 @@
       />
     {:else}
       <div
-        class="{classes.avatar} rounded-full bg-gradient-to-br {gradientClass} flex items-center justify-center"
+        class="{classes.avatar} rounded-full bg-linear-to-br {gradientClass} flex items-center justify-center"
       >
         <span class="{classes.text} font-medium text-white">{initials}</span>
       </div>

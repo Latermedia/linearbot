@@ -41,7 +41,7 @@
   // Delete confirmation state
   let showDeleteSection = $state(false);
   let deleteConfirmationInput = $state("");
-  let deleteInputRef: HTMLInputElement | null = null;
+  let deleteInputRef = $state<HTMLInputElement | null>(null);
 
   const canDelete = $derived(
     deleteConfirmationInput === DELETE_CONFIRMATION_TEXT

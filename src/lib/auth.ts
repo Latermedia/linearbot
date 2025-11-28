@@ -1,4 +1,4 @@
-import { randomBytes } from "crypto";
+import { randomBytes } from "node:crypto";
 
 const SESSION_COOKIE_NAME = "linear-bot-session";
 const SESSION_TOKEN_LENGTH = 32;
