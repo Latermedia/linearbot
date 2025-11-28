@@ -333,145 +333,149 @@
   });
 </script>
 
-<Modal title="Tools" {onclose} size="sm">
-  <div class="space-y-6">
-    <!-- Sync Section -->
-    <div class="space-y-3">
-      <div class="flex items-center justify-between gap-2">
-        <span class="text-xs font-medium text-neutral-400">Sync Status</span>
-        <div class="flex items-center shrink-0">
-          <SyncIndicator />
-        </div>
-      </div>
-
-      <!-- Status message or last sync time -->
-      <div class="min-h-[3rem]">
-        {#if isSyncing && statusMessages.length > 0}
-          <StatusScroller messages={statusMessages} />
-        {:else if syncErrorMessage}
-          <p class="text-xs text-red-400">{syncErrorMessage}</p>
-        {:else if lastSyncDate}
-          <p class="text-xs text-neutral-500">
-            Last synced {formatLastSync(lastSyncDate)}
-          </p>
-        {:else}
-          <p class="text-xs text-neutral-500">Never synced</p>
-        {/if}
-      </div>
-
-      <!-- Sync Now Button -->
-      <Button
-        onclick={handleSync}
-        disabled={isSyncing}
-        variant="default"
-        size="sm"
-        class="w-full"
-      >
-        <RefreshCw
-          class={`h-3.5 w-3.5 mr-1.5 ${isSyncing ? "animate-spin" : ""}`}
-        />
-        {isSyncing ? "Syncing..." : "Sync Now"}
-      </Button>
-    </div>
-
-    <!-- System Statistics -->
-    {#if systemStats}
-      <div class="pt-4 border-t border-neutral-800 space-y-3">
-        <h3 class="text-xs font-medium text-neutral-400">System Statistics</h3>
-        <div class="grid grid-cols-2 gap-x-4 gap-y-2 text-xs">
-          <span class="text-neutral-500">Total Issues</span>
-          <span class="text-neutral-300 tabular-nums text-right">
-            {systemStats.totalIssues.toLocaleString()}
-          </span>
-          <span class="text-neutral-500">Started Issues</span>
-          <span class="text-neutral-300 tabular-nums text-right">
-            {systemStats.startedIssues.toLocaleString()}
-          </span>
-          <span class="text-neutral-500">Projects</span>
-          <span class="text-neutral-300 tabular-nums text-right">
-            {systemStats.totalProjects.toLocaleString()}
-          </span>
-          <span class="text-neutral-500">Engineers</span>
-          <span class="text-neutral-300 tabular-nums text-right">
-            {systemStats.totalEngineers.toLocaleString()}
-          </span>
-          <span class="text-neutral-500">Teams</span>
-          <span class="text-neutral-300 tabular-nums text-right">
-            {systemStats.totalTeams.toLocaleString()}
-          </span>
-        </div>
-      </div>
-    {/if}
-
-    <!-- Reset Database Section -->
-    {#if showDeleteSection}
-      <div class="pt-4 border-t border-neutral-800 space-y-3">
-        <div class="flex items-center gap-2 text-red-400">
-          <AlertTriangle class="h-3.5 w-3.5" />
-          <span class="text-xs font-medium">Danger Zone</span>
-        </div>
-
-        <p class="text-xs text-neutral-500">
-          Reset database and delete all synced data.
-        </p>
-
-        {#if resetSuccess}
-          <p class="text-xs text-green-400">Database reset successfully</p>
-        {/if}
-        {#if resetError}
-          <p class="text-xs text-red-400">{resetError}</p>
-        {/if}
-
-        <div class="space-y-2">
-          <input
-            id="delete-confirm"
-            type="text"
-            bind:value={deleteConfirmationInput}
-            bind:this={deleteInputRef}
-            class="w-full px-2.5 py-1.5 text-xs rounded bg-neutral-800/50 text-white placeholder-neutral-600 focus:outline-none focus:ring-1 focus:ring-red-500/50"
-            placeholder="Type DELETE to confirm"
-            autocomplete="off"
-            spellcheck="false"
-          />
-          <div class="flex gap-2">
-            <button
-              onclick={() => {
-                showDeleteSection = false;
-                deleteConfirmationInput = "";
-              }}
-              class="flex-1 px-3 py-1.5 text-xs text-neutral-400 hover:text-white transition-colors"
-            >
-              Cancel
-            </button>
-            <button
-              onclick={handleResetDatabase}
-              disabled={isResetting || !canDelete}
-              class="flex-1 px-3 py-1.5 text-xs rounded bg-red-500/10 text-red-400 hover:bg-red-500/20 disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
-            >
-              {isResetting ? "Resetting..." : "Reset"}
-            </button>
+<Modal title="Tools" {onclose} size="sm" children={childrenSnippet}>
+  {#snippet childrenSnippet()}
+    <div class="space-y-6">
+      <!-- Sync Section -->
+      <div class="space-y-3">
+        <div class="flex items-center justify-between gap-2">
+          <span class="text-xs font-medium text-neutral-400">Sync Status</span>
+          <div class="flex items-center shrink-0">
+            <SyncIndicator />
           </div>
         </div>
-      </div>
-    {/if}
 
-    <!-- Footer hint -->
-    <div class="pt-4 border-t border-neutral-800">
-      <p class="text-xs text-center text-neutral-500">
-        <kbd
-          class="px-1.5 py-0.5 rounded bg-neutral-800 border border-neutral-700 text-neutral-300"
-          >Esc</kbd
+        <!-- Status message or last sync time -->
+        <div class="min-h-[3rem]">
+          {#if isSyncing && statusMessages.length > 0}
+            <StatusScroller messages={statusMessages} />
+          {:else if syncErrorMessage}
+            <p class="text-xs text-red-400">{syncErrorMessage}</p>
+          {:else if lastSyncDate}
+            <p class="text-xs text-neutral-500">
+              Last synced {formatLastSync(lastSyncDate)}
+            </p>
+          {:else}
+            <p class="text-xs text-neutral-500">Never synced</p>
+          {/if}
+        </div>
+
+        <!-- Sync Now Button -->
+        <Button
+          onclick={handleSync}
+          disabled={isSyncing}
+          variant="default"
+          size="sm"
+          class="w-full"
         >
-        to close
-        {#if !showDeleteSection}
-          <span class="mx-1.5">·</span>
+          <RefreshCw
+            class={`h-3.5 w-3.5 mr-1.5 ${isSyncing ? "animate-spin" : ""}`}
+          />
+          {isSyncing ? "Syncing..." : "Sync Now"}
+        </Button>
+      </div>
+
+      <!-- System Statistics -->
+      {#if systemStats}
+        <div class="pt-4 border-t border-neutral-800 space-y-3">
+          <h3 class="text-xs font-medium text-neutral-400">
+            System Statistics
+          </h3>
+          <div class="grid grid-cols-2 gap-x-4 gap-y-2 text-xs">
+            <span class="text-neutral-500">Total Issues</span>
+            <span class="text-neutral-300 tabular-nums text-right">
+              {systemStats.totalIssues.toLocaleString()}
+            </span>
+            <span class="text-neutral-500">Started Issues</span>
+            <span class="text-neutral-300 tabular-nums text-right">
+              {systemStats.startedIssues.toLocaleString()}
+            </span>
+            <span class="text-neutral-500">Projects</span>
+            <span class="text-neutral-300 tabular-nums text-right">
+              {systemStats.totalProjects.toLocaleString()}
+            </span>
+            <span class="text-neutral-500">Engineers</span>
+            <span class="text-neutral-300 tabular-nums text-right">
+              {systemStats.totalEngineers.toLocaleString()}
+            </span>
+            <span class="text-neutral-500">Teams</span>
+            <span class="text-neutral-300 tabular-nums text-right">
+              {systemStats.totalTeams.toLocaleString()}
+            </span>
+          </div>
+        </div>
+      {/if}
+
+      <!-- Reset Database Section -->
+      {#if showDeleteSection}
+        <div class="pt-4 border-t border-neutral-800 space-y-3">
+          <div class="flex items-center gap-2 text-red-400">
+            <AlertTriangle class="h-3.5 w-3.5" />
+            <span class="text-xs font-medium">Danger Zone</span>
+          </div>
+
+          <p class="text-xs text-neutral-500">
+            Reset database and delete all synced data.
+          </p>
+
+          {#if resetSuccess}
+            <p class="text-xs text-green-400">Database reset successfully</p>
+          {/if}
+          {#if resetError}
+            <p class="text-xs text-red-400">{resetError}</p>
+          {/if}
+
+          <div class="space-y-2">
+            <input
+              id="delete-confirm"
+              type="text"
+              bind:value={deleteConfirmationInput}
+              bind:this={deleteInputRef}
+              class="w-full px-2.5 py-1.5 text-xs rounded bg-neutral-800/50 text-white placeholder-neutral-600 focus:outline-none focus:ring-1 focus:ring-red-500/50"
+              placeholder="Type DELETE to confirm"
+              autocomplete="off"
+              spellcheck="false"
+            />
+            <div class="flex gap-2">
+              <button
+                onclick={() => {
+                  showDeleteSection = false;
+                  deleteConfirmationInput = "";
+                }}
+                class="flex-1 px-3 py-1.5 text-xs text-neutral-400 hover:text-white transition-colors"
+              >
+                Cancel
+              </button>
+              <button
+                onclick={handleResetDatabase}
+                disabled={isResetting || !canDelete}
+                class="flex-1 px-3 py-1.5 text-xs rounded bg-red-500/10 text-red-400 hover:bg-red-500/20 disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
+              >
+                {isResetting ? "Resetting..." : "Reset"}
+              </button>
+            </div>
+          </div>
+        </div>
+      {/if}
+
+      <!-- Footer hint -->
+      <div class="pt-4 border-t border-neutral-800">
+        <p class="text-xs text-center text-neutral-500">
           <kbd
             class="px-1.5 py-0.5 rounded bg-neutral-800 border border-neutral-700 text-neutral-300"
-            >Shift+D</kbd
+            >Esc</kbd
           >
-          danger zone
-        {/if}
-      </p>
+          to close
+          {#if !showDeleteSection}
+            <span class="mx-1.5">·</span>
+            <kbd
+              class="px-1.5 py-0.5 rounded bg-neutral-800 border border-neutral-700 text-neutral-300"
+              >Shift+D</kbd
+            >
+            danger zone
+          {/if}
+        </p>
+      </div>
     </div>
-  </div>
+  {/snippet}
 </Modal>

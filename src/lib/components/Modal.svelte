@@ -1,15 +1,26 @@
 <script lang="ts">
   import { onMount } from "svelte";
+  import { scale, fade } from "svelte/transition";
+  import { quintOut } from "svelte/easing";
   import { X } from "lucide-svelte";
+  import type { Snippet } from "svelte";
 
   let {
     title,
     onclose,
     size = "md",
+    maxHeight,
+    scrollable = false,
+    header,
+    children,
   }: {
-    title: string;
+    title?: string;
     onclose: () => void;
-    size?: "sm" | "md" | "lg" | "xl";
+    size?: "sm" | "md" | "lg" | "xl" | "2xl" | "3xl" | "full";
+    maxHeight?: string;
+    scrollable?: boolean;
+    header?: Snippet;
+    children?: Snippet;
   } = $props();
 
   const sizeClasses = {
@@ -17,7 +28,13 @@
     md: "max-w-md",
     lg: "max-w-lg",
     xl: "max-w-xl",
+    "2xl": "max-w-4xl lg:max-w-6xl xl:max-w-7xl",
+    "3xl": "max-w-5xl lg:max-w-7xl xl:max-w-[90vw]",
+    full: "max-w-[95vw]",
   };
+
+  const hasCustomHeader = $derived(header !== undefined);
+  const hasTitle = $derived(title !== undefined);
 
   function handleKeydown(event: KeyboardEvent): void {
     if (event.key === "Escape") {
@@ -53,37 +70,73 @@
 </script>
 
 <div
-  class="modal-backdrop fixed inset-0 z-50 flex items-center justify-center bg-black/70"
+  class="flex fixed inset-0 z-50 justify-center items-center modal-backdrop bg-black/70"
   onclick={handleBackdropClick}
   onkeydown={handleBackdropKeydown}
   role="dialog"
   aria-modal="true"
   aria-labelledby="modal-title"
   tabindex="-1"
+  in:fade={{ duration: 400, easing: quintOut }}
+  out:fade={{ duration: 800, easing: quintOut }}
 >
   <div
     class="w-full {sizeClasses[
       size
-    ]} rounded-md border shadow-2xl bg-neutral-900 border-white/10 shadow-black/50 m-4"
+    ]} rounded-md border shadow-2xl bg-neutral-900 border-white/10 shadow-black/50 m-4 {scrollable
+      ? 'flex flex-col'
+      : ''}"
+    style={maxHeight ? `max-height: ${maxHeight}` : ""}
     role="document"
+    in:scale={{ duration: 400, opacity: 0, start: 3, easing: quintOut }}
+    out:scale={{ duration: 800, opacity: 0, start: 2, easing: quintOut }}
   >
-    <div class="p-5">
-      <!-- Header -->
-      <div class="flex items-center justify-between mb-5">
-        <h2 id="modal-title" class="text-sm font-medium text-white">{title}</h2>
-        <button
-          class="text-neutral-500 hover:text-white transition-colors"
-          onclick={onclose}
-          aria-label="Close modal"
-        >
-          <X class="w-4 h-4" />
-        </button>
+    {#if hasCustomHeader && header}
+      <!-- Custom Header -->
+      <div class="shrink-0">
+        {@render header()}
       </div>
+      <!-- Scrollable Content -->
+      {#if scrollable}
+        <div class="overflow-y-auto flex-1">
+          <div class="p-6 pt-6">
+            {#if children}
+              {@render children()}
+            {/if}
+          </div>
+        </div>
+      {:else}
+        <div class="p-6 pt-6">
+          {#if children}
+            {@render children()}
+          {/if}
+        </div>
+      {/if}
+    {:else}
+      <!-- Default Header -->
+      <div class="p-5">
+        {#if hasTitle}
+          <div class="flex justify-between items-center mb-5">
+            <h2 id="modal-title" class="text-sm font-medium text-white">
+              {title}
+            </h2>
+            <button
+              class="inline-flex justify-center items-center p-1.5 rounded transition-colors duration-150 cursor-pointer text-neutral-500 hover:text-white hover:bg-white/10"
+              onclick={onclose}
+              aria-label="Close modal"
+            >
+              <X class="w-4 h-4" />
+            </button>
+          </div>
+        {/if}
 
-      <!-- Content -->
-      <div class="space-y-5">
-        <slot />
+        <!-- Content -->
+        <div class="space-y-5">
+          {#if children}
+            {@render children()}
+          {/if}
+        </div>
       </div>
-    </div>
+    {/if}
   </div>
 </div>
