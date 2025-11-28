@@ -2,32 +2,31 @@
 // Favoring simplicity over resilience per requirements
 
 export interface SyncState {
-	isRunning: boolean;
-	lastSyncTime: number | null;
-	status: 'idle' | 'syncing' | 'error';
-	error?: string;
-	progressPercent?: number;
+  isRunning: boolean;
+  lastSyncTime: number | null;
+  status: "idle" | "syncing" | "error";
+  error?: string;
+  progressPercent?: number;
 }
 
 let syncState: SyncState = {
-	isRunning: false,
-	lastSyncTime: null,
-	status: 'idle',
+  isRunning: false,
+  lastSyncTime: null,
+  status: "idle",
 };
 
 export function getSyncState(): SyncState {
-	return syncState;
+  return syncState;
 }
 
 export function setSyncState(state: Partial<SyncState>): void {
-	syncState = { ...syncState, ...state };
+  syncState = { ...syncState, ...state };
 }
 
 export function resetSyncState(): void {
-	syncState = {
-		isRunning: false,
-		lastSyncTime: null,
-		status: 'idle',
-	};
+  syncState = {
+    isRunning: false,
+    lastSyncTime: null,
+    status: "idle",
+  };
 }
-

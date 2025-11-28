@@ -13,13 +13,13 @@ flowchart LR
 
 ## Stack
 
-| Layer | Technology |
-|-------|------------|
+| Layer    | Technology                 |
+| -------- | -------------------------- |
 | Frontend | SvelteKit 5 + Tailwind CSS |
-| Backend | SvelteKit API routes |
-| Database | SQLite (bun:sqlite) |
-| External | Linear GraphQL API |
-| CLI | Ink (React for terminals) |
+| Backend  | SvelteKit API routes       |
+| Database | SQLite (bun:sqlite)        |
+| External | Linear GraphQL API         |
+| CLI      | Ink (React for terminals)  |
 
 ## Directory Structure
 
@@ -66,4 +66,3 @@ docs/               # Documentation
 - GraphQL queries for issues and projects
 - Rate limit handling
 - Pagination support
-

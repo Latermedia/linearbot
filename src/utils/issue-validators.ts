@@ -1,5 +1,8 @@
 import type { Issue } from "../db/schema.js";
-import { COMMENT_THRESHOLDS, WIP_AGE_THRESHOLDS } from "../constants/thresholds.js";
+import {
+  COMMENT_THRESHOLDS,
+  WIP_AGE_THRESHOLDS,
+} from "../constants/thresholds.js";
 
 /**
  * Get the cutoff date for business day comment checking
@@ -12,7 +15,7 @@ function getBusinessDayCutoff(): Date {
   const now = new Date();
   const dayOfWeek = now.getDay(); // 0 = Sunday, 1 = Monday, ..., 6 = Saturday
   const cutoff = new Date(now);
-  
+
   if (dayOfWeek === 0) {
     // Sunday: check since Thursday (4 days ago, but only 1 business day, same as Monday)
     cutoff.setDate(cutoff.getDate() - 4);
@@ -26,7 +29,7 @@ function getBusinessDayCutoff(): Date {
     // Wednesday-Friday, Saturday: check since previous business day (2 days ago)
     cutoff.setDate(cutoff.getDate() - 2);
   }
-  
+
   // Set to end of day to be inclusive
   cutoff.setHours(23, 59, 59, 999);
   return cutoff;
@@ -107,7 +110,8 @@ export function hasWIPAgeViolation(issue: Issue): boolean {
   if (!issue.started_at) return false;
   const startedDate = new Date(issue.started_at);
   const now = new Date();
-  const daysDiff = (now.getTime() - startedDate.getTime()) / (1000 * 60 * 60 * 24);
+  const daysDiff =
+    (now.getTime() - startedDate.getTime()) / (1000 * 60 * 60 * 24);
   return daysDiff > WIP_AGE_THRESHOLDS.WIP_AGE_DAYS;
 }
 
@@ -129,4 +133,3 @@ export function hasViolations(issues: Issue[]): boolean {
       hasMissingPriority(issue)
   );
 }
-

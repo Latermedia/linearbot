@@ -183,4 +183,3 @@ export function getLogStats(): {
 
   return stats;
 }
-

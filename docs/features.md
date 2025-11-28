@@ -5,6 +5,7 @@
 ### Dashboard
 
 Stats cards showing:
+
 - Total teams and projects
 - Missing updates count
 - Status mismatches
@@ -17,6 +18,7 @@ Sortable project table grouped by team or domain. Click rows for detail modal.
 ### Gantt View
 
 90-day quarter timeline with:
+
 - Project bars with progress fill
 - Month markers
 - Today indicator line
@@ -40,17 +42,17 @@ Ink-based React TUI with browse, projects, engineers, teams, and domains views.
 
 ## Violation Tracking
 
-| Violation | Description |
-|-----------|-------------|
-| Missing estimates | Issues without story points |
-| Missing priorities | Priority = 0 |
-| Missing descriptions | Empty description field |
-| Stale updates | Project not updated in 7+ days |
-| Status mismatches | Project state vs active work |
-| WIP age | Started >14 days ago |
-| Missing lead | No project lead assigned |
-| Missing health | No health status set |
-| No recent comment | Business-day aware check |
+| Violation            | Description                    |
+| -------------------- | ------------------------------ |
+| Missing estimates    | Issues without story points    |
+| Missing priorities   | Priority = 0                   |
+| Missing descriptions | Empty description field        |
+| Stale updates        | Project not updated in 7+ days |
+| Status mismatches    | Project state vs active work   |
+| WIP age              | Started >14 days ago           |
+| Missing lead         | No project lead assigned       |
+| Missing health       | No health status set           |
+| No recent comment    | Business-day aware check       |
 
 ## Grouping
 
@@ -69,4 +71,3 @@ Gantt PNG export to clipboard with configurable overlays (today indicator, warni
 - Dev menu (`Cmd/Ctrl+Shift+D`)
 - Presentation mode (`Cmd/Ctrl+Shift+E`)
 - Hover tooltips
-

@@ -10,7 +10,7 @@
 
   // Get redirect destination from query params
   let redirectTo = $state("/");
-  
+
   onMount(() => {
     const redirectParam = $page.url.searchParams.get("redirect");
     if (redirectParam) {
@@ -53,7 +53,9 @@
   }
 </script>
 
-<div class="min-h-screen flex items-center justify-center bg-white dark:bg-neutral-950 px-4">
+<div
+  class="min-h-screen flex items-center justify-center bg-white dark:bg-neutral-950 px-4"
+>
   <div class="w-full max-w-md">
     <div class="text-center mb-8">
       <h1 class="text-2xl font-semibold text-neutral-900 dark:text-white mb-2">
@@ -92,14 +94,9 @@
         </div>
       {/if}
 
-      <Button
-        type="submit"
-        disabled={isLoading || !password}
-        class="w-full"
-      >
+      <Button type="submit" disabled={isLoading || !password} class="w-full">
         {isLoading ? "Signing in..." : "Sign in"}
       </Button>
     </form>
   </div>
 </div>
-

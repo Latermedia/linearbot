@@ -424,10 +424,10 @@ export function getInProgressProjects(): Project[] {
  * Partial sync state structure
  */
 export interface PartialSyncState {
-  initialIssuesSync: 'complete' | 'incomplete';
+  initialIssuesSync: "complete" | "incomplete";
   projectSyncs: Array<{
     projectId: string;
-    status: 'complete' | 'incomplete';
+    status: "complete" | "incomplete";
   }>;
 }
 
@@ -437,7 +437,7 @@ export interface PartialSyncState {
 export interface SyncMetadata {
   id: number;
   last_sync_time: string | null;
-  sync_status: 'idle' | 'syncing' | 'error';
+  sync_status: "idle" | "syncing" | "error";
   sync_error: string | null;
   sync_progress_percent: number | null;
   partial_sync_state: string | null;
@@ -458,7 +458,7 @@ export function getSyncMetadata(): SyncMetadata | null {
  */
 export function updateSyncMetadata(updates: {
   last_sync_time?: string | null;
-  sync_status?: 'idle' | 'syncing' | 'error';
+  sync_status?: "idle" | "syncing" | "error";
   sync_error?: string | null;
   sync_progress_percent?: number | null;
   partial_sync_state?: string | null;
@@ -468,23 +468,23 @@ export function updateSyncMetadata(updates: {
   const values: (string | number | null)[] = [];
 
   if (updates.last_sync_time !== undefined) {
-    fields.push('last_sync_time = ?');
+    fields.push("last_sync_time = ?");
     values.push(updates.last_sync_time);
   }
   if (updates.sync_status !== undefined) {
-    fields.push('sync_status = ?');
+    fields.push("sync_status = ?");
     values.push(updates.sync_status);
   }
   if (updates.sync_error !== undefined) {
-    fields.push('sync_error = ?');
+    fields.push("sync_error = ?");
     values.push(updates.sync_error);
   }
   if (updates.sync_progress_percent !== undefined) {
-    fields.push('sync_progress_percent = ?');
+    fields.push("sync_progress_percent = ?");
     values.push(updates.sync_progress_percent);
   }
   if (updates.partial_sync_state !== undefined) {
-    fields.push('partial_sync_state = ?');
+    fields.push("partial_sync_state = ?");
     values.push(updates.partial_sync_state);
   }
 
@@ -493,7 +493,7 @@ export function updateSyncMetadata(updates: {
   values.push(1); // id = 1
   const query = db.prepare(`
     UPDATE sync_metadata 
-    SET ${fields.join(', ')}
+    SET ${fields.join(", ")}
     WHERE id = ?
   `);
   query.run(...values);
@@ -502,7 +502,7 @@ export function updateSyncMetadata(updates: {
 /**
  * Helper to set sync status
  */
-export function setSyncStatus(status: 'idle' | 'syncing' | 'error'): void {
+export function setSyncStatus(status: "idle" | "syncing" | "error"): void {
   updateSyncMetadata({ sync_status: status });
 }
 
@@ -518,17 +518,21 @@ export function setSyncProgress(percent: number | null): void {
  */
 export function getPartialSyncState(): PartialSyncState | null {
   const db = getDatabase();
-  const query = db.prepare(`SELECT partial_sync_state FROM sync_metadata WHERE id = 1`);
-  const result = query.get() as { partial_sync_state: string | null } | undefined;
-  
+  const query = db.prepare(
+    `SELECT partial_sync_state FROM sync_metadata WHERE id = 1`
+  );
+  const result = query.get() as
+    | { partial_sync_state: string | null }
+    | undefined;
+
   if (!result || !result.partial_sync_state) {
     return null;
   }
-  
+
   try {
     return JSON.parse(result.partial_sync_state) as PartialSyncState;
   } catch (error) {
-    console.error('[DB] Failed to parse partial sync state:', error);
+    console.error("[DB] Failed to parse partial sync state:", error);
     return null;
   }
 }

@@ -20,26 +20,41 @@
   // Collect warning counts
   const warnings = $derived.by(() => {
     if (hideWarnings) return [];
-    
+
     const warningList: { label: string; count: number }[] = [];
-    
+
     // Issue-level violations
     if (project.missingEstimateCount > 0) {
-      warningList.push({ label: "Missing points", count: project.missingEstimateCount });
+      warningList.push({
+        label: "Missing points",
+        count: project.missingEstimateCount,
+      });
     }
     if (project.missingPriorityCount > 0) {
-      warningList.push({ label: "Missing priority", count: project.missingPriorityCount });
+      warningList.push({
+        label: "Missing priority",
+        count: project.missingPriorityCount,
+      });
     }
     if (project.noRecentCommentCount > 0) {
-      warningList.push({ label: "No recent comment", count: project.noRecentCommentCount });
+      warningList.push({
+        label: "No recent comment",
+        count: project.noRecentCommentCount,
+      });
     }
     if (project.wipAgeViolationCount > 0) {
-      warningList.push({ label: "WIP age violation", count: project.wipAgeViolationCount });
+      warningList.push({
+        label: "WIP age violation",
+        count: project.wipAgeViolationCount,
+      });
     }
     if (project.missingDescriptionCount > 0) {
-      warningList.push({ label: "Missing description", count: project.missingDescriptionCount });
+      warningList.push({
+        label: "Missing description",
+        count: project.missingDescriptionCount,
+      });
     }
-    
+
     // Project-level violations
     if (project.missingLead) {
       warningList.push({ label: "Missing project lead", count: 1 });
@@ -53,7 +68,7 @@
     if (project.missingHealth) {
       warningList.push({ label: "Missing project health", count: 1 });
     }
-    
+
     return warningList;
   });
 </script>
@@ -135,12 +150,16 @@
   <!-- Warnings -->
   {#if warnings.length > 0}
     <div class="pt-2 border-t border-neutral-200 dark:border-neutral-800">
-      <div class="mb-1.5 text-[10px] font-medium text-neutral-500 dark:text-neutral-400">
+      <div
+        class="mb-1.5 text-[10px] font-medium text-neutral-500 dark:text-neutral-400"
+      >
         Warnings
       </div>
       <div class="space-y-1">
         {#each warnings as warning}
-          <div class="flex gap-1.5 items-center text-xs text-neutral-700 dark:text-neutral-300">
+          <div
+            class="flex gap-1.5 items-center text-xs text-neutral-700 dark:text-neutral-300"
+          >
             <span class="text-amber-400 shrink-0">⚠️</span>
             <span class="flex-1">{warning.label}: {warning.count}</span>
           </div>
@@ -149,6 +168,3 @@
     </div>
   {/if}
 </div>
-
-
-

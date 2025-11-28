@@ -105,4 +105,3 @@ Domain mappings for frontend.
 ### POST /api/db/reset
 
 Reset database. Requires confirmation.
-

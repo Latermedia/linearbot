@@ -1,17 +1,16 @@
-import { json } from '@sveltejs/kit';
-import type { RequestHandler } from './$types';
-import { getSessionCookieName, deleteSession } from '$lib/auth.js';
+import { json } from "@sveltejs/kit";
+import type { RequestHandler } from "./$types";
+import { getSessionCookieName, deleteSession } from "$lib/auth.js";
 
 export const POST: RequestHandler = async ({ cookies }) => {
-	const sessionToken = cookies.get(getSessionCookieName());
-	
-	if (sessionToken) {
-		deleteSession(sessionToken);
-	}
+  const sessionToken = cookies.get(getSessionCookieName());
 
-	// Clear the cookie
-	cookies.delete(getSessionCookieName(), { path: '/' });
+  if (sessionToken) {
+    deleteSession(sessionToken);
+  }
 
-	return json({ success: true });
+  // Clear the cookie
+  cookies.delete(getSessionCookieName(), { path: "/" });
+
+  return json({ success: true });
 };
-

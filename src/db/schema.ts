@@ -355,14 +355,14 @@ export function initializeDatabase(db: Database): void {
       partial_sync_state TEXT
     )
   `);
-  
+
   // Add partial_sync_state column if it doesn't exist (migration)
   try {
     db.run(`ALTER TABLE sync_metadata ADD COLUMN partial_sync_state TEXT`);
   } catch (e) {
     // Column already exists, ignore
   }
-  
+
   // Initialize sync_metadata if it doesn't exist
   db.run(`
     INSERT OR IGNORE INTO sync_metadata (id, sync_status) VALUES (1, 'idle')

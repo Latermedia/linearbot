@@ -9,8 +9,8 @@ export function openUrl(url: string): void {
     process.platform === "darwin"
       ? `open "${url}"`
       : process.platform === "win32"
-      ? `start "${url}"`
-      : `xdg-open "${url}"`;
+        ? `start "${url}"`
+        : `xdg-open "${url}"`;
 
   exec(command);
 }
@@ -28,11 +28,10 @@ export function openIssue(issue: Issue): void {
  */
 export function openProject(projectId: string, issueUrl: string): void {
   // Extract workspace from issue URL
-  const workspaceMatch = issueUrl.match(/https:\/\/linear\.app\/([^\/]+)/);
+  const workspaceMatch = issueUrl.match(/https:\/\/linear\.app\/([^/]+)/);
   if (workspaceMatch) {
     const workspace = workspaceMatch[1];
     const projectUrl = `https://linear.app/${workspace}/project/${projectId}`;
     openUrl(projectUrl);
   }
 }
-

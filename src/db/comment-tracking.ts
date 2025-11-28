@@ -4,7 +4,7 @@ export const COMMENT_TYPES = {
   UNASSIGNED_WARNING: "unassigned_warning",
 } as const;
 
-export type CommentType = typeof COMMENT_TYPES[keyof typeof COMMENT_TYPES];
+export type CommentType = (typeof COMMENT_TYPES)[keyof typeof COMMENT_TYPES];
 
 /**
  * Check if we've commented on an issue recently
@@ -52,7 +52,10 @@ export function logComment(
 /**
  * Clean up old comment logs (older than 30 days)
  */
-export function cleanupOldCommentLogs(db: Database, daysToKeep: number = 30): number {
+export function cleanupOldCommentLogs(
+  db: Database,
+  daysToKeep: number = 30
+): number {
   const cutoffDate = new Date();
   cutoffDate.setDate(cutoffDate.getDate() - daysToKeep);
 
@@ -90,6 +93,8 @@ export function getUnassignedIssuesNeedingComments(
       )
   `);
 
-  const results = query.all(commentType, cutoffDate.toISOString()) as { id: string }[];
+  const results = query.all(commentType, cutoffDate.toISOString()) as {
+    id: string;
+  }[];
   return results.map((r) => r.id);
 }

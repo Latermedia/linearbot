@@ -28,14 +28,14 @@
     if (!browser) return;
 
     function handleKeydown(event: KeyboardEvent) {
-      const isMac = navigator.platform.toUpperCase().indexOf('MAC') >= 0;
+      const isMac = navigator.platform.toUpperCase().indexOf("MAC") >= 0;
       const keyLower = event.key.toLowerCase();
-      
+
       // Check for shortcut: Cmd+Shift+E (Mac) or Ctrl+Shift+E (Windows/Linux)
-      const modifierPressed = isMac 
-        ? (event.metaKey && event.shiftKey && !event.altKey && !event.ctrlKey)
-        : (event.ctrlKey && event.shiftKey && !event.altKey && !event.metaKey);
-      
+      const modifierPressed = isMac
+        ? event.metaKey && event.shiftKey && !event.altKey && !event.ctrlKey
+        : event.ctrlKey && event.shiftKey && !event.altKey && !event.metaKey;
+
       if (modifierPressed && keyLower === "e") {
         event.preventDefault();
         event.stopPropagation();
@@ -46,10 +46,15 @@
       }
     }
 
-    document.addEventListener("keydown", handleKeydown, { capture: true, passive: false });
-    
+    document.addEventListener("keydown", handleKeydown, {
+      capture: true,
+      passive: false,
+    });
+
     return () => {
-      document.removeEventListener("keydown", handleKeydown, { capture: true } as any);
+      document.removeEventListener("keydown", handleKeydown, {
+        capture: true,
+      } as any);
     };
   });
 

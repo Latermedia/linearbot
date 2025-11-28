@@ -12,14 +12,14 @@ See [README.md](README.md) for prerequisites and configuration.
 
 Use [Conventional Commits](https://www.conventionalcommits.org/):
 
-| Prefix   | Use case                    |
-| -------- | --------------------------- |
-| `feat:`  | New feature                 |
-| `fix:`   | Bug fix                     |
-| `docs:`  | Documentation only          |
+| Prefix      | Use case                    |
+| ----------- | --------------------------- |
+| `feat:`     | New feature                 |
+| `fix:`      | Bug fix                     |
+| `docs:`     | Documentation only          |
 | `refactor:` | Code change, no new feature |
-| `chore:` | Build, deps, config         |
-| `test:`  | Adding/updating tests       |
+| `chore:`    | Build, deps, config         |
+| `test:`     | Adding/updating tests       |
 
 ## Pull Requests
 
@@ -37,4 +37,3 @@ See [docs/architecture.md](docs/architecture.md) for system design and directory
 
 - [TODO.md](TODO.md) — Roadmap and known issues
 - [docs/](docs/README.md) — Full documentation
-

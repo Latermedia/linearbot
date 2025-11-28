@@ -74,13 +74,18 @@ export async function commentOnUnassignedIssues(
     }
 
     // Filter out issues we've commented on in the past 24 hours (local DB check)
-    let issuesNeedingComments = unassignedIssues.filter(
+    const issuesNeedingComments = unassignedIssues.filter(
       (issue) =>
-        !hasRecentComment(db, issue.id, COMMENT_TYPES.UNASSIGNED_WARNING, COMMENT_THRESHOLDS.RECENT_HOURS)
+        !hasRecentComment(
+          db,
+          issue.id,
+          COMMENT_TYPES.UNASSIGNED_WARNING,
+          COMMENT_THRESHOLDS.RECENT_HOURS
+        )
     );
 
     const linearClient = createLinearClient();
-    
+
     // Unique identifier in the message to search for
     const messageIdentifier = "This issue requires an assignee";
 
@@ -116,12 +121,14 @@ export async function commentOnUnassignedIssues(
     for (const issue of finalIssuesNeedingComments) {
       try {
         // Build message with optional creator @mention
-        let message = "⚠️  **This issue requires an assignee**\n\nThis started issue is currently unassigned.";
-        
+        let message =
+          "⚠️  **This issue requires an assignee**\n\nThis started issue is currently unassigned.";
+
         if (issue.creator_name) {
           message += ` Consider assigning to creator @${issue.creator_name} or designate appropriate owner.`;
         } else {
-          message += " Please assign an owner to ensure it gets proper attention and tracking.";
+          message +=
+            " Please assign an owner to ensure it gets proper attention and tracking.";
         }
 
         const success = await linearClient.commentOnIssue(issue.id, message);
@@ -157,7 +164,9 @@ export async function commentOnUnassignedIssues(
         }
 
         // Small delay to avoid rate limiting
-        await new Promise((resolve) => setTimeout(resolve, RATE_LIMITS.COMMENT_DELAY_MS));
+        await new Promise((resolve) =>
+          setTimeout(resolve, RATE_LIMITS.COMMENT_DELAY_MS)
+        );
       } catch (commentError) {
         // Log the failed comment with error details
         logCommentFailed(
@@ -197,4 +206,3 @@ export async function commentOnUnassignedIssues(
     };
   }
 }
-

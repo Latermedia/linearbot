@@ -39,14 +39,14 @@
     if (!browser) return;
 
     function handleKeydown(event: KeyboardEvent) {
-      const isMac = navigator.platform.toUpperCase().indexOf('MAC') >= 0;
+      const isMac = navigator.platform.toUpperCase().indexOf("MAC") >= 0;
       const keyLower = event.key.toLowerCase();
-      
+
       // Check for shortcut: Cmd+Shift+D (Mac) or Ctrl+Shift+D (Windows/Linux)
-      const modifierPressed = isMac 
-        ? (event.metaKey && event.shiftKey && !event.altKey && !event.ctrlKey)
-        : (event.ctrlKey && event.shiftKey && !event.altKey && !event.metaKey);
-      
+      const modifierPressed = isMac
+        ? event.metaKey && event.shiftKey && !event.altKey && !event.ctrlKey
+        : event.ctrlKey && event.shiftKey && !event.altKey && !event.metaKey;
+
       if (modifierPressed && keyLower === "d") {
         event.preventDefault();
         event.stopPropagation();
@@ -56,10 +56,15 @@
       }
     }
 
-    document.addEventListener("keydown", handleKeydown, { capture: true, passive: false });
-    
+    document.addEventListener("keydown", handleKeydown, {
+      capture: true,
+      passive: false,
+    });
+
     return () => {
-      document.removeEventListener("keydown", handleKeydown, { capture: true } as any);
+      document.removeEventListener("keydown", handleKeydown, {
+        capture: true,
+      } as any);
     };
   });
 
@@ -76,7 +81,7 @@
   // Client-side route protection (for SPA navigation)
   $effect(() => {
     if (!browser) return;
-    
+
     // Skip auth check on login page
     if ($page.url.pathname === "/login") {
       return;
@@ -110,9 +115,9 @@
                 href="/"
                 onclick={() => presentationMode.set(false)}
                 class="px-3 py-1.5 text-sm font-medium rounded transition-colors
-                  {$page.url.pathname === '/' 
-                    ? 'bg-neutral-100 dark:bg-neutral-800 text-neutral-900 dark:text-white' 
-                    : 'text-neutral-600 dark:text-neutral-400 hover:text-neutral-900 dark:hover:text-white hover:bg-neutral-50 dark:hover:bg-neutral-900'}"
+                  {$page.url.pathname === '/'
+                  ? 'bg-neutral-100 dark:bg-neutral-800 text-neutral-900 dark:text-white'
+                  : 'text-neutral-600 dark:text-neutral-400 hover:text-neutral-900 dark:hover:text-white hover:bg-neutral-50 dark:hover:bg-neutral-900'}"
               >
                 Dashboard
               </a>
@@ -120,9 +125,9 @@
                 href="/executive"
                 onclick={() => presentationMode.set(false)}
                 class="px-3 py-1.5 text-sm font-medium rounded transition-colors
-                  {$page.url.pathname === '/executive' 
-                    ? 'bg-neutral-100 dark:bg-neutral-800 text-neutral-900 dark:text-white' 
-                    : 'text-neutral-600 dark:text-neutral-400 hover:text-neutral-900 dark:hover:text-white hover:bg-neutral-50 dark:hover:bg-neutral-900'}"
+                  {$page.url.pathname === '/executive'
+                  ? 'bg-neutral-100 dark:bg-neutral-800 text-neutral-900 dark:text-white'
+                  : 'text-neutral-600 dark:text-neutral-400 hover:text-neutral-900 dark:hover:text-white hover:bg-neutral-50 dark:hover:bg-neutral-900'}"
               >
                 Executive
               </a>

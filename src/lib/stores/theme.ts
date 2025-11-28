@@ -47,8 +47,9 @@ function createThemeStore() {
       // Reactive statement in +layout.svelte will handle DOM updates
       if (browser) {
         const stored = localStorage.getItem(STORAGE_KEY) as Theme;
-        const hasDarkClass = document.documentElement.classList.contains("dark");
-        
+        const hasDarkClass =
+          document.documentElement.classList.contains("dark");
+
         // If we have a stored value, use it
         if (stored) {
           set(stored);

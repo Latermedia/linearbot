@@ -20,18 +20,20 @@ function isRateLimitError(error: any): boolean {
   if (error?.statusCode === 429 || error?.response?.status === 429) {
     return true;
   }
-  
+
   // Check Linear SDK error structure - the SDK sets type: "Ratelimited"
   if (error?.type === "Ratelimited" || error?.type === "ratelimited") {
     return true;
   }
-  
+
   // Check GraphQL error extensions - Linear returns statusCode 429 in extensions
-  if (error?.response?.errors?.[0]?.extensions?.statusCode === 429 ||
-      error?.response?.errors?.[0]?.extensions?.code === "RATELIMITED") {
+  if (
+    error?.response?.errors?.[0]?.extensions?.statusCode === 429 ||
+    error?.response?.errors?.[0]?.extensions?.code === "RATELIMITED"
+  ) {
     return true;
   }
-  
+
   // Check error message for rate limit indicators (most reliable fallback)
   const errorMessage = String(error?.message || error?.error || "");
   if (
@@ -42,7 +44,7 @@ function isRateLimitError(error: any): boolean {
   ) {
     return true;
   }
-  
+
   return false;
 }
 
@@ -227,7 +229,10 @@ export class LinearAPIClient {
             : null,
           projectLeadId: issue.project?.lead?.id || null,
           projectLeadName: issue.project?.lead?.name || null,
-          projectLabels: issue.project?.labels?.nodes?.map((l: { name: string }) => l.name) || [],
+          projectLabels:
+            issue.project?.labels?.nodes?.map(
+              (l: { name: string }) => l.name
+            ) || [],
         });
       }
 
@@ -253,7 +258,12 @@ export class LinearAPIClient {
 
   async fetchIssuesByProjects(
     projectIds: string[],
-    onProgress?: (current: number, pageSize?: number, projectIndex?: number, totalProjects?: number) => void,
+    onProgress?: (
+      current: number,
+      pageSize?: number,
+      projectIndex?: number,
+      totalProjects?: number
+    ) => void,
     projectDescriptionsMap?: Map<string, string | null>,
     projectUpdatesMap?: Map<string, ProjectUpdate[]>
   ): Promise<LinearIssueData[]> {
@@ -263,12 +273,16 @@ export class LinearAPIClient {
     const totalProjects = projectIds.length;
 
     // Fetch issues for each project (Linear doesn't support OR in project filters)
-    for (let projectIndex = 0; projectIndex < projectIds.length; projectIndex++) {
+    for (
+      let projectIndex = 0;
+      projectIndex < projectIds.length;
+      projectIndex++
+    ) {
       const projectId = projectIds[projectIndex];
       let hasMore = true;
       let cursor: string | undefined;
       let pageCount = 0;
-      let projectIssues: LinearIssueData[] = [];
+      const projectIssues: LinearIssueData[] = [];
       let projectName: string | null = null;
 
       // Notify start of project
@@ -410,9 +424,12 @@ export class LinearAPIClient {
               : null,
             projectLeadId: issue.project?.lead?.id || null,
             projectLeadName: issue.project?.lead?.name || null,
-            projectLabels: issue.project?.labels?.nodes?.map((l: { name: string }) => l.name) || [],
+            projectLabels:
+              issue.project?.labels?.nodes?.map(
+                (l: { name: string }) => l.name
+              ) || [],
           };
-          
+
           issues.push(issueData);
           projectIssues.push(issueData);
         }
@@ -425,10 +442,17 @@ export class LinearAPIClient {
         const projectDisplayName = projectName || projectId;
         const currentCount = projectIssues.length;
         const pageSize = data.nodes.length;
-        console.log(`[SYNC] Project ${projectIndex + 1}/${totalProjects} (${projectDisplayName}, ID: ${projectId}): ${currentCount} issues (${pageSize} in this page)`);
+        console.log(
+          `[SYNC] Project ${projectIndex + 1}/${totalProjects} (${projectDisplayName}, ID: ${projectId}): ${currentCount} issues (${pageSize} in this page)`
+        );
 
         if (onProgress) {
-          onProgress(issues.length, data.nodes.length, projectIndex, totalProjects);
+          onProgress(
+            issues.length,
+            data.nodes.length,
+            projectIndex,
+            totalProjects
+          );
         }
 
         // Safety break
@@ -443,8 +467,10 @@ export class LinearAPIClient {
       // Log summary for this project
       const projectDisplayName = projectName || projectId;
       const finalCount = projectIssues.length;
-      console.log(`[SYNC] Project ${projectIndex + 1}/${totalProjects} summary: ${projectDisplayName} (ID: ${projectId}) - ${finalCount} issues`);
-      
+      console.log(
+        `[SYNC] Project ${projectIndex + 1}/${totalProjects} summary: ${projectDisplayName} (ID: ${projectId}) - ${finalCount} issues`
+      );
+
       // Fetch project description along the way
       if (projectDescriptionsMap !== undefined) {
         try {
@@ -455,11 +481,14 @@ export class LinearAPIClient {
           if (error instanceof RateLimitError) {
             throw error;
           }
-          console.error(`[SYNC] Failed to fetch description for project ${projectId}:`, error);
+          console.error(
+            `[SYNC] Failed to fetch description for project ${projectId}:`,
+            error
+          );
           projectDescriptionsMap.set(projectId, null);
         }
       }
-      
+
       // Fetch project updates along the way
       if (projectUpdatesMap !== undefined) {
         try {
@@ -470,7 +499,10 @@ export class LinearAPIClient {
           if (error instanceof RateLimitError) {
             throw error;
           }
-          console.error(`[SYNC] Failed to fetch updates for project ${projectId}:`, error);
+          console.error(
+            `[SYNC] Failed to fetch updates for project ${projectId}:`,
+            error
+          );
           projectUpdatesMap.set(projectId, []);
         }
       }
@@ -567,7 +599,10 @@ export class LinearAPIClient {
     try {
       // Add a timeout to avoid hanging
       const timeoutPromise = new Promise<never>((_, reject) =>
-        setTimeout(() => reject(new Error("Connection timeout")), TIMEOUTS.API_TIMEOUT_MS)
+        setTimeout(
+          () => reject(new Error("Connection timeout")),
+          TIMEOUTS.API_TIMEOUT_MS
+        )
       );
 
       await Promise.race([this.client.viewer, timeoutPromise]);
@@ -660,7 +695,6 @@ export class LinearAPIClient {
 
     return project.projectUpdates.nodes || [];
   }
-
 }
 
 export function createLinearClient(apiKey?: string): LinearAPIClient {

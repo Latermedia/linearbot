@@ -1,4 +1,4 @@
-import type { Issue } from '../db/schema';
+import type { Issue } from "../db/schema";
 
 /**
  * Browser-compatible database queries using typed API endpoints
@@ -6,73 +6,84 @@ import type { Issue } from '../db/schema';
  */
 
 export async function getAllIssues(): Promise<Issue[]> {
-	const response = await fetch('/api/issues');
-	if (!response.ok) {
-		throw new Error('Failed to fetch all issues');
-	}
-	const data = await response.json();
-	return data.issues;
+  const response = await fetch("/api/issues");
+  if (!response.ok) {
+    throw new Error("Failed to fetch all issues");
+  }
+  const data = await response.json();
+  return data.issues;
 }
 
 export async function getStartedIssues(): Promise<Issue[]> {
-	const response = await fetch('/api/issues/started');
-	if (!response.ok) {
-		throw new Error('Failed to fetch started issues');
-	}
-	const data = await response.json();
-	return data.issues;
+  const response = await fetch("/api/issues/started");
+  if (!response.ok) {
+    throw new Error("Failed to fetch started issues");
+  }
+  const data = await response.json();
+  return data.issues;
 }
 
 export async function getIssuesWithProjects(): Promise<Issue[]> {
-	console.log('[getIssuesWithProjects] Fetching from /api/issues/with-projects...');
-	const response = await fetch('/api/issues/with-projects');
-	console.log('[getIssuesWithProjects] Response status:', response.status, response.statusText);
-	if (!response.ok) {
-		const errorText = await response.text();
-		console.error('[getIssuesWithProjects] Error response:', errorText);
-		throw new Error('Failed to fetch issues with projects');
-	}
-	const data = await response.json();
-	console.log('[getIssuesWithProjects] Received data:', { issueCount: data.issues?.length || 0 });
-	return data.issues || [];
+  console.log(
+    "[getIssuesWithProjects] Fetching from /api/issues/with-projects..."
+  );
+  const response = await fetch("/api/issues/with-projects");
+  console.log(
+    "[getIssuesWithProjects] Response status:",
+    response.status,
+    response.statusText
+  );
+  if (!response.ok) {
+    const errorText = await response.text();
+    console.error("[getIssuesWithProjects] Error response:", errorText);
+    throw new Error("Failed to fetch issues with projects");
+  }
+  const data = await response.json();
+  console.log("[getIssuesWithProjects] Received data:", {
+    issueCount: data.issues?.length || 0,
+  });
+  return data.issues || [];
 }
 
 export async function getStartedProjectIssuesWithAssignees(): Promise<Issue[]> {
-	const response = await fetch('/api/issues/started/with-projects');
-	if (!response.ok) {
-		throw new Error('Failed to fetch started project issues');
-	}
-	const data = await response.json();
-	return data.issues;
+  const response = await fetch("/api/issues/started/with-projects");
+  if (!response.ok) {
+    throw new Error("Failed to fetch started project issues");
+  }
+  const data = await response.json();
+  return data.issues;
 }
 
 export async function getTotalIssueCount(): Promise<number> {
-	const response = await fetch('/api/issues/count');
-	if (!response.ok) {
-		throw new Error('Failed to fetch issue count');
-	}
-	const data = await response.json();
-	return data.count;
+  const response = await fetch("/api/issues/count");
+  if (!response.ok) {
+    throw new Error("Failed to fetch issue count");
+  }
+  const data = await response.json();
+  return data.count;
 }
 
-export async function getStartedIssuesByTeams(teamKeys: string[]): Promise<Issue[]> {
-	if (teamKeys.length === 0) return [];
+export async function getStartedIssuesByTeams(
+  teamKeys: string[]
+): Promise<Issue[]> {
+  if (teamKeys.length === 0) return [];
 
-	const teamsParam = teamKeys.join(',');
-	const response = await fetch(`/api/issues/started/by-teams?teams=${encodeURIComponent(teamsParam)}`);
-	if (!response.ok) {
-		throw new Error('Failed to fetch issues by teams');
-	}
-	const data = await response.json();
-	return data.issues;
+  const teamsParam = teamKeys.join(",");
+  const response = await fetch(
+    `/api/issues/started/by-teams?teams=${encodeURIComponent(teamsParam)}`
+  );
+  if (!response.ok) {
+    throw new Error("Failed to fetch issues by teams");
+  }
+  const data = await response.json();
+  return data.issues;
 }
 
 export async function getAllProjects() {
-	const response = await fetch('/api/projects');
-	if (!response.ok) {
-		throw new Error('Failed to fetch projects');
-	}
-	const data = await response.json();
-	return data.projects;
+  const response = await fetch("/api/projects");
+  if (!response.ok) {
+    throw new Error("Failed to fetch projects");
+  }
+  const data = await response.json();
+  return data.projects;
 }
-

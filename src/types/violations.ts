@@ -32,4 +32,3 @@ export interface DashboardData {
   totalDomains: number;
   domainsWithViolations: number;
 }
-

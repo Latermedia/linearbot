@@ -18,4 +18,3 @@
   </div>
   <Badge variant="outline">{projectCount} projects</Badge>
 </div>
-

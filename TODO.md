@@ -46,13 +46,12 @@ Planned features and known issues for LinearBot.
 
 Current bugs and gaps to fix:
 
-| Issue | Impact |
-|-------|--------|
-| 0-point estimates trigger warning | `!issue.estimate` is falsy for 0 |
-| Alerts on cancelled/duplicate | Should be suppressed |
-| Start date uses `created_at` | Should use `started_at` (WIP start) |
-| Issue identifier not in UI | Synced but not displayed |
-| No subissue detection | Can't exclude from calculations |
-| Author missing on updates | Updates shown, author not |
-| Linear target date not synced | Only velocity prediction shown |
-
+| Issue                             | Impact                              |
+| --------------------------------- | ----------------------------------- |
+| 0-point estimates trigger warning | `!issue.estimate` is falsy for 0    |
+| Alerts on cancelled/duplicate     | Should be suppressed                |
+| Start date uses `created_at`      | Should use `started_at` (WIP start) |
+| Issue identifier not in UI        | Synced but not displayed            |
+| No subissue detection             | Can't exclude from calculations     |
+| Author missing on updates         | Updates shown, author not           |
+| Linear target date not synced     | Only velocity prediction shown      |

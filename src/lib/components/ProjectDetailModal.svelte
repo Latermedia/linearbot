@@ -78,7 +78,7 @@
         if (projectIssue?.url) {
           // Extract workspace from issue URL
           const workspaceMatch = projectIssue.url.match(
-            /https:\/\/linear\.app\/([^\/]+)/
+            /https:\/\/linear\.app\/([^/]+)/
           );
           if (workspaceMatch) {
             const workspace = workspaceMatch[1];
@@ -544,7 +544,7 @@
             <div class="text-sm text-neutral-400">No issues found</div>
           {:else}
             {@const issuesByState = (() => {
-              const map = new Map<string, Issue[]>();
+              const map = new Map();
               for (const issue of projectIssues) {
                 if (!map.has(issue.state_name)) {
                   map.set(issue.state_name, []);

@@ -2,7 +2,7 @@
 
 ## v0.1.0
 
-*Initial release*
+_Initial release_
 
 ### Added
 
@@ -29,4 +29,3 @@
 - Password authentication (24h sessions)
 - Fly.io deployment configuration
 - Theme toggle (dark/light)
-

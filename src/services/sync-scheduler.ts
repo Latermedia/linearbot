@@ -11,14 +11,18 @@ async function runScheduledSync(): Promise<void> {
     // Skip sync in local development mode
     const isProduction = process.env.NODE_ENV === "production";
     if (!isProduction) {
-      console.log("[SCHEDULER] Scheduled sync skipped in local development mode");
+      console.log(
+        "[SCHEDULER] Scheduled sync skipped in local development mode"
+      );
       return;
     }
 
     // Check if sync already running
     const metadata = getSyncMetadata();
     if (metadata?.sync_status === "syncing") {
-      console.log("[SCHEDULER] Sync already in progress, skipping scheduled sync");
+      console.log(
+        "[SCHEDULER] Sync already in progress, skipping scheduled sync"
+      );
       return;
     }
 
@@ -28,10 +32,12 @@ async function runScheduledSync(): Promise<void> {
       const errorMsg = metadata.sync_error.toLowerCase();
       const isRateLimitError = errorMsg.includes("rate limit");
       const hasPartialSync = getPartialSyncState() !== null;
-      
+
       // Only skip if it's a non-rate-limit error and no partial sync exists
       if (!isRateLimitError && !hasPartialSync) {
-        console.log("[SCHEDULER] Previous sync had non-rate-limit error, skipping retry until next scheduled sync");
+        console.log(
+          "[SCHEDULER] Previous sync had non-rate-limit error, skipping retry until next scheduled sync"
+        );
         return;
       }
     }
@@ -57,7 +63,9 @@ async function runScheduledSync(): Promise<void> {
  * Initialize the sync scheduler with a cron job or interval that runs every 10 minutes
  */
 export function initializeSyncScheduler(): void {
-  console.log("[SYNC-SCHEDULER] Initializing sync scheduler (every 30 minutes)");
+  console.log(
+    "[SYNC-SCHEDULER] Initializing sync scheduler (every 30 minutes)"
+  );
 
   // Check if Bun.cron is available (Bun-specific API)
   if (typeof Bun !== "undefined" && typeof Bun.cron === "function") {
@@ -67,14 +75,15 @@ export function initializeSyncScheduler(): void {
       return;
     } catch (error) {
       const errorMsg = error instanceof Error ? error.message : String(error);
-      console.warn(`[SYNC-SCHEDULER] Bun.cron failed: ${errorMsg}, falling back to setInterval`);
+      console.warn(
+        `[SYNC-SCHEDULER] Bun.cron failed: ${errorMsg}, falling back to setInterval`
+      );
     }
   }
 
   // Fallback to setInterval if Bun.cron is not available
   console.log("[SYNC-SCHEDULER] Using setInterval for scheduled syncs");
   setInterval(runScheduledSync, SYNC_INTERVAL_MS);
-  
+
   console.log("[SYNC-SCHEDULER] Sync scheduler initialized successfully");
 }
-

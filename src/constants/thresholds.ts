@@ -126,4 +126,3 @@ export const PAGINATION = {
   /** Safety limit to prevent infinite loops */
   MAX_PAGES: 100,
 } as const;
-

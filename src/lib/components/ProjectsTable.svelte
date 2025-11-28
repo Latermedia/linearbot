@@ -149,5 +149,9 @@
 
 <!-- Project Detail Modal -->
 {#if selectedProject}
-  <ProjectDetailModal project={selectedProject} onclose={closeModal} {hideWarnings} />
+  <ProjectDetailModal
+    project={selectedProject}
+    onclose={closeModal}
+    {hideWarnings}
+  />
 {/if}

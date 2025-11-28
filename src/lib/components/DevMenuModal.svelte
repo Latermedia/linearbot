@@ -17,7 +17,7 @@
   let isResetting = $state(false);
   let resetError = $state<string | null>(null);
   let resetSuccess = $state(false);
-  
+
   let syncStatus = $state<"idle" | "syncing" | "error">("idle");
   let isRefreshing = $state(false);
   let serverLastSyncTime: number | null = $state(null);
@@ -59,21 +59,20 @@
         const data = await response.json();
         const wasSyncing = syncStatus === "syncing" || isRefreshing;
         const previousSyncTime = serverLastSyncTime;
-        
+
         syncStatus = data.status;
         serverLastSyncTime = data.lastSyncTime;
         progressPercent = data.progressPercent ?? null;
         syncErrorMessage = data.error || null;
 
         // Detect if lastSyncTime changed (sync completed, either manual or automatic)
-        const syncTimeChanged = 
-          serverLastSyncTime !== null && 
-          previousSyncTime !== null && 
+        const syncTimeChanged =
+          serverLastSyncTime !== null &&
+          previousSyncTime !== null &&
           serverLastSyncTime !== previousSyncTime;
-        
-        const isNewSync = 
-          serverLastSyncTime !== null && 
-          previousSyncTime === null;
+
+        const isNewSync =
+          serverLastSyncTime !== null && previousSyncTime === null;
 
         // If sync completed (was syncing, now idle) OR sync time changed (automatic sync), reload data
         if (
@@ -88,7 +87,7 @@
         } else if (syncStatus === "idle" && !data.isRunning) {
           isRefreshing = false;
         }
-        
+
         // Update previous sync time if it changed
         if (serverLastSyncTime !== previousSyncTime) {
           previousLastSyncTime = serverLastSyncTime;
@@ -126,7 +125,8 @@
 
       syncStatus = "syncing";
     } catch (error) {
-      syncErrorMessage = error instanceof Error ? error.message : "Failed to start sync";
+      syncErrorMessage =
+        error instanceof Error ? error.message : "Failed to start sync";
       isRefreshing = false;
       syncStatus = "error";
     }
@@ -134,8 +134,12 @@
 
   async function handleResetDatabase() {
     if (!browser || isResetting) return;
-    
-    if (!confirm("⚠️ Are you sure you want to reset the database?\n\nThis will delete ALL synced data. You'll need to sync again after this.")) {
+
+    if (
+      !confirm(
+        "⚠️ Are you sure you want to reset the database?\n\nThis will delete ALL synced data. You'll need to sync again after this."
+      )
+    ) {
       return;
     }
 
@@ -159,7 +163,8 @@
       // Reload data after reset
       await databaseStore.load();
     } catch (error) {
-      resetError = error instanceof Error ? error.message : "Failed to reset database";
+      resetError =
+        error instanceof Error ? error.message : "Failed to reset database";
     } finally {
       isResetting = false;
     }
@@ -188,7 +193,7 @@
   onMount(() => {
     document.addEventListener("keydown", handleKeydown);
     document.body.style.overflow = "hidden";
-    
+
     // Initial status check
     checkSyncStatus();
 
@@ -211,7 +216,10 @@
     if (!browser) return;
 
     if (syncStatus === "syncing" && !pollIntervalId) {
-      pollIntervalId = setInterval(checkSyncStatus, POLL_INTERVAL) as unknown as number;
+      pollIntervalId = setInterval(
+        checkSyncStatus,
+        POLL_INTERVAL
+      ) as unknown as number;
     } else if (syncStatus !== "syncing" && pollIntervalId) {
       clearInterval(pollIntervalId);
       pollIntervalId = undefined;
@@ -250,15 +258,10 @@
       <!-- Header -->
       <div class="flex items-start justify-between mb-6">
         <div class="flex-1">
-          <h2
-            id="modal-title"
-            class="text-lg font-medium text-white mb-1"
-          >
+          <h2 id="modal-title" class="text-lg font-medium text-white mb-1">
             🔧 Dev Menu
           </h2>
-          <p class="text-xs text-neutral-400">
-            Developer tools and utilities
-          </p>
+          <p class="text-xs text-neutral-400">Developer tools and utilities</p>
         </div>
         <button
           class="text-neutral-400 hover:text-white transition-colors duration-150"
@@ -273,17 +276,26 @@
       <div class="space-y-4">
         <div>
           <h3 class="text-sm font-medium text-white mb-2">Sync</h3>
-          <div class="p-3 rounded-md bg-neutral-800/50 border border-neutral-700/50">
+          <div
+            class="p-3 rounded-md bg-neutral-800/50 border border-neutral-700/50"
+          >
             <p class="text-xs text-neutral-400 mb-3">
-              Sync data from Linear API. This will fetch all started issues and project data.
+              Sync data from Linear API. This will fetch all started issues and
+              project data.
             </p>
             {#if syncStatus === "syncing" && progressPercent !== null}
-              <div class="mb-3 p-2 rounded bg-blue-500/10 border border-blue-500/20">
-                <p class="text-xs text-blue-400">Syncing... {progressPercent}%</p>
+              <div
+                class="mb-3 p-2 rounded bg-blue-500/10 border border-blue-500/20"
+              >
+                <p class="text-xs text-blue-400">
+                  Syncing... {progressPercent}%
+                </p>
               </div>
             {/if}
             {#if syncErrorMessage}
-              <div class="mb-3 p-2 rounded bg-red-500/10 border border-red-500/20">
+              <div
+                class="mb-3 p-2 rounded bg-red-500/10 border border-red-500/20"
+              >
                 <p class="text-xs text-red-400">{syncErrorMessage}</p>
               </div>
             {/if}
@@ -299,7 +311,9 @@
               size="sm"
               class="w-full"
             >
-              <RefreshCw class={`h-4 w-4 mr-2 ${isRefreshing || syncStatus === "syncing" ? "animate-spin" : ""}`} />
+              <RefreshCw
+                class={`h-4 w-4 mr-2 ${isRefreshing || syncStatus === "syncing" ? "animate-spin" : ""}`}
+              />
               {#if syncStatus === "syncing" || isRefreshing}
                 Syncing...
               {:else}
@@ -312,17 +326,26 @@
         <!-- Reset Database Section -->
         <div>
           <h3 class="text-sm font-medium text-white mb-2">Database</h3>
-          <div class="p-3 rounded-md bg-neutral-800/50 border border-neutral-700/50">
+          <div
+            class="p-3 rounded-md bg-neutral-800/50 border border-neutral-700/50"
+          >
             <p class="text-xs text-neutral-400 mb-3">
-              Reset the database to fix schema issues or start fresh. All synced data will be deleted.
+              Reset the database to fix schema issues or start fresh. All synced
+              data will be deleted.
             </p>
             {#if resetSuccess}
-              <div class="mb-3 p-2 rounded bg-green-500/10 border border-green-500/20">
-                <p class="text-xs text-green-400">✅ Database reset successfully!</p>
+              <div
+                class="mb-3 p-2 rounded bg-green-500/10 border border-green-500/20"
+              >
+                <p class="text-xs text-green-400">
+                  ✅ Database reset successfully!
+                </p>
               </div>
             {/if}
             {#if resetError}
-              <div class="mb-3 p-2 rounded bg-red-500/10 border border-red-500/20">
+              <div
+                class="mb-3 p-2 rounded bg-red-500/10 border border-red-500/20"
+              >
                 <p class="text-xs text-red-400">{resetError}</p>
               </div>
             {/if}
@@ -347,10 +370,12 @@
       <!-- Footer hint -->
       <div class="mt-6 pt-4 border-t border-white/10">
         <p class="text-xs text-center text-neutral-500">
-          Press <kbd class="px-1.5 py-0.5 rounded bg-neutral-800 border border-neutral-700 text-neutral-300">Esc</kbd> to close
+          Press <kbd
+            class="px-1.5 py-0.5 rounded bg-neutral-800 border border-neutral-700 text-neutral-300"
+            >Esc</kbd
+          > to close
         </p>
       </div>
     </div>
   </div>
 </div>
-

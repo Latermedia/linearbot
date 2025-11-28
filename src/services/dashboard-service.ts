@@ -90,7 +90,7 @@ export function loadDashboardData(): DashboardData {
   let teamsWithViolationsCount = 0;
   for (const [_, issues] of teamMap) {
     const teamViolations = calculateViolationCounts(issues);
-    
+
     // Check for WIP violations (assignees with > 5 issues)
     const teamIssuesByAssignee = new Map<string, Issue[]>();
     for (const issue of issues) {
@@ -267,4 +267,3 @@ export function loadDashboardData(): DashboardData {
     domainsWithViolations: domainsWithViolationsCount,
   };
 }
-

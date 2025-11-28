@@ -61,4 +61,3 @@ export function initializeStartup(): void {
 
   console.log("[STARTUP] Startup initialization complete");
 }
-

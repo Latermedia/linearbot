@@ -22,14 +22,15 @@ export function getTotalCompletedInPeriod(
   // Count issues completed in the date range
   const recentlyCompleted = executiveIssues.filter((issue) => {
     const stateName = issue.state_name?.toLowerCase() || "";
-    const isCompleted = stateName.includes("done") || stateName.includes("completed");
+    const isCompleted =
+      stateName.includes("done") || stateName.includes("completed");
     if (!isCompleted) return false;
 
     const completedDate = issue.completed_at
       ? new Date(issue.completed_at)
       : issue.updated_at
-      ? new Date(issue.updated_at)
-      : null;
+        ? new Date(issue.updated_at)
+        : null;
 
     return completedDate && completedDate >= cutoffDate;
   });
@@ -50,7 +51,7 @@ export function getRecentVelocity(
 
   const completedCount = getTotalCompletedInPeriod(issues, projectIds, days);
   const weeks = days / 7;
-  
+
   return completedCount / weeks;
 }
 
@@ -69,4 +70,3 @@ export function getTotalActiveEngineers(projects: ProjectSummary[]): number {
 
   return allEngineers.size;
 }
-

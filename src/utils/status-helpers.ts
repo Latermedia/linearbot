@@ -50,7 +50,9 @@ export function getMultiProjectStatus(count: number): StatusInfo {
 export function isProjectActive(issues: Issue[]): boolean {
   const hasStartedIssues = issues.some((i) => i.state_type === "started");
   const cutoffDate = new Date();
-  cutoffDate.setDate(cutoffDate.getDate() - PROJECT_THRESHOLDS.RECENT_ACTIVITY_DAYS);
+  cutoffDate.setDate(
+    cutoffDate.getDate() - PROJECT_THRESHOLDS.RECENT_ACTIVITY_DAYS
+  );
   const hasRecentActivity = issues.some(
     (i) => new Date(i.updated_at) > cutoffDate
   );
@@ -102,4 +104,3 @@ export function isMissingLead(
 
   return (hasActiveWork || isActiveState) && !projectLeadName;
 }
-

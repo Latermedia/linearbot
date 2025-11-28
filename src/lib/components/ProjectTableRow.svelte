@@ -31,10 +31,10 @@
 
 <tr
   class="border-b border-neutral-200 dark:border-white/5 hover:bg-neutral-50 dark:hover:bg-white/5 transition-colors duration-150 cursor-pointer"
-  onmouseenter={onmouseenter}
-  onmousemove={onmousemove}
-  onmouseleave={onmouseleave}
-  onclick={onclick}
+  {onmouseenter}
+  {onmousemove}
+  {onmouseleave}
+  {onclick}
   role="button"
   tabindex="0"
 >
@@ -80,14 +80,19 @@
       </div>
     {/if}
   </td>
-  <td class="py-3 px-2 w-[100px] text-sm text-neutral-600 dark:text-neutral-400">
+  <td
+    class="py-3 px-2 w-[100px] text-sm text-neutral-600 dark:text-neutral-400"
+  >
     {formatDate(project.startDate)}
   </td>
-  <td class="py-3 px-2 w-[100px] text-sm text-neutral-600 dark:text-neutral-400">
+  <td
+    class="py-3 px-2 w-[100px] text-sm text-neutral-600 dark:text-neutral-400"
+  >
     {formatRelativeDate(project.lastActivityDate)}
   </td>
-  <td class="py-3 px-2 w-[120px] text-sm text-neutral-600 dark:text-neutral-400">
+  <td
+    class="py-3 px-2 w-[120px] text-sm text-neutral-600 dark:text-neutral-400"
+  >
     {formatDate(project.estimatedEndDate)}
   </td>
 </tr>
-

@@ -228,7 +228,7 @@ export function calculateAverageCycleTime(issues: Issue[]): number | null {
 
   for (const issue of completedIssues) {
     // Use started_at if available, otherwise fallback to created_at
-    const startTime = issue.started_at 
+    const startTime = issue.started_at
       ? new Date(issue.started_at).getTime()
       : new Date(issue.created_at).getTime();
     const completedTime = issue.completed_at
@@ -412,7 +412,7 @@ export function calculateEstimateAccuracy(issues: Issue[]): number | null {
     if (!issue.estimate) continue;
 
     // Use cycle time (started → completed) if available, otherwise fallback to created → updated
-    const startTime = issue.started_at 
+    const startTime = issue.started_at
       ? new Date(issue.started_at).getTime()
       : new Date(issue.created_at).getTime();
     const completedTime = issue.completed_at
@@ -442,7 +442,7 @@ export function calculateEstimateAccuracy(issues: Issue[]): number | null {
   for (const issue of completedIssues) {
     if (!issue.estimate) continue;
 
-    const startTime = issue.started_at 
+    const startTime = issue.started_at
       ? new Date(issue.started_at).getTime()
       : new Date(issue.created_at).getTime();
     const completedTime = issue.completed_at
@@ -497,15 +497,21 @@ export function getVelocityTrendDisplay(
 
 /**
  * Calculate WIP age for an issue (time from started to now/completed)
- * 
+ *
  * For completed issues: Only calculate if started_at exists (we need to know when it was started)
  * For started issues: Use started_at if available, otherwise fallback to created_at
  */
-export function calculateWIPAge(issue: Issue, isCompleted: boolean): number | null {
+export function calculateWIPAge(
+  issue: Issue,
+  isCompleted: boolean
+): number | null {
   // Only calculate for started or completed issues
   const stateName = issue.state_name?.toLowerCase() || "";
-  const isStarted = issue.state_type === "started" || stateName.includes("progress") || stateName.includes("started");
-  
+  const isStarted =
+    issue.state_type === "started" ||
+    stateName.includes("progress") ||
+    stateName.includes("started");
+
   if (!isStarted && !isCompleted) return null;
 
   // For completed issues, we MUST have started_at to calculate WIP age
@@ -515,18 +521,22 @@ export function calculateWIPAge(issue: Issue, isCompleted: boolean): number | nu
   }
 
   // Use started_at if available, otherwise fallback to created_at (for currently started issues only)
-  const startTime = issue.started_at 
+  const startTime = issue.started_at
     ? new Date(issue.started_at).getTime()
-    : (isStarted ? new Date(issue.created_at).getTime() : null);
-  
+    : isStarted
+      ? new Date(issue.created_at).getTime()
+      : null;
+
   if (!startTime) return null;
-  
+
   // For completed issues, use completed_at if available, otherwise updated_at
   // For started issues, use now
   const endTime = isCompleted
-    ? (issue.completed_at ? new Date(issue.completed_at).getTime() : new Date(issue.updated_at).getTime())
+    ? issue.completed_at
+      ? new Date(issue.completed_at).getTime()
+      : new Date(issue.updated_at).getTime()
     : Date.now();
-  
+
   const days = (endTime - startTime) / (1000 * 60 * 60 * 24);
   return days > 0 ? days : null;
 }
@@ -549,24 +559,25 @@ export function calculateIssueAccuracyRatio(
   daysPerStoryPoint: number
 ): number | null {
   if (!issue.estimate) return null;
-  
+
   const stateName = issue.state_name?.toLowerCase() || "";
-  const isCompleted = stateName.includes("done") || stateName.includes("completed");
+  const isCompleted =
+    stateName.includes("done") || stateName.includes("completed");
   if (!isCompleted) return null;
 
-  const startTime = issue.started_at 
+  const startTime = issue.started_at
     ? new Date(issue.started_at).getTime()
     : new Date(issue.created_at).getTime();
   const completedTime = issue.completed_at
     ? new Date(issue.completed_at).getTime()
     : new Date(issue.updated_at).getTime();
   const actualDays = (completedTime - startTime) / (1000 * 60 * 60 * 24);
-  
+
   if (actualDays <= 0) return null;
 
   const estimatedDays = issue.estimate * daysPerStoryPoint;
   if (estimatedDays <= 0) return null;
-  
+
   return actualDays / estimatedDays;
 }
 
@@ -586,15 +597,15 @@ export function formatAccuracyRatio(ratio: number | null): string {
  */
 export function getAccuracyColorClass(ratio: number | null): string {
   if (ratio === null) return "text-neutral-500";
-  
+
   // Green: within 30% (0.7 to 1.3 inclusive)
   if (ratio >= 0.7 && ratio <= 1.3) {
     return "text-green-400";
-  } 
+  }
   // Yellow: 30-70% off (0.3-0.7 or 1.3-1.7)
   else if ((ratio >= 0.3 && ratio < 0.7) || (ratio > 1.3 && ratio <= 1.7)) {
     return "text-amber-400";
-  } 
+  }
   // Red: 70%+ off
   else {
     return "text-red-400";
@@ -614,19 +625,22 @@ export function getRecentProgress(
   cutoffDate.setDate(cutoffDate.getDate() - days);
 
   // Get all issues for this project
-  const projectIssues = issues.filter((i) => i.project_id === project.projectId);
+  const projectIssues = issues.filter(
+    (i) => i.project_id === project.projectId
+  );
 
   // Count issues completed in the date range
   const recentlyCompleted = projectIssues.filter((issue) => {
     const stateName = issue.state_name?.toLowerCase() || "";
-    const isCompleted = stateName.includes("done") || stateName.includes("completed");
+    const isCompleted =
+      stateName.includes("done") || stateName.includes("completed");
     if (!isCompleted) return false;
 
     const completedDate = issue.completed_at
       ? new Date(issue.completed_at)
       : issue.updated_at
-      ? new Date(issue.updated_at)
-      : null;
+        ? new Date(issue.updated_at)
+        : null;
 
     return completedDate && completedDate >= cutoffDate;
   }).length;
@@ -636,10 +650,10 @@ export function getRecentProgress(
   const previousCompleted = totalCompleted - recentlyCompleted;
   const percentage =
     previousCompleted > 0
-      ? ((recentlyCompleted / previousCompleted) * 100)
+      ? (recentlyCompleted / previousCompleted) * 100
       : recentlyCompleted > 0
-      ? 100
-      : 0;
+        ? 100
+        : 0;
 
   return {
     completed: recentlyCompleted,
