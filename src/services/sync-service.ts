@@ -1040,13 +1040,14 @@ async function computeAndStoreProjects(
       }
     }
 
-    // Estimate completion date - prefer Linear's target date, fallback to velocity calculation
+    // Store Linear's target date (if available) - this is the project's explicit due date
+    const targetDate = linearTargetDate
+      ? new Date(linearTargetDate).toISOString()
+      : null;
+
+    // Always calculate velocity-based estimated completion date
     let estimatedEndDate: string | null = null;
-    if (linearTargetDate) {
-      // Use Linear's target date directly if available
-      estimatedEndDate = new Date(linearTargetDate).toISOString();
-    } else if (earliestCreatedAt) {
-      // Fall back to velocity-based estimate
+    if (earliestCreatedAt) {
       const remainingIssues = projectIssues.length - completedCount;
       const daysElapsed = Math.max(
         1,
@@ -1132,6 +1133,7 @@ async function computeAndStoreProjects(
       start_date: linearStartDate || earliestStartedAt || earliestCreatedAt, // Prefer Linear's start date, then started_at, fallback to created_at
       last_activity_date: lastActivityDate,
       estimated_end_date: estimatedEndDate,
+      target_date: targetDate, // Linear's explicit target date for the project
       issues_by_state: issuesByStateJson,
       engineers: engineersJson,
       teams: teamsJson,

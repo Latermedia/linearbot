@@ -24,6 +24,7 @@ export interface ProjectSummary {
   inProgressIssues: number;
   startDate: string | null;
   estimatedEndDate: string | null;
+  targetDate: string | null; // Linear's explicit target date for the project
   hasViolations: boolean;
   missingHealth: boolean;
   missingEstimateCount: number;
@@ -99,6 +100,7 @@ function projectToSummary(project: Project): ProjectSummary {
     inProgressIssues: project.in_progress_issues,
     startDate: project.start_date,
     estimatedEndDate: project.estimated_end_date,
+    targetDate: project.target_date,
     hasViolations: project.has_violations === 1,
     missingHealth: project.missing_health === 1,
     missingEstimateCount: project.missing_estimate_count,

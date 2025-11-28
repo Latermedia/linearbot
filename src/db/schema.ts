@@ -71,6 +71,7 @@ export interface Project {
   start_date: string | null;
   last_activity_date: string;
   estimated_end_date: string | null;
+  target_date: string | null; // Linear's explicit target date for the project
   issues_by_state: string;
   engineers: string;
   teams: string;
@@ -329,6 +330,12 @@ export function initializeDatabase(db: Database): void {
   } catch (e) {
     // Column already exists, ignore
   }
+  // Add target_date column to projects table if it doesn't exist (migration)
+  try {
+    db.run(`ALTER TABLE projects ADD COLUMN target_date TEXT`);
+  } catch (e) {
+    // Column already exists, ignore
+  }
 
   // Create projects table with computed metrics
   db.run(`
@@ -366,6 +373,7 @@ export function initializeDatabase(db: Database): void {
       start_date TEXT,
       last_activity_date TEXT NOT NULL,
       estimated_end_date TEXT,
+      target_date TEXT,
       issues_by_state TEXT NOT NULL,
       engineers TEXT NOT NULL,
       teams TEXT NOT NULL,

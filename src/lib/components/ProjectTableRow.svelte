@@ -91,7 +91,14 @@
     {formatRelativeDate(project.lastActivityDate)}
   </td>
   <td
-    class="py-3 px-2 w-[120px] text-sm text-neutral-600 dark:text-neutral-400"
+    class="py-3 px-2 w-[100px] text-sm text-neutral-600 dark:text-neutral-400"
+    title="Linear's project target date"
+  >
+    {formatDate(project.targetDate)}
+  </td>
+  <td
+    class="py-3 px-2 w-[100px] text-sm text-neutral-600 dark:text-neutral-400"
+    title="Velocity-predicted completion date"
   >
     {formatDate(project.estimatedEndDate)}
   </td>

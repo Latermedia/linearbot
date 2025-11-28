@@ -32,8 +32,12 @@
       >Last Activity</th
     >
     <th
-      class="text-left py-3 px-2 text-sm font-medium text-neutral-600 dark:text-neutral-400 w-[120px]"
-      >Est. Complete</th
+      class="text-left py-3 px-2 text-sm font-medium text-neutral-600 dark:text-neutral-400 w-[100px]"
+      title="Linear's project target date">Target</th
+    >
+    <th
+      class="text-left py-3 px-2 text-sm font-medium text-neutral-600 dark:text-neutral-400 w-[100px]"
+      title="Velocity-predicted completion date">Predicted</th
     >
   </tr>
 </thead>

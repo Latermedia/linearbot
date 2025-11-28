@@ -348,7 +348,7 @@
         </div>
 
         <!-- Dates Section -->
-        <div class="grid grid-cols-2 gap-4 mb-6">
+        <div class="grid grid-cols-3 gap-4 mb-6">
           <div>
             <div class="mb-1 text-xs text-neutral-500">Start Date</div>
             <div class="text-sm text-white">
@@ -356,7 +356,23 @@
             </div>
           </div>
           <div>
-            <div class="mb-1 text-xs text-neutral-500">Estimated End Date</div>
+            <div
+              class="mb-1 text-xs text-neutral-500"
+              title="Linear's explicit target date for the project"
+            >
+              Target Date
+            </div>
+            <div class="text-sm text-white">
+              {formatDateFull(project.targetDate)}
+            </div>
+          </div>
+          <div>
+            <div
+              class="mb-1 text-xs text-neutral-500"
+              title="Velocity-predicted completion date"
+            >
+              Predicted Completion
+            </div>
             <div class="text-sm text-white">
               {formatDateFull(project.estimatedEndDate)}
             </div>

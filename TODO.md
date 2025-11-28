@@ -9,7 +9,6 @@ Planned features and known issues for LinearBot.
 - **Initiative view (`/initiatives`)** — dedicated route for initiative-level grouping; view projects grouped by strategic initiative with rollup metrics
 - **Planning view** — surface projects in planning states (`shaping`, `ready`) from Linear; separate view or filter for upcoming work not yet started
 - **Full year timeline** — extend Gantt chart to show entire year with previously completed projects; enable historical context alongside active work
-- **WIP/Now/Next** — categorize work by current state
 - **Prioritization view** — impact/effort matrix with backlog organization
 - **Metrics dashboard** — tie project metrics to primary initiatives
 
@@ -26,7 +25,6 @@ Planned features and known issues for LinearBot.
 
 ### Project Tracking
 
-- **Due date display** — show Linear's project target date alongside velocity-predicted end date in UI
 - **Completion date comparison** — compare Linear's explicit target/due date vs velocity-predicted completion; display warning in UI if they differ by more than 1 month (our "month-ish" accuracy threshold)
 - **Status labels** — consolidate Linear status label usage
 

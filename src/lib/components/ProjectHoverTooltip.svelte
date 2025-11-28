@@ -135,14 +135,36 @@
     </div>
   </div>
 
-  <!-- Estimated Completion -->
-  {#if project.estimatedEndDate}
+  <!-- Dates -->
+  {#if project.targetDate || project.estimatedEndDate}
     <div class="pt-2 mb-3 border-t border-neutral-200 dark:border-neutral-800">
-      <div class="mb-0.5 text-[10px] text-neutral-500 dark:text-neutral-400">
-        Estimated Completion
-      </div>
-      <div class="text-xs font-medium text-neutral-900 dark:text-white">
-        {formatDateFull(project.estimatedEndDate)}
+      <div class="grid grid-cols-2 gap-2">
+        {#if project.targetDate}
+          <div>
+            <div
+              class="mb-0.5 text-[10px] text-neutral-500 dark:text-neutral-400"
+              title="Linear's project target date"
+            >
+              Target
+            </div>
+            <div class="text-xs font-medium text-neutral-900 dark:text-white">
+              {formatDateFull(project.targetDate)}
+            </div>
+          </div>
+        {/if}
+        {#if project.estimatedEndDate}
+          <div>
+            <div
+              class="mb-0.5 text-[10px] text-neutral-500 dark:text-neutral-400"
+              title="Velocity-predicted completion date"
+            >
+              Predicted
+            </div>
+            <div class="text-xs font-medium text-neutral-900 dark:text-white">
+              {formatDateFull(project.estimatedEndDate)}
+            </div>
+          </div>
+        {/if}
       </div>
     </div>
   {/if}
