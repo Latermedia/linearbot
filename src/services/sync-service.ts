@@ -117,6 +117,9 @@ function convertDbIssueToLinearFormat(dbIssue: Issue): LinearIssueData {
     projectLeadId: dbIssue.project_lead_id,
     projectLeadName: dbIssue.project_lead_name,
     projectLabels: [], // Database doesn't store project labels, but that's okay for determining project IDs
+    projectTargetDate: dbIssue.project_target_date,
+    projectStartDate: dbIssue.project_start_date,
+    parentId: dbIssue.parent_id,
   };
 }
 
@@ -156,6 +159,9 @@ function writeIssuesToDatabase(
     projectUpdatedAt: Date | null;
     projectLeadId: string | null;
     projectLeadName: string | null;
+    projectTargetDate: string | null;
+    projectStartDate: string | null;
+    parentId: string | null;
   }>
 ): { newCount: number; updatedCount: number } {
   const existingIds = getExistingIssueIds();
@@ -205,6 +211,9 @@ function writeIssuesToDatabase(
         : null,
       project_lead_id: issue.projectLeadId,
       project_lead_name: issue.projectLeadName,
+      project_target_date: issue.projectTargetDate,
+      project_start_date: issue.projectStartDate,
+      parent_id: issue.parentId,
     });
   }
 
@@ -890,6 +899,9 @@ async function computeAndStoreProjects(
 
     let lastActivityDate = firstIssue.updated_at;
     let earliestCreatedAt = firstIssue.created_at;
+    let earliestStartedAt: string | null = firstIssue.started_at; // Track when work actually began
+    let linearTargetDate: string | null = firstIssue.project_target_date; // Linear's target date
+    let linearStartDate: string | null = firstIssue.project_start_date; // Linear's start date
     let completedCount = 0;
     let inProgressCount = 0;
 
@@ -928,6 +940,24 @@ async function computeAndStoreProjects(
       // Track earliest creation
       if (new Date(issue.created_at) < new Date(earliestCreatedAt)) {
         earliestCreatedAt = issue.created_at;
+      }
+
+      // Track earliest started_at (when work actually began)
+      if (issue.started_at) {
+        if (
+          !earliestStartedAt ||
+          new Date(issue.started_at) < new Date(earliestStartedAt)
+        ) {
+          earliestStartedAt = issue.started_at;
+        }
+      }
+
+      // Capture Linear's project target date (should be same for all issues in project)
+      if (issue.project_target_date && !linearTargetDate) {
+        linearTargetDate = issue.project_target_date;
+      }
+      if (issue.project_start_date && !linearStartDate) {
+        linearStartDate = issue.project_start_date;
       }
     }
 
@@ -1010,9 +1040,13 @@ async function computeAndStoreProjects(
       }
     }
 
-    // Estimate completion date
+    // Estimate completion date - prefer Linear's target date, fallback to velocity calculation
     let estimatedEndDate: string | null = null;
-    if (earliestCreatedAt) {
+    if (linearTargetDate) {
+      // Use Linear's target date directly if available
+      estimatedEndDate = new Date(linearTargetDate).toISOString();
+    } else if (earliestCreatedAt) {
+      // Fall back to velocity-based estimate
       const remainingIssues = projectIssues.length - completedCount;
       const daysElapsed = Math.max(
         1,
@@ -1095,7 +1129,7 @@ async function computeAndStoreProjects(
       missing_lead: missingLeadFlag ? 1 : 0,
       has_violations: hasViolationsFlag ? 1 : 0,
       missing_health: missingHealthFlag ? 1 : 0,
-      start_date: earliestCreatedAt,
+      start_date: linearStartDate || earliestStartedAt || earliestCreatedAt, // Prefer Linear's start date, then started_at, fallback to created_at
       last_activity_date: lastActivityDate,
       estimated_end_date: estimatedEndDate,
       issues_by_state: issuesByStateJson,

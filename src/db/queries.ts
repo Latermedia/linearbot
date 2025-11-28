@@ -141,6 +141,9 @@ export function upsertIssue(issue: {
   project_updated_at: string | null;
   project_lead_id: string | null;
   project_lead_name: string | null;
+  project_target_date: string | null;
+  project_start_date: string | null;
+  parent_id: string | null;
 }): void {
   const db = getDatabase();
   const query = db.prepare(`
@@ -151,7 +154,7 @@ export function upsertIssue(issue: {
       priority, estimate, last_comment_at,
       created_at, updated_at, started_at, completed_at, canceled_at, url,
       project_id, project_name, project_state, project_health, project_updated_at,
-      project_lead_id, project_lead_name
+      project_lead_id, project_lead_name, project_target_date, project_start_date, parent_id
     ) VALUES (
       ?, ?, ?, ?, ?, ?, ?,
       ?, ?, ?,
@@ -159,7 +162,7 @@ export function upsertIssue(issue: {
       ?, ?, ?,
       ?, ?, ?, ?, ?, ?,
       ?, ?, ?, ?, ?,
-      ?, ?
+      ?, ?, ?, ?, ?
     )
     ON CONFLICT(id) DO UPDATE SET
       identifier = excluded.identifier,
@@ -190,7 +193,10 @@ export function upsertIssue(issue: {
       project_health = excluded.project_health,
       project_updated_at = excluded.project_updated_at,
       project_lead_id = excluded.project_lead_id,
-      project_lead_name = excluded.project_lead_name
+      project_lead_name = excluded.project_lead_name,
+      project_target_date = excluded.project_target_date,
+      project_start_date = excluded.project_start_date,
+      parent_id = excluded.parent_id
   `);
 
   query.run(
@@ -224,7 +230,10 @@ export function upsertIssue(issue: {
     issue.project_health,
     issue.project_updated_at,
     issue.project_lead_id,
-    issue.project_lead_name
+    issue.project_lead_name,
+    issue.project_target_date,
+    issue.project_start_date,
+    issue.parent_id
   );
 }
 

@@ -42,6 +42,8 @@ export function hasNoRecentComment(
   issue: Issue,
   hoursThreshold?: number // Deprecated, kept for API compatibility
 ): boolean {
+  // Suppress alerts for cancelled/duplicate issues
+  if (shouldSuppressAlerts(issue)) return false;
   if (!issue.last_comment_at) return true;
   const lastComment = new Date(issue.last_comment_at);
   const cutoff = getBusinessDayCutoff();
@@ -49,16 +51,33 @@ export function hasNoRecentComment(
 }
 
 /**
+ * Check if issue should have alerts suppressed (cancelled/duplicate states)
+ */
+export function shouldSuppressAlerts(issue: Issue): boolean {
+  const stateName = issue.state_name?.toLowerCase() || "";
+  return (
+    stateName.includes("cancel") ||
+    stateName.includes("duplicate") ||
+    issue.state_type === "canceled"
+  );
+}
+
+/**
  * Check if issue is missing an estimate
+ * Note: 0-point estimates are valid (explicitly sized as zero)
  */
 export function hasMissingEstimate(issue: Issue): boolean {
-  return !issue.estimate;
+  // Suppress alerts for cancelled/duplicate issues
+  if (shouldSuppressAlerts(issue)) return false;
+  return issue.estimate === null;
 }
 
 /**
  * Check if issue is missing priority (priority = 0)
  */
 export function hasMissingPriority(issue: Issue): boolean {
+  // Suppress alerts for cancelled/duplicate issues
+  if (shouldSuppressAlerts(issue)) return false;
   return issue.priority === 0;
 }
 
@@ -104,6 +123,8 @@ export function countViolations(issues: Issue[]): ViolationCounts {
  * Check if issue has WIP age violation (started >14 days ago)
  */
 export function hasWIPAgeViolation(issue: Issue): boolean {
+  // Suppress alerts for cancelled/duplicate issues
+  if (shouldSuppressAlerts(issue)) return false;
   if (!issue.started_at) return false;
   const startedDate = new Date(issue.started_at);
   const now = new Date();
@@ -116,6 +137,8 @@ export function hasWIPAgeViolation(issue: Issue): boolean {
  * Check if issue is missing description
  */
 export function hasMissingDescription(issue: Issue): boolean {
+  // Suppress alerts for cancelled/duplicate issues
+  if (shouldSuppressAlerts(issue)) return false;
   return !issue.description || issue.description.trim() === "";
 }
 

@@ -32,6 +32,9 @@ export interface Issue {
   project_updated_at: string | null;
   project_lead_id: string | null;
   project_lead_name: string | null;
+  project_target_date: string | null; // Linear's target date for the project
+  project_start_date: string | null; // Linear's start date for the project
+  parent_id: string | null; // For subissue detection
 }
 
 export interface Project {
@@ -129,6 +132,9 @@ const EXPECTED_ISSUES_COLUMNS = [
   "project_updated_at",
   "project_lead_id",
   "project_lead_name",
+  "project_target_date",
+  "project_start_date",
+  "parent_id",
 ];
 
 /**
@@ -286,6 +292,21 @@ export function initializeDatabase(db: Database): void {
   }
   try {
     db.run(`ALTER TABLE issues ADD COLUMN canceled_at TEXT`);
+  } catch (e) {
+    // Column already exists, ignore
+  }
+  try {
+    db.run(`ALTER TABLE issues ADD COLUMN parent_id TEXT`);
+  } catch (e) {
+    // Column already exists, ignore
+  }
+  try {
+    db.run(`ALTER TABLE issues ADD COLUMN project_target_date TEXT`);
+  } catch (e) {
+    // Column already exists, ignore
+  }
+  try {
+    db.run(`ALTER TABLE issues ADD COLUMN project_start_date TEXT`);
   } catch (e) {
     // Column already exists, ignore
   }

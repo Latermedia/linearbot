@@ -81,6 +81,9 @@ export interface LinearIssueData {
   projectLeadId: string | null;
   projectLeadName: string | null;
   projectLabels: string[];
+  projectTargetDate: string | null; // Linear's target date for the project
+  projectStartDate: string | null; // Linear's start date for the project
+  parentId: string | null; // For subissue detection
 }
 
 export interface ProjectUpdate {
@@ -130,6 +133,9 @@ export class LinearAPIClient {
             startedAt
             completedAt
             canceledAt
+            parent {
+              id
+            }
             comments(first: 1, orderBy: createdAt) {
               nodes {
                 createdAt
@@ -160,6 +166,8 @@ export class LinearAPIClient {
               state
               health
               updatedAt
+              targetDate
+              startDate
               labels {
                 nodes {
                   name
@@ -241,6 +249,9 @@ export class LinearAPIClient {
             issue.project?.labels?.nodes?.map(
               (l: { name: string }) => l.name
             ) || [],
+          projectTargetDate: issue.project?.targetDate || null,
+          projectStartDate: issue.project?.startDate || null,
+          parentId: issue.parent?.id || null,
         });
       }
 
@@ -318,6 +329,9 @@ export class LinearAPIClient {
               startedAt
               completedAt
               canceledAt
+              parent {
+                id
+              }
               comments(first: 1, orderBy: createdAt) {
                 nodes {
                   createdAt
@@ -348,6 +362,8 @@ export class LinearAPIClient {
                 state
                 health
                 updatedAt
+                targetDate
+                startDate
                 labels {
                   nodes {
                     name
@@ -438,6 +454,9 @@ export class LinearAPIClient {
               issue.project?.labels?.nodes?.map(
                 (l: { name: string }) => l.name
               ) || [],
+            projectTargetDate: issue.project?.targetDate || null,
+            projectStartDate: issue.project?.startDate || null,
+            parentId: issue.parent?.id || null,
           };
 
           issues.push(issueData);

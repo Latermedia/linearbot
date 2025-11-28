@@ -375,6 +375,9 @@ export function generateMockData(): {
         projectLeadId: project.leadId,
         projectLeadName: project.leadName,
         projectLabels: project.labels,
+        projectTargetDate: null,
+        projectStartDate: null,
+        parentId: null,
       });
     }
   }
@@ -428,6 +431,9 @@ export function generateMockData(): {
       projectLeadId: null,
       projectLeadName: null,
       projectLabels: [],
+      projectTargetDate: null,
+      projectStartDate: null,
+      parentId: null,
     });
   }
 

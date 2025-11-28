@@ -27,6 +27,19 @@
     assignee_name?: string | null;
     assignee_avatar_url?: string | null;
     state_name?: string;
+    state_type?: string;
+  }
+
+  /**
+   * Check if issue should have alerts suppressed (cancelled/duplicate states)
+   */
+  function shouldSuppressAlerts(issue: IssueData): boolean {
+    const stateName = issue.state_name?.toLowerCase() || "";
+    return (
+      stateName.includes("cancel") ||
+      stateName.includes("duplicate") ||
+      issue.state_type === "canceled"
+    );
   }
 
   let {
@@ -50,6 +63,7 @@
   }
 
   function isStaleWIP(issue: IssueData): boolean {
+    if (shouldSuppressAlerts(issue)) return false;
     if (!issue.started_at) return false;
     const started = new Date(issue.started_at);
     const now = new Date();
@@ -59,14 +73,17 @@
   }
 
   function checkMissingEstimate(issue: IssueData): boolean {
+    if (shouldSuppressAlerts(issue)) return false;
     return issue.estimate === null || issue.estimate === undefined;
   }
 
   function checkMissingPriority(issue: IssueData): boolean {
+    if (shouldSuppressAlerts(issue)) return false;
     return !issue.priority || issue.priority === 0;
   }
 
   function checkNoRecentComment(issue: IssueData): boolean {
+    if (shouldSuppressAlerts(issue)) return false;
     if (!issue.last_comment_at) return true;
     const lastComment = new Date(issue.last_comment_at);
     const now = new Date();
