@@ -1,0 +1,55 @@
+---
+description: Unit testing with Vitest
+globs: ["src/**/*.ts", "src/**/*.test.ts"]
+alwaysApply: false
+---
+
+# Testing
+
+## Commands
+
+- `bun run test` — run all tests
+- `bun run test:watch` — watch mode
+
+## When to Write Tests
+
+Write tests when:
+
+- Adding utility functions in `src/utils/` or `src/lib/utils/`
+- Adding pure business logic (validators, formatters, calculations)
+- Fixing bugs (add regression test)
+
+Skip tests for:
+
+- Database queries (requires SQLite setup)
+- API routes (integration territory)
+- Svelte components (unless critical logic)
+- One-off scripts
+
+## Test Location
+
+Place tests next to source files:
+
+```
+src/utils/issue-validators.ts
+src/utils/issue-validators.test.ts
+```
+
+## Test Style
+
+- Use `describe` blocks for grouping
+- Keep tests minimal — prove it works, don't over-test
+- Use factory functions for mock data (see `issue-validators.test.ts`)
+
+## Example
+
+```typescript
+import { describe, it, expect } from "vitest";
+import { myFunction } from "./my-module";
+
+describe("myFunction", () => {
+  it("handles the common case", () => {
+    expect(myFunction(input)).toBe(expected);
+  });
+});
+```

@@ -43,3 +43,4 @@ Common triggers:
 - Removing/adding major components
 - Changing directory structure
 - Adopting new conventions
+- Changing test patterns or coverage expectations

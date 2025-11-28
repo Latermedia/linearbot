@@ -26,6 +26,7 @@ Linear API → Sync Service → SQLite → SvelteKit API → Frontend
 | `src/linear/` | Linear API client |
 | `terminal/` | Ink-based TUI |
 | `scripts/` | CLI utilities |
+| `src/**/*.test.ts` | Unit tests (colocated) |
 
 ## Patterns
 
