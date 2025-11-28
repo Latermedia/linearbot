@@ -37,11 +37,15 @@ function getBusinessDayCutoff(): Date {
  * Monday: checks for comment since Thursday (72+ hours)
  * Tuesday: checks for comment since Friday (72+ hours)
  * Wednesday-Friday: checks for comment since previous business day (48+ hours)
+ *
+ * Only applies to WIP issues (state_type === "started")
  */
 export function hasNoRecentComment(
   issue: Issue,
   hoursThreshold?: number // Deprecated, kept for API compatibility
 ): boolean {
+  // Only check comment recency for WIP issues
+  if (issue.state_type !== "started") return false;
   // Suppress alerts for cancelled/duplicate issues
   if (shouldSuppressAlerts(issue)) return false;
   if (!issue.last_comment_at) return true;

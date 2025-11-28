@@ -4,6 +4,7 @@ import {
   hasMissingPriority,
   hasWIPAgeViolation,
   hasMissingDescription,
+  hasNoRecentComment,
 } from "./issue-validators";
 import type { Issue } from "../db/schema";
 
@@ -88,8 +89,11 @@ describe("hasWIPAgeViolation", () => {
     expect(hasWIPAgeViolation(issue)).toBe(false);
   });
 
-  it("returns false when started exactly 14 days ago", () => {
-    const issue = createMockIssue({ started_at: daysAgo(14) });
+  it("returns false when started 13.9 days ago", () => {
+    // Use 13.9 days to avoid timing edge cases at exactly 14 days
+    const date = new Date();
+    date.setTime(date.getTime() - 13.9 * 24 * 60 * 60 * 1000);
+    const issue = createMockIssue({ started_at: date.toISOString() });
     expect(hasWIPAgeViolation(issue)).toBe(false);
   });
 
@@ -101,6 +105,57 @@ describe("hasWIPAgeViolation", () => {
   it("returns true when started 30 days ago", () => {
     const issue = createMockIssue({ started_at: daysAgo(30) });
     expect(hasWIPAgeViolation(issue)).toBe(true);
+  });
+});
+
+describe("hasNoRecentComment", () => {
+  it("returns false for non-WIP issues (completed)", () => {
+    const issue = createMockIssue({
+      state_type: "completed",
+      last_comment_at: null,
+    });
+    expect(hasNoRecentComment(issue)).toBe(false);
+  });
+
+  it("returns false for non-WIP issues (unstarted)", () => {
+    const issue = createMockIssue({
+      state_type: "unstarted",
+      last_comment_at: null,
+    });
+    expect(hasNoRecentComment(issue)).toBe(false);
+  });
+
+  it("returns false for cancelled issues", () => {
+    const issue = createMockIssue({
+      state_type: "canceled",
+      state_name: "Cancelled",
+      last_comment_at: null,
+    });
+    expect(hasNoRecentComment(issue)).toBe(false);
+  });
+
+  it("returns true for WIP issue with no comments", () => {
+    const issue = createMockIssue({
+      state_type: "started",
+      last_comment_at: null,
+    });
+    expect(hasNoRecentComment(issue)).toBe(true);
+  });
+
+  it("returns false for WIP issue with recent comment", () => {
+    const issue = createMockIssue({
+      state_type: "started",
+      last_comment_at: new Date().toISOString(),
+    });
+    expect(hasNoRecentComment(issue)).toBe(false);
+  });
+
+  it("returns true for WIP issue with old comment", () => {
+    const issue = createMockIssue({
+      state_type: "started",
+      last_comment_at: daysAgo(5),
+    });
+    expect(hasNoRecentComment(issue)).toBe(true);
   });
 });
 

@@ -83,6 +83,8 @@
   }
 
   function checkNoRecentComment(issue: IssueData): boolean {
+    // Only check comment recency for WIP issues
+    if (issue.state_type !== "started") return false;
     if (shouldSuppressAlerts(issue)) return false;
     if (!issue.last_comment_at) return true;
     const lastComment = new Date(issue.last_comment_at);

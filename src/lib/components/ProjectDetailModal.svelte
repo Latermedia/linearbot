@@ -715,13 +715,15 @@
                         class="px-2 py-1.5 text-right text-neutral-300 w-[70px] min-w-[70px]"
                       >
                         <div class="flex gap-1.5 justify-end items-center">
-                          {#if issue.estimate}
+                          {#if issue.estimate !== null && issue.estimate !== undefined}
                             {Math.round(issue.estimate)}
-                          {:else if !hideWarnings}
+                          {:else if !hideWarnings && missingEstimate}
                             <span
                               class="text-amber-400"
                               title="Missing estimate">⚠️</span
                             >
+                          {:else}
+                            <span class="text-neutral-500">—</span>
                           {/if}
                         </div>
                       </td>
@@ -731,11 +733,13 @@
                         <div class="flex gap-1.5 justify-end items-center">
                           {#if issue.priority && issue.priority > 0}
                             {issue.priority}
-                          {:else if !hideWarnings}
+                          {:else if !hideWarnings && missingPriority}
                             <span
                               class="text-amber-400"
                               title="Missing priority">⚠️</span
                             >
+                          {:else}
+                            <span class="text-neutral-500">—</span>
                           {/if}
                         </div>
                       </td>

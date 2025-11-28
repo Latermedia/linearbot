@@ -27,8 +27,7 @@ Planned features and known issues for LinearBot.
 
 ### Project Tracking
 
-- **Start date fix** — use WIP start (first issue `started_at`), not `created_at` for project start date
-- **Linear target date** — sync project's target end date from Linear (due date field)
+- **Due date display** — show Linear's project target date alongside velocity-predicted end date in UI
 - **Completion date comparison** — compare Linear's explicit target/due date vs velocity-predicted completion; display warning in UI if they differ by more than 1 month (our "month-ish" accuracy threshold)
 - **Status labels** — consolidate Linear status label usage
 
@@ -38,8 +37,6 @@ Planned features and known issues for LinearBot.
 
 ### Violation Alerts
 
-- **0 points is valid** — don't warn on `estimate: 0`
-- **Suppress cancelled/duplicate** — no alerts for these states
 - **Missing points label** — clearer messaging, exclude cancelled
 
 ---
@@ -48,10 +45,6 @@ Planned features and known issues for LinearBot.
 
 Current bugs and gaps to fix:
 
-| Issue                             | Impact                              |
-| --------------------------------- | ----------------------------------- |
-| 0-point estimates trigger warning | `!issue.estimate` is falsy for 0    |
-| Alerts on cancelled/duplicate     | Should be suppressed                |
-| Start date uses `created_at`      | Should use `started_at` (WIP start) |
-| No subissue detection             | Can't exclude from calculations     |
-| Linear target date not synced     | Only velocity prediction shown      |
+| Issue | Impact |
+| ----- | ------ |
+| None  | 🎉     |
