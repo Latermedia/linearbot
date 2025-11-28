@@ -10,7 +10,7 @@
   import ThemeToggle from "$lib/components/ThemeToggle.svelte";
   import DevMenuModal from "$lib/components/DevMenuModal.svelte";
   import SyncIndicator from "$lib/components/SyncIndicator.svelte";
-  import Button from "$lib/components/ui/button.svelte";
+  import Button from "$lib/components/Button.svelte";
   import { goto } from "$app/navigation";
 
   let { children }: { children: Snippet } = $props();

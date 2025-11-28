@@ -1,7 +1,7 @@
 <script lang="ts">
   import { onMount, onDestroy } from "svelte";
   import { browser } from "$app/environment";
-  import Button from "$lib/components/ui/button.svelte";
+  import Button from "$lib/components/Button.svelte";
   import { databaseStore } from "../stores/database";
   import { Trash2, X, RefreshCw, AlertTriangle } from "lucide-svelte";
 

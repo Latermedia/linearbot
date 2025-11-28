@@ -1,5 +1,5 @@
 <script lang="ts">
-  import Card from "$lib/components/ui/card.svelte";
+  import Card from "$lib/components/Card.svelte";
   import ProjectDetailModal from "./ProjectDetailModal.svelte";
   import ProjectTableHeader from "./ProjectTableHeader.svelte";
   import ProjectTableHead from "./ProjectTableHead.svelte";

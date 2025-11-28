@@ -2,8 +2,8 @@
   import { onMount } from "svelte";
   import { browser } from "$app/environment";
   import html2canvas from "html2canvas";
-  import Button from "./ui/button.svelte";
-  import Badge from "./ui/badge.svelte";
+  import Button from "./Button.svelte";
+  import Badge from "./Badge.svelte";
   import { cn } from "$lib/utils";
   import type {
     ProjectSummary,

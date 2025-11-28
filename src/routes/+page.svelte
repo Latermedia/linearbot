@@ -11,9 +11,10 @@
   import { presentationMode } from "$lib/stores/presentation";
   import ProjectsTable from "$lib/components/ProjectsTable.svelte";
   import GanttChart from "$lib/components/GanttChart.svelte";
-  import * as ToggleGroup from "$lib/components/ui/toggle-group";
-  import Card from "$lib/components/ui/card.svelte";
-  import Skeleton from "$lib/components/ui/skeleton.svelte";
+  import ToggleGroupRoot from "$lib/components/ToggleGroupRoot.svelte";
+  import ToggleGroupItem from "$lib/components/ToggleGroupItem.svelte";
+  import Card from "$lib/components/Card.svelte";
+  import Skeleton from "$lib/components/Skeleton.svelte";
 
   let groupBy = $state<"team" | "domain">("team");
   let viewType = $state<"table" | "gantt">("table");
@@ -170,24 +171,24 @@
       class="flex flex-col gap-4 items-start py-2 sm:flex-row sm:items-center"
     >
       <!-- View type toggle -->
-      <ToggleGroup.Root bind:value={viewType} variant="outline" type="single">
-        <ToggleGroup.Item value="table" aria-label="Table view">
+      <ToggleGroupRoot bind:value={viewType} variant="outline" type="single">
+        <ToggleGroupItem value="table" aria-label="Table view">
           Table
-        </ToggleGroup.Item>
-        <ToggleGroup.Item value="gantt" aria-label="Gantt view">
+        </ToggleGroupItem>
+        <ToggleGroupItem value="gantt" aria-label="Gantt view">
           Gantt
-        </ToggleGroup.Item>
-      </ToggleGroup.Root>
+        </ToggleGroupItem>
+      </ToggleGroupRoot>
 
       <!-- Group by toggle -->
-      <ToggleGroup.Root bind:value={groupBy} variant="outline" type="single">
-        <ToggleGroup.Item value="team" aria-label="Group by teams">
+      <ToggleGroupRoot bind:value={groupBy} variant="outline" type="single">
+        <ToggleGroupItem value="team" aria-label="Group by teams">
           Teams
-        </ToggleGroup.Item>
-        <ToggleGroup.Item value="domain" aria-label="Group by domains">
+        </ToggleGroupItem>
+        <ToggleGroupItem value="domain" aria-label="Group by domains">
           Domains
-        </ToggleGroup.Item>
-      </ToggleGroup.Root>
+        </ToggleGroupItem>
+      </ToggleGroupRoot>
     </div>
   </div>
 

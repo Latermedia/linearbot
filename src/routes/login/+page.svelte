@@ -2,7 +2,7 @@
   import { onMount } from "svelte";
   import { page } from "$app/stores";
   import { goto } from "$app/navigation";
-  import Button from "$lib/components/ui/button.svelte";
+  import Button from "$lib/components/Button.svelte";
 
   let password = $state("");
   let error = $state("");

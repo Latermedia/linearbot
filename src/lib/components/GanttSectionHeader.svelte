@@ -1,6 +1,6 @@
 <script lang="ts">
-  import Badge from "$lib/components/ui/badge.svelte";
-  import Button from "$lib/components/ui/button.svelte";
+  import Badge from "$lib/components/Badge.svelte";
+  import Button from "$lib/components/Button.svelte";
   import { cn } from "$lib/utils";
   import { Image } from "lucide-svelte";
   import type { TeamSummary, DomainSummary } from "../project-data";

@@ -1,6 +1,6 @@
 <script lang="ts">
   import { onMount } from "svelte";
-  import Badge from "./ui/badge.svelte";
+  import Badge from "./Badge.svelte";
   import IssueTable from "./IssueTable.svelte";
   import UserProfile from "./UserProfile.svelte";
   import { WIP_THRESHOLDS } from "../../constants/thresholds";

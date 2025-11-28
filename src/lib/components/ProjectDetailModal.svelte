@@ -3,7 +3,7 @@
   import { browser } from "$app/environment";
   import type { ProjectSummary } from "../project-data";
   import type { Issue } from "../../db/schema";
-  import Badge from "./ui/badge.svelte";
+  import Badge from "./Badge.svelte";
   import ProgressBar from "./ProgressBar.svelte";
   import UserProfile from "./UserProfile.svelte";
   import {
