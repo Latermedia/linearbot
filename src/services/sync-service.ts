@@ -69,6 +69,11 @@ export interface SyncCallbacks {
   onProjectCountUpdate?: (count: number) => void;
   onProjectIssueCountUpdate?: (count: number) => void;
   onProgressPercent?: (percent: number) => void;
+  onProjectProgress?: (
+    currentIndex: number,
+    total: number,
+    projectName: string | null
+  ) => void;
 }
 
 /**
@@ -88,6 +93,7 @@ function convertDbIssueToLinearFormat(dbIssue: Issue): LinearIssueData {
     stateType: dbIssue.state_type,
     assigneeId: dbIssue.assignee_id,
     assigneeName: dbIssue.assignee_name,
+    assigneeAvatarUrl: dbIssue.assignee_avatar_url,
     creatorId: dbIssue.creator_id,
     creatorName: dbIssue.creator_name,
     priority: dbIssue.priority,
@@ -131,6 +137,7 @@ function writeIssuesToDatabase(
     stateType: string;
     assigneeId: string | null;
     assigneeName: string | null;
+    assigneeAvatarUrl: string | null;
     creatorId: string | null;
     creatorName: string | null;
     priority: number | null;
@@ -175,6 +182,7 @@ function writeIssuesToDatabase(
       state_type: issue.stateType,
       assignee_id: issue.assigneeId,
       assignee_name: issue.assigneeName,
+      assignee_avatar_url: issue.assigneeAvatarUrl,
       creator_id: issue.creatorId,
       creator_name: issue.creatorName,
       priority: issue.priority,
@@ -469,6 +477,14 @@ export async function performSync(
           .map((issue) => issue.projectId as string)
       );
 
+      // Build a map of project IDs to project names from started issues
+      const projectNameMap = new Map<string, string>();
+      for (const issue of startedIssues) {
+        if (issue.projectId && issue.projectName) {
+          projectNameMap.set(issue.projectId, issue.projectName);
+        }
+      }
+
       // Add to activeProjectIds set
       for (const id of projectIdsFromIssues) {
         activeProjectIds.add(id);
@@ -542,6 +558,16 @@ export async function performSync(
                 );
                 callbacks?.onProgressPercent?.(percent);
                 setSyncProgress(percent);
+
+                // Call project progress callback with current project info
+                const currentProjectId = projectsToSync[projectIndex];
+                const currentProjectName =
+                  projectNameMap.get(currentProjectId) || null;
+                callbacks?.onProjectProgress?.(
+                  projectIndex + 1,
+                  totalProjects,
+                  currentProjectName
+                );
               }
             },
             projectDescriptionsMap,
@@ -1122,7 +1148,10 @@ function computeAndStoreEngineers(): number {
   const startedIssues = getStartedIssues();
 
   // Group by assignee_id (skip unassigned)
-  const engineerGroups = new Map<string, { name: string; issues: Issue[] }>();
+  const engineerGroups = new Map<
+    string,
+    { name: string; avatarUrl: string | null; issues: Issue[] }
+  >();
 
   for (const issue of startedIssues) {
     if (!issue.assignee_id || !issue.assignee_name) continue;
@@ -1130,6 +1159,7 @@ function computeAndStoreEngineers(): number {
     if (!engineerGroups.has(issue.assignee_id)) {
       engineerGroups.set(issue.assignee_id, {
         name: issue.assignee_name,
+        avatarUrl: issue.assignee_avatar_url,
         issues: [],
       });
     }
@@ -1139,7 +1169,7 @@ function computeAndStoreEngineers(): number {
   const activeEngineerIds = new Set<string>();
 
   // Compute metrics for each engineer
-  for (const [assigneeId, { name, issues }] of engineerGroups) {
+  for (const [assigneeId, { name, avatarUrl, issues }] of engineerGroups) {
     activeEngineerIds.add(assigneeId);
 
     // Collect unique teams
@@ -1216,6 +1246,7 @@ function computeAndStoreEngineers(): number {
     const engineer: Engineer = {
       assignee_id: assigneeId,
       assignee_name: name,
+      avatar_url: avatarUrl,
       team_ids: JSON.stringify(Array.from(teamIds)),
       team_names: JSON.stringify(Array.from(teamNames)),
       wip_issue_count: wipIssueCount,

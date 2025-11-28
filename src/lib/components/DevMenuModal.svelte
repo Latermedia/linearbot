@@ -3,7 +3,7 @@
   import { browser } from "$app/environment";
   import Button from "$lib/components/ui/button.svelte";
   import { databaseStore } from "../stores/database";
-  import { Trash2, X, RefreshCw } from "lucide-svelte";
+  import { Trash2, X, RefreshCw, AlertTriangle } from "lucide-svelte";
 
   let {
     onclose,
@@ -13,6 +13,7 @@
 
   const POLL_INTERVAL = 1000; // Poll every 1 second when syncing
   const STATUS_POLL_INTERVAL = 5000; // Poll status every 5 seconds when idle
+  const DELETE_CONFIRMATION_TEXT = "DELETE";
 
   let isResetting = $state(false);
   let resetError = $state<string | null>(null);
@@ -27,9 +28,42 @@
   let statusPollIntervalId: number | undefined;
   let syncErrorMessage = $state<string | null>(null);
 
+  // Sync stats
+  interface SyncStats {
+    startedIssuesCount: number;
+    totalProjectsCount: number;
+    currentProjectIndex: number;
+    currentProjectName: string | null;
+    projectIssuesCount: number;
+  }
+  let syncStats = $state<SyncStats | null>(null);
+
+  // Delete confirmation state
+  let showDeleteSection = $state(false);
+  let deleteConfirmationInput = $state("");
+  let deleteInputRef: HTMLInputElement | null = null;
+
+  const canDelete = $derived(
+    deleteConfirmationInput === DELETE_CONFIRMATION_TEXT
+  );
+
   function handleKeydown(event: KeyboardEvent): void {
     if (event.key === "Escape") {
-      onclose();
+      if (showDeleteSection) {
+        showDeleteSection = false;
+        deleteConfirmationInput = "";
+      } else {
+        onclose();
+      }
+    }
+    // Shift+D to toggle delete section
+    if (event.shiftKey && event.key === "D" && !showDeleteSection) {
+      event.preventDefault();
+      showDeleteSection = true;
+      // Focus the input after the section appears
+      setTimeout(() => {
+        deleteInputRef?.focus();
+      }, 50);
     }
   }
 
@@ -64,6 +98,7 @@
         serverLastSyncTime = data.lastSyncTime;
         progressPercent = data.progressPercent ?? null;
         syncErrorMessage = data.error || null;
+        syncStats = data.stats ?? null;
 
         // Detect if lastSyncTime changed (sync completed, either manual or automatic)
         const syncTimeChanged =
@@ -81,11 +116,14 @@
         ) {
           isRefreshing = false;
           previousLastSyncTime = serverLastSyncTime;
+          syncStats = null;
           await databaseStore.load();
         } else if (syncStatus === "error" && isRefreshing) {
           isRefreshing = false;
+          syncStats = null;
         } else if (syncStatus === "idle" && !data.isRunning) {
           isRefreshing = false;
+          syncStats = null;
         }
 
         // Update previous sync time if it changed
@@ -133,15 +171,7 @@
   }
 
   async function handleResetDatabase() {
-    if (!browser || isResetting) return;
-
-    if (
-      !confirm(
-        "⚠️ Are you sure you want to reset the database?\n\nThis will delete ALL synced data. You'll need to sync again after this."
-      )
-    ) {
-      return;
-    }
+    if (!browser || isResetting || !canDelete) return;
 
     isResetting = true;
     resetError = null;
@@ -160,6 +190,8 @@
       }
 
       resetSuccess = true;
+      deleteConfirmationInput = "";
+      showDeleteSection = false;
       // Reload data after reset
       await databaseStore.load();
     } catch (error) {
@@ -240,7 +272,7 @@
 </script>
 
 <div
-  class="modal-backdrop fixed inset-0 z-50 flex items-center justify-center bg-black/60"
+  class="modal-backdrop fixed inset-0 z-50 flex items-center justify-center bg-black/70"
   onclick={handleBackdropClick}
   onkeydown={handleBackdropKeydown}
   role="dialog"
@@ -249,129 +281,181 @@
   tabindex="-1"
 >
   <div
-    class="w-full max-w-md rounded-md border shadow-2xl bg-neutral-900 border-white/10 shadow-black/50 m-4"
+    class="w-full max-w-sm rounded-lg bg-neutral-900 shadow-2xl shadow-black/60 m-4"
     role="document"
   >
-    <div class="p-6">
+    <div class="p-5">
       <!-- Header -->
-      <div class="flex items-start justify-between mb-6">
-        <div class="flex-1">
-          <h2 id="modal-title" class="text-lg font-medium text-white mb-1">
-            🔧 Dev Menu
-          </h2>
-          <p class="text-xs text-neutral-400">Developer tools and utilities</p>
-        </div>
+      <div class="flex items-center justify-between mb-5">
+        <h2 id="modal-title" class="text-sm font-medium text-white">Tools</h2>
         <button
-          class="text-neutral-400 hover:text-white transition-colors duration-150"
+          class="text-neutral-500 hover:text-white transition-colors"
           onclick={onclose}
           aria-label="Close modal"
         >
-          <X class="w-5 h-5" />
+          <X class="w-4 h-4" />
         </button>
       </div>
 
       <!-- Sync Section -->
-      <div class="space-y-4">
-        <div>
-          <h3 class="text-sm font-medium text-white mb-2">Sync</h3>
-          <div
-            class="p-3 rounded-md bg-neutral-800/50 border border-neutral-700/50"
-          >
-            <p class="text-xs text-neutral-400 mb-3">
-              Sync data from Linear API. This will fetch all started issues and
-              project data.
-            </p>
-            {#if syncStatus === "syncing" && progressPercent !== null}
-              <div
-                class="mb-3 p-2 rounded bg-blue-500/10 border border-blue-500/20"
-              >
-                <p class="text-xs text-blue-400">
-                  Syncing... {progressPercent}%
-                </p>
-              </div>
-            {/if}
-            {#if syncErrorMessage}
-              <div
-                class="mb-3 p-2 rounded bg-red-500/10 border border-red-500/20"
-              >
-                <p class="text-xs text-red-400">{syncErrorMessage}</p>
-              </div>
-            {/if}
-            {#if lastSyncDate}
-              <p class="text-xs text-neutral-500 mb-3">
-                Last sync: {formatLastSync(lastSyncDate)}
-              </p>
-            {/if}
+      <div class="space-y-5">
+        <div class="space-y-4">
+          {#if syncStatus === "syncing"}
+            <!-- Syncing state -->
+            <div class="space-y-3">
+              {#if progressPercent !== null}
+                <div class="space-y-2">
+                  <div class="flex items-center justify-between">
+                    <span class="text-sm text-white">Syncing</span>
+                    <span class="text-sm text-neutral-400 tabular-nums"
+                      >{progressPercent}%</span
+                    >
+                  </div>
+                  <div class="w-full bg-neutral-800 rounded-full h-1">
+                    <div
+                      class="bg-indigo-500 h-1 rounded-full transition-all duration-300"
+                      style="width: {progressPercent}%"
+                    ></div>
+                  </div>
+                </div>
+              {/if}
+
+              {#if syncStats}
+                <div class="grid grid-cols-2 gap-x-4 gap-y-1 text-xs">
+                  {#if syncStats.startedIssuesCount > 0}
+                    <span class="text-neutral-500">WIP Issues</span>
+                    <span class="text-neutral-300 tabular-nums"
+                      >{syncStats.startedIssuesCount}</span
+                    >
+                  {/if}
+                  {#if syncStats.totalProjectsCount > 0}
+                    <span class="text-neutral-500">Projects</span>
+                    <span class="text-neutral-300 tabular-nums"
+                      >{syncStats.currentProjectIndex}/{syncStats.totalProjectsCount}</span
+                    >
+                  {/if}
+                  {#if syncStats.projectIssuesCount > 0}
+                    <span class="text-neutral-500">Project Issues</span>
+                    <span class="text-neutral-300 tabular-nums"
+                      >{syncStats.projectIssuesCount}</span
+                    >
+                  {/if}
+                </div>
+                {#if syncStats.currentProjectName}
+                  <p
+                    class="text-xs text-neutral-500 truncate"
+                    title={syncStats.currentProjectName}
+                  >
+                    {syncStats.currentProjectName}
+                  </p>
+                {/if}
+              {/if}
+            </div>
+          {:else}
+            <!-- Idle state -->
+            <p class="text-sm text-neutral-400">Sync data from Linear API</p>
+          {/if}
+
+          {#if syncErrorMessage}
+            <p class="text-xs text-red-400">{syncErrorMessage}</p>
+          {/if}
+
+          <div class="flex items-center justify-between">
             <Button
               onclick={handleSync}
               disabled={isRefreshing || syncStatus === "syncing"}
               variant="default"
               size="sm"
-              class="w-full"
             >
               <RefreshCw
-                class={`h-4 w-4 mr-2 ${isRefreshing || syncStatus === "syncing" ? "animate-spin" : ""}`}
+                class={`h-3.5 w-3.5 mr-1.5 ${isRefreshing || syncStatus === "syncing" ? "animate-spin" : ""}`}
               />
               {#if syncStatus === "syncing" || isRefreshing}
-                Syncing...
+                Syncing
               {:else}
                 Sync Now
               {/if}
             </Button>
+            {#if lastSyncDate && syncStatus !== "syncing"}
+              <span class="text-xs text-neutral-600"
+                >{formatLastSync(lastSyncDate)}</span
+              >
+            {/if}
           </div>
         </div>
 
-        <!-- Reset Database Section -->
-        <div>
-          <h3 class="text-sm font-medium text-white mb-2">Database</h3>
-          <div
-            class="p-3 rounded-md bg-neutral-800/50 border border-neutral-700/50"
-          >
-            <p class="text-xs text-neutral-400 mb-3">
-              Reset the database to fix schema issues or start fresh. All synced
-              data will be deleted.
+        <!-- Reset Database Section (Hidden by default, Shift+D to reveal) -->
+        {#if showDeleteSection}
+          <div class="pt-4 border-t border-neutral-800 space-y-3">
+            <div class="flex items-center gap-2 text-red-400">
+              <AlertTriangle class="h-3.5 w-3.5" />
+              <span class="text-xs font-medium">Danger Zone</span>
+            </div>
+
+            <p class="text-xs text-neutral-500">
+              Reset database and delete all synced data.
             </p>
+
             {#if resetSuccess}
-              <div
-                class="mb-3 p-2 rounded bg-green-500/10 border border-green-500/20"
-              >
-                <p class="text-xs text-green-400">
-                  ✅ Database reset successfully!
-                </p>
-              </div>
+              <p class="text-xs text-green-400">Database reset successfully</p>
             {/if}
             {#if resetError}
-              <div
-                class="mb-3 p-2 rounded bg-red-500/10 border border-red-500/20"
-              >
-                <p class="text-xs text-red-400">{resetError}</p>
-              </div>
+              <p class="text-xs text-red-400">{resetError}</p>
             {/if}
-            <Button
-              onclick={handleResetDatabase}
-              disabled={isResetting}
-              variant="destructive"
-              size="sm"
-              class="w-full"
-            >
-              <Trash2 class="h-4 w-4 mr-2" />
-              {#if isResetting}
-                Resetting...
-              {:else}
-                Reset Database
-              {/if}
-            </Button>
+
+            <div class="space-y-2">
+              <input
+                id="delete-confirm"
+                type="text"
+                bind:value={deleteConfirmationInput}
+                bind:this={deleteInputRef}
+                class="w-full px-2.5 py-1.5 text-xs rounded bg-neutral-800/50 text-white placeholder-neutral-600 focus:outline-none focus:ring-1 focus:ring-red-500/50"
+                placeholder="Type DELETE to confirm"
+                autocomplete="off"
+                spellcheck="false"
+              />
+              <div class="flex gap-2">
+                <button
+                  onclick={() => {
+                    showDeleteSection = false;
+                    deleteConfirmationInput = "";
+                  }}
+                  class="flex-1 px-3 py-1.5 text-xs text-neutral-400 hover:text-white transition-colors"
+                >
+                  Cancel
+                </button>
+                <button
+                  onclick={handleResetDatabase}
+                  disabled={isResetting || !canDelete}
+                  class="flex-1 px-3 py-1.5 text-xs rounded bg-red-500/10 text-red-400 hover:bg-red-500/20 disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
+                >
+                  {#if isResetting}
+                    Resetting...
+                  {:else}
+                    Reset
+                  {/if}
+                </button>
+              </div>
+            </div>
           </div>
-        </div>
+        {/if}
       </div>
 
       <!-- Footer hint -->
-      <div class="mt-6 pt-4 border-t border-white/10">
+      <div class="mt-5 pt-4 border-t border-neutral-800">
         <p class="text-xs text-center text-neutral-500">
-          Press <kbd
+          <kbd
             class="px-1.5 py-0.5 rounded bg-neutral-800 border border-neutral-700 text-neutral-300"
             >Esc</kbd
-          > to close
+          >
+          to close
+          {#if !showDeleteSection}
+            <span class="mx-1.5">·</span>
+            <kbd
+              class="px-1.5 py-0.5 rounded bg-neutral-800 border border-neutral-700 text-neutral-300"
+              >Shift+D</kbd
+            > danger zone
+          {/if}
         </p>
       </div>
     </div>

@@ -1,7 +1,7 @@
 import { json } from "@sveltejs/kit";
 import type { RequestHandler } from "./$types";
 import { performSync } from "../../../services/sync-service.js";
-import { getSyncState, setSyncState } from "./state.js";
+import { getSyncState, setSyncState, updateSyncStats } from "./state.js";
 
 const MIN_SYNC_INTERVAL_MS = 60 * 1000; // 1 minute
 
@@ -52,12 +52,35 @@ export const POST: RequestHandler = async () => {
     status: "syncing",
     error: undefined,
     progressPercent: 0,
+    stats: {
+      startedIssuesCount: 0,
+      totalProjectsCount: 0,
+      currentProjectIndex: 0,
+      currentProjectName: null,
+      projectIssuesCount: 0,
+    },
   });
 
   // Run sync asynchronously
   performSync(true, {
     onProgressPercent: (percent) => {
       setSyncState({ progressPercent: percent });
+    },
+    onIssueCountUpdate: (count) => {
+      updateSyncStats({ startedIssuesCount: count });
+    },
+    onProjectCountUpdate: (count) => {
+      updateSyncStats({ totalProjectsCount: count });
+    },
+    onProjectIssueCountUpdate: (count) => {
+      updateSyncStats({ projectIssuesCount: count });
+    },
+    onProjectProgress: (index, total, projectName) => {
+      updateSyncStats({
+        currentProjectIndex: index,
+        totalProjectsCount: total,
+        currentProjectName: projectName,
+      });
     },
   })
     .then((result) => {
@@ -71,6 +94,7 @@ export const POST: RequestHandler = async () => {
           status: "idle",
           lastSyncTime: Date.now(),
           progressPercent: undefined,
+          stats: undefined,
         });
       } else {
         console.error(
@@ -81,6 +105,7 @@ export const POST: RequestHandler = async () => {
           status: "error",
           error: result.error || "Sync failed",
           progressPercent: undefined,
+          stats: undefined,
         });
       }
     })
@@ -94,6 +119,7 @@ export const POST: RequestHandler = async () => {
         status: "error",
         error: errorMessage,
         progressPercent: undefined,
+        stats: undefined,
       });
     });
 

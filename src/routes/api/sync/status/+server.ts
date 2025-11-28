@@ -45,5 +45,7 @@ export const GET: RequestHandler = async () => {
       dbMetadata?.sync_progress_percent ?? syncState.progressPercent,
     hasPartialSync: partialSyncState !== null,
     partialSyncProgress,
+    // Include detailed sync stats from in-memory state
+    stats: syncState.stats ?? null,
   });
 };
