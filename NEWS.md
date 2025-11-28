@@ -1,5 +1,18 @@
 # Release Notes
 
+## v0.2.0
+
+### Project Target Dates
+
+- **Dual date display** — show Linear's project target date alongside velocity-predicted end date in Projects table, detail modal, and hover tooltip
+- **Date discrepancy warnings** — highlight projects where target and predicted dates differ by 30+ days with amber indicators
+- **Gantt date mode toggle** — switch between Target and Predicted end dates for bar positioning in both the live view and export modal
+- **Target date marker** — gold diamond marker shows target date position on Gantt bars when viewing in Predicted mode
+
+### UI Improvements
+
+- Renamed "Dashboard" to "Projects" for clearer navigation
+
 ## v0.1.1
 
 ### Fixed
