@@ -70,7 +70,7 @@ async function main() {
   await $`git add ${VERSION_FILE} ${NEWS_FILE}`;
 
   // Commit
-  const commitMsg = `Release v${version}`;
+  const commitMsg = `release: v${version}`;
   console.log(`💾 Committing: "${commitMsg}"...`);
   await $`git commit -m ${commitMsg}`;
 
