@@ -8,7 +8,6 @@ flowchart LR
     Sync --> DB[(SQLite)]
     DB --> API[SvelteKit API]
     API --> Web[Web UI]
-    DB --> CLI[Terminal App]
 ```
 
 ## Stack
@@ -19,7 +18,6 @@ flowchart LR
 | Backend  | SvelteKit API routes       |
 | Database | SQLite (bun:sqlite)        |
 | External | Linear GraphQL API         |
-| CLI      | Ink (React for terminals)  |
 
 ## Directory Structure
 
@@ -34,7 +32,6 @@ src/
   services/         # Sync and business logic
   linear/           # Linear API client
 
-terminal/           # Ink-based TUI
 scripts/            # CLI utilities
 docs/               # Documentation
 ```

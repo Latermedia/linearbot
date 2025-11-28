@@ -1,7 +1,5 @@
 # LinearBot
 
-[![CI](https://github.com/your-org/linearbot/actions/workflows/ci.yml/badge.svg)](https://github.com/your-org/linearbot/actions/workflows/ci.yml)
-
 Surface project health, WIP constraints, and best practice violations from Linear.
 
 ## Prerequisites
@@ -41,12 +39,6 @@ cp .env.example .env
 ```
 
 Edit `.env` with your Linear API key and desired configuration settings.
-
-### Terminal App (Optional)
-
-```bash
-bun run start:cli
-```
 
 ## What It Does
 

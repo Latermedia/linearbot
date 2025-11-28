@@ -42,10 +42,6 @@ Planned features and known issues for LinearBot.
 - **Suppress cancelled/duplicate** — no alerts for these states
 - **Missing points label** — clearer messaging, exclude cancelled
 
-### Cleanup
-
-- **Remove terminal UI** — delete `terminal/` directory, remove `start:cli`/`dev:cli` scripts, uninstall `ink`/`ink-spinner` dependencies; web UI is the primary interface and TUI adds maintenance burden without sufficient value
-
 ---
 
 ## Known Issues

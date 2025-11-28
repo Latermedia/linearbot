@@ -4,28 +4,89 @@
 
 _Initial release_
 
-### Added
+### Views
 
-- **Dashboard** — stats cards for teams, projects, violations, health metrics
-- **Table view** — sortable project table grouped by team or domain
-- **Gantt view** — 90-day quarter timeline with progress, month markers, today indicator
-- **Executive view** — filtered by "Executive Visibility" label
-- **Project detail modal** — metrics, health updates, issues table
-- **Terminal app** — Ink-based TUI for CLI access
+- **Dashboard** — stats cards for teams, projects, and health metrics with table/Gantt toggle
+- **Executive View** — projects filtered by `Executive Visibility` label with card, table, and Gantt options
+- **Engineers View** — WIP tracking and constraint violations per engineer with detail modal
+
+### Dashboard
+
+- Stats cards: Total Teams, Active Projects, Average Projects/Team, Missing Updates, Status Mismatches, Missing Leads
+- Sortable project table grouped by team or domain
+- Click rows for project detail modal
+
+### Gantt Chart
+
+- 90-day quarter timeline with progress fill
+- Month markers and today indicator line
+- Fade effects for projects extending beyond visible range
+- Export to PNG with configurable overlays (today indicator, warnings)
+
+### Executive View
+
+- Card view with project progress, velocity, health, teams, engineers, estimated completion
+- Stats: Active Projects, Total Issues, Overall Progress, Issues Completed (Last 2 Weeks), Recent Velocity, Active Engineers
+- Table and Gantt views available
+
+### Engineers View
+
+- WIP issue count and total points per engineer
+- Stats: Engineers with active WIP, Total WIP Issues, Avg WIP/Engineer, Over WIP Limit, Total Violations
+- Sortable by WIP limit violations
+- Engineer detail modal with active issues
+
+### Project Detail Modal
+
+- Progress bar (completed/in-progress/remaining)
+- Velocity, cycle time, lead time, estimate accuracy
+- Velocity breakdown by team
+- Project health updates with history toggle
+- Issues table with direct links to Linear
 
 ### Violation Tracking
 
-- Missing estimates, priorities, descriptions
-- Stale updates (7+ days)
-- Status mismatches
-- WIP age violations (>14 days)
-- Missing project leads and health status
+- Missing estimates (issues without story points)
+- Missing priorities (Priority = 0)
+- Missing descriptions (empty description field)
+- Stale updates (project not updated in 7+ days)
+- Status mismatches (project state vs active work)
+- WIP age violations (started >14 days ago)
+- Missing project leads
+- Missing health status
 - No recent comment (business-day aware)
+
+### WIP Constraints
+
+- Ideal threshold: 5 issues per engineer
+- Warning threshold: 6 issues
+- Critical threshold: 8 issues
+
+### Grouping
+
+- **Team-based** — by Linear teams
+- **Domain-based** — custom team→domain mappings via `TEAM_DOMAIN_MAPPINGS` env
+- **Multi-team** — projects spanning multiple teams
 
 ### Infrastructure
 
 - SQLite database with computed metrics
 - Linear API sync with progress indicator
+- Auto-sync scheduler
 - Password authentication (24h sessions)
 - Fly.io deployment configuration
+
+### Mock Data Mode
+
+- Automatically activates when `LINEAR_API_KEY` is missing, empty, or set to `mock`
+- Generates 7 projects with 50+ issues including realistic violations for testing
+- Enables development and demos without Linear account
+
+### UI & UX
+
 - Theme toggle (dark/light)
+- Sync indicator with real-time progress
+- Presentation mode (`Cmd/Ctrl+Shift+E`) for executive demos
+- Dev menu (`Cmd/Ctrl+Shift+D`) with manual sync and database reset
+- Hover tooltips for project details
+- Sticky controls during scroll

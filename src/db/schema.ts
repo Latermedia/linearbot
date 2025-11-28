@@ -34,13 +34,6 @@ export interface Issue {
   project_lead_name: string | null;
 }
 
-export interface CommentLog {
-  id: number;
-  issue_id: string;
-  comment_type: string;
-  commented_at: string;
-}
-
 export interface Project {
   project_id: string;
   project_name: string;
@@ -189,7 +182,6 @@ export function validateSchema(db: Database): {
  */
 export function resetDatabase(db: Database): void {
   console.log("[DB] Resetting database...");
-  db.run("DROP TABLE IF EXISTS comment_log");
   db.run("DROP TABLE IF EXISTS engineers");
   db.run("DROP TABLE IF EXISTS projects");
   db.run("DROP TABLE IF EXISTS issues");
@@ -390,17 +382,6 @@ export function initializeDatabase(db: Database): void {
     // Column already exists, ignore
   }
 
-  // Create comment log table to track bot comments
-  db.run(`
-    CREATE TABLE IF NOT EXISTS comment_log (
-      id INTEGER PRIMARY KEY AUTOINCREMENT,
-      issue_id TEXT NOT NULL,
-      comment_type TEXT NOT NULL,
-      commented_at TEXT NOT NULL,
-      FOREIGN KEY (issue_id) REFERENCES issues(id) ON DELETE CASCADE
-    )
-  `);
-
   // Create sync metadata table to track sync status and timing
   db.run(`
     CREATE TABLE IF NOT EXISTS sync_metadata (
@@ -444,16 +425,6 @@ export function initializeDatabase(db: Database): void {
   db.run(`
     CREATE INDEX IF NOT EXISTS idx_issues_project_id 
     ON issues(project_id)
-  `);
-
-  db.run(`
-    CREATE INDEX IF NOT EXISTS idx_comment_log_issue_id 
-    ON comment_log(issue_id)
-  `);
-
-  db.run(`
-    CREATE INDEX IF NOT EXISTS idx_comment_log_type_date 
-    ON comment_log(comment_type, commented_at)
   `);
 
   db.run(`

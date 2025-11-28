@@ -1,8 +1,5 @@
 import type { Issue } from "../db/schema.js";
-import {
-  COMMENT_THRESHOLDS,
-  WIP_AGE_THRESHOLDS,
-} from "../constants/thresholds.js";
+import { WIP_AGE_THRESHOLDS } from "../constants/thresholds.js";
 
 /**
  * Get the cutoff date for business day comment checking

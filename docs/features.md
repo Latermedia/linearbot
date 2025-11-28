@@ -28,10 +28,6 @@ Sortable project table grouped by team or domain. Click rows for detail modal.
 
 Projects filtered by `Executive Visibility` label. Card, table, and Gantt options.
 
-### Terminal App
-
-Ink-based React TUI with browse, projects, engineers, teams, and domains views.
-
 ## Project Detail Modal
 
 - Progress bar (completed/in-progress/remaining)

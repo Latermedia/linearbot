@@ -4,16 +4,6 @@
  */
 
 /**
- * Comment tracking thresholds
- */
-export const COMMENT_THRESHOLDS = {
-  /** Hours before considering a comment "old" */
-  RECENT_HOURS: 24,
-  /** Days to keep comment logs before cleanup */
-  LOG_RETENTION_DAYS: 30,
-} as const;
-
-/**
  * WIP (Work in Progress) constraint thresholds
  */
 export const WIP_THRESHOLDS = {
@@ -60,49 +50,11 @@ export const MULTI_PROJECT_THRESHOLDS = {
 } as const;
 
 /**
- * Rate limiting
- */
-export const RATE_LIMITS = {
-  /** Milliseconds to wait between API comment requests */
-  COMMENT_DELAY_MS: 500,
-} as const;
-
-/**
- * UI pagination
- */
-export const UI_CONSTANTS = {
-  /** Default terminal width fallback */
-  DEFAULT_TERMINAL_WIDTH: 80,
-  /** Default terminal height fallback */
-  DEFAULT_TERMINAL_HEIGHT: 24,
-  /** Lines reserved for header/footer in views */
-  HEADER_FOOTER_LINES: 7,
-  /** Lines reserved for header/footer in list views with extra info */
-  LIST_VIEW_HEADER_LINES: 8,
-  /** Lines reserved in projects view (projects are tall) */
-  PROJECTS_VIEW_LINES_PER_ITEM: 7,
-  /** Minimum visible lines to show */
-  MIN_VISIBLE_LINES: 5,
-} as const;
-
-/**
  * Text truncation
  */
 export const TEXT_LIMITS = {
-  /** Max issue title length before truncation in list views */
-  ISSUE_TITLE_SHORT: 40,
-  /** Max issue title length in detailed views */
-  ISSUE_TITLE_MEDIUM: 50,
-  /** Max issue title length in wide views */
-  ISSUE_TITLE_LONG: 60,
   /** Max description preview length */
   DESCRIPTION_PREVIEW: 300,
-  /** Max assignee name width in tables */
-  ASSIGNEE_NAME_WIDTH: 35,
-  /** Max team name width in tables */
-  TEAM_NAME_WIDTH: 30,
-  /** Max project name width in tables */
-  PROJECT_NAME_WIDTH: 50,
 } as const;
 
 /**
