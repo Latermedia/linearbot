@@ -101,6 +101,7 @@ function convertDbIssueToLinearFormat(dbIssue: Issue): LinearIssueData {
     lastCommentAt: dbIssue.last_comment_at
       ? new Date(dbIssue.last_comment_at)
       : null,
+    commentCount: dbIssue.comment_count ?? null,
     createdAt: new Date(dbIssue.created_at),
     updatedAt: new Date(dbIssue.updated_at),
     startedAt: dbIssue.started_at ? new Date(dbIssue.started_at) : null,
@@ -146,6 +147,7 @@ function writeIssuesToDatabase(
     priority: number | null;
     estimate: number | null;
     lastCommentAt: Date | null;
+    commentCount: number | null;
     createdAt: Date;
     updatedAt: Date;
     startedAt: Date | null;
@@ -196,6 +198,7 @@ function writeIssuesToDatabase(
       last_comment_at: issue.lastCommentAt
         ? issue.lastCommentAt.toISOString()
         : null,
+      comment_count: issue.commentCount ?? null,
       created_at: issue.createdAt.toISOString(),
       updated_at: issue.updatedAt.toISOString(),
       started_at: issue.startedAt ? issue.startedAt.toISOString() : null,

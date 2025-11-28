@@ -330,6 +330,7 @@ export function generateMockData(): {
 
       // ~15% stale (no comment in 7+ days) for violation testing
       let lastCommentAt: Date | null = null;
+      let commentCount: number | null = null;
       if (state.type === "started") {
         if (Math.random() > 0.15) {
           // Recent comment
@@ -338,6 +339,8 @@ export function generateMockData(): {
           // Stale - comment from 8-14 days ago
           lastCommentAt = randomDate(14, 8);
         }
+        // Generate random comment count (0-20 comments)
+        commentCount = Math.floor(Math.random() * 21);
       }
 
       const identifier = `${team.key}-${issueCounter++}`;
@@ -361,6 +364,7 @@ export function generateMockData(): {
         priority,
         estimate,
         lastCommentAt,
+        commentCount,
         createdAt,
         updatedAt,
         startedAt,
@@ -417,6 +421,7 @@ export function generateMockData(): {
       priority: randomPick([1, 2, 3]),
       estimate: randomPick([1, 2, 3]),
       lastCommentAt: randomDate(3, 0),
+      commentCount: Math.floor(Math.random() * 21), // Random comment count (0-20)
       createdAt,
       updatedAt,
       startedAt,

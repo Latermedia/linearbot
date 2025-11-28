@@ -624,7 +624,7 @@
                 return a[0].localeCompare(b[0]);
               }
             )}
-            {@const columnCount = project.daysPerStoryPoint !== null ? 7 : 6}
+            {@const columnCount = project.daysPerStoryPoint !== null ? 8 : 7}
             <table class="w-full text-xs min-w-[680px]">
               <thead>
                 <tr class="border-b border-white/10">
@@ -647,6 +647,10 @@
                   <th
                     class="px-2 py-1.5 font-medium text-right text-neutral-400 w-[110px] min-w-[110px]"
                     title="Time since last comment">Last Comment</th
+                  >
+                  <th
+                    class="px-2 py-1.5 font-medium text-right text-neutral-400 w-[80px] min-w-[80px]"
+                    title="Total number of comments">Comments</th
                   >
                   <th
                     class="px-2 py-1.5 font-medium text-right text-neutral-400 w-[70px] min-w-[70px]"
@@ -798,6 +802,14 @@
                               : "text-neutral-300"}>{commentRecency}</span
                           >
                         </div>
+                      </td>
+                      <td
+                        class="px-2 py-1.5 text-right text-neutral-300 w-[80px] min-w-[80px]"
+                      >
+                        {issue.comment_count !== null &&
+                        issue.comment_count !== undefined
+                          ? issue.comment_count
+                          : "—"}
                       </td>
                       <td
                         class="px-2 py-1.5 text-right text-neutral-300 w-[70px] min-w-[70px]"

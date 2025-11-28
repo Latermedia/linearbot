@@ -19,6 +19,7 @@ export interface Issue {
   priority: number;
   estimate: number | null;
   last_comment_at: string | null;
+  comment_count: number | null;
   created_at: string;
   updated_at: string;
   started_at: string | null;
@@ -121,6 +122,7 @@ const EXPECTED_ISSUES_COLUMNS = [
   "priority",
   "estimate",
   "last_comment_at",
+  "comment_count",
   "created_at",
   "updated_at",
   "started_at",
@@ -222,6 +224,7 @@ export function initializeDatabase(db: Database): void {
       priority INTEGER NOT NULL,
       estimate REAL,
       last_comment_at TEXT,
+      comment_count INTEGER,
       created_at TEXT NOT NULL,
       updated_at TEXT NOT NULL,
       url TEXT NOT NULL,
@@ -279,6 +282,11 @@ export function initializeDatabase(db: Database): void {
   }
   try {
     db.run(`ALTER TABLE issues ADD COLUMN last_comment_at TEXT`);
+  } catch (e) {
+    // Column already exists, ignore
+  }
+  try {
+    db.run(`ALTER TABLE issues ADD COLUMN comment_count INTEGER`);
   } catch (e) {
     // Column already exists, ignore
   }

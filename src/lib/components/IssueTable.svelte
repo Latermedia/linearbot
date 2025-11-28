@@ -19,6 +19,7 @@
     estimate: number | null;
     priority: number;
     last_comment_at: string | null;
+    comment_count: number | null;
     started_at: string | null;
     url: string;
     team_name: string;
@@ -143,6 +144,10 @@
             title="Time since last comment">Last Comment</th
           >
           <th
+            class="px-2 py-1.5 font-medium text-right text-neutral-400 w-[80px] min-w-[80px]"
+            title="Total number of comments">Comments</th
+          >
+          <th
             class="px-2 py-1.5 font-medium text-right text-neutral-400 w-[70px] min-w-[70px]"
             >WIP Age</th
           >
@@ -239,6 +244,11 @@
                     : "text-neutral-300"}>{commentRecency}</span
                 >
               </div>
+            </td>
+            <td class="px-2 py-1.5 text-right text-neutral-300">
+              {issue.comment_count !== null && issue.comment_count !== undefined
+                ? issue.comment_count
+                : "—"}
             </td>
             <td class="px-2 py-1.5 text-right">
               <div class="flex gap-1 justify-end items-center">

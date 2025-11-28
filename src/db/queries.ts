@@ -128,6 +128,7 @@ export function upsertIssue(issue: {
   priority: number | null;
   estimate: number | null;
   last_comment_at: string | null;
+  comment_count: number | null;
   created_at: string;
   updated_at: string;
   started_at: string | null;
@@ -151,7 +152,7 @@ export function upsertIssue(issue: {
       id, identifier, title, description, team_id, team_name, team_key,
       state_id, state_name, state_type,
       assignee_id, assignee_name, assignee_avatar_url, creator_id, creator_name,
-      priority, estimate, last_comment_at,
+      priority, estimate, last_comment_at, comment_count,
       created_at, updated_at, started_at, completed_at, canceled_at, url,
       project_id, project_name, project_state, project_health, project_updated_at,
       project_lead_id, project_lead_name, project_target_date, project_start_date, parent_id
@@ -159,7 +160,7 @@ export function upsertIssue(issue: {
       ?, ?, ?, ?, ?, ?, ?,
       ?, ?, ?,
       ?, ?, ?, ?, ?,
-      ?, ?, ?,
+      ?, ?, ?, ?,
       ?, ?, ?, ?, ?, ?,
       ?, ?, ?, ?, ?,
       ?, ?, ?, ?, ?
@@ -182,6 +183,7 @@ export function upsertIssue(issue: {
       priority = excluded.priority,
       estimate = excluded.estimate,
       last_comment_at = excluded.last_comment_at,
+      comment_count = excluded.comment_count,
       updated_at = excluded.updated_at,
       started_at = excluded.started_at,
       completed_at = excluded.completed_at,
@@ -218,6 +220,7 @@ export function upsertIssue(issue: {
     issue.priority,
     issue.estimate,
     issue.last_comment_at,
+    issue.comment_count,
     issue.created_at,
     issue.updated_at,
     issue.started_at,

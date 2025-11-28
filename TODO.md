@@ -19,8 +19,7 @@ Planned features and known issues for LinearBot.
 
 ### Issue Management
 
-- **Subissue handling** — exclude from points/priority; show visual indicator
-- **Comment count** — show total comments per issue (currently only tracking last comment time)
+- **Subissue handling** — exclude from points; show visual indicator
 - **Comment threshold** — configurable "no recent comment" threshold (currently hardcoded to business day logic)
 
 ### Project Tracking

@@ -67,6 +67,7 @@ export interface LinearIssueData {
   priority: number;
   estimate: number | null;
   lastCommentAt: Date | null;
+  commentCount: number | null;
   createdAt: Date;
   updatedAt: Date;
   startedAt: Date | null;
@@ -140,6 +141,7 @@ export class LinearAPIClient {
               nodes {
                 createdAt
               }
+              totalCount
             }
             team {
               id
@@ -209,6 +211,7 @@ export class LinearAPIClient {
         if (!issue.team || !issue.state) continue;
 
         const lastComment = issue.comments?.nodes?.[0];
+        const commentCount = issue.comments?.totalCount ?? null;
         issues.push({
           id: issue.id,
           identifier: issue.identifier,
@@ -230,6 +233,7 @@ export class LinearAPIClient {
           lastCommentAt: lastComment?.createdAt
             ? new Date(lastComment.createdAt)
             : null,
+          commentCount: commentCount,
           createdAt: new Date(issue.createdAt),
           updatedAt: new Date(issue.updatedAt),
           startedAt: issue.startedAt ? new Date(issue.startedAt) : null,
@@ -414,6 +418,7 @@ export class LinearAPIClient {
           }
 
           const lastComment = issue.comments?.nodes?.[0];
+          const commentCount = issue.comments?.pageInfo?.totalCount ?? null;
           const issueData = {
             id: issue.id,
             identifier: issue.identifier,
@@ -435,6 +440,7 @@ export class LinearAPIClient {
             lastCommentAt: lastComment?.createdAt
               ? new Date(lastComment.createdAt)
               : null,
+            commentCount: commentCount,
             createdAt: new Date(issue.createdAt),
             updatedAt: new Date(issue.updatedAt),
             startedAt: issue.startedAt ? new Date(issue.startedAt) : null,
