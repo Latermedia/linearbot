@@ -36,6 +36,7 @@
   } from "$lib/utils/executive-stats";
 
   let viewType = $state<"card" | "table" | "gantt">("card");
+  let endDateMode = $state<"predicted" | "target">("predicted");
 
   // Load data on mount
   onMount(() => {
@@ -276,6 +277,25 @@
           Gantt
         </ToggleGroupItem>
       </ToggleGroupRoot>
+
+      <!-- End date mode toggle (only for Gantt view) -->
+      {#if viewType === "gantt"}
+        <ToggleGroupRoot
+          bind:value={endDateMode}
+          variant="outline"
+          type="single"
+        >
+          <ToggleGroupItem
+            value="predicted"
+            aria-label="Use predicted end dates"
+          >
+            Predicted
+          </ToggleGroupItem>
+          <ToggleGroupItem value="target" aria-label="Use target end dates">
+            Target
+          </ToggleGroupItem>
+        </ToggleGroupRoot>
+      {/if}
     </div>
   </div>
 
@@ -442,6 +462,7 @@
       domains={executiveDomains}
       groupBy="team"
       hideWarnings={true}
+      {endDateMode}
     />
   {/if}
 </div>

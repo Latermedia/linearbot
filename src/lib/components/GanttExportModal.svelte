@@ -34,6 +34,7 @@
   let copyMessage = $state("");
   let showTodayIndicator = $state(false);
   let showWarnings = $state(false);
+  let endDateMode = $state<"predicted" | "target">("predicted");
 
   // Calculate current quarter start date (same as GanttChart)
   function getQuarterStart(): Date {
@@ -151,8 +152,15 @@
     const startDate = project.startDate
       ? new Date(project.startDate)
       : quarterStart;
-    const endDate = project.estimatedEndDate
-      ? new Date(project.estimatedEndDate)
+
+    // Choose end date based on mode: target date or velocity-predicted date
+    const selectedEndDate =
+      endDateMode === "target" && project.targetDate
+        ? project.targetDate
+        : project.estimatedEndDate;
+
+    const endDate = selectedEndDate
+      ? new Date(selectedEndDate)
       : new Date(quarterStart.getTime() + 90 * 24 * 60 * 60 * 1000);
 
     const startDays =
@@ -341,6 +349,18 @@
 
       <!-- Export Controls -->
       <div class="flex gap-4 items-center mr-4">
+        <div class="flex gap-2 items-center">
+          <span class="text-sm text-neutral-600 dark:text-neutral-400">
+            End date:
+          </span>
+          <select
+            bind:value={endDateMode}
+            class="px-2 py-1 text-sm rounded border bg-white dark:bg-neutral-800 border-neutral-300 dark:border-white/20 text-neutral-700 dark:text-neutral-300 focus:ring-violet-500 focus:ring-2 focus:outline-none"
+          >
+            <option value="predicted">Predicted</option>
+            <option value="target">Target</option>
+          </select>
+        </div>
         <label class="flex gap-2 items-center cursor-pointer">
           <input
             type="checkbox"
@@ -348,7 +368,7 @@
             class="w-4 h-4 text-violet-600 rounded border-neutral-300 dark:border-white/20 focus:ring-violet-500 focus:ring-2 dark:bg-neutral-800 dark:checked:bg-violet-600"
           />
           <span class="text-sm text-neutral-700 dark:text-neutral-300">
-            Show today's date
+            Show today
           </span>
         </label>
         <label class="flex gap-2 items-center cursor-pointer">

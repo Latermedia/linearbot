@@ -18,6 +18,7 @@
 
   let groupBy = $state<"team" | "domain">("team");
   let viewType = $state<"table" | "gantt">("table");
+  let endDateMode = $state<"predicted" | "target">("predicted");
 
   // Load data on mount
   onMount(() => {
@@ -189,6 +190,25 @@
           Domains
         </ToggleGroupItem>
       </ToggleGroupRoot>
+
+      <!-- End date mode toggle (only for Gantt view) -->
+      {#if viewType === "gantt"}
+        <ToggleGroupRoot
+          bind:value={endDateMode}
+          variant="outline"
+          type="single"
+        >
+          <ToggleGroupItem
+            value="predicted"
+            aria-label="Use predicted end dates"
+          >
+            Predicted
+          </ToggleGroupItem>
+          <ToggleGroupItem value="target" aria-label="Use target end dates">
+            Target
+          </ToggleGroupItem>
+        </ToggleGroupRoot>
+      {/if}
     </div>
   </div>
 
@@ -239,6 +259,6 @@
   {:else if viewType === "table"}
     <ProjectsTable {teams} {domains} {groupBy} />
   {:else}
-    <GanttChart {teams} {domains} {groupBy} />
+    <GanttChart {teams} {domains} {groupBy} {endDateMode} />
   {/if}
 </div>

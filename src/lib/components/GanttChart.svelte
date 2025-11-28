@@ -16,12 +16,14 @@
     groupBy = "team" as "team" | "domain",
     showScale = true,
     hideWarnings = false,
+    endDateMode = "predicted" as "predicted" | "target",
   }: {
     teams?: TeamSummary[];
     domains?: DomainSummary[];
     groupBy?: "team" | "domain";
     showScale?: boolean;
     hideWarnings?: boolean;
+    endDateMode?: "predicted" | "target";
   } = $props();
 
   let selectedProject: ProjectSummary | null = $state(null);
@@ -158,8 +160,15 @@
     const startDate = project.startDate
       ? new Date(project.startDate)
       : quarterStart;
-    const endDate = project.estimatedEndDate
-      ? new Date(project.estimatedEndDate)
+
+    // Choose end date based on mode: target date or velocity-predicted date
+    const selectedEndDate =
+      endDateMode === "target" && project.targetDate
+        ? project.targetDate
+        : project.estimatedEndDate;
+
+    const endDate = selectedEndDate
+      ? new Date(selectedEndDate)
       : new Date(quarterStart.getTime() + 90 * 24 * 60 * 60 * 1000);
 
     // Calculate days from quarter start
