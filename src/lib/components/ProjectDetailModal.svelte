@@ -10,7 +10,6 @@
   import {
     formatDateFull,
     formatRelativeDate,
-    getProgressPercent,
     getHealthDisplay,
     calculateProjectAge,
     formatTimeDays,
@@ -23,12 +22,16 @@
     formatAccuracyRatio,
     getAccuracyColorClass,
     formatCommentRecency,
+    groupIssuesByParent,
   } from "$lib/utils/project-helpers";
   import {
     hasMissingEstimate,
     hasNoRecentComment,
     hasMissingPriority,
+    hasSubissueStatusMismatch,
   } from "../../utils/issue-validators";
+  import PriorityDisplay from "./PriorityDisplay.svelte";
+  import StatusDisplay from "./StatusDisplay.svelte";
 
   let {
     project,
@@ -65,7 +68,7 @@
           }
         }
       }
-    } catch (error) {
+    } catch (_error) {
       // Silently fail - link just won't be available
     }
   }
@@ -577,7 +580,7 @@
             return a[0].localeCompare(b[0]);
           }
         )}
-        {@const columnCount = project.daysPerStoryPoint !== null ? 8 : 7}
+        {@const columnCount = project.daysPerStoryPoint !== null ? 9 : 8}
         <table class="w-full text-xs min-w-[680px]">
           <thead>
             <tr class="border-b border-white/10">
@@ -588,6 +591,10 @@
               <th
                 class="px-2 py-1.5 font-medium text-left text-neutral-400 w-[120px] min-w-[120px]"
                 >Assignee</th
+              >
+              <th
+                class="px-2 py-1.5 font-medium text-left text-neutral-400 w-[120px] min-w-[120px]"
+                >Status</th
               >
               <th
                 class="px-2 py-1.5 font-medium text-right text-neutral-400 w-[70px] min-w-[70px]"
@@ -628,147 +635,485 @@
                   </span>
                 </td>
               </tr>
-              <!-- Issues for this state -->
-              {#each issues as issue}
-                {@const isCompleted = (() => {
-                  const stateName = issue.state_name?.toLowerCase() || "";
-                  return (
-                    stateName.includes("done") ||
-                    stateName.includes("completed")
-                  );
-                })()}
-                {@const wipAge = calculateWIPAge(issue, isCompleted)}
-                {@const issueAccuracyRatio =
-                  project.daysPerStoryPoint !== null && isCompleted
-                    ? calculateIssueAccuracyRatio(
-                        issue,
-                        project.daysPerStoryPoint
-                      )
-                    : null}
-                {@const commentRecency = formatCommentRecency(
-                  issue.last_comment_at
-                )}
-                {@const hasOldComment = hasNoRecentComment(issue)}
-                {@const missingEstimate = hasMissingEstimate(issue)}
-                {@const missingPriority = hasMissingPriority(issue)}
-                <tr
-                  class="border-b transition-colors cursor-pointer border-white/5 hover:bg-white/5 focus:outline-none"
-                  onclick={() => {
-                    if (issue.url && browser) {
-                      window.open(issue.url, "_blank", "noopener,noreferrer");
-                    }
-                  }}
-                  role="button"
-                  tabindex="0"
-                  onkeydown={(e) => {
-                    if (
-                      (e.key === "Enter" || e.key === " ") &&
-                      issue.url &&
-                      browser
-                    ) {
-                      e.preventDefault();
-                      window.open(issue.url, "_blank", "noopener,noreferrer");
-                    }
-                  }}
-                >
-                  <td
-                    class="px-2 py-1.5 text-neutral-200 w-[310px] min-w-[310px] max-w-[310px]"
+              <!-- Issues for this state - grouped by parent -->
+              {@const groupedIssues = groupIssuesByParent(issues)}
+              {#each groupedIssues as groupedIssue}
+                {#if "parent" in groupedIssue}
+                  {@const parent = groupedIssue.parent}
+                  {@const subissues = groupedIssue.subissues}
+                  {@const isCompleted = (() => {
+                    const stateName = parent.state_name?.toLowerCase() || "";
+                    return (
+                      stateName.includes("done") ||
+                      stateName.includes("completed")
+                    );
+                  })()}
+                  {@const wipAge = calculateWIPAge(parent, isCompleted)}
+                  {@const issueAccuracyRatio =
+                    project.daysPerStoryPoint !== null && isCompleted
+                      ? calculateIssueAccuracyRatio(
+                          parent,
+                          project.daysPerStoryPoint
+                        )
+                      : null}
+                  {@const commentRecency = formatCommentRecency(
+                    parent.last_comment_at
+                  )}
+                  {@const hasOldComment = hasNoRecentComment(parent)}
+                  {@const missingEstimate = hasMissingEstimate(parent)}
+                  {@const hasStatusMismatch = hasSubissueStatusMismatch(
+                    parent,
+                    projectIssues
+                  )}
+                  <!-- Parent issue row -->
+                  <tr
+                    class="border-b transition-colors cursor-pointer border-white/5 hover:bg-white/5 focus:outline-none"
+                    onclick={() => {
+                      if (parent.url && browser) {
+                        window.open(
+                          parent.url,
+                          "_blank",
+                          "noopener,noreferrer"
+                        );
+                      }
+                    }}
+                    role="button"
+                    tabindex="0"
+                    onkeydown={(e) => {
+                      if (
+                        (e.key === "Enter" || e.key === " ") &&
+                        parent.url &&
+                        browser
+                      ) {
+                        e.preventDefault();
+                        window.open(
+                          parent.url,
+                          "_blank",
+                          "noopener,noreferrer"
+                        );
+                      }
+                    }}
                   >
-                    <div
-                      class="overflow-hidden truncate whitespace-nowrap text-ellipsis"
-                      title={issue.title}
+                    <td
+                      class="px-2 py-1.5 text-neutral-200 w-[310px] min-w-[310px] max-w-[310px]"
                     >
-                      {issue.title}
-                    </div>
-                  </td>
-                  <td class="px-2 py-1.5 w-[120px] min-w-[120px] max-w-[120px]">
-                    {#if issue.assignee_name}
-                      <UserProfile
-                        name={issue.assignee_name}
-                        avatarUrl={issue.assignee_avatar_url}
-                        size="xs"
-                      />
-                    {:else}
-                      <span class="text-xs text-neutral-500">Unassigned</span>
-                    {/if}
-                  </td>
-                  <td
-                    class="px-2 py-1.5 text-right text-neutral-300 w-[70px] min-w-[70px]"
-                  >
-                    <div class="flex gap-1.5 justify-end items-center">
-                      {#if issue.estimate !== null && issue.estimate !== undefined}
-                        {Math.round(issue.estimate)}
-                      {:else if !hideWarnings && missingEstimate}
-                        <span class="text-amber-400" title="Missing estimate"
-                          >⚠️</span
-                        >
-                      {:else}
-                        <span class="text-neutral-500">—</span>
-                      {/if}
-                    </div>
-                  </td>
-                  <td
-                    class="px-2 py-1.5 text-right text-neutral-300 w-[80px] min-w-[80px]"
-                  >
-                    <div class="flex gap-1.5 justify-end items-center">
-                      {#if issue.priority && issue.priority > 0}
-                        {issue.priority}
-                      {:else if !hideWarnings && missingPriority}
-                        <span class="text-amber-400" title="Missing priority"
-                          >⚠️</span
-                        >
-                      {:else}
-                        <span class="text-neutral-500">—</span>
-                      {/if}
-                    </div>
-                  </td>
-                  <td class="px-2 py-1.5 text-right w-[110px] min-w-[110px]">
-                    <div class="flex gap-1.5 justify-end items-center">
-                      {#if !hideWarnings && hasOldComment}
-                        <span
-                          class="text-amber-400 shrink-0"
-                          title="No comment since last business day">⚠️</span
-                        >
-                      {/if}
-                      <span
-                        class={!hideWarnings && hasOldComment
-                          ? "text-amber-400"
-                          : "text-neutral-300"}>{commentRecency}</span
+                      <div
+                        class="overflow-hidden truncate whitespace-nowrap text-ellipsis"
+                        title={parent.title}
                       >
-                    </div>
-                  </td>
-                  <td
-                    class="px-2 py-1.5 text-right text-neutral-300 w-[80px] min-w-[80px]"
-                  >
-                    {issue.comment_count !== null &&
-                    issue.comment_count !== undefined
-                      ? issue.comment_count
-                      : "—"}
-                  </td>
-                  <td
-                    class="px-2 py-1.5 text-right text-neutral-300 w-[70px] min-w-[70px]"
-                  >
-                    {formatWIPAge(wipAge)}
-                  </td>
-                  {#if project.daysPerStoryPoint !== null}
-                    <td class="px-2 py-1.5 text-right w-[120px] min-w-[120px]">
-                      {#if issueAccuracyRatio !== null}
-                        <span
-                          class={getAccuracyColorClass(issueAccuracyRatio)}
-                          title={issueAccuracyRatio === 1.0
-                            ? "Perfect match! Actual time equals estimated time (1.0x)"
-                            : issueAccuracyRatio >= 1.0
-                              ? `Took ${((issueAccuracyRatio - 1) * 100).toFixed(0)}% longer than estimated (goal: 1.0x)`
-                              : `Completed ${((1 - issueAccuracyRatio) * 100).toFixed(0)}% faster than estimated (goal: 1.0x)`}
-                        >
-                          {formatAccuracyRatio(issueAccuracyRatio)}
-                        </span>
+                        {parent.title}
+                        {#if subissues.length > 0}
+                          <span class="text-xs text-neutral-500 ml-1"
+                            >({subissues.length})</span
+                          >
+                        {/if}
+                      </div>
+                    </td>
+                    <td
+                      class="px-2 py-1.5 w-[120px] min-w-[120px] max-w-[120px]"
+                    >
+                      {#if parent.assignee_name}
+                        <UserProfile
+                          name={parent.assignee_name}
+                          avatarUrl={parent.assignee_avatar_url}
+                          size="xs"
+                        />
                       {:else}
-                        <span class="text-neutral-500">—</span>
+                        <span class="text-xs text-neutral-500">Unassigned</span>
                       {/if}
                     </td>
-                  {/if}
-                </tr>
+                    <td class="px-2 py-1.5">
+                      <StatusDisplay
+                        stateName={parent.state_name || ""}
+                        stateType={parent.state_type || ""}
+                        showWarnings={!hideWarnings}
+                        warnings={hasStatusMismatch
+                          ? [
+                              {
+                                type: "status-mismatch",
+                                message:
+                                  "Parent issue is done but has incomplete subissues",
+                              },
+                            ]
+                          : []}
+                      />
+                    </td>
+                    <td
+                      class="px-2 py-1.5 text-right text-neutral-300 w-[70px] min-w-[70px]"
+                    >
+                      <div class="flex gap-1.5 justify-end items-center">
+                        {#if parent.estimate !== null && parent.estimate !== undefined}
+                          {Math.round(parent.estimate)}
+                        {:else if !hideWarnings && missingEstimate}
+                          <span class="text-amber-400" title="Missing estimate"
+                            >⚠️</span
+                          >
+                        {:else}
+                          <span class="text-neutral-500">—</span>
+                        {/if}
+                      </div>
+                    </td>
+                    <td class="px-2 py-1.5 text-right w-[80px] min-w-[80px]">
+                      <div class="flex justify-end">
+                        <PriorityDisplay priority={parent.priority || 0} />
+                      </div>
+                    </td>
+                    <td class="px-2 py-1.5 text-right w-[110px] min-w-[110px]">
+                      <div class="flex gap-1.5 justify-end items-center">
+                        {#if !hideWarnings && hasOldComment}
+                          <span
+                            class="text-amber-400 shrink-0"
+                            title="No comment since last business day">⚠️</span
+                          >
+                        {/if}
+                        <span
+                          class={!hideWarnings && hasOldComment
+                            ? "text-amber-400"
+                            : "text-neutral-300"}>{commentRecency}</span
+                        >
+                      </div>
+                    </td>
+                    <td
+                      class="px-2 py-1.5 text-right text-neutral-300 w-[80px] min-w-[80px]"
+                    >
+                      {parent.comment_count !== null &&
+                      parent.comment_count !== undefined
+                        ? parent.comment_count
+                        : "—"}
+                    </td>
+                    <td
+                      class="px-2 py-1.5 text-right text-neutral-300 w-[70px] min-w-[70px]"
+                    >
+                      {formatWIPAge(wipAge)}
+                    </td>
+                    {#if project.daysPerStoryPoint !== null}
+                      <td
+                        class="px-2 py-1.5 text-right w-[120px] min-w-[120px]"
+                      >
+                        {#if issueAccuracyRatio !== null}
+                          <span
+                            class={getAccuracyColorClass(issueAccuracyRatio)}
+                            title={issueAccuracyRatio === 1.0
+                              ? "Perfect match! Actual time equals estimated time (1.0x)"
+                              : issueAccuracyRatio >= 1.0
+                                ? `Took ${((issueAccuracyRatio - 1) * 100).toFixed(0)}% longer than estimated (goal: 1.0x)`
+                                : `Completed ${((1 - issueAccuracyRatio) * 100).toFixed(0)}% faster than estimated (goal: 1.0x)`}
+                          >
+                            {formatAccuracyRatio(issueAccuracyRatio)}
+                          </span>
+                        {:else}
+                          <span class="text-neutral-500">—</span>
+                        {/if}
+                      </td>
+                    {/if}
+                  </tr>
+                  <!-- Subissue rows -->
+                  {#each subissues as subissue}
+                    {@const subIsCompleted = (() => {
+                      const stateName =
+                        subissue.state_name?.toLowerCase() || "";
+                      return (
+                        stateName.includes("done") ||
+                        stateName.includes("completed")
+                      );
+                    })()}
+                    {@const subWipAge = calculateWIPAge(
+                      subissue,
+                      subIsCompleted
+                    )}
+                    {@const subIssueAccuracyRatio =
+                      project.daysPerStoryPoint !== null && subIsCompleted
+                        ? calculateIssueAccuracyRatio(
+                            subissue,
+                            project.daysPerStoryPoint
+                          )
+                        : null}
+                    {@const subCommentRecency = formatCommentRecency(
+                      subissue.last_comment_at
+                    )}
+                    {@const subHasOldComment = hasNoRecentComment(subissue)}
+                    {@const subMissingEstimate = hasMissingEstimate(subissue)}
+                    <tr
+                      class="border-b transition-colors cursor-pointer border-white/5 hover:bg-white/5 focus:outline-none"
+                      onclick={() => {
+                        if (subissue.url && browser) {
+                          window.open(
+                            subissue.url,
+                            "_blank",
+                            "noopener,noreferrer"
+                          );
+                        }
+                      }}
+                      role="button"
+                      tabindex="0"
+                      onkeydown={(e) => {
+                        if (
+                          (e.key === "Enter" || e.key === " ") &&
+                          subissue.url &&
+                          browser
+                        ) {
+                          e.preventDefault();
+                          window.open(
+                            subissue.url,
+                            "_blank",
+                            "noopener,noreferrer"
+                          );
+                        }
+                      }}
+                    >
+                      <td
+                        class="px-2 py-1.5 text-neutral-200 w-[310px] min-w-[310px] max-w-[310px]"
+                      >
+                        <div
+                          class="overflow-hidden truncate whitespace-nowrap text-ellipsis pl-6"
+                          title={subissue.title}
+                        >
+                          <span class="text-neutral-400 shrink-0 mr-1">↳</span>
+                          {subissue.title}
+                        </div>
+                      </td>
+                      <td
+                        class="px-2 py-1.5 w-[120px] min-w-[120px] max-w-[120px]"
+                      >
+                        {#if subissue.assignee_name}
+                          <UserProfile
+                            name={subissue.assignee_name}
+                            avatarUrl={subissue.assignee_avatar_url}
+                            size="xs"
+                          />
+                        {:else}
+                          <span class="text-xs text-neutral-500"
+                            >Unassigned</span
+                          >
+                        {/if}
+                      </td>
+                      <td class="px-2 py-1.5">
+                        <StatusDisplay
+                          stateName={subissue.state_name || ""}
+                          stateType={subissue.state_type || ""}
+                          showWarnings={!hideWarnings}
+                          warnings={[]}
+                        />
+                      </td>
+                      <td
+                        class="px-2 py-1.5 text-right text-neutral-300 w-[70px] min-w-[70px]"
+                      >
+                        <div class="flex gap-1.5 justify-end items-center">
+                          {#if subissue.estimate !== null && subissue.estimate !== undefined}
+                            {Math.round(subissue.estimate)}
+                          {:else if !hideWarnings && subMissingEstimate}
+                            <span
+                              class="text-amber-400"
+                              title="Missing estimate">⚠️</span
+                            >
+                          {:else}
+                            <span class="text-neutral-500">—</span>
+                          {/if}
+                        </div>
+                      </td>
+                      <td class="px-2 py-1.5 text-right w-[80px] min-w-[80px]">
+                        <div class="flex justify-end">
+                          <PriorityDisplay priority={subissue.priority || 0} />
+                        </div>
+                      </td>
+                      <td
+                        class="px-2 py-1.5 text-right w-[110px] min-w-[110px]"
+                      >
+                        <div class="flex gap-1.5 justify-end items-center">
+                          {#if !hideWarnings && subHasOldComment}
+                            <span
+                              class="text-amber-400 shrink-0"
+                              title="No comment since last business day"
+                              >⚠️</span
+                            >
+                          {/if}
+                          <span
+                            class={!hideWarnings && subHasOldComment
+                              ? "text-amber-400"
+                              : "text-neutral-300"}>{subCommentRecency}</span
+                          >
+                        </div>
+                      </td>
+                      <td
+                        class="px-2 py-1.5 text-right text-neutral-300 w-[80px] min-w-[80px]"
+                      >
+                        {subissue.comment_count !== null &&
+                        subissue.comment_count !== undefined
+                          ? subissue.comment_count
+                          : "—"}
+                      </td>
+                      <td
+                        class="px-2 py-1.5 text-right text-neutral-300 w-[70px] min-w-[70px]"
+                      >
+                        {formatWIPAge(subWipAge)}
+                      </td>
+                      {#if project.daysPerStoryPoint !== null}
+                        <td
+                          class="px-2 py-1.5 text-right w-[120px] min-w-[120px]"
+                        >
+                          {#if subIssueAccuracyRatio !== null}
+                            <span
+                              class={getAccuracyColorClass(
+                                subIssueAccuracyRatio
+                              )}
+                              title={subIssueAccuracyRatio === 1.0
+                                ? "Perfect match! Actual time equals estimated time (1.0x)"
+                                : subIssueAccuracyRatio >= 1.0
+                                  ? `Took ${((subIssueAccuracyRatio - 1) * 100).toFixed(0)}% longer than estimated (goal: 1.0x)`
+                                  : `Completed ${((1 - subIssueAccuracyRatio) * 100).toFixed(0)}% faster than estimated (goal: 1.0x)`}
+                            >
+                              {formatAccuracyRatio(subIssueAccuracyRatio)}
+                            </span>
+                          {:else}
+                            <span class="text-neutral-500">—</span>
+                          {/if}
+                        </td>
+                      {/if}
+                    </tr>
+                  {/each}
+                {:else}
+                  {@const issue = groupedIssue}
+                  {@const isCompleted = (() => {
+                    const stateName = issue.state_name?.toLowerCase() || "";
+                    return (
+                      stateName.includes("done") ||
+                      stateName.includes("completed")
+                    );
+                  })()}
+                  {@const wipAge = calculateWIPAge(issue, isCompleted)}
+                  {@const issueAccuracyRatio =
+                    project.daysPerStoryPoint !== null && isCompleted
+                      ? calculateIssueAccuracyRatio(
+                          issue,
+                          project.daysPerStoryPoint
+                        )
+                      : null}
+                  {@const commentRecency = formatCommentRecency(
+                    issue.last_comment_at
+                  )}
+                  {@const hasOldComment = hasNoRecentComment(issue)}
+                  {@const missingEstimate = hasMissingEstimate(issue)}
+                  <tr
+                    class="border-b transition-colors cursor-pointer border-white/5 hover:bg-white/5 focus:outline-none"
+                    onclick={() => {
+                      if (issue.url && browser) {
+                        window.open(issue.url, "_blank", "noopener,noreferrer");
+                      }
+                    }}
+                    role="button"
+                    tabindex="0"
+                    onkeydown={(e) => {
+                      if (
+                        (e.key === "Enter" || e.key === " ") &&
+                        issue.url &&
+                        browser
+                      ) {
+                        e.preventDefault();
+                        window.open(issue.url, "_blank", "noopener,noreferrer");
+                      }
+                    }}
+                  >
+                    <td
+                      class="px-2 py-1.5 text-neutral-200 w-[310px] min-w-[310px] max-w-[310px]"
+                    >
+                      <div
+                        class="overflow-hidden truncate whitespace-nowrap text-ellipsis"
+                        title={issue.title}
+                      >
+                        {issue.title}
+                      </div>
+                    </td>
+                    <td
+                      class="px-2 py-1.5 w-[120px] min-w-[120px] max-w-[120px]"
+                    >
+                      {#if issue.assignee_name}
+                        <UserProfile
+                          name={issue.assignee_name}
+                          avatarUrl={issue.assignee_avatar_url}
+                          size="xs"
+                        />
+                      {:else}
+                        <span class="text-xs text-neutral-500">Unassigned</span>
+                      {/if}
+                    </td>
+                    <td class="px-2 py-1.5">
+                      <StatusDisplay
+                        stateName={issue.state_name || ""}
+                        stateType={issue.state_type || ""}
+                        showWarnings={!hideWarnings}
+                        warnings={[]}
+                      />
+                    </td>
+                    <td
+                      class="px-2 py-1.5 text-right text-neutral-300 w-[70px] min-w-[70px]"
+                    >
+                      <div class="flex gap-1.5 justify-end items-center">
+                        {#if issue.estimate !== null && issue.estimate !== undefined}
+                          {Math.round(issue.estimate)}
+                        {:else if !hideWarnings && missingEstimate}
+                          <span class="text-amber-400" title="Missing estimate"
+                            >⚠️</span
+                          >
+                        {:else}
+                          <span class="text-neutral-500">—</span>
+                        {/if}
+                      </div>
+                    </td>
+                    <td class="px-2 py-1.5 text-right w-[80px] min-w-[80px]">
+                      <div class="flex justify-end">
+                        <PriorityDisplay priority={issue.priority || 0} />
+                      </div>
+                    </td>
+                    <td class="px-2 py-1.5 text-right w-[110px] min-w-[110px]">
+                      <div class="flex gap-1.5 justify-end items-center">
+                        {#if !hideWarnings && hasOldComment}
+                          <span
+                            class="text-amber-400 shrink-0"
+                            title="No comment since last business day">⚠️</span
+                          >
+                        {/if}
+                        <span
+                          class={!hideWarnings && hasOldComment
+                            ? "text-amber-400"
+                            : "text-neutral-300"}>{commentRecency}</span
+                        >
+                      </div>
+                    </td>
+                    <td
+                      class="px-2 py-1.5 text-right text-neutral-300 w-[80px] min-w-[80px]"
+                    >
+                      {issue.comment_count !== null &&
+                      issue.comment_count !== undefined
+                        ? issue.comment_count
+                        : "—"}
+                    </td>
+                    <td
+                      class="px-2 py-1.5 text-right text-neutral-300 w-[70px] min-w-[70px]"
+                    >
+                      {formatWIPAge(wipAge)}
+                    </td>
+                    {#if project.daysPerStoryPoint !== null}
+                      <td
+                        class="px-2 py-1.5 text-right w-[120px] min-w-[120px]"
+                      >
+                        {#if issueAccuracyRatio !== null}
+                          <span
+                            class={getAccuracyColorClass(issueAccuracyRatio)}
+                            title={issueAccuracyRatio === 1.0
+                              ? "Perfect match! Actual time equals estimated time (1.0x)"
+                              : issueAccuracyRatio >= 1.0
+                                ? `Took ${((issueAccuracyRatio - 1) * 100).toFixed(0)}% longer than estimated (goal: 1.0x)`
+                                : `Completed ${((1 - issueAccuracyRatio) * 100).toFixed(0)}% faster than estimated (goal: 1.0x)`}
+                          >
+                            {formatAccuracyRatio(issueAccuracyRatio)}
+                          </span>
+                        {:else}
+                          <span class="text-neutral-500">—</span>
+                        {/if}
+                      </td>
+                    {/if}
+                  </tr>
+                {/if}
               {/each}
             {/each}
           </tbody>

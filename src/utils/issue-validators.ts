@@ -42,7 +42,7 @@ function getBusinessDayCutoff(): Date {
  */
 export function hasNoRecentComment(
   issue: Issue,
-  hoursThreshold?: number // Deprecated, kept for API compatibility
+  _hoursThreshold?: number // Deprecated, kept for API compatibility
 ): boolean {
   // Only check comment recency for WIP issues
   if (issue.state_type !== "started") return false;
@@ -77,9 +77,58 @@ export function hasMissingEstimate(issue: Issue): boolean {
 }
 
 /**
+ * Check if issue is a subissue (has a parent)
+ */
+export function isSubissue(issue: Issue): boolean {
+  return issue.parent_id !== null && issue.parent_id !== undefined;
+}
+
+/**
+ * Check if a parent issue has incomplete subissues
+ * Incomplete = not completed and not canceled
+ */
+export function hasIncompleteSubissues(
+  parentId: string,
+  allIssues: Issue[]
+): boolean {
+  const subissues = allIssues.filter((issue) => issue.parent_id === parentId);
+  return subissues.some(
+    (subissue) =>
+      subissue.state_type !== "completed" && subissue.state_type !== "canceled"
+  );
+}
+
+/**
+ * Check if a parent issue has status mismatch (done but has incomplete subissues)
+ * Computed on-the-fly, not persisted (following pattern of other issue-level warnings)
+ */
+export function hasSubissueStatusMismatch(
+  issue: Issue,
+  allIssues: Issue[]
+): boolean {
+  // Only check parent issues
+  if (isSubissue(issue)) return false;
+
+  // Check if issue is done/completed
+  const stateName = issue.state_name?.toLowerCase() || "";
+  const isDone =
+    issue.state_type === "completed" ||
+    stateName.includes("done") ||
+    stateName.includes("completed");
+
+  if (!isDone) return false;
+
+  // Check if it has incomplete subissues
+  return hasIncompleteSubissues(issue.id, allIssues);
+}
+
+/**
  * Check if issue is missing priority (priority = 0)
+ * Excludes subissues from priority warnings
  */
 export function hasMissingPriority(issue: Issue): boolean {
+  // Exclude subissues from priority warnings
+  if (isSubissue(issue)) return false;
   // Suppress alerts for cancelled/duplicate issues
   if (shouldSuppressAlerts(issue)) return false;
   return issue.priority === 0;

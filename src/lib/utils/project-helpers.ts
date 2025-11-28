@@ -1,5 +1,6 @@
 import type { ProjectSummary } from "../project-data";
 import type { Issue } from "../../db/schema";
+import { isSubissue } from "../../utils/issue-validators";
 
 /**
  * Format date as "MMM YYYY" (e.g., "Jan 2024")
@@ -361,7 +362,7 @@ export function calculateVelocityByTeam(
  * Calculate Linear progress by points (completed points / total points)
  */
 export function calculateLinearProgress(issues: Issue[]): number | null {
-  const { total, missing } = calculateTotalPoints(issues);
+  const { total } = calculateTotalPoints(issues);
   if (total === 0) return null;
 
   const completedIssues = issues.filter((issue) => {
@@ -665,4 +666,110 @@ export function getRecentProgress(
     completed: recentlyCompleted,
     percentage: Math.round(percentage * 10) / 10, // Round to 1 decimal
   };
+}
+
+/**
+ * Group issues hierarchically by parent-subissue relationship
+ * Returns array of either:
+ * - { parent: Issue, subissues: Issue[] } for parent issues with subissues
+ * - Issue for standalone issues (no parent, no subissues)
+ * Maintains existing state-based sorting within groups
+ */
+export type GroupedIssue = { parent: Issue; subissues: Issue[] } | Issue;
+
+export function groupIssuesByParent(issues: Issue[]): GroupedIssue[] {
+  // Separate parent issues and subissues
+  const parentIssues: Issue[] = [];
+  const subissuesByParent = new Map<string, Issue[]>();
+  const parentIds = new Set<string>();
+
+  // First pass: identify all parent IDs and separate issues
+  for (const issue of issues) {
+    if (isSubissue(issue)) {
+      const parentId = issue.parent_id!;
+      if (!subissuesByParent.has(parentId)) {
+        subissuesByParent.set(parentId, []);
+      }
+      subissuesByParent.get(parentId)!.push(issue);
+      parentIds.add(parentId);
+    } else {
+      parentIssues.push(issue);
+    }
+  }
+
+  // Build result array: parent issues with their subissues, then standalone issues
+  const result: GroupedIssue[] = [];
+
+  for (const parent of parentIssues) {
+    const subissues = subissuesByParent.get(parent.id) || [];
+    if (subissues.length > 0) {
+      // Sort subissues by state_name to maintain state-based ordering
+      subissues.sort((a, b) => a.state_name.localeCompare(b.state_name));
+      result.push({ parent, subissues });
+    } else {
+      // Standalone issue (no subissues)
+      result.push(parent);
+    }
+  }
+
+  // Sort result to maintain state-based ordering
+  // Grouped parents come first, then their subissues
+  result.sort((a, b) => {
+    const aParent = "parent" in a ? a.parent : a;
+    const bParent = "parent" in b ? b.parent : b;
+    return aParent.state_name.localeCompare(bParent.state_name);
+  });
+
+  return result;
+}
+
+/**
+ * Group issues by a specified field
+ */
+export type GroupByOption = "none" | "assignee" | "status" | "priority";
+
+export function groupIssuesBy(
+  issues: Issue[],
+  groupBy: GroupByOption
+): Map<string, Issue[]> {
+  const groups = new Map<string, Issue[]>();
+
+  if (groupBy === "none") {
+    // Return a single group with all issues
+    groups.set("All", issues);
+    return groups;
+  }
+
+  for (const issue of issues) {
+    let key: string;
+
+    switch (groupBy) {
+      case "assignee":
+        key = issue.assignee_name || "Unassigned";
+        break;
+      case "status":
+        key = issue.state_name || "Unknown";
+        break;
+      case "priority": {
+        const priorityLabels: Record<number, string> = {
+          0: "No priority",
+          1: "Urgent",
+          2: "High",
+          3: "Medium",
+          4: "Low",
+        };
+        key = priorityLabels[issue.priority] || "No priority";
+        break;
+      }
+      default:
+        key = "All";
+    }
+
+    if (!groups.has(key)) {
+      groups.set(key, []);
+    }
+    groups.get(key)!.push(issue);
+  }
+
+  return groups;
 }
