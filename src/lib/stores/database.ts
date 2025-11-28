@@ -2,7 +2,10 @@ import { writable, derived } from "svelte/store";
 import { browser } from "$app/environment";
 import type { Issue } from "../../db/schema";
 import { getIssuesWithProjects } from "../queries";
-import { initializeDomainMappings } from "../../utils/domain-mapping";
+import {
+  initializeDomainMappings,
+  getAllDomains,
+} from "../../utils/domain-mapping";
 import {
   processProjects,
   groupProjectsByTeams,
@@ -33,7 +36,6 @@ async function loadConfig() {
           "teams"
         );
         initializeDomainMappings(config.teamDomainMappings);
-        const { getAllDomains } = await import("../../utils/domain-mapping");
         const domains = getAllDomains();
         console.log("[loadConfig] Available domains:", domains);
       } else {

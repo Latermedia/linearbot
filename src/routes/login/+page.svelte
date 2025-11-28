@@ -7,6 +7,7 @@
   let password = $state("");
   let error = $state("");
   let isLoading = $state(false);
+  let passwordInput: HTMLInputElement;
 
   // Get redirect destination from query params
   let redirectTo = $state("/");
@@ -16,6 +17,7 @@
     if (redirectParam) {
       redirectTo = redirectParam;
     }
+    passwordInput?.focus();
   });
 
   async function handleSubmit(event: Event) {
@@ -78,9 +80,9 @@
           id="password"
           type="password"
           bind:value={password}
+          bind:this={passwordInput}
           disabled={isLoading}
           autocomplete="current-password"
-          autofocus
           class="w-full px-3 py-2 border border-neutral-300 dark:border-neutral-700 rounded-md bg-white dark:bg-neutral-900 text-neutral-900 dark:text-white placeholder-neutral-500 dark:placeholder-neutral-400 focus:outline-none focus:ring-2 focus:ring-neutral-500 dark:focus:ring-neutral-400 focus:border-transparent disabled:opacity-50 disabled:cursor-not-allowed"
           placeholder="Enter password"
         />

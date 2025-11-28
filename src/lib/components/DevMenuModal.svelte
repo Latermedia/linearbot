@@ -250,8 +250,6 @@
 >
   <div
     class="w-full max-w-md rounded-md border shadow-2xl bg-neutral-900 border-white/10 shadow-black/50 m-4"
-    onclick={(e) => e.stopPropagation()}
-    onkeydown={(e) => e.stopPropagation()}
     role="document"
   >
     <div class="p-6">

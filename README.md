@@ -1,5 +1,7 @@
 # LinearBot
 
+[![CI](https://github.com/your-org/linearbot/actions/workflows/ci.yml/badge.svg)](https://github.com/your-org/linearbot/actions/workflows/ci.yml)
+
 Surface project health, WIP constraints, and best practice violations from Linear.
 
 ## Prerequisites
