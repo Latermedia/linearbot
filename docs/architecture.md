@@ -66,3 +66,48 @@ docs/               # Documentation
 - GraphQL queries for issues and projects
 - Rate limit handling
 - Pagination support
+
+## Derived Data Pattern
+
+Aggregate stats are computed during sync and stored in dedicated tables, not calculated at read time.
+
+### Design Rationale
+
+| Approach        | Tradeoff                           |
+| --------------- | ---------------------------------- |
+| Compute on read | Slow queries, repeated calculation |
+| Compute on sync | Fast reads, single source of truth |
+
+We use **compute on sync** for all derived metrics.
+
+### Implementation
+
+1. **Raw data**: `issues` table stores data as-is from Linear
+2. **Derived tables**: `projects`, `engineers` store aggregated stats
+3. **Sync flow**: After writing issues, call `computeAndStore<Entity>()` functions
+4. **Frontend**: Reads derived tables directly, no aggregation
+
+### Adding New Derived Data
+
+To add a new entity with derived stats:
+
+```
+1. src/db/schema.ts       → Add table definition + interface
+2. src/db/queries.ts      → Add upsert/get/delete functions
+3. src/services/sync-service.ts → Add computeAndStore<Entity>()
+4. src/services/mock-data.ts    → Add mock data generation
+5. Call computeAndStore<Entity>() after issues are written
+```
+
+### Example Flow
+
+```
+Linear API
+    ↓
+fetchStartedIssues() → issues table (raw)
+    ↓
+computeAndStoreProjects() → projects table (derived)
+computeAndStoreEngineers() → engineers table (derived)
+    ↓
+Frontend reads derived tables
+```

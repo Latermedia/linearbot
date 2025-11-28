@@ -35,3 +35,36 @@ Linear API → Sync Service → SQLite → SvelteKit API → Frontend
 - **Sync**: `src/services/sync-service.ts` manages Linear data fetch
 - **Stores**: Svelte stores in `src/lib/stores/` for shared state
 - **Mock data**: When modifying `src/db/schema.ts`, update `src/services/mock-data.ts` to match
+
+## Derived Data Pattern
+
+Aggregate stats are computed during sync and stored in dedicated tables, NOT calculated on read.
+
+### Why
+- Fast reads: UI queries simple tables, no aggregation at runtime
+- Consistent: All derived values computed once, same logic everywhere
+- Cacheable: Stats update only on sync, not per request
+
+### How to Add Derived Data
+
+1. **Schema**: Add table in `src/db/schema.ts` for the entity (e.g., `engineers`)
+2. **Queries**: Add CRUD functions in `src/db/queries.ts`
+3. **Sync**: Add `computeAndStore<Entity>()` function in `sync-service.ts`:
+   - Group raw `issues` by the entity key (e.g., `assignee_id`)
+   - Calculate metrics, violation counts, aggregates
+   - Store in dedicated table with `upsert<Entity>()`
+4. **Call**: Invoke after issues are written, alongside `computeAndStoreProjects()`
+5. **Mock**: Update `src/services/mock-data.ts` to generate matching mock records
+
+### Example: Projects Table
+
+```
+Issues (raw) → computeAndStoreProjects() → Projects (derived)
+                                            ├─ total_issues
+                                            ├─ completed_issues
+                                            ├─ velocity
+                                            ├─ has_violations
+                                            └─ ...
+```
+
+The frontend reads from `projects` table directly—no aggregation needed.

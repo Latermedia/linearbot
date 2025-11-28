@@ -11,6 +11,52 @@ Planned features and known issues for LinearBot.
 - **Initiative grouping** — group projects by strategic initiative
 - **Metrics dashboard** — tie project metrics to primary initiatives
 
+### Engineer WIP View (`/engineers`)
+
+- **Stats table** — show all IC engineers with WIP metrics:
+  - Active issue count (in-progress)
+  - Total points in WIP
+  - WIP limit violations (exceeds threshold)
+  - Oldest issue age (staleness indicator)
+  - Last activity timestamp
+- **Violation badges** — highlight engineers over WIP limits
+- **Detail modal** — click row to show:
+  - Engineer summary stats
+  - Active issues list with status, points, age
+  - Issue links to Linear
+  - WIP history/trend (optional)
+
+#### Sync & Data Model
+
+Add `engineers` table with derived stats (following `projects` pattern):
+
+```sql
+CREATE TABLE engineers (
+  assignee_id TEXT PRIMARY KEY,
+  assignee_name TEXT NOT NULL,
+  team_ids TEXT NOT NULL,           -- JSON array of team IDs
+  team_names TEXT NOT NULL,         -- JSON array of team names
+  wip_issue_count INTEGER NOT NULL,
+  wip_total_points REAL NOT NULL,
+  wip_limit_violation INTEGER NOT NULL,  -- 1 if over threshold
+  oldest_wip_age_days REAL,
+  last_activity_at TEXT,
+  missing_estimate_count INTEGER NOT NULL,
+  missing_priority_count INTEGER NOT NULL,
+  no_recent_comment_count INTEGER NOT NULL,
+  wip_age_violation_count INTEGER NOT NULL,
+  active_issues TEXT NOT NULL       -- JSON array of issue summaries
+);
+```
+
+Add `computeAndStoreEngineers()` in sync-service.ts:
+
+- Group issues by `assignee_id` (skip unassigned)
+- Filter to WIP issues (`state_type = 'started'`)
+- Calculate violation counts per engineer
+- Store derived stats in `engineers` table
+- Call after `computeAndStoreProjects()` in sync flow
+
 ### Highlighting & Queue
 
 - Surface what's pulled out vs. in (with reasoning)
