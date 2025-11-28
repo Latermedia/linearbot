@@ -14,8 +14,6 @@ build/
 logs/
 *.log
 
-GOALS.md
-
 # Team domain mappings (use TEAM_DOMAIN_MAPPINGS env var instead)
 team-domain-mappings.json
 
