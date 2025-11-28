@@ -4,6 +4,7 @@ import {
   RateLimitError,
   type LinearIssueData,
 } from "../linear/client.js";
+import { isMockMode, generateMockData } from "./mock-data.js";
 import {
   getExistingIssueIds,
   upsertIssue,
@@ -240,6 +241,81 @@ export async function performSync(
     // Update sync status to 'syncing'
     setSyncStatus("syncing");
     updateSyncMetadata({ sync_error: null, sync_progress_percent: 0 });
+
+    // Check for mock mode (no Linear API key or set to "mock")
+    if (isMockMode()) {
+      console.log("[SYNC] Running in mock mode - using generated data");
+      callbacks?.onProgressPercent?.(10);
+      setSyncProgress(10);
+
+      const { issues, projectDescriptions, projectUpdates } =
+        generateMockData();
+
+      // Filter to only started issues for the main count
+      const startedMockIssues = issues.filter((i) => i.stateType === "started");
+      callbacks?.onIssueCountUpdate?.(startedMockIssues.length);
+      callbacks?.onProgressPercent?.(30);
+      setSyncProgress(30);
+
+      // Get unique project IDs
+      const projectIds = new Set(
+        issues.filter((i) => i.projectId).map((i) => i.projectId as string)
+      );
+      callbacks?.onProjectCountUpdate?.(projectIds.size);
+      callbacks?.onProgressPercent?.(50);
+      setSyncProgress(50);
+
+      // Write mock issues to database
+      console.log(`[SYNC] Writing ${issues.length} mock issues to database...`);
+      const counts = writeIssuesToDatabase(issues);
+      callbacks?.onProjectIssueCountUpdate?.(issues.length);
+      callbacks?.onProgressPercent?.(70);
+      setSyncProgress(70);
+
+      // Collect project labels for metrics computation
+      const projectLabelsMap = new Map<string, string[]>();
+      for (const issue of issues) {
+        if (issue.projectId && issue.projectLabels?.length > 0) {
+          if (!projectLabelsMap.has(issue.projectId)) {
+            projectLabelsMap.set(issue.projectId, issue.projectLabels);
+          }
+        }
+      }
+
+      // Compute and store project metrics
+      console.log("[SYNC] Computing project metrics...");
+      const computedProjectCount = await computeAndStoreProjects(
+        projectLabelsMap,
+        projectDescriptions,
+        projectUpdates
+      );
+      callbacks?.onProgressPercent?.(100);
+      setSyncProgress(100);
+
+      // Update sync metadata on success
+      const syncTime = new Date().toISOString();
+      setSyncStatus("idle");
+      updateSyncMetadata({
+        last_sync_time: syncTime,
+        sync_error: null,
+        sync_progress_percent: null,
+      });
+
+      const total = getTotalIssueCount();
+      console.log(
+        `[SYNC] Mock sync complete - New: ${counts.newCount}, Updated: ${counts.updatedCount}, Total: ${total}, Projects: ${computedProjectCount}`
+      );
+
+      return {
+        success: true,
+        newCount: counts.newCount,
+        updatedCount: counts.updatedCount,
+        totalCount: total,
+        issueCount: startedMockIssues.length,
+        projectCount: computedProjectCount,
+        projectIssueCount: issues.length,
+      };
+    }
 
     // Get ignored team keys
     const ignoredTeamKeys = process.env.IGNORED_TEAM_KEYS

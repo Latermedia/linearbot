@@ -33,3 +33,4 @@ Linear API → Sync Service → SQLite → SvelteKit API → Frontend
 - **API routes**: Return JSON, handle errors consistently
 - **Sync**: `src/services/sync-service.ts` manages Linear data fetch
 - **Stores**: Svelte stores in `src/lib/stores/` for shared state
+- **Mock data**: When modifying `src/db/schema.ts`, update `src/services/mock-data.ts` to match

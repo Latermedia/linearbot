@@ -1,4 +1,5 @@
 import { getDatabase } from "../db/connection.js";
+import { getTotalIssueCount } from "../db/queries.js";
 import { performSync } from "./sync-service.js";
 import { initializeSyncScheduler } from "./sync-scheduler.js";
 
@@ -21,6 +22,17 @@ export function initializeStartup(): void {
   try {
     getDatabase();
     console.log("[STARTUP] Database initialized");
+
+    // Check for empty database in development and show helpful message
+    const isProduction = process.env.NODE_ENV === "production";
+    if (!isProduction) {
+      const issueCount = getTotalIssueCount();
+      if (issueCount === 0) {
+        console.log(
+          "[STARTUP] ℹ️  No data found. Run 'bun run sync' to generate mock data or set LINEAR_API_KEY for real data."
+        );
+      }
+    }
   } catch (error) {
     const errorMsg = error instanceof Error ? error.message : String(error);
     console.error(`[STARTUP] Failed to initialize database: ${errorMsg}`);

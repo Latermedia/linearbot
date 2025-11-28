@@ -302,6 +302,9 @@
           >bun run sync</code
         >
       </p>
+      <p class="mt-2 text-sm text-neutral-500 dark:text-neutral-500">
+        No Linear API key? Mock data will be generated automatically.
+      </p>
     </Card>
   {:else if executiveProjects.length === 0}
     <Card>

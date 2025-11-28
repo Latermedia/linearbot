@@ -36,10 +36,6 @@ Planned features and known issues for LinearBot.
 - **Suppress cancelled/duplicate** — no alerts for these states
 - **Missing points label** — clearer messaging, exclude cancelled
 
-### Data
-
-- **Lorem ipsum mode** — mock data when API key missing
-
 ---
 
 ## Known Issues

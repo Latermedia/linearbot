@@ -6,7 +6,7 @@ Surface project health, WIP constraints, and best practice violations from Linea
 
 - [Bun](https://bun.sh) runtime (uses `bun:sqlite`)
 - [Git](https://git-scm.com)
-- [Linear API key](https://linear.app/settings/api)
+- [Linear API key](https://linear.app/settings/api) (optional — mock data mode available for development)
 
 ## Quick Start
 
@@ -18,6 +18,18 @@ bun run dev           # Start dev server
 ```
 
 Open http://localhost:5173
+
+### Mock Data Mode (No Linear Account)
+
+New contributors can run the app without a Linear API key:
+
+```bash
+bun run setup         # Creates .env (leave LINEAR_API_KEY empty)
+bun run sync          # Generates realistic mock data
+bun run dev           # Start dev server
+```
+
+Mock mode activates when `LINEAR_API_KEY` is missing, empty, or set to `mock`. It generates 7 projects with 50+ issues including realistic violations for testing.
 
 ### Manual Setup
 
