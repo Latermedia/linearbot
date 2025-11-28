@@ -141,7 +141,6 @@ export class LinearAPIClient {
               nodes {
                 createdAt
               }
-              totalCount
             }
             team {
               id
@@ -211,7 +210,8 @@ export class LinearAPIClient {
         if (!issue.team || !issue.state) continue;
 
         const lastComment = issue.comments?.nodes?.[0];
-        const commentCount = issue.comments?.totalCount ?? null;
+        // Comment count not available in Linear API - set to null
+        const commentCount = null;
         issues.push({
           id: issue.id,
           identifier: issue.identifier,
@@ -418,7 +418,8 @@ export class LinearAPIClient {
           }
 
           const lastComment = issue.comments?.nodes?.[0];
-          const commentCount = issue.comments?.pageInfo?.totalCount ?? null;
+          // Comment count not available in Linear API - set to null
+          const commentCount = null;
           const issueData = {
             id: issue.id,
             identifier: issue.identifier,

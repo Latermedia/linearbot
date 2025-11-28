@@ -79,7 +79,7 @@
 
 {#if isSyncing || hasError}
   <div
-    class="flex relative items-center text-sm text-neutral-600 dark:text-neutral-400"
+    class="flex relative items-center text-sm text-neutral-600 dark:text-neutral-400 m-0"
   >
     <!-- Container with progress bar background -->
     <div
@@ -103,7 +103,7 @@
           {#each Array(9) as _, i}
             <div
               class="sync-block w-full h-full rounded-[1px] {hasError
-                ? 'text-red-500'
+                ? 'bg-red-500'
                 : 'bg-current'}"
               style="animation-delay: {delays[i]}s;"
             ></div>

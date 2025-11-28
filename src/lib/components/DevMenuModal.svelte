@@ -1,9 +1,12 @@
 <script lang="ts">
   import { onMount, onDestroy } from "svelte";
   import { browser } from "$app/environment";
+  import Modal from "$lib/components/Modal.svelte";
+  import SyncIndicator from "$lib/components/SyncIndicator.svelte";
+  import StatusScroller from "$lib/components/StatusScroller.svelte";
   import Button from "$lib/components/Button.svelte";
   import { databaseStore } from "../stores/database";
-  import { Trash2, X, RefreshCw, AlertTriangle } from "lucide-svelte";
+  import { AlertTriangle, RefreshCw } from "lucide-svelte";
 
   let {
     onclose,
@@ -23,7 +26,6 @@
   let isRefreshing = $state(false);
   let serverLastSyncTime: number | null = $state(null);
   let previousLastSyncTime: number | null = $state(null);
-  let progressPercent = $state<number | null>(null);
   let pollIntervalId: number | undefined;
   let statusPollIntervalId: number | undefined;
   let syncErrorMessage = $state<string | null>(null);
@@ -37,6 +39,19 @@
     projectIssuesCount: number;
   }
   let syncStats = $state<SyncStats | null>(null);
+
+  // Status messages for streaming display
+  let statusMessages = $state<string[]>([]);
+
+  // System statistics
+  interface SystemStats {
+    totalIssues: number;
+    totalProjects: number;
+    totalEngineers: number;
+    totalTeams: number;
+    startedIssues: number;
+  }
+  let systemStats = $state<SystemStats | null>(null);
 
   // Delete confirmation state
   let showDeleteSection = $state(false);
@@ -67,20 +82,21 @@
     }
   }
 
-  function handleBackdropClick(event: MouseEvent): void {
-    const target = event.target as HTMLElement;
-    if (target.classList.contains("modal-backdrop")) {
-      onclose();
-    }
+  function addStatusMessage(message: string) {
+    statusMessages = [...statusMessages, message].slice(-5); // Keep last 5 messages
   }
 
-  function handleBackdropKeydown(event: KeyboardEvent): void {
-    if (event.key === "Enter" || event.key === " ") {
-      event.preventDefault();
-      const target = event.target as HTMLElement;
-      if (target.classList.contains("modal-backdrop")) {
-        onclose();
+  async function fetchSystemStats() {
+    if (!browser) return;
+
+    try {
+      const response = await fetch("/api/system/stats");
+      if (response.ok) {
+        const data = await response.json();
+        systemStats = data;
       }
+    } catch (error) {
+      console.debug("System stats poll error:", error);
     }
   }
 
@@ -96,9 +112,24 @@
 
         syncStatus = data.status;
         serverLastSyncTime = data.lastSyncTime;
-        progressPercent = data.progressPercent ?? null;
         syncErrorMessage = data.error || null;
         syncStats = data.stats ?? null;
+
+        // Generate status message for streaming display
+        if (syncStatus === "syncing" && syncStats) {
+          // Prioritize most relevant status message
+          if (syncStats.currentProjectName) {
+            addStatusMessage(`Syncing: ${syncStats.currentProjectName}`);
+          } else if (syncStats.totalProjectsCount > 0) {
+            addStatusMessage(
+              `Processing project ${syncStats.currentProjectIndex} of ${syncStats.totalProjectsCount}`
+            );
+          } else if (syncStats.startedIssuesCount > 0) {
+            addStatusMessage(
+              `Synced ${syncStats.startedIssuesCount} WIP issues`
+            );
+          }
+        }
 
         // Detect if lastSyncTime changed (sync completed, either manual or automatic)
         const syncTimeChanged =
@@ -106,21 +137,33 @@
           previousSyncTime !== null &&
           serverLastSyncTime !== previousSyncTime;
 
-        const isNewSync =
-          serverLastSyncTime !== null && previousSyncTime === null;
-
-        // If sync completed (was syncing, now idle) OR sync time changed (automatic sync), reload data
-        if (
-          (wasSyncing && syncStatus === "idle" && serverLastSyncTime) ||
-          (syncStatus === "idle" && (syncTimeChanged || isNewSync))
-        ) {
+        // Only reload if we were actually syncing and it just completed, or if sync time changed
+        // Don't reload on initial modal open (when previousSyncTime is null)
+        if (wasSyncing && syncStatus === "idle" && serverLastSyncTime) {
+          // Sync just completed - reload data
           isRefreshing = false;
           previousLastSyncTime = serverLastSyncTime;
           syncStats = null;
+          statusMessages = [];
           await databaseStore.load();
+          await fetchSystemStats(); // Refresh system stats after sync
+        } else if (
+          syncStatus === "idle" &&
+          syncTimeChanged &&
+          previousSyncTime !== null
+        ) {
+          // Automatic sync completed (time changed) - reload data
+          previousLastSyncTime = serverLastSyncTime;
+          syncStats = null;
+          statusMessages = [];
+          await databaseStore.load();
+          await fetchSystemStats();
         } else if (syncStatus === "error" && isRefreshing) {
           isRefreshing = false;
           syncStats = null;
+          if (syncErrorMessage) {
+            addStatusMessage(`Error: ${syncErrorMessage}`);
+          }
         } else if (syncStatus === "idle" && !data.isRunning) {
           isRefreshing = false;
           syncStats = null;
@@ -141,6 +184,7 @@
 
     isRefreshing = true;
     syncErrorMessage = null;
+    statusMessages = [];
 
     try {
       const response = await fetch("/api/sync", {
@@ -153,20 +197,24 @@
         isRefreshing = false;
         if (response.status === 429 || response.status === 409) {
           syncErrorMessage = data.message || "Sync not available";
+          addStatusMessage(`Sync unavailable: ${syncErrorMessage}`);
           await checkSyncStatus();
         } else {
           syncErrorMessage = data.message || "Failed to start sync";
           syncStatus = "error";
+          addStatusMessage(`Sync failed: ${syncErrorMessage}`);
         }
         return;
       }
 
       syncStatus = "syncing";
+      // Status messages will be generated by checkSyncStatus polling
     } catch (error) {
       syncErrorMessage =
         error instanceof Error ? error.message : "Failed to start sync";
       isRefreshing = false;
       syncStatus = "error";
+      addStatusMessage(`Sync error: ${syncErrorMessage}`);
     }
   }
 
@@ -222,12 +270,20 @@
     serverLastSyncTime ? new Date(serverLastSyncTime) : null
   );
 
+  const isSyncing = $derived(syncStatus === "syncing" || isRefreshing);
+
   onMount(() => {
     document.addEventListener("keydown", handleKeydown);
-    document.body.style.overflow = "hidden";
 
-    // Initial status check
-    checkSyncStatus();
+    // Initial status check and system stats
+    // Initialize previousLastSyncTime to prevent false reload on modal open
+    checkSyncStatus().then(() => {
+      // After first check, set previousLastSyncTime to current to prevent false reloads
+      if (serverLastSyncTime !== null && previousLastSyncTime === null) {
+        previousLastSyncTime = serverLastSyncTime;
+      }
+    });
+    fetchSystemStats();
 
     // Poll status periodically when idle
     statusPollIntervalId = setInterval(
@@ -235,11 +291,17 @@
       STATUS_POLL_INTERVAL
     ) as unknown as number;
 
+    // Poll system stats periodically
+    const statsPollIntervalId = setInterval(
+      fetchSystemStats,
+      STATUS_POLL_INTERVAL * 2
+    ) as unknown as number;
+
     return () => {
       document.removeEventListener("keydown", handleKeydown);
-      document.body.style.overflow = "";
       if (pollIntervalId) clearInterval(pollIntervalId);
       if (statusPollIntervalId) clearInterval(statusPollIntervalId);
+      clearInterval(statsPollIntervalId);
     };
   });
 
@@ -271,193 +333,145 @@
   });
 </script>
 
-<div
-  class="modal-backdrop fixed inset-0 z-50 flex items-center justify-center bg-black/70"
-  onclick={handleBackdropClick}
-  onkeydown={handleBackdropKeydown}
-  role="dialog"
-  aria-modal="true"
-  aria-labelledby="modal-title"
-  tabindex="-1"
->
-  <div
-    class="w-full max-w-sm rounded-lg bg-neutral-900 shadow-2xl shadow-black/60 m-4"
-    role="document"
-  >
-    <div class="p-5">
-      <!-- Header -->
-      <div class="flex items-center justify-between mb-5">
-        <h2 id="modal-title" class="text-sm font-medium text-white">Tools</h2>
-        <button
-          class="text-neutral-500 hover:text-white transition-colors"
-          onclick={onclose}
-          aria-label="Close modal"
-        >
-          <X class="w-4 h-4" />
-        </button>
+<Modal title="Tools" {onclose} size="sm">
+  <div class="space-y-6">
+    <!-- Sync Section -->
+    <div class="space-y-3">
+      <div class="flex items-center justify-between gap-2">
+        <span class="text-xs font-medium text-neutral-400">Sync Status</span>
+        <div class="flex items-center shrink-0">
+          <SyncIndicator />
+        </div>
       </div>
 
-      <!-- Sync Section -->
-      <div class="space-y-5">
-        <div class="space-y-4">
-          {#if syncStatus === "syncing"}
-            <!-- Syncing state -->
-            <div class="space-y-3">
-              {#if progressPercent !== null}
-                <div class="space-y-2">
-                  <div class="flex items-center justify-between">
-                    <span class="text-sm text-white">Syncing</span>
-                    <span class="text-sm text-neutral-400 tabular-nums"
-                      >{progressPercent}%</span
-                    >
-                  </div>
-                  <div class="w-full bg-neutral-800 rounded-full h-1">
-                    <div
-                      class="bg-indigo-500 h-1 rounded-full transition-all duration-300"
-                      style="width: {progressPercent}%"
-                    ></div>
-                  </div>
-                </div>
-              {/if}
-
-              {#if syncStats}
-                <div class="grid grid-cols-2 gap-x-4 gap-y-1 text-xs">
-                  {#if syncStats.startedIssuesCount > 0}
-                    <span class="text-neutral-500">WIP Issues</span>
-                    <span class="text-neutral-300 tabular-nums"
-                      >{syncStats.startedIssuesCount}</span
-                    >
-                  {/if}
-                  {#if syncStats.totalProjectsCount > 0}
-                    <span class="text-neutral-500">Projects</span>
-                    <span class="text-neutral-300 tabular-nums"
-                      >{syncStats.currentProjectIndex}/{syncStats.totalProjectsCount}</span
-                    >
-                  {/if}
-                  {#if syncStats.projectIssuesCount > 0}
-                    <span class="text-neutral-500">Project Issues</span>
-                    <span class="text-neutral-300 tabular-nums"
-                      >{syncStats.projectIssuesCount}</span
-                    >
-                  {/if}
-                </div>
-                {#if syncStats.currentProjectName}
-                  <p
-                    class="text-xs text-neutral-500 truncate"
-                    title={syncStats.currentProjectName}
-                  >
-                    {syncStats.currentProjectName}
-                  </p>
-                {/if}
-              {/if}
-            </div>
-          {:else}
-            <!-- Idle state -->
-            <p class="text-sm text-neutral-400">Sync data from Linear API</p>
-          {/if}
-
-          {#if syncErrorMessage}
-            <p class="text-xs text-red-400">{syncErrorMessage}</p>
-          {/if}
-
-          <div class="flex items-center justify-between">
-            <Button
-              onclick={handleSync}
-              disabled={isRefreshing || syncStatus === "syncing"}
-              variant="default"
-              size="sm"
-            >
-              <RefreshCw
-                class={`h-3.5 w-3.5 mr-1.5 ${isRefreshing || syncStatus === "syncing" ? "animate-spin" : ""}`}
-              />
-              {#if syncStatus === "syncing" || isRefreshing}
-                Syncing
-              {:else}
-                Sync Now
-              {/if}
-            </Button>
-            {#if lastSyncDate && syncStatus !== "syncing"}
-              <span class="text-xs text-neutral-600"
-                >{formatLastSync(lastSyncDate)}</span
-              >
-            {/if}
-          </div>
-        </div>
-
-        <!-- Reset Database Section (Hidden by default, Shift+D to reveal) -->
-        {#if showDeleteSection}
-          <div class="pt-4 border-t border-neutral-800 space-y-3">
-            <div class="flex items-center gap-2 text-red-400">
-              <AlertTriangle class="h-3.5 w-3.5" />
-              <span class="text-xs font-medium">Danger Zone</span>
-            </div>
-
-            <p class="text-xs text-neutral-500">
-              Reset database and delete all synced data.
-            </p>
-
-            {#if resetSuccess}
-              <p class="text-xs text-green-400">Database reset successfully</p>
-            {/if}
-            {#if resetError}
-              <p class="text-xs text-red-400">{resetError}</p>
-            {/if}
-
-            <div class="space-y-2">
-              <input
-                id="delete-confirm"
-                type="text"
-                bind:value={deleteConfirmationInput}
-                bind:this={deleteInputRef}
-                class="w-full px-2.5 py-1.5 text-xs rounded bg-neutral-800/50 text-white placeholder-neutral-600 focus:outline-none focus:ring-1 focus:ring-red-500/50"
-                placeholder="Type DELETE to confirm"
-                autocomplete="off"
-                spellcheck="false"
-              />
-              <div class="flex gap-2">
-                <button
-                  onclick={() => {
-                    showDeleteSection = false;
-                    deleteConfirmationInput = "";
-                  }}
-                  class="flex-1 px-3 py-1.5 text-xs text-neutral-400 hover:text-white transition-colors"
-                >
-                  Cancel
-                </button>
-                <button
-                  onclick={handleResetDatabase}
-                  disabled={isResetting || !canDelete}
-                  class="flex-1 px-3 py-1.5 text-xs rounded bg-red-500/10 text-red-400 hover:bg-red-500/20 disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
-                >
-                  {#if isResetting}
-                    Resetting...
-                  {:else}
-                    Reset
-                  {/if}
-                </button>
-              </div>
-            </div>
-          </div>
+      <!-- Status message or last sync time -->
+      <div class="min-h-[3rem]">
+        {#if isSyncing && statusMessages.length > 0}
+          <StatusScroller messages={statusMessages} />
+        {:else if syncErrorMessage}
+          <p class="text-xs text-red-400">{syncErrorMessage}</p>
+        {:else if lastSyncDate}
+          <p class="text-xs text-neutral-500">
+            Last synced {formatLastSync(lastSyncDate)}
+          </p>
+        {:else}
+          <p class="text-xs text-neutral-500">Never synced</p>
         {/if}
       </div>
 
-      <!-- Footer hint -->
-      <div class="mt-5 pt-4 border-t border-neutral-800">
-        <p class="text-xs text-center text-neutral-500">
+      <!-- Sync Now Button -->
+      <Button
+        onclick={handleSync}
+        disabled={isSyncing}
+        variant="default"
+        size="sm"
+        class="w-full"
+      >
+        <RefreshCw
+          class={`h-3.5 w-3.5 mr-1.5 ${isSyncing ? "animate-spin" : ""}`}
+        />
+        {isSyncing ? "Syncing..." : "Sync Now"}
+      </Button>
+    </div>
+
+    <!-- System Statistics -->
+    {#if systemStats}
+      <div class="pt-4 border-t border-neutral-800 space-y-3">
+        <h3 class="text-xs font-medium text-neutral-400">System Statistics</h3>
+        <div class="grid grid-cols-2 gap-x-4 gap-y-2 text-xs">
+          <span class="text-neutral-500">Total Issues</span>
+          <span class="text-neutral-300 tabular-nums text-right">
+            {systemStats.totalIssues.toLocaleString()}
+          </span>
+          <span class="text-neutral-500">Started Issues</span>
+          <span class="text-neutral-300 tabular-nums text-right">
+            {systemStats.startedIssues.toLocaleString()}
+          </span>
+          <span class="text-neutral-500">Projects</span>
+          <span class="text-neutral-300 tabular-nums text-right">
+            {systemStats.totalProjects.toLocaleString()}
+          </span>
+          <span class="text-neutral-500">Engineers</span>
+          <span class="text-neutral-300 tabular-nums text-right">
+            {systemStats.totalEngineers.toLocaleString()}
+          </span>
+          <span class="text-neutral-500">Teams</span>
+          <span class="text-neutral-300 tabular-nums text-right">
+            {systemStats.totalTeams.toLocaleString()}
+          </span>
+        </div>
+      </div>
+    {/if}
+
+    <!-- Reset Database Section -->
+    {#if showDeleteSection}
+      <div class="pt-4 border-t border-neutral-800 space-y-3">
+        <div class="flex items-center gap-2 text-red-400">
+          <AlertTriangle class="h-3.5 w-3.5" />
+          <span class="text-xs font-medium">Danger Zone</span>
+        </div>
+
+        <p class="text-xs text-neutral-500">
+          Reset database and delete all synced data.
+        </p>
+
+        {#if resetSuccess}
+          <p class="text-xs text-green-400">Database reset successfully</p>
+        {/if}
+        {#if resetError}
+          <p class="text-xs text-red-400">{resetError}</p>
+        {/if}
+
+        <div class="space-y-2">
+          <input
+            id="delete-confirm"
+            type="text"
+            bind:value={deleteConfirmationInput}
+            bind:this={deleteInputRef}
+            class="w-full px-2.5 py-1.5 text-xs rounded bg-neutral-800/50 text-white placeholder-neutral-600 focus:outline-none focus:ring-1 focus:ring-red-500/50"
+            placeholder="Type DELETE to confirm"
+            autocomplete="off"
+            spellcheck="false"
+          />
+          <div class="flex gap-2">
+            <button
+              onclick={() => {
+                showDeleteSection = false;
+                deleteConfirmationInput = "";
+              }}
+              class="flex-1 px-3 py-1.5 text-xs text-neutral-400 hover:text-white transition-colors"
+            >
+              Cancel
+            </button>
+            <button
+              onclick={handleResetDatabase}
+              disabled={isResetting || !canDelete}
+              class="flex-1 px-3 py-1.5 text-xs rounded bg-red-500/10 text-red-400 hover:bg-red-500/20 disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
+            >
+              {isResetting ? "Resetting..." : "Reset"}
+            </button>
+          </div>
+        </div>
+      </div>
+    {/if}
+
+    <!-- Footer hint -->
+    <div class="pt-4 border-t border-neutral-800">
+      <p class="text-xs text-center text-neutral-500">
+        <kbd
+          class="px-1.5 py-0.5 rounded bg-neutral-800 border border-neutral-700 text-neutral-300"
+          >Esc</kbd
+        >
+        to close
+        {#if !showDeleteSection}
+          <span class="mx-1.5">·</span>
           <kbd
             class="px-1.5 py-0.5 rounded bg-neutral-800 border border-neutral-700 text-neutral-300"
-            >Esc</kbd
+            >Shift+D</kbd
           >
-          to close
-          {#if !showDeleteSection}
-            <span class="mx-1.5">·</span>
-            <kbd
-              class="px-1.5 py-0.5 rounded bg-neutral-800 border border-neutral-700 text-neutral-300"
-              >Shift+D</kbd
-            > danger zone
-          {/if}
-        </p>
-      </div>
+          danger zone
+        {/if}
+      </p>
     </div>
   </div>
-</div>
+</Modal>
