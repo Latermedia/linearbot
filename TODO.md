@@ -6,56 +6,13 @@ Planned features and known issues for LinearBot.
 
 ### Views & Organization
 
+- **Rename Dashboard to Projects** — the main route is a projects view, rename accordingly
+- **Initiative view (`/initiatives`)** — dedicated route for initiative-level grouping; view projects grouped by strategic initiative with rollup metrics
+- **Planning view** — surface projects in planning states (`shaping`, `ready`) from Linear; separate view or filter for upcoming work not yet started
+- **Full year timeline** — extend Gantt chart to show entire year with previously completed projects; enable historical context alongside active work
 - **WIP/Now/Next** — categorize work by current state
 - **Prioritization view** — impact/effort matrix with backlog organization
-- **Initiative grouping** — group projects by strategic initiative
 - **Metrics dashboard** — tie project metrics to primary initiatives
-
-### Engineer WIP View (`/engineers`)
-
-- **Stats table** — show all IC engineers with WIP metrics:
-  - Active issue count (in-progress)
-  - Total points in WIP
-  - WIP limit violations (exceeds threshold)
-  - Oldest issue age (staleness indicator)
-  - Last activity timestamp
-- **Violation badges** — highlight engineers over WIP limits
-- **Detail modal** — click row to show:
-  - Engineer summary stats
-  - Active issues list with status, points, age
-  - Issue links to Linear
-  - WIP history/trend (optional)
-
-#### Sync & Data Model
-
-Add `engineers` table with derived stats (following `projects` pattern):
-
-```sql
-CREATE TABLE engineers (
-  assignee_id TEXT PRIMARY KEY,
-  assignee_name TEXT NOT NULL,
-  team_ids TEXT NOT NULL,           -- JSON array of team IDs
-  team_names TEXT NOT NULL,         -- JSON array of team names
-  wip_issue_count INTEGER NOT NULL,
-  wip_total_points REAL NOT NULL,
-  wip_limit_violation INTEGER NOT NULL,  -- 1 if over threshold
-  oldest_wip_age_days REAL,
-  last_activity_at TEXT,
-  missing_estimate_count INTEGER NOT NULL,
-  missing_priority_count INTEGER NOT NULL,
-  no_recent_comment_count INTEGER NOT NULL,
-  wip_age_violation_count INTEGER NOT NULL,
-  active_issues TEXT NOT NULL       -- JSON array of issue summaries
-);
-```
-
-Add `computeAndStoreEngineers()` in sync-service.ts:
-
-- Group issues by `assignee_id` (skip unassigned)
-- Filter to WIP issues (`state_type = 'started'`)
-- Calculate violation counts per engineer
-- Store derived stats in `engineers` table
-- Call after `computeAndStoreProjects()` in sync flow
 
 ### Highlighting & Queue
 
@@ -65,22 +22,29 @@ Add `computeAndStoreEngineers()` in sync-service.ts:
 ### Issue Management
 
 - **Subissue handling** — exclude from points/priority; show visual indicator
-- **Issue identifier** — display ID (e.g., `ENG-123`) in all views
-- **Comment count** — show total comments per issue
-- **Comment threshold** — configurable "no recent comment" threshold
+- **Comment count** — show total comments per issue (currently only tracking last comment time)
+- **Comment threshold** — configurable "no recent comment" threshold (currently hardcoded to business day logic)
 
 ### Project Tracking
 
-- **Author on updates** — show author name for project updates
-- **Start date fix** — use WIP start (first issue in-progress), not created date
-- **Linear target date** — sync and show project's target end date from Linear
+- **Start date fix** — use WIP start (first issue `started_at`), not `created_at` for project start date
+- **Linear target date** — sync project's target end date from Linear (due date field)
+- **Completion date comparison** — compare Linear's explicit target/due date vs velocity-predicted completion; display warning in UI if they differ by more than 1 month (our "month-ish" accuracy threshold)
 - **Status labels** — consolidate Linear status label usage
+
+### Filtering & Configuration
+
+- **Configurable customer labels** — define a list of high-profile customer labels (e.g., AcmeCorp) that can be used to filter projects in Projects and Executive views; stored as app configuration
 
 ### Violation Alerts
 
 - **0 points is valid** — don't warn on `estimate: 0`
 - **Suppress cancelled/duplicate** — no alerts for these states
 - **Missing points label** — clearer messaging, exclude cancelled
+
+### Cleanup
+
+- **Remove terminal UI** — delete `terminal/` directory, remove `start:cli`/`dev:cli` scripts, uninstall `ink`/`ink-spinner` dependencies; web UI is the primary interface and TUI adds maintenance burden without sufficient value
 
 ---
 
@@ -93,7 +57,5 @@ Current bugs and gaps to fix:
 | 0-point estimates trigger warning | `!issue.estimate` is falsy for 0    |
 | Alerts on cancelled/duplicate     | Should be suppressed                |
 | Start date uses `created_at`      | Should use `started_at` (WIP start) |
-| Issue identifier not in UI        | Synced but not displayed            |
 | No subissue detection             | Can't exclude from calculations     |
-| Author missing on updates         | Updates shown, author not           |
 | Linear target date not synced     | Only velocity prediction shown      |
