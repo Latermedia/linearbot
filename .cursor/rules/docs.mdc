@@ -1,0 +1,45 @@
+---
+description: When and how to update documentation
+globs: ["**/*.md"]
+alwaysApply: false
+---
+
+# Documentation Updates
+
+## NEWS.md
+
+- **Only during releases** via `bun run release-prepare`
+- Never edit manually — script generates from commits
+
+## TODO.md
+
+Update when:
+
+- Adding planned features
+- Completing planned features (remove item)
+- Discovering bugs (add to Known Issues)
+
+## docs/
+
+Update when:
+
+- Adding features that change architecture
+- Changing data flow or services
+- Adding new API endpoints
+
+Key files:
+
+- `architecture.md` — system overview, data flow
+- `api.md` — endpoint documentation
+- `data-model.md` — database schema
+- `features.md` — feature documentation
+
+## .cursor/rules/
+
+**Principle**: Rules should reflect how the project actually works. If a rule would give incorrect guidance, update it.
+
+Common triggers:
+
+- Removing/adding major components
+- Changing directory structure
+- Adopting new conventions

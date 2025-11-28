@@ -1,0 +1,35 @@
+---
+description: Project architecture and patterns
+globs: ["src/**/*.ts", "src/**/*.svelte"]
+alwaysApply: false
+---
+
+# Architecture
+
+See [docs/architecture.md](../docs/architecture.md) for full details.
+
+## Data Flow
+
+```
+Linear API → Sync Service → SQLite → SvelteKit API → Frontend
+```
+
+## Directory Structure
+
+| Path | Purpose |
+|------|---------|
+| `src/routes/` | Pages + API endpoints |
+| `src/lib/components/` | Svelte components |
+| `src/lib/stores/` | Svelte stores |
+| `src/db/` | Schema, queries, connection |
+| `src/services/` | Sync + business logic |
+| `src/linear/` | Linear API client |
+| `terminal/` | Ink-based TUI |
+| `scripts/` | CLI utilities |
+
+## Patterns
+
+- **Database**: Use `src/db/queries.ts` for all DB operations
+- **API routes**: Return JSON, handle errors consistently
+- **Sync**: `src/services/sync-service.ts` manages Linear data fetch
+- **Stores**: Svelte stores in `src/lib/stores/` for shared state

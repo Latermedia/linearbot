@@ -1,0 +1,34 @@
+---
+description: Conventional commit message format
+globs: []
+alwaysApply: false
+---
+
+# Commit Format
+
+Use conventional commits: `type: description`
+
+## Types
+
+- **feat**: new feature or capability
+- **fix**: bug fix
+- **docs**: documentation only
+- **chore**: maintenance, deps, config
+- **refactor**: code restructure without behavior change
+
+## Examples
+
+```
+feat: add project target date sync
+fix: handle 0-point estimates correctly
+docs: update API documentation
+chore: upgrade svelte to 5.1
+refactor: extract sync logic to service
+```
+
+## Rules
+
+- Lowercase type and description
+- No period at end
+- Imperative mood ("add" not "added")
+- Keep under 72 characters
