@@ -1,5 +1,12 @@
 # Release Notes
 
+## v0.1.1
+
+### Fixed
+
+- Comment violations now only shown for WIP issues
+- Resolved issues with estimates, alerts, dates, and subissues
+
 ## v0.1.0
 
 _Initial release_
