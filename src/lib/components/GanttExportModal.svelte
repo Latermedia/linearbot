@@ -20,11 +20,13 @@
     team,
     domain,
     groupBy,
+    viewMode = "quarters" as "quarter" | "quarters",
     onclose,
   }: {
     team?: TeamSummary;
     domain?: DomainSummary;
     groupBy: "team" | "domain";
+    viewMode?: "quarter" | "quarters";
     onclose: () => void;
   } = $props();
 
@@ -36,22 +38,45 @@
   let showWarnings = $state(false);
   let endDateMode = $state<"predicted" | "target">("predicted");
 
-  // Calculate current quarter start date (same as GanttChart)
+  // Calculate quarter start date based on view mode (same as GanttChart)
   function getQuarterStart(): Date {
     const now = new Date();
     const currentMonth = now.getMonth();
-    const quarterStartMonth = Math.floor(currentMonth / 3) * 3;
-    const quarterStart = new Date(now.getFullYear(), quarterStartMonth, 1);
-    quarterStart.setHours(0, 0, 0, 0);
-    return quarterStart;
+    const currentQuarterStartMonth = Math.floor(currentMonth / 3) * 3;
+
+    if (viewMode === "quarter") {
+      // Current quarter only
+      const quarterStart = new Date(
+        now.getFullYear(),
+        currentQuarterStartMonth,
+        1
+      );
+      quarterStart.setHours(0, 0, 0, 0);
+      return quarterStart;
+    } else {
+      // 5 quarters: 2 before + current + 2 after
+      // Go back 2 quarters (6 months)
+      const quarterStartMonth = currentQuarterStartMonth - 6;
+      let year = now.getFullYear();
+      let month = quarterStartMonth;
+      // Handle year rollover
+      if (month < 0) {
+        month += 12;
+        year -= 1;
+      }
+      const quarterStart = new Date(year, month, 1);
+      quarterStart.setHours(0, 0, 0, 0);
+      return quarterStart;
+    }
   }
 
-  // Generate 90 days starting from quarter start
+  // Generate days based on view mode
   function generateDays() {
     const days: Date[] = [];
     const quarterStart = getQuarterStart();
+    const totalDays = viewMode === "quarter" ? 90 : 450; // 1 quarter or 5 quarters
 
-    for (let i = 0; i < 90; i++) {
+    for (let i = 0; i < totalDays; i++) {
       const day = new Date(quarterStart);
       day.setDate(quarterStart.getDate() + i);
       days.push(day);
@@ -122,13 +147,31 @@
       const monthStart = monthStarts[i];
       const nextMonthStart = monthStarts[i + 1];
 
-      const startPercent = (monthStart.index / 90) * 100;
+      const totalDays = viewMode === "quarter" ? 90 : 450;
+      const startPercent = (monthStart.index / totalDays) * 100;
       const endPercent = nextMonthStart
-        ? (nextMonthStart.index / 90) * 100
+        ? (nextMonthStart.index / totalDays) * 100
         : 100;
 
+      // Format month label with year for 5-quarter view
+      let monthLabel: string;
+      if (viewMode === "quarters") {
+        // For 5-quarter view, include year: "Nov 25"
+        const monthName = monthStart.date.toLocaleDateString("en-US", {
+          month: "short",
+        });
+        const year = monthStart.date.getFullYear();
+        const yearShort = year.toString().slice(-2);
+        monthLabel = `${monthName} ${yearShort}`;
+      } else {
+        // For single quarter view, just show month
+        monthLabel = monthStart.date.toLocaleDateString("en-US", {
+          month: "short",
+        });
+      }
+
       months.push({
-        month: monthStart.date.toLocaleDateString("en-US", { month: "short" }),
+        month: monthLabel,
         startDate: monthStart.date,
         startPercent: startPercent,
         endPercent: endPercent,
@@ -159,9 +202,10 @@
         ? project.targetDate
         : project.estimatedEndDate;
 
+    const totalDays = viewMode === "quarter" ? 90 : 450;
     const endDate = selectedEndDate
       ? new Date(selectedEndDate)
-      : new Date(quarterStart.getTime() + 90 * 24 * 60 * 60 * 1000);
+      : new Date(quarterStart.getTime() + totalDays * 24 * 60 * 60 * 1000);
 
     const startDays =
       Math.floor(
@@ -171,18 +215,21 @@
       (endDate.getTime() - quarterStart.getTime()) / (1000 * 60 * 60 * 24)
     );
 
-    const extendsBefore = startDays < 0;
-    const extendsAfter = endDays > 89;
+    const maxDay = totalDays - 1;
+    const extendsAfterThreshold = totalDays + 2;
 
-    const clampedStart = Math.max(0, Math.min(startDays, 89));
-    const clampedEnd = Math.max(0, Math.min(endDays, 89));
+    const extendsBefore = startDays < 0;
+    const extendsAfter = endDays > extendsAfterThreshold;
+
+    const clampedStart = Math.max(0, Math.min(startDays, maxDay));
+    const clampedEnd = Math.max(0, Math.min(endDays, maxDay));
 
     const startCol = clampedStart;
     const endCol = clampedEnd;
     const width = Math.max(1, endCol - startCol + 1);
 
-    const startPercent = (clampedStart / 90) * 100;
-    const widthPercent = (width / 90) * 100;
+    const startPercent = (clampedStart / totalDays) * 100;
+    const widthPercent = (width / totalDays) * 100;
 
     return {
       startCol,
@@ -204,9 +251,10 @@
       (targetDate.getTime() - quarterStart.getTime()) / (1000 * 60 * 60 * 24)
     );
 
-    // Clamp to visible range
-    const clampedTarget = Math.max(0, Math.min(targetDays, 89));
-    return (clampedTarget / 90) * 100;
+    const totalDays = viewMode === "quarter" ? 90 : 450;
+    const maxDay = totalDays - 1;
+    const clampedTarget = Math.max(0, Math.min(targetDays, maxDay));
+    return (clampedTarget / totalDays) * 100;
   }
 
   // Calculate target marker position relative to bar (as percentage of bar width)
@@ -240,11 +288,12 @@
       return null;
     }
 
+    const totalDays = viewMode === "quarter" ? 90 : 450;
     const dayIndex = days.findIndex((d) => d.getTime() === now.getTime());
 
     if (dayIndex === -1) return null;
 
-    return (dayIndex / 90) * 100;
+    return (dayIndex / totalDays) * 100;
   }
 
   const currentDayPercent = getCurrentDayPosition();
