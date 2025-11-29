@@ -87,3 +87,15 @@ export async function getAllProjects() {
   const data = await response.json();
   return data.projects;
 }
+
+export async function getProjectById(projectId: string) {
+  const response = await fetch(`/api/projects/${projectId}`);
+  if (!response.ok) {
+    if (response.status === 404) {
+      return null;
+    }
+    throw new Error("Failed to fetch project");
+  }
+  const data = await response.json();
+  return data.project;
+}

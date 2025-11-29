@@ -66,7 +66,7 @@ export interface DomainSummary {
 /**
  * Convert Project database record to ProjectSummary
  */
-function projectToSummary(project: Project): ProjectSummary {
+export function projectToSummary(project: Project): ProjectSummary {
   // Parse JSON fields back to Maps/Sets
   const issuesByState = new Map<string, number>(
     Object.entries(JSON.parse(project.issues_by_state))

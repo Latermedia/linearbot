@@ -10,10 +10,13 @@ import {
   processProjects,
   groupProjectsByTeams,
   groupProjectsByDomains,
+  projectToSummary,
   type ProjectSummary,
   type TeamSummary,
   type DomainSummary,
 } from "../project-data";
+import { getProjectById } from "../queries";
+import type { Project } from "../../db/schema";
 
 interface DatabaseState {
   loading: boolean;
@@ -103,6 +106,31 @@ function createDatabaseStore() {
         issues: [],
         lastSync: null,
       });
+    },
+    async refreshProject(projectId: string) {
+      if (!browser) return;
+      try {
+        console.log(`[databaseStore] Refreshing project: ${projectId}`);
+        const project = await getProjectById(projectId);
+        if (!project) {
+          console.warn(`[databaseStore] Project ${projectId} not found`);
+          return;
+        }
+        // Convert Project to ProjectSummary
+        const projectSummary = projectToSummary(project as Project);
+        // Update projectsStore with just this project (preserving others)
+        projectsStore.update((projects) => {
+          const updated = new Map(projects);
+          updated.set(projectId, projectSummary);
+          return updated;
+        });
+        console.log(`[databaseStore] Refreshed project: ${projectId}`);
+      } catch (error) {
+        console.error(
+          `[databaseStore] Error refreshing project ${projectId}:`,
+          error
+        );
+      }
     },
   };
 }

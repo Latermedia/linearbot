@@ -124,8 +124,8 @@
               const statusData = await statusResponse.json();
               if (statusData.status === "idle" && !statusData.isRunning) {
                 clearInterval(pollInterval);
-                // Reload database store to get updated project data
-                await databaseStore.load();
+                // Refresh only this project without reloading all data
+                await databaseStore.refreshProject(project.projectId);
                 // Refresh project issues
                 fetchProjectIssues();
                 isSyncingProject = false;

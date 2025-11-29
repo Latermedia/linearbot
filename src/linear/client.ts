@@ -547,6 +547,11 @@ export class LinearAPIClient {
         try {
           const updates = await this.fetchProjectUpdates(projectId);
           projectUpdatesMap.set(projectId, updates);
+          if (updates.length > 0) {
+            console.log(
+              `[SYNC] Fetched ${updates.length} project update(s) for project: ${projectDisplayName || projectId}`
+            );
+          }
         } catch (error: any) {
           // Check for rate limit
           if (error instanceof RateLimitError) {

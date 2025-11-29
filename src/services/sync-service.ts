@@ -12,6 +12,7 @@ import {
   getTotalIssueCount,
   getAllIssues,
   getAllProjects,
+  getProjectById,
   upsertProject,
   deleteProjectsByProjectIds,
   updateSyncMetadata,
@@ -733,11 +734,22 @@ export async function performSync(
 
     // Compute and store project metrics
     console.log(`[SYNC] Computing project metrics...`);
-    // Collect all project IDs that were synced (from both started issues and project issues)
+    // Collect project IDs that were actually synced (only projects that had updates fetched)
+    // This ensures projectUpdatesMap has entries for all projects in allSyncedProjectIds
     const allSyncedProjectIds = new Set<string>();
-    for (const issue of [...startedIssues, ...projectIssues]) {
-      if (issue.projectId) {
-        allSyncedProjectIds.add(issue.projectId);
+    if (includeProjectSync && projectUpdatesMap.size > 0) {
+      // Only include projects that were actually synced (have updates in the map)
+      // This matches what's in projectUpdatesMap
+      for (const projectId of projectUpdatesMap.keys()) {
+        allSyncedProjectIds.add(projectId);
+      }
+    } else {
+      // Fallback: if no project sync or no updates map, use projects from issues
+      // This handles the case where project sync is disabled
+      for (const issue of [...startedIssues, ...projectIssues]) {
+        if (issue.projectId) {
+          allSyncedProjectIds.add(issue.projectId);
+        }
       }
     }
     const computedProjectCount = await computeAndStoreProjects(
@@ -1043,18 +1055,20 @@ export async function syncProject(
     const projectUpdatesMap = new Map<string, ProjectUpdate[]>();
     try {
       const updates = await linearClient.fetchProjectUpdates(projectId);
+      projectUpdatesMap.set(projectId, updates);
       if (updates.length > 0) {
-        projectUpdatesMap.set(projectId, updates);
         console.log(
           `[SYNC] Fetched ${updates.length} project update(s) for project: ${projectName || projectId}`
         );
       }
     } catch (error) {
       // Log but don't fail - project updates are optional
+      // Set empty array on error to match full sync behavior
       console.error(
         `[SYNC] Failed to fetch project updates for ${projectId}:`,
         error instanceof Error ? error.message : error
       );
+      projectUpdatesMap.set(projectId, []);
     }
 
     // Compute and store project metrics for this project
@@ -1380,13 +1394,23 @@ async function computeAndStoreProjects(
     const projectDescription = projectDescriptionsMap?.get(projectId) || null;
 
     // Get project updates from map, sort by createdAt descending (newest first), and serialize to JSON
-    const projectUpdates = projectUpdatesMap?.get(projectId) || [];
-    const sortedUpdates = projectUpdates.sort(
-      (a, b) =>
-        new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()
-    );
-    const projectUpdatesJson =
-      sortedUpdates.length > 0 ? JSON.stringify(sortedUpdates) : null;
+    // Only update project_updates if this project was synced in this run
+    // Otherwise, preserve existing updates from the database
+    let projectUpdatesJson: string | null = null;
+    if (syncedProjectIds?.has(projectId)) {
+      // Project was synced - use updates from map (or null if empty/not found)
+      const projectUpdates = projectUpdatesMap?.get(projectId) || [];
+      const sortedUpdates = projectUpdates.sort(
+        (a, b) =>
+          new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()
+      );
+      projectUpdatesJson =
+        sortedUpdates.length > 0 ? JSON.stringify(sortedUpdates) : null;
+    } else {
+      // Project was not synced - preserve existing updates from database
+      const existingProject = getProjectById(projectId);
+      projectUpdatesJson = existingProject?.project_updates || null;
+    }
 
     const project: Project = {
       project_id: projectId,
