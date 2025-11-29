@@ -2,12 +2,7 @@
   import { onMount } from "svelte";
   import { browser } from "$app/environment";
   import { goto } from "$app/navigation";
-  import {
-    databaseStore,
-    teamsStore,
-    domainsStore,
-    projectsStore,
-  } from "$lib/stores/database";
+  import { databaseStore, projectsStore } from "$lib/stores/database";
   import { presentationMode } from "$lib/stores/presentation";
   import ProjectsTable from "$lib/components/ProjectsTable.svelte";
   import GanttChart from "$lib/components/GanttChart.svelte";
@@ -15,10 +10,17 @@
   import ToggleGroupItem from "$lib/components/ToggleGroupItem.svelte";
   import Card from "$lib/components/Card.svelte";
   import Skeleton from "$lib/components/Skeleton.svelte";
+  import {
+    filterProjectsByMode,
+    groupProjectsByTeams,
+    groupProjectsByDomains,
+  } from "$lib/project-data";
 
   let groupBy = $state<"team" | "domain">("team");
   let viewType = $state<"table" | "gantt">("table");
   let endDateMode = $state<"predicted" | "target">("predicted");
+  let projectFilter = $state<"planning" | "wip" | "all">("wip");
+  let ganttViewMode = $state<"quarter" | "quarters">("quarters");
 
   // Load data on mount
   onMount(() => {
@@ -68,41 +70,66 @@
 
   // Create reactive derived values from stores
   // This ensures they update when stores change
-  const teams = $derived.by(() => {
-    const t = $teamsStore;
-    console.log(
-      "[+page.svelte] teams derived - length:",
-      t.length,
-      "teams:",
-      t.map((team) => ({ name: team.teamName, projects: team.projects.length }))
-    );
-    return t;
-  });
-  const domains = $derived.by(() => {
-    const d = $domainsStore;
-    console.log("[+page.svelte] domains derived - length:", d.length);
-    return d;
-  });
   const projects = $derived.by(() => {
     const p = $projectsStore;
     console.log("[+page.svelte] projects derived - size:", p.size);
     return p;
   });
 
-  // Calculate health metrics
+  // Filter projects based on selected mode
+  const filteredProjects = $derived.by(() => {
+    const issues = $databaseStore.issues;
+    return filterProjectsByMode(projects, issues, projectFilter);
+  });
+
+  // Group filtered projects by teams
+  const teams = $derived.by(() => {
+    const issues = $databaseStore.issues;
+    const filtered = filteredProjects;
+    const grouped = groupProjectsByTeams(filtered, issues);
+    console.log(
+      "[+page.svelte] teams derived - length:",
+      grouped.length,
+      "filter:",
+      projectFilter,
+      "teams:",
+      grouped.map((team) => ({
+        name: team.teamName,
+        projects: team.projects.length,
+      }))
+    );
+    return grouped;
+  });
+
+  // Group filtered projects by domains
+  const domains = $derived.by(() => {
+    const grouped = groupProjectsByDomains(teams);
+    console.log(
+      "[+page.svelte] domains derived - length:",
+      grouped.length,
+      "filter:",
+      projectFilter
+    );
+    return grouped;
+  });
+
+  // Calculate health metrics based on filtered projects
   const staleProjectsCount = $derived(
-    projects.size > 0
-      ? Array.from(projects.values()).filter((p) => p.isStaleUpdate).length
+    filteredProjects.size > 0
+      ? Array.from(filteredProjects.values()).filter((p) => p.isStaleUpdate)
+          .length
       : 0
   );
   const mismatchedStatusCount = $derived(
-    projects.size > 0
-      ? Array.from(projects.values()).filter((p) => p.hasStatusMismatch).length
+    filteredProjects.size > 0
+      ? Array.from(filteredProjects.values()).filter((p) => p.hasStatusMismatch)
+          .length
       : 0
   );
   const missingLeadCount = $derived(
-    projects.size > 0
-      ? Array.from(projects.values()).filter((p) => p.missingLead).length
+    filteredProjects.size > 0
+      ? Array.from(filteredProjects.values()).filter((p) => p.missingLead)
+          .length
       : 0
   );
 </script>
@@ -124,7 +151,7 @@
           Active Projects
         </div>
         <div class="text-2xl font-semibold text-neutral-900 dark:text-white">
-          {projects.size}
+          {filteredProjects.size}
         </div>
       </Card>
       <Card class="max-w-[200px]">
@@ -132,7 +159,9 @@
           Average Projects/Team
         </div>
         <div class="text-2xl font-semibold text-neutral-900 dark:text-white">
-          {(projects.size / teams.length).toFixed(2)}
+          {teams.length > 0
+            ? (filteredProjects.size / teams.length).toFixed(2)
+            : "0.00"}
         </div>
       </Card>
       <Card class="max-w-[200px]">
@@ -190,6 +219,23 @@
         </ToggleGroupItem>
       </ToggleGroupRoot>
 
+      <!-- Project filter toggle -->
+      <ToggleGroupRoot
+        bind:value={projectFilter}
+        variant="outline"
+        type="single"
+      >
+        <ToggleGroupItem value="planning" aria-label="Show planned projects">
+          Plan
+        </ToggleGroupItem>
+        <ToggleGroupItem value="wip" aria-label="Show WIP projects">
+          WIP
+        </ToggleGroupItem>
+        <ToggleGroupItem value="all" aria-label="Show all projects">
+          All
+        </ToggleGroupItem>
+      </ToggleGroupRoot>
+
       <!-- End date mode toggle (only for Gantt view) -->
       {#if viewType === "gantt"}
         <ToggleGroupRoot
@@ -205,6 +251,22 @@
           </ToggleGroupItem>
           <ToggleGroupItem value="target" aria-label="Use target end dates">
             Target
+          </ToggleGroupItem>
+        </ToggleGroupRoot>
+        <!-- Gantt view mode toggle -->
+        <ToggleGroupRoot
+          bind:value={ganttViewMode}
+          variant="outline"
+          type="single"
+        >
+          <ToggleGroupItem
+            value="quarter"
+            aria-label="Show current quarter view"
+          >
+            Quarter
+          </ToggleGroupItem>
+          <ToggleGroupItem value="quarters" aria-label="Show 5 quarter view">
+            5 Quarters
           </ToggleGroupItem>
         </ToggleGroupRoot>
       {/if}
@@ -258,6 +320,12 @@
   {:else if viewType === "table"}
     <ProjectsTable {teams} {domains} {groupBy} />
   {:else}
-    <GanttChart {teams} {domains} {groupBy} {endDateMode} />
+    <GanttChart
+      {teams}
+      {domains}
+      {groupBy}
+      {endDateMode}
+      viewMode={ganttViewMode}
+    />
   {/if}
 </div>
