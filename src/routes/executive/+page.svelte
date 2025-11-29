@@ -93,12 +93,13 @@
       // Check for Executive Visibility label
       const hasExecutiveLabel = project.labels.includes("Executive Visibility");
 
-      // Check if in progress (project_state contains "progress" or "started")
-      const projectState = project.projectState?.toLowerCase() || "";
+      // Check if in progress (project_state_category contains "progress" or "started")
+      const projectStateCategory =
+        project.projectStateCategory?.toLowerCase() || "";
       const isInProgress =
-        projectState.includes("progress") ||
-        projectState.includes("started") ||
-        projectState === "started";
+        projectStateCategory.includes("progress") ||
+        projectStateCategory.includes("started") ||
+        projectStateCategory === "started";
 
       return hasExecutiveLabel && isInProgress;
     });

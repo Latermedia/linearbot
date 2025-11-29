@@ -110,7 +110,8 @@ function convertDbIssueToLinearFormat(dbIssue: Issue): LinearIssueData {
     url: dbIssue.url,
     projectId: dbIssue.project_id,
     projectName: dbIssue.project_name,
-    projectState: dbIssue.project_state,
+    projectStateCategory: dbIssue.project_state_category,
+    projectStatus: dbIssue.project_status,
     projectHealth: dbIssue.project_health,
     projectUpdatedAt: dbIssue.project_updated_at
       ? new Date(dbIssue.project_updated_at)
@@ -156,7 +157,8 @@ function writeIssuesToDatabase(
     url: string;
     projectId: string | null;
     projectName: string | null;
-    projectState: string | null;
+    projectStateCategory: string | null;
+    projectStatus: string | null;
     projectHealth: string | null;
     projectUpdatedAt: Date | null;
     projectLeadId: string | null;
@@ -207,7 +209,8 @@ function writeIssuesToDatabase(
       url: issue.url,
       project_id: issue.projectId,
       project_name: issue.projectName,
-      project_state: issue.projectState,
+      project_state_category: issue.projectStateCategory,
+      project_status: issue.projectStatus,
       project_health: issue.projectHealth,
       project_updated_at: issue.projectUpdatedAt
         ? issue.projectUpdatedAt.toISOString()
@@ -1036,6 +1039,24 @@ export async function syncProject(
       }
     }
 
+    // Fetch project updates for this project
+    const projectUpdatesMap = new Map<string, ProjectUpdate[]>();
+    try {
+      const updates = await linearClient.fetchProjectUpdates(projectId);
+      if (updates.length > 0) {
+        projectUpdatesMap.set(projectId, updates);
+        console.log(
+          `[SYNC] Fetched ${updates.length} project update(s) for project: ${projectName || projectId}`
+        );
+      }
+    } catch (error) {
+      // Log but don't fail - project updates are optional
+      console.error(
+        `[SYNC] Failed to fetch project updates for ${projectId}:`,
+        error instanceof Error ? error.message : error
+      );
+    }
+
     // Compute and store project metrics for this project
     console.log(`[SYNC] Computing project metrics...`);
     callbacks?.onProgressPercent?.(90);
@@ -1044,7 +1065,7 @@ export async function syncProject(
     const computedProjectCount = await computeAndStoreProjects(
       projectLabelsMap,
       undefined,
-      undefined,
+      projectUpdatesMap,
       new Set([projectId]) // Only this project was synced
     );
     console.log(
@@ -1237,12 +1258,12 @@ async function computeAndStoreProjects(
 
     // Calculate flags
     const hasStatusMismatchFlag = hasStatusMismatch(
-      firstIssue.project_state,
+      firstIssue.project_state_category,
       projectIssues
     );
     const isStaleUpdateFlag = isStaleUpdate(lastActivityDate);
     const missingLeadFlag = isMissingLead(
-      firstIssue.project_state,
+      firstIssue.project_state_category,
       firstIssue.project_lead_name,
       projectIssues
     );
@@ -1370,7 +1391,8 @@ async function computeAndStoreProjects(
     const project: Project = {
       project_id: projectId,
       project_name: firstIssue.project_name || "Unknown Project",
-      project_state: firstIssue.project_state,
+      project_state_category: firstIssue.project_state_category,
+      project_status: firstIssue.project_status,
       project_health: firstIssue.project_health,
       project_updated_at: firstIssue.project_updated_at,
       project_lead_id: firstIssue.project_lead_id,

@@ -64,11 +64,11 @@ export function isProjectActive(issues: Issue[]): boolean {
  * Mismatch = has started issues but project state is not "started" or "in progress"
  */
 export function hasStatusMismatch(
-  projectState: string | null,
+  projectStateCategory: string | null,
   issues: Issue[]
 ): boolean {
   const hasStartedIssues = issues.some((i) => i.state_type === "started");
-  const state = projectState?.toLowerCase() || "";
+  const state = projectStateCategory?.toLowerCase() || "";
   const isProjectStarted =
     state.includes("progress") ||
     state.includes("started") ||
@@ -91,12 +91,12 @@ export function isStaleUpdate(lastActivityDate: string | null): boolean {
  * Missing = has active work or is in active state but no lead assigned
  */
 export function isMissingLead(
-  projectState: string | null,
+  projectStateCategory: string | null,
   projectLeadName: string | null,
   issues: Issue[]
 ): boolean {
   const hasActiveWork = issues.some((i) => i.state_type === "started");
-  const state = projectState?.toLowerCase() || "";
+  const state = projectStateCategory?.toLowerCase() || "";
   const isActiveState =
     state.includes("progress") ||
     state.includes("started") ||

@@ -143,7 +143,8 @@ export function upsertIssue(issue: {
   url: string;
   project_id: string | null;
   project_name: string | null;
-  project_state: string | null;
+  project_state_category: string | null;
+  project_status: string | null;
   project_health: string | null;
   project_updated_at: string | null;
   project_lead_id: string | null;
@@ -160,7 +161,7 @@ export function upsertIssue(issue: {
       assignee_id, assignee_name, assignee_avatar_url, creator_id, creator_name,
       priority, estimate, last_comment_at, comment_count,
       created_at, updated_at, started_at, completed_at, canceled_at, url,
-      project_id, project_name, project_state, project_health, project_updated_at,
+      project_id, project_name, project_state_category, project_status, project_health, project_updated_at,
       project_lead_id, project_lead_name, project_target_date, project_start_date, parent_id
     ) VALUES (
       ?, ?, ?, ?, ?, ?, ?,
@@ -168,7 +169,7 @@ export function upsertIssue(issue: {
       ?, ?, ?, ?, ?,
       ?, ?, ?, ?,
       ?, ?, ?, ?, ?, ?,
-      ?, ?, ?, ?, ?,
+      ?, ?, ?, ?, ?, ?,
       ?, ?, ?, ?, ?
     )
     ON CONFLICT(id) DO UPDATE SET
@@ -197,7 +198,8 @@ export function upsertIssue(issue: {
       url = excluded.url,
       project_id = excluded.project_id,
       project_name = excluded.project_name,
-      project_state = excluded.project_state,
+      project_state_category = excluded.project_state_category,
+      project_status = excluded.project_status,
       project_health = excluded.project_health,
       project_updated_at = excluded.project_updated_at,
       project_lead_id = excluded.project_lead_id,
@@ -235,7 +237,8 @@ export function upsertIssue(issue: {
     issue.url,
     issue.project_id,
     issue.project_name,
-    issue.project_state,
+    issue.project_state_category,
+    issue.project_status,
     issue.project_health,
     issue.project_updated_at,
     issue.project_lead_id,
@@ -299,7 +302,7 @@ export function upsertProject(project: Project): void {
   const db = getDatabase();
   const query = db.prepare(`
     INSERT INTO projects (
-      project_id, project_name, project_state, project_health, project_updated_at,
+      project_id, project_name, project_state_category, project_status, project_health, project_updated_at,
       project_lead_id, project_lead_name, project_description,
       total_issues, completed_issues, in_progress_issues, engineer_count,
       missing_estimate_count, missing_priority_count, no_recent_comment_count,
@@ -310,11 +313,12 @@ export function upsertProject(project: Project): void {
       start_date, last_activity_date, estimated_end_date, target_date,
       issues_by_state, engineers, teams, velocity_by_team, labels, project_updates, last_synced_at
     ) VALUES (
-      ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?
+      ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?
     )
     ON CONFLICT(project_id) DO UPDATE SET
       project_name = excluded.project_name,
-      project_state = excluded.project_state,
+      project_state_category = excluded.project_state_category,
+      project_status = excluded.project_status,
       project_health = excluded.project_health,
       project_updated_at = excluded.project_updated_at,
       project_lead_id = excluded.project_lead_id,
@@ -359,7 +363,8 @@ export function upsertProject(project: Project): void {
   query.run(
     project.project_id,
     project.project_name,
-    project.project_state,
+    project.project_state_category,
+    project.project_status,
     project.project_health,
     project.project_updated_at,
     project.project_lead_id,
@@ -432,16 +437,16 @@ export function getProjectsByLabel(labelName: string): Project[] {
 }
 
 /**
- * Get projects that are "in progress" (project_state contains "progress" or "started")
+ * Get projects that are "in progress" (project_state_category contains "progress" or "started")
  */
 export function getInProgressProjects(): Project[] {
   const db = getDatabase();
   const query = db.prepare(`
     SELECT * FROM projects
-    WHERE project_state IS NOT NULL
+    WHERE project_state_category IS NOT NULL
     AND (
-      LOWER(project_state) LIKE '%progress%'
-      OR LOWER(project_state) LIKE '%started%'
+      LOWER(project_state_category) LIKE '%progress%'
+      OR LOWER(project_state_category) LIKE '%started%'
     )
   `);
   return query.all() as Project[];

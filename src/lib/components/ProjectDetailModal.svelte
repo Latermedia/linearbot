@@ -32,11 +32,11 @@
   } from "../../utils/issue-validators";
   import PriorityDisplay from "./PriorityDisplay.svelte";
   import StatusDisplay from "./StatusDisplay.svelte";
-  import SyncIndicator from "./SyncIndicator.svelte";
   import { RefreshCw } from "lucide-svelte";
+  import { projectsStore, databaseStore } from "../stores/database";
 
   let {
-    project,
+    project: initialProject,
     onclose,
     hideWarnings = false,
   }: {
@@ -44,6 +44,12 @@
     onclose: () => void;
     hideWarnings?: boolean;
   } = $props();
+
+  // Keep project reactive to store updates
+  const project = $derived.by(() => {
+    const projects = $projectsStore;
+    return projects.get(initialProject.projectId) || initialProject;
+  });
 
   let projectUrl = $state<string | null>(null);
   let projectIssues = $state<Issue[]>([]);
@@ -110,18 +116,44 @@
         method: "POST",
       });
       if (response.ok) {
-        // Refresh project issues after sync completes
-        // We'll poll for completion via SyncIndicator
+        // Poll for sync completion and reload data
+        const pollInterval = setInterval(async () => {
+          try {
+            const statusResponse = await fetch("/api/sync/status");
+            if (statusResponse.ok) {
+              const statusData = await statusResponse.json();
+              if (statusData.status === "idle" && !statusData.isRunning) {
+                clearInterval(pollInterval);
+                // Reload database store to get updated project data
+                await databaseStore.load();
+                // Refresh project issues
+                fetchProjectIssues();
+                isSyncingProject = false;
+              } else if (statusData.status === "error") {
+                clearInterval(pollInterval);
+                isSyncingProject = false;
+                console.error("Sync failed:", statusData.error);
+              }
+            }
+          } catch (error) {
+            console.error("Failed to check sync status:", error);
+          }
+        }, 1000);
+
+        // Clear interval after 60 seconds max
         setTimeout(() => {
-          fetchProjectIssues();
-        }, 2000);
+          clearInterval(pollInterval);
+          if (isSyncingProject) {
+            isSyncingProject = false;
+          }
+        }, 60000);
       } else {
         const data = await response.json();
         console.error("Failed to start project sync:", data.message);
+        isSyncingProject = false;
       }
     } catch (error) {
       console.error("Failed to sync project:", error);
-    } finally {
       isSyncingProject = false;
     }
   }
@@ -155,7 +187,7 @@
         >
           {project.projectName}
           <button
-            class="ml-2 inline-flex justify-center items-center p-1.5 rounded transition-colors duration-150 cursor-pointer text-neutral-400 hover:text-white hover:bg-white/10 disabled:opacity-50 disabled:cursor-not-allowed"
+            class="inline-flex justify-center items-center p-1.5 ml-2 rounded transition-colors duration-150 cursor-pointer text-neutral-400 hover:text-white hover:bg-white/10 disabled:opacity-50 disabled:cursor-not-allowed"
             onclick={syncProject}
             disabled={isSyncingProject}
             aria-label="Sync project"
@@ -190,7 +222,6 @@
         {/if}
       </div>
       <div class="flex gap-2 items-center">
-        <SyncIndicator projectId={project.projectId} />
         <button
           class="inline-flex justify-center items-center p-1.5 rounded transition-colors duration-150 cursor-pointer text-neutral-400 hover:text-white hover:bg-white/10"
           onclick={onclose}
@@ -216,6 +247,123 @@
   {/snippet}
 
   {#snippet childrenSnippet()}
+    <!-- Project Metadata and Dates -->
+    <div class="flex flex-wrap gap-6 mb-6">
+      <!-- Status -->
+      <div>
+        <div class="mb-1 text-xs text-neutral-500">Status</div>
+        <div class="flex gap-2 items-center text-sm text-white">
+          {#if project.projectStatus || project.projectStateCategory}
+            {project.projectStatus || project.projectStateCategory}
+            {#if !hideWarnings && project.hasStatusMismatch}
+              <span
+                class="text-amber-500"
+                title="Status Mismatch: Project status doesn't match active work"
+                >⚠️</span
+              >
+            {/if}
+          {:else}
+            <span class="text-sm text-neutral-400 dark:text-neutral-600">—</span
+            >
+          {/if}
+        </div>
+      </div>
+
+      <!-- Teams -->
+      <div>
+        <div class="mb-1 text-xs text-neutral-500">Teams</div>
+        <div class="flex flex-wrap gap-2">
+          {#each Array.from(project.teams) as team}
+            <Badge variant="outline">{team}</Badge>
+          {/each}
+        </div>
+      </div>
+
+      <!-- Lead -->
+      <div>
+        <div class="mb-1 text-xs text-neutral-500">Project Lead</div>
+        <div class="text-sm text-white">
+          {project.projectLeadName || "Not assigned"}
+        </div>
+      </div>
+
+      <!-- Engineers -->
+      <div>
+        <div class="mb-1 text-xs text-neutral-500">
+          Engineers ({project.engineerCount})
+        </div>
+        <div class="flex flex-wrap gap-2">
+          {#each Array.from(project.engineers) as engineer}
+            <Badge variant="secondary">{engineer}</Badge>
+          {/each}
+          {#if project.engineerCount === 0}
+            <span class="text-xs text-neutral-500">No engineers assigned</span>
+          {/if}
+        </div>
+      </div>
+
+      <!-- Last Activity -->
+      <div>
+        <div class="mb-1 text-xs text-neutral-500">Last Activity</div>
+        <div class="text-sm text-white">
+          {formatDateFull(project.lastActivityDate)}
+        </div>
+      </div>
+
+      <!-- Start Date -->
+      <div>
+        <div class="mb-1 text-xs text-neutral-500">Start Date</div>
+        <div class="text-sm text-white">
+          {formatDateFull(project.startDate)}
+        </div>
+      </div>
+
+      <!-- Target Date -->
+      <div>
+        <div
+          class="flex gap-1 items-center mb-1 text-xs text-neutral-500"
+          title="Linear's explicit target date for the project"
+        >
+          Target Date
+          {#if !hideWarnings && project.hasDateDiscrepancy}
+            <span
+              class="text-amber-400"
+              title="Differs from predicted by 30+ days">⚠️</span
+            >
+          {/if}
+        </div>
+        <div
+          class="text-sm"
+          class:text-amber-400={!hideWarnings && project.hasDateDiscrepancy}
+          class:text-white={hideWarnings || !project.hasDateDiscrepancy}
+        >
+          {formatDateFull(project.targetDate)}
+        </div>
+      </div>
+
+      <!-- Predicted Completion -->
+      <div>
+        <div
+          class="flex gap-1 items-center mb-1 text-xs text-neutral-500"
+          title="Velocity-predicted completion date"
+        >
+          Predicted Completion
+          {#if !hideWarnings && project.hasDateDiscrepancy}
+            <span class="text-amber-400" title="Differs from target by 30+ days"
+              >⚠️</span
+            >
+          {/if}
+        </div>
+        <div
+          class="text-sm"
+          class:text-amber-400={!hideWarnings && project.hasDateDiscrepancy}
+          class:text-white={hideWarnings || !project.hasDateDiscrepancy}
+        >
+          {formatDateFull(project.estimatedEndDate)}
+        </div>
+      </div>
+    </div>
+
     <!-- Progress Section -->
     <div class="mb-6">
       <div class="mb-2">
@@ -353,234 +501,119 @@
       {/if}
     </div>
 
-    <!-- Dates Section -->
-    <div class="grid grid-cols-3 gap-4 mb-6">
-      <div>
-        <div class="mb-1 text-xs text-neutral-500">Start Date</div>
-        <div class="text-sm text-white">
-          {formatDateFull(project.startDate)}
-        </div>
-      </div>
-      <div>
-        <div
-          class="flex gap-1 items-center mb-1 text-xs text-neutral-500"
-          title="Linear's explicit target date for the project"
-        >
-          Target Date
-          {#if !hideWarnings && project.hasDateDiscrepancy}
-            <span
-              class="text-amber-400"
-              title="Differs from predicted by 30+ days">⚠️</span
-            >
-          {/if}
-        </div>
-        <div
-          class="text-sm"
-          class:text-amber-400={!hideWarnings && project.hasDateDiscrepancy}
-          class:text-white={hideWarnings || !project.hasDateDiscrepancy}
-        >
-          {formatDateFull(project.targetDate)}
-        </div>
-      </div>
-      <div>
-        <div
-          class="flex gap-1 items-center mb-1 text-xs text-neutral-500"
-          title="Velocity-predicted completion date"
-        >
-          Predicted Completion
-          {#if !hideWarnings && project.hasDateDiscrepancy}
-            <span class="text-amber-400" title="Differs from target by 30+ days"
-              >⚠️</span
-            >
-          {/if}
-        </div>
-        <div
-          class="text-sm"
-          class:text-amber-400={!hideWarnings && project.hasDateDiscrepancy}
-          class:text-white={hideWarnings || !project.hasDateDiscrepancy}
-        >
-          {formatDateFull(project.estimatedEndDate)}
-        </div>
-      </div>
-    </div>
+    <!-- Health -->
+    <div class="mb-6">
+      <div class="mb-2 text-xs text-neutral-500">Health</div>
+      {#if project.projectUpdates && project.projectUpdates.length > 0}
+        {@const latestUpdate = project.projectUpdates[0]}
+        {@const updateHealthDisplay = latestUpdate.health
+          ? getHealthDisplay(latestUpdate.health)
+          : null}
+        {@const updateDate = new Date(latestUpdate.createdAt)}
+        {@const daysSinceUpdate = Math.floor(
+          (Date.now() - updateDate.getTime()) / (1000 * 60 * 60 * 24)
+        )}
+        {@const isStaleHealth = daysSinceUpdate > 7}
 
-    <!-- Project Metadata (flex wrap layout) -->
-    <div class="flex flex-wrap gap-6 mb-6">
-      <!-- Project Health -->
-      <div class="w-full">
-        <div class="mb-2 text-xs text-neutral-500">Project Health</div>
-        {#if project.projectUpdates && project.projectUpdates.length > 0}
-          {@const latestUpdate = project.projectUpdates[0]}
-          {@const updateHealthDisplay = latestUpdate.health
-            ? getHealthDisplay(latestUpdate.health)
-            : null}
-          {@const updateDate = new Date(latestUpdate.createdAt)}
-          {@const daysSinceUpdate = Math.floor(
-            (Date.now() - updateDate.getTime()) / (1000 * 60 * 60 * 24)
-          )}
-          {@const isStaleHealth = daysSinceUpdate > 7}
+        {#if isStaleHealth && !hideWarnings}
+          <div class="flex gap-2 items-center mb-2 text-xs text-amber-500">
+            <span>⚠️</span>
+            <span>Health update is {daysSinceUpdate} days old</span>
+          </div>
+        {/if}
 
-          {#if isStaleHealth && !hideWarnings}
-            <div class="flex gap-2 items-center mb-2 text-xs text-amber-500">
-              <span>⚠️</span>
-              <span>Health update is {daysSinceUpdate} days old</span>
-            </div>
-          {/if}
-
-          {#if showAllHealthUpdates}
-            <div class="space-y-3">
-              {#each project.projectUpdates as update}
-                {@const currentUpdateHealthDisplay = update.health
-                  ? getHealthDisplay(update.health)
-                  : null}
-                <div
-                  class="p-3 rounded-md border bg-neutral-800/50 border-white/5"
-                >
-                  <div class="flex gap-2 items-center mb-2">
-                    {#if currentUpdateHealthDisplay}
-                      <Badge
-                        variant={currentUpdateHealthDisplay.variant}
-                        class={currentUpdateHealthDisplay.colorClass}
-                      >
-                        {currentUpdateHealthDisplay.text}
-                      </Badge>
-                    {/if}
-                    <span class="text-xs text-neutral-500">
-                      {formatRelativeDate(update.createdAt)}
-                    </span>
-                    {#if update.userName}
-                      <span class="text-neutral-600">•</span>
-                      <UserProfile
-                        name={update.userName}
-                        avatarUrl={update.userAvatarUrl}
-                        size="xs"
-                      />
-                    {/if}
-                  </div>
-                  <div
-                    class="text-sm leading-relaxed whitespace-pre-wrap text-neutral-200"
-                  >
-                    {update.body}
-                  </div>
-                </div>
-              {/each}
-              <button
-                onclick={() => (showAllHealthUpdates = false)}
-                class="mt-2 text-xs text-violet-400 underline transition-colors duration-150 cursor-pointer hover:text-violet-300"
-              >
-                Show only latest update
-              </button>
-            </div>
-          {:else}
-            <div class="p-3 rounded-md border bg-neutral-800/50 border-white/5">
-              <div class="flex gap-2 items-center mb-2">
-                {#if updateHealthDisplay}
-                  <Badge
-                    variant={updateHealthDisplay.variant}
-                    class={updateHealthDisplay.colorClass}
-                  >
-                    {updateHealthDisplay.text}
-                  </Badge>
-                {/if}
-                <span class="text-xs text-neutral-500">
-                  {formatRelativeDate(latestUpdate.createdAt)}
-                </span>
-                {#if latestUpdate.userName}
-                  <span class="text-neutral-600">•</span>
-                  <UserProfile
-                    name={latestUpdate.userName}
-                    avatarUrl={latestUpdate.userAvatarUrl}
-                    size="xs"
-                  />
-                {/if}
-              </div>
+        {#if showAllHealthUpdates}
+          <div class="space-y-3">
+            {#each project.projectUpdates as update}
+              {@const currentUpdateHealthDisplay = update.health
+                ? getHealthDisplay(update.health)
+                : null}
               <div
-                class="text-sm leading-relaxed whitespace-pre-wrap text-neutral-200"
+                class="p-3 rounded-md border bg-neutral-800/50 border-white/5"
               >
-                {latestUpdate.body}
-              </div>
-              {#if project.projectUpdates.length > 1}
-                <button
-                  onclick={() => (showAllHealthUpdates = true)}
-                  class="mt-2 text-xs text-violet-400 underline transition-colors duration-150 cursor-pointer hover:text-violet-300"
+                <div class="flex gap-2 items-center mb-2">
+                  {#if currentUpdateHealthDisplay}
+                    <Badge
+                      variant={currentUpdateHealthDisplay.variant}
+                      class={currentUpdateHealthDisplay.colorClass}
+                    >
+                      {currentUpdateHealthDisplay.text}
+                    </Badge>
+                  {/if}
+                  <span class="text-xs text-neutral-500">
+                    {formatRelativeDate(update.createdAt)}
+                  </span>
+                  {#if update.userName}
+                    <span class="text-neutral-600">•</span>
+                    <UserProfile
+                      name={update.userName}
+                      avatarUrl={update.userAvatarUrl}
+                      size="xs"
+                    />
+                  {/if}
+                </div>
+                <div
+                  class="text-sm leading-relaxed whitespace-pre-wrap text-neutral-200"
                 >
-                  +{project.projectUpdates.length - 1} more update{project
-                    .projectUpdates.length -
-                    1 ===
-                  1
-                    ? ""
-                    : "s"}
-                </button>
-              {/if}
-            </div>
-          {/if}
+                  {update.body}
+                </div>
+              </div>
+            {/each}
+            <button
+              onclick={() => (showAllHealthUpdates = false)}
+              class="mt-2 text-xs text-violet-400 underline transition-colors duration-150 cursor-pointer hover:text-violet-300"
+            >
+              Show only latest update
+            </button>
+          </div>
         {:else}
           <div class="p-3 rounded-md border bg-neutral-800/50 border-white/5">
-            <p class="text-sm text-neutral-400">No health updates available</p>
-          </div>
-        {/if}
-      </div>
-
-      <!-- Status -->
-      <div>
-        <div class="mb-1 text-xs text-neutral-500">Status</div>
-        <div class="flex gap-2 items-center text-sm text-white">
-          {project.projectState || "Not set"}
-          {#if !hideWarnings && project.hasStatusMismatch}
-            <span
-              class="text-amber-500"
-              title="Status Mismatch: Project status doesn't match active work"
-              >⚠️</span
+            <div class="flex gap-2 items-center mb-2">
+              {#if updateHealthDisplay}
+                <Badge
+                  variant={updateHealthDisplay.variant}
+                  class={updateHealthDisplay.colorClass}
+                >
+                  {updateHealthDisplay.text}
+                </Badge>
+              {/if}
+              <span class="text-xs text-neutral-500">
+                {formatRelativeDate(latestUpdate.createdAt)}
+              </span>
+              {#if latestUpdate.userName}
+                <span class="text-neutral-600">•</span>
+                <UserProfile
+                  name={latestUpdate.userName}
+                  avatarUrl={latestUpdate.userAvatarUrl}
+                  size="xs"
+                />
+              {/if}
+            </div>
+            <div
+              class="text-sm leading-relaxed whitespace-pre-wrap text-neutral-200"
             >
-          {/if}
-        </div>
-        {#if project.projectUpdatedAt}
-          <div class="mt-1 text-xs text-neutral-500">
-            Last updated: {formatDateFull(project.projectUpdatedAt)}
+              {latestUpdate.body}
+            </div>
+            {#if project.projectUpdates.length > 1}
+              <button
+                onclick={() => (showAllHealthUpdates = true)}
+                class="mt-2 text-xs text-violet-400 underline transition-colors duration-150 cursor-pointer hover:text-violet-300"
+              >
+                +{project.projectUpdates.length - 1} more update{project
+                  .projectUpdates.length -
+                  1 ===
+                1
+                  ? ""
+                  : "s"}
+              </button>
+            {/if}
           </div>
         {/if}
-      </div>
-
-      <!-- Teams -->
-      <div>
-        <div class="mb-2 text-xs text-neutral-500">Teams</div>
-        <div class="flex flex-wrap gap-2">
-          {#each Array.from(project.teams) as team}
-            <Badge variant="outline">{team}</Badge>
-          {/each}
+      {:else}
+        <div class="p-3 rounded-md border bg-neutral-800/50 border-white/5">
+          <p class="text-sm text-neutral-400">No health updates available</p>
         </div>
-      </div>
-
-      <!-- Lead -->
-      <div>
-        <div class="mb-1 text-xs text-neutral-500">Project Lead</div>
-        <div class="text-sm text-white">
-          {project.projectLeadName || "Not assigned"}
-        </div>
-      </div>
-
-      <!-- Engineers -->
-      <div>
-        <div class="mb-2 text-xs text-neutral-500">
-          Engineers ({project.engineerCount})
-        </div>
-        <div class="flex flex-wrap gap-2">
-          {#each Array.from(project.engineers) as engineer}
-            <Badge variant="secondary">{engineer}</Badge>
-          {/each}
-          {#if project.engineerCount === 0}
-            <span class="text-xs text-neutral-500">No engineers assigned</span>
-          {/if}
-        </div>
-      </div>
-
-      <!-- Last Activity -->
-      <div>
-        <div class="mb-1 text-xs text-neutral-500">Last Activity</div>
-        <div class="text-sm text-white">
-          {formatDateFull(project.lastActivityDate)}
-        </div>
-      </div>
+      {/if}
     </div>
 
     <!-- Issues Table -->

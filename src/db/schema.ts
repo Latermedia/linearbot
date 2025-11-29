@@ -28,7 +28,8 @@ export interface Issue {
   url: string;
   project_id: string | null;
   project_name: string | null;
-  project_state: string | null;
+  project_state_category: string | null;
+  project_status: string | null;
   project_health: string | null;
   project_updated_at: string | null;
   project_lead_id: string | null;
@@ -41,7 +42,8 @@ export interface Issue {
 export interface Project {
   project_id: string;
   project_name: string;
-  project_state: string | null;
+  project_state_category: string | null;
+  project_status: string | null;
   project_health: string | null;
   project_updated_at: string | null;
   project_lead_id: string | null;
@@ -132,7 +134,8 @@ const EXPECTED_ISSUES_COLUMNS = [
   "url",
   "project_id",
   "project_name",
-  "project_state",
+  "project_state_category",
+  "project_status",
   "project_health",
   "project_updated_at",
   "project_lead_id",
@@ -231,7 +234,8 @@ export function initializeDatabase(db: Database): void {
       url TEXT NOT NULL,
       project_id TEXT,
       project_name TEXT,
-      project_state TEXT,
+      project_state_category TEXT,
+      project_status TEXT,
       project_health TEXT,
       project_updated_at TEXT,
       project_lead_id TEXT,
@@ -254,6 +258,19 @@ export function initializeDatabase(db: Database): void {
     db.run(`ALTER TABLE issues ADD COLUMN project_health TEXT`);
   } catch (e) {
     // Column already exists, ignore
+  }
+  try {
+    db.run(`ALTER TABLE issues ADD COLUMN project_status TEXT`);
+  } catch (e) {
+    // Column already exists, ignore
+  }
+  // Rename project_state to project_state_category in issues table (migration)
+  try {
+    db.run(
+      `ALTER TABLE issues RENAME COLUMN project_state TO project_state_category`
+    );
+  } catch (e) {
+    // Column might not exist or already renamed, ignore
   }
 
   // Add creator columns if they don't exist (migration)
@@ -354,13 +371,28 @@ export function initializeDatabase(db: Database): void {
   } catch (e) {
     // Column already exists, ignore
   }
+  // Add project_status column to projects table if it doesn't exist (migration)
+  try {
+    db.run(`ALTER TABLE projects ADD COLUMN project_status TEXT`);
+  } catch (e) {
+    // Column already exists, ignore
+  }
+  // Rename project_state to project_state_category in projects table (migration)
+  try {
+    db.run(
+      `ALTER TABLE projects RENAME COLUMN project_state TO project_state_category`
+    );
+  } catch (e) {
+    // Column might not exist or already renamed, ignore
+  }
 
   // Create projects table with computed metrics
   db.run(`
     CREATE TABLE IF NOT EXISTS projects (
       project_id TEXT PRIMARY KEY,
       project_name TEXT NOT NULL,
-      project_state TEXT,
+      project_state_category TEXT,
+      project_status TEXT,
       project_health TEXT,
       project_updated_at TEXT,
       project_lead_id TEXT,

@@ -6,7 +6,8 @@ import type { ProjectUpdate } from "../linear/client";
 export interface ProjectSummary {
   projectId: string;
   projectName: string;
-  projectState: string | null;
+  projectStateCategory: string | null;
+  projectStatus: string | null;
   projectHealth: string | null;
   projectUpdatedAt: string | null;
   projectDescription: string | null;
@@ -84,7 +85,8 @@ function projectToSummary(project: Project): ProjectSummary {
   return {
     projectId: project.project_id,
     projectName: project.project_name,
-    projectState: project.project_state,
+    projectStateCategory: project.project_state_category,
+    projectStatus: project.project_status,
     projectHealth: project.project_health,
     projectUpdatedAt: project.project_updated_at,
     projectDescription: project.project_description,

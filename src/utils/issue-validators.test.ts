@@ -36,7 +36,7 @@ const createMockIssue = (overrides: Partial<Issue> = {}): Issue => ({
   url: "https://linear.app/test/issue/TEST-1",
   project_id: null,
   project_name: null,
-  project_state: null,
+  project_state_category: null,
   project_health: null,
   project_updated_at: null,
   project_lead_id: null,

@@ -228,9 +228,11 @@ export function loadProjectsData(): ProjectsData {
       issues.filter((i) => i.assignee_name).map((i) => i.assignee_name)
     );
 
-    const projectState = issues[0].project_state?.toLowerCase() || "";
+    const projectStateCategory =
+      issues[0].project_state_category?.toLowerCase() || "";
     const isProjectStarted =
-      projectState.includes("progress") || projectState.includes("started");
+      projectStateCategory.includes("progress") ||
+      projectStateCategory.includes("started");
     const hasStatusMismatch = hasStartedIssues && !isProjectStarted;
 
     const cutoffDate = new Date();

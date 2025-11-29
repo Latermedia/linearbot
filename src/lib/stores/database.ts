@@ -114,16 +114,21 @@ export const projectsStore = writable<Map<string, ProjectSummary>>(new Map());
 
 // Load projects when database store loads
 databaseStore.subscribe(async ($db) => {
-  if (!browser || $db.loading || $db.error) {
-    console.log(
-      "[projectsStore] Skipping - browser:",
-      browser,
-      "loading:",
-      $db.loading,
-      "error:",
-      $db.error
-    );
-    projectsStore.set(new Map<string, ProjectSummary>());
+  if (!browser || $db.error) {
+    if ($db.error) {
+      console.log(
+        "[projectsStore] Skipping due to error - browser:",
+        browser,
+        "error:",
+        $db.error
+      );
+      // Only clear on error, not during loading
+      projectsStore.set(new Map<string, ProjectSummary>());
+    }
+    return;
+  }
+  // Skip if still loading - keep existing projects to avoid closing modals
+  if ($db.loading) {
     return;
   }
   console.log("[projectsStore] Loading projects from database...");
@@ -144,23 +149,26 @@ databaseStore.subscribe(async ($db) => {
 export const teamsStore = derived(
   [databaseStore, projectsStore],
   ([$db, $projects]) => {
-    if (!browser || $db.loading || $db.error || $projects.size === 0) {
-      console.log(
-        "[teamsStore] Skipping - browser:",
-        browser,
-        "loading:",
-        $db.loading,
-        "error:",
-        $db.error,
-        "projects:",
-        $projects.size
-      );
+    if (!browser || $db.error || $projects.size === 0) {
+      if ($db.error) {
+        console.log(
+          "[teamsStore] Skipping due to error - browser:",
+          browser,
+          "error:",
+          $db.error,
+          "projects:",
+          $projects.size
+        );
+      }
       return [];
     }
+    // Continue computing teams during loading to keep modals open
+    // (will use existing projects and issues temporarily)
     console.log(
       "[teamsStore] Grouping",
       $projects.size,
-      "projects into teams..."
+      "projects into teams...",
+      $db.loading ? "(loading)" : ""
     );
     const teams = groupProjectsByTeams($projects, $db.issues);
     console.log("[teamsStore] Grouped into", teams.length, "teams");

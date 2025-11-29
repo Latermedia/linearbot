@@ -76,7 +76,8 @@ export interface LinearIssueData {
   url: string;
   projectId: string | null;
   projectName: string | null;
-  projectState: string | null;
+  projectStateCategory: string | null;
+  projectStatus: string | null;
   projectHealth: string | null;
   projectUpdatedAt: Date | null;
   projectLeadId: string | null;
@@ -168,6 +169,9 @@ export class LinearAPIClient {
               id
               name
               state
+              status {
+                name
+              }
               health
               updatedAt
               targetDate
@@ -246,7 +250,8 @@ export class LinearAPIClient {
           url: issue.url,
           projectId: issue.project?.id || null,
           projectName: issue.project?.name || null,
-          projectState: issue.project?.state || null,
+          projectStateCategory: issue.project?.state || null,
+          projectStatus: issue.project?.status?.name || null,
           projectHealth: issue.project?.health || null,
           projectUpdatedAt: issue.project?.updatedAt
             ? new Date(issue.project.updatedAt)
@@ -371,6 +376,9 @@ export class LinearAPIClient {
                 id
                 name
                 state
+                status {
+                  name
+                }
                 health
                 updatedAt
                 targetDate
@@ -458,7 +466,8 @@ export class LinearAPIClient {
             url: issue.url,
             projectId: issue.project?.id || null,
             projectName: issue.project?.name || null,
-            projectState: issue.project?.state || null,
+            projectStateCategory: issue.project?.state || null,
+            projectStatus: issue.project?.status?.name || null,
             projectHealth: issue.project?.health || null,
             projectUpdatedAt: issue.project?.updatedAt
               ? new Date(issue.project.updatedAt)

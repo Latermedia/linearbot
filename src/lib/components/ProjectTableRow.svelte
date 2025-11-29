@@ -57,9 +57,9 @@
     <ProgressBar {project} percentageSize="text-[10px]" />
   </td>
   <td class="py-3 px-2 w-[100px]">
-    {#if project.projectState}
+    {#if project.projectStatus || project.projectStateCategory}
       <Badge variant="outline" class="text-xs">
-        {project.projectState}
+        {project.projectStatus || project.projectStateCategory}
       </Badge>
     {:else}
       <span class="text-sm text-neutral-400 dark:text-neutral-600">—</span>
