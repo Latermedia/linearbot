@@ -79,19 +79,25 @@
   // Filter projects based on selected mode
   const filteredProjects = $derived.by(() => {
     const issues = $databaseStore.issues;
-    return filterProjectsByMode(projects, issues, projectFilter);
+    const filter = projectFilter; // Explicitly track projectFilter
+    return filterProjectsByMode(projects, issues, filter);
   });
 
   // Group filtered projects by teams
+  // Use issues from store - the grouping function will fallback to project.teams
+  // when a project has no issues in the current filter
   const teams = $derived.by(() => {
     const issues = $databaseStore.issues;
+    const filter = projectFilter; // Explicitly track projectFilter
     const filtered = filteredProjects;
     const grouped = groupProjectsByTeams(filtered, issues);
     console.log(
       "[+page.svelte] teams derived - length:",
       grouped.length,
       "filter:",
-      projectFilter,
+      filter,
+      "filteredProjects.size:",
+      filtered.size,
       "teams:",
       grouped.map((team) => ({
         name: team.teamName,
@@ -103,12 +109,15 @@
 
   // Group filtered projects by domains
   const domains = $derived.by(() => {
+    const filter = projectFilter; // Explicitly track projectFilter
     const grouped = groupProjectsByDomains(teams);
     console.log(
       "[+page.svelte] domains derived - length:",
       grouped.length,
       "filter:",
-      projectFilter
+      filter,
+      "teams.length:",
+      teams.length
     );
     return grouped;
   });
@@ -140,7 +149,7 @@
     <div class="flex flex-wrap gap-4">
       <Card class="max-w-[200px]">
         <div class="mb-1 text-xs text-neutral-500 dark:text-neutral-300">
-          Total Teams
+          Teams
         </div>
         <div class="text-2xl font-semibold text-neutral-900 dark:text-white">
           {teams.length}
@@ -148,7 +157,7 @@
       </Card>
       <Card class="max-w-[200px]">
         <div class="mb-1 text-xs text-neutral-500 dark:text-neutral-300">
-          Active Projects
+          Projects
         </div>
         <div class="text-2xl font-semibold text-neutral-900 dark:text-white">
           {filteredProjects.size}
@@ -318,14 +327,18 @@
       </p>
     </Card>
   {:else if viewType === "table"}
-    <ProjectsTable {teams} {domains} {groupBy} />
+    {#key `${projectFilter}-${groupBy}`}
+      <ProjectsTable {teams} {domains} {groupBy} />
+    {/key}
   {:else}
-    <GanttChart
-      {teams}
-      {domains}
-      {groupBy}
-      {endDateMode}
-      viewMode={ganttViewMode}
-    />
+    {#key `${projectFilter}-${groupBy}-${endDateMode}-${ganttViewMode}`}
+      <GanttChart
+        {teams}
+        {domains}
+        {groupBy}
+        {endDateMode}
+        viewMode={ganttViewMode}
+      />
+    {/key}
   {/if}
 </div>

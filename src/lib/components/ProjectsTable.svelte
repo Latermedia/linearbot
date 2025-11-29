@@ -28,7 +28,11 @@
   let tooltipPosition = $state({ x: 0, y: 0 });
 
   const groups = $derived.by(() => {
-    return groupBy === "team" ? teams : domains;
+    // Explicitly reference teams and domains to ensure reactivity
+    const teamsList = teams;
+    const domainsList = domains;
+    const grouping = groupBy;
+    return grouping === "team" ? teamsList : domainsList;
   });
 
   // Helper function to get a unique key for each group

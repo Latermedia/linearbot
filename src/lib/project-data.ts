@@ -2,7 +2,7 @@ import type { Issue, Project } from "../db/schema";
 import { getAllProjects } from "./queries";
 import { getDomainForTeam, getAllDomains } from "../utils/domain-mapping";
 import type { ProjectUpdate } from "../linear/client";
-import { isPlannedProject, isWIPProject } from "../utils/status-helpers";
+import { isPlannedProject } from "../utils/status-helpers";
 
 export interface ProjectSummary {
   projectId: string;
@@ -159,23 +159,57 @@ export function groupProjectsByTeams(
     { projects: ProjectSummary[]; teamInfo: any }
   >();
 
+  // Build a map of team keys to team info from all issues (for fallback lookup)
+  const teamInfoMap = new Map<string, { teamId: string; teamName: string }>();
+  for (const issue of issues) {
+    if (!teamInfoMap.has(issue.team_key)) {
+      teamInfoMap.set(issue.team_key, {
+        teamId: issue.team_id,
+        teamName: issue.team_name,
+      });
+    }
+  }
+
   for (const project of projects.values()) {
     const projectIssues = issues.filter(
       (i) => i.project_id === project.projectId
     );
 
-    // Get all unique teams in this project
-    const teamsInProject = new Set(projectIssues.map((i) => i.team_key));
+    // Get all unique teams in this project from issues
+    const teamsInProjectFromIssues = new Set(
+      projectIssues.map((i) => i.team_key)
+    );
+
+    // Also get teams from project.teams (in case project has no issues in current filter)
+    // project.teams contains all teams that have ANY issues in the project (not just started)
+    const teamsInProjectFromProject = project.teams || new Set<string>();
+
+    // Combine both sources - prefer teams from issues if available, fallback to project.teams
+    const teamsInProject =
+      teamsInProjectFromIssues.size > 0
+        ? teamsInProjectFromIssues
+        : teamsInProjectFromProject;
+
+    // If no teams found from either source, skip this project
+    if (teamsInProject.size === 0) {
+      console.warn(
+        `[groupProjectsByTeams] Project "${project.projectName}" has no teams - skipping`
+      );
+      continue;
+    }
 
     for (const teamKey of teamsInProject) {
       if (!teamMap.has(teamKey)) {
-        // Find team info from any issue
+        // Find team info from project's issues first
         const teamIssue = projectIssues.find((i) => i.team_key === teamKey);
+        // Fallback to team info from other issues (for projects without issues in current filter)
+        const fallbackTeamInfo = teamInfoMap.get(teamKey);
         teamMap.set(teamKey, {
           projects: [],
           teamInfo: {
-            teamId: teamIssue?.team_id || teamKey,
-            teamName: teamIssue?.team_name || teamKey,
+            teamId: teamIssue?.team_id || fallbackTeamInfo?.teamId || teamKey,
+            teamName:
+              teamIssue?.team_name || fallbackTeamInfo?.teamName || teamKey,
             teamKey,
           },
         });
@@ -334,16 +368,16 @@ export function filterProjectsByMode(
   const filtered = new Map<string, ProjectSummary>();
 
   for (const [projectId, project] of projects) {
-    const projectIssues = issues.filter((i) => i.project_id === projectId);
-
     if (mode === "planning") {
-      // Show only planned projects
+      // Show only planned projects (projects with planning state)
       if (isPlannedProject(project.projectStateCategory)) {
         filtered.set(projectId, project);
       }
     } else if (mode === "wip") {
-      // Show only WIP projects (has started issues)
-      if (isWIPProject(projectIssues)) {
+      // Show only WIP projects (projects with WIP issues)
+      // Use inProgressIssues from project data instead of filtering issues
+      // This ensures we check all issues in the project, not just those in the current filter
+      if (project.inProgressIssues > 0) {
         filtered.set(projectId, project);
       }
     }

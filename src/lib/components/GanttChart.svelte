@@ -314,7 +314,11 @@
   }
 
   const groups = $derived.by(() => {
-    return groupBy === "team" ? teams : domains;
+    // Explicitly reference teams and domains to ensure reactivity
+    const teamsList = teams;
+    const domainsList = domains;
+    const grouping = groupBy;
+    return grouping === "team" ? teamsList : domainsList;
   });
 
   // Log sections when displaying

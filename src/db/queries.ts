@@ -546,9 +546,22 @@ export function getExistingEngineerIds(): Set<string> {
 }
 
 /**
+ * Sync phases
+ */
+export type SyncPhase =
+  | "initial_issues"
+  | "recently_updated_issues"
+  | "active_projects"
+  | "planned_projects"
+  | "completed_projects"
+  | "computing_metrics"
+  | "complete";
+
+/**
  * Partial sync state structure
  */
 export interface PartialSyncState {
+  currentPhase?: SyncPhase;
   initialIssuesSync: "complete" | "incomplete";
   projectSyncs: Array<{
     projectId: string;

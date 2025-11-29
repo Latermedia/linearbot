@@ -35,6 +35,13 @@
   );
   let _syncingProjectId = $state<string | null>(null);
   let apiQueryCount = $state<number | null>(null);
+  let phases = $state<
+    Array<{
+      phase: string;
+      label: string;
+      status: "pending" | "in_progress" | "complete";
+    }>
+  >([]);
 
   // Sync stats
   interface SyncStats {
@@ -125,6 +132,7 @@
         _syncingProjectId = data.syncingProjectId ?? null;
         syncStats = data.stats ?? null;
         apiQueryCount = data.apiQueryCount ?? null;
+        phases = data.phases ?? [];
 
         // Generate status message for streaming display
         if (syncStatus === "syncing" && syncStats) {
@@ -347,200 +355,224 @@
   });
 </script>
 
-<Modal title="Tools" {onclose} size="sm" children={childrenSnippet}>
-  {#snippet childrenSnippet()}
-    <div class="space-y-6">
-      <!-- Sync Section -->
-      <div class="space-y-3">
-        <div class="flex items-center justify-between gap-2">
-          <span class="text-xs font-medium text-neutral-400">Sync Status</span>
-        </div>
+{#snippet childrenSnippet()}
+  <div class="space-y-6">
+    <!-- Sync Section -->
+    <div class="space-y-3">
+      <div class="flex gap-2 justify-between items-center">
+        <span class="text-xs font-medium text-neutral-400">Sync Status</span>
+      </div>
 
-        <!-- Status message or last sync time -->
-        <div class="min-h-[3rem] space-y-1.5">
-          {#if isSyncing && statusMessages.length > 0}
-            <StatusScroller messages={statusMessages} />
-            {#if syncProgressPercent !== null}
-              <div class="flex items-center gap-2">
+      <!-- Status message or last sync time -->
+      <div class="space-y-1.5 min-h-12">
+        {#if isSyncing && statusMessages.length > 0}
+          <StatusScroller messages={statusMessages} />
+          {#if syncProgressPercent !== null}
+            <div class="flex gap-2 items-center">
+              <div
+                class="overflow-hidden flex-1 h-1 rounded-full bg-neutral-800"
+              >
                 <div
-                  class="flex-1 h-1 bg-neutral-800 rounded-full overflow-hidden"
-                >
-                  <div
-                    class="h-full bg-violet-500 transition-all duration-300"
-                    style="width: {syncProgressPercent}%"
-                  ></div>
-                </div>
-                <span class="text-xs text-neutral-500 tabular-nums shrink-0">
-                  {syncProgressPercent}%
-                </span>
+                  class="h-full bg-violet-500 transition-all duration-300"
+                  style="width: {syncProgressPercent}%"
+                ></div>
               </div>
-            {/if}
-          {:else if syncErrorMessage}
-            <div class="space-y-1">
-              <p class="text-xs text-red-400">{syncErrorMessage}</p>
-              {#if hasPartialSync && partialSyncProgress}
-                <p class="text-xs text-amber-400">
-                  Partial sync: {partialSyncProgress.completed} of {partialSyncProgress.total}
-                  projects completed
-                </p>
-              {/if}
+              <span class="text-xs tabular-nums text-neutral-500 shrink-0">
+                {syncProgressPercent}%
+              </span>
             </div>
-          {:else if hasPartialSync && partialSyncProgress}
-            <div class="space-y-1">
+          {/if}
+        {:else if syncErrorMessage}
+          <div class="space-y-1">
+            <p class="text-xs text-red-400">{syncErrorMessage}</p>
+            {#if hasPartialSync && partialSyncProgress}
               <p class="text-xs text-amber-400">
-                Partial sync detected: {partialSyncProgress.completed} of {partialSyncProgress.total}
+                Partial sync: {partialSyncProgress.completed} of {partialSyncProgress.total}
                 projects completed
               </p>
-              {#if lastSyncDate}
-                <p class="text-xs text-neutral-500">
-                  Last synced {formatLastSync(lastSyncDate)}
-                </p>
-              {/if}
-              {#if apiQueryCount !== null}
-                <p class="text-xs text-neutral-500">
-                  API Queries: {apiQueryCount}
-                </p>
-              {/if}
-            </div>
-          {:else if lastSyncDate}
-            <div>
+            {/if}
+          </div>
+        {:else if hasPartialSync && partialSyncProgress}
+          <div class="space-y-1">
+            <p class="text-xs text-amber-400">
+              Partial sync detected: {partialSyncProgress.completed} of {partialSyncProgress.total}
+              projects completed
+            </p>
+            {#if lastSyncDate}
               <p class="text-xs text-neutral-500">
                 Last synced {formatLastSync(lastSyncDate)}
               </p>
-              {#if apiQueryCount !== null}
-                <p class="text-xs text-neutral-500">
-                  API Queries: {apiQueryCount}
-                </p>
-              {/if}
-            </div>
-          {:else}
-            <div>
-              <p class="text-xs text-neutral-500">Never synced</p>
-              {#if apiQueryCount !== null}
-                <p class="text-xs text-neutral-500">
-                  API Queries: {apiQueryCount}
-                </p>
-              {/if}
-            </div>
-          {/if}
-        </div>
+            {/if}
+          </div>
+        {:else if lastSyncDate}
+          <div>
+            <p class="text-xs text-neutral-500">
+              Last synced {formatLastSync(lastSyncDate)}
+            </p>
+          </div>
+        {:else}
+          <div>
+            <p class="text-xs text-neutral-500">Never synced</p>
+          </div>
+        {/if}
 
-        <!-- Sync Now Button -->
-        <Button
-          onclick={handleSync}
-          disabled={isSyncing}
-          variant="default"
-          size="sm"
-          class="w-full"
-        >
-          <RefreshCw
-            class={`h-3.5 w-3.5 mr-1.5 ${isSyncing ? "animate-spin" : ""}`}
-          />
-          {isSyncing ? "Syncing..." : "Sync Now"}
-        </Button>
+        <!-- Sync Phases -->
+        {#if phases.length > 0}
+          <div class="pt-1 space-y-1.5">
+            <div class="space-y-1">
+              {#each phases as phase (phase.phase)}
+                <div class="flex gap-2 items-center text-xs">
+                  {#if phase.status === "complete"}
+                    <div
+                      class="w-1.5 h-1.5 bg-green-500 rounded-full shrink-0"
+                    ></div>
+                    <span class="text-neutral-400">{phase.label}</span>
+                  {:else if phase.status === "in_progress"}
+                    <div
+                      class="w-1.5 h-1.5 bg-violet-500 rounded-full animate-pulse shrink-0"
+                    ></div>
+                    <span class="font-medium text-violet-400"
+                      >{phase.label}</span
+                    >
+                  {:else}
+                    <div
+                      class="w-1.5 h-1.5 rounded-full bg-neutral-600 shrink-0"
+                    ></div>
+                    <span class="text-neutral-500">{phase.label}</span>
+                  {/if}
+                </div>
+              {/each}
+            </div>
+          </div>
+        {/if}
+
+        <!-- API Query Count (always shown) -->
+        {#if apiQueryCount !== null}
+          <div class="pt-1">
+            <p class="text-xs text-neutral-500">
+              API Queries: <span class="tabular-nums text-neutral-300"
+                >{apiQueryCount}</span
+              >
+            </p>
+          </div>
+        {/if}
       </div>
 
-      <!-- System Statistics -->
-      {#if systemStats}
-        <div class="pt-4 border-t border-neutral-800 space-y-3">
-          <h3 class="text-xs font-medium text-neutral-400">
-            System Statistics
-          </h3>
-          <div class="grid grid-cols-2 gap-x-4 gap-y-2 text-xs">
-            <span class="text-neutral-500">Total Issues</span>
-            <span class="text-neutral-300 tabular-nums text-right">
-              {systemStats.totalIssues.toLocaleString()}
-            </span>
-            <span class="text-neutral-500">Started Issues</span>
-            <span class="text-neutral-300 tabular-nums text-right">
-              {systemStats.startedIssues.toLocaleString()}
-            </span>
-            <span class="text-neutral-500">Projects</span>
-            <span class="text-neutral-300 tabular-nums text-right">
-              {systemStats.totalProjects.toLocaleString()}
-            </span>
-            <span class="text-neutral-500">Engineers</span>
-            <span class="text-neutral-300 tabular-nums text-right">
-              {systemStats.totalEngineers.toLocaleString()}
-            </span>
-            <span class="text-neutral-500">Teams</span>
-            <span class="text-neutral-300 tabular-nums text-right">
-              {systemStats.totalTeams.toLocaleString()}
-            </span>
-          </div>
-        </div>
-      {/if}
-
-      <!-- Reset Database Section -->
-      {#if showDeleteSection}
-        <div class="pt-4 border-t border-neutral-800 space-y-3">
-          <div class="flex items-center gap-2 text-red-400">
-            <AlertTriangle class="h-3.5 w-3.5" />
-            <span class="text-xs font-medium">Danger Zone</span>
-          </div>
-
-          <p class="text-xs text-neutral-500">
-            Reset database and delete all synced data.
-          </p>
-
-          {#if resetSuccess}
-            <p class="text-xs text-green-400">Database reset successfully</p>
-          {/if}
-          {#if resetError}
-            <p class="text-xs text-red-400">{resetError}</p>
-          {/if}
-
-          <div class="space-y-2">
-            <input
-              id="delete-confirm"
-              type="text"
-              bind:value={deleteConfirmationInput}
-              bind:this={deleteInputRef}
-              class="w-full px-2.5 py-1.5 text-xs rounded bg-neutral-800/50 text-white placeholder-neutral-600 focus:outline-none focus:ring-1 focus:ring-red-500/50"
-              placeholder="Type DELETE to confirm"
-              autocomplete="off"
-              spellcheck="false"
-            />
-            <div class="flex gap-2">
-              <button
-                onclick={() => {
-                  showDeleteSection = false;
-                  deleteConfirmationInput = "";
-                }}
-                class="flex-1 px-3 py-1.5 text-xs text-neutral-400 hover:text-white transition-colors"
-              >
-                Cancel
-              </button>
-              <button
-                onclick={handleResetDatabase}
-                disabled={isResetting || !canDelete}
-                class="flex-1 px-3 py-1.5 text-xs rounded bg-red-500/10 text-red-400 hover:bg-red-500/20 disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
-              >
-                {isResetting ? "Resetting..." : "Reset"}
-              </button>
-            </div>
-          </div>
-        </div>
-      {/if}
-
-      <!-- Footer hint -->
-      <div class="pt-4 border-t border-neutral-800">
-        <p class="text-xs text-center text-neutral-500">
-          <kbd
-            class="px-1.5 py-0.5 rounded bg-neutral-800 border border-neutral-700 text-neutral-300"
-            >Esc</kbd
-          >
-          to close
-          {#if !showDeleteSection}
-            <span class="mx-1.5">·</span>
-            <kbd
-              class="px-1.5 py-0.5 rounded bg-neutral-800 border border-neutral-700 text-neutral-300"
-              >Shift+D</kbd
-            >
-            danger zone
-          {/if}
-        </p>
-      </div>
+      <!-- Sync Now Button -->
+      <Button
+        onclick={handleSync}
+        disabled={isSyncing}
+        variant="default"
+        size="sm"
+        class="w-full"
+      >
+        <RefreshCw
+          class={`h-3.5 w-3.5 mr-1.5 ${isSyncing ? "animate-spin" : ""}`}
+        />
+        {isSyncing ? "Syncing..." : "Sync Now"}
+      </Button>
     </div>
-  {/snippet}
-</Modal>
+
+    <!-- System Statistics -->
+    {#if systemStats}
+      <div class="pt-4 space-y-3 border-t border-neutral-800">
+        <h3 class="text-xs font-medium text-neutral-400">System Statistics</h3>
+        <div class="grid grid-cols-2 gap-y-2 gap-x-4 text-xs">
+          <span class="text-neutral-500">Total Issues</span>
+          <span class="tabular-nums text-right text-neutral-300">
+            {systemStats.totalIssues.toLocaleString()}
+          </span>
+          <span class="text-neutral-500">Started Issues</span>
+          <span class="tabular-nums text-right text-neutral-300">
+            {systemStats.startedIssues.toLocaleString()}
+          </span>
+          <span class="text-neutral-500">Projects</span>
+          <span class="tabular-nums text-right text-neutral-300">
+            {systemStats.totalProjects.toLocaleString()}
+          </span>
+          <span class="text-neutral-500">Engineers</span>
+          <span class="tabular-nums text-right text-neutral-300">
+            {systemStats.totalEngineers.toLocaleString()}
+          </span>
+          <span class="text-neutral-500">Teams</span>
+          <span class="tabular-nums text-right text-neutral-300">
+            {systemStats.totalTeams.toLocaleString()}
+          </span>
+        </div>
+      </div>
+    {/if}
+
+    <!-- Reset Database Section -->
+    {#if showDeleteSection}
+      <div class="pt-4 space-y-3 border-t border-neutral-800">
+        <div class="flex gap-2 items-center text-red-400">
+          <AlertTriangle class="w-3.5 h-3.5" />
+          <span class="text-xs font-medium">Danger Zone</span>
+        </div>
+
+        <p class="text-xs text-neutral-500">
+          Reset database and delete all synced data.
+        </p>
+
+        {#if resetSuccess}
+          <p class="text-xs text-green-400">Database reset successfully</p>
+        {/if}
+        {#if resetError}
+          <p class="text-xs text-red-400">{resetError}</p>
+        {/if}
+
+        <div class="space-y-2">
+          <input
+            id="delete-confirm"
+            type="text"
+            bind:value={deleteConfirmationInput}
+            bind:this={deleteInputRef}
+            class="px-2.5 py-1.5 w-full text-xs text-white rounded bg-neutral-800/50 placeholder-neutral-600 focus:outline-none focus:ring-1 focus:ring-red-500/50"
+            placeholder="Type DELETE to confirm"
+            autocomplete="off"
+            spellcheck="false"
+          />
+          <div class="flex gap-2">
+            <button
+              onclick={() => {
+                showDeleteSection = false;
+                deleteConfirmationInput = "";
+              }}
+              class="flex-1 px-3 py-1.5 text-xs transition-colors text-neutral-400 hover:text-white"
+            >
+              Cancel
+            </button>
+            <button
+              onclick={handleResetDatabase}
+              disabled={isResetting || !canDelete}
+              class="flex-1 px-3 py-1.5 text-xs text-red-400 rounded transition-colors bg-red-500/10 hover:bg-red-500/20 disabled:opacity-40 disabled:cursor-not-allowed"
+            >
+              {isResetting ? "Resetting..." : "Reset"}
+            </button>
+          </div>
+        </div>
+      </div>
+    {/if}
+
+    <!-- Footer hint -->
+    <div class="pt-4 border-t border-neutral-800">
+      <p class="text-xs text-center text-neutral-500">
+        <kbd
+          class="px-1.5 py-0.5 rounded border bg-neutral-800 border-neutral-700 text-neutral-300"
+          >Esc</kbd
+        >
+        to close
+        {#if !showDeleteSection}
+          <span class="mx-1.5">·</span>
+          <kbd
+            class="px-1.5 py-0.5 rounded border bg-neutral-800 border-neutral-700 text-neutral-300"
+            >Shift+D</kbd
+          >
+          danger zone
+        {/if}
+      </p>
+    </div>
+  </div>
+{/snippet}
+
+<Modal title="Tools" {onclose} size="sm" children={childrenSnippet} />

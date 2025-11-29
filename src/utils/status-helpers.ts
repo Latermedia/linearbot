@@ -89,6 +89,7 @@ export function isStaleUpdate(lastActivityDate: string | null): boolean {
 /**
  * Check if a project is missing a lead
  * Missing = has active work or is in active state but no lead assigned
+ * OR is in planning phase (requires lead even with zero started issues)
  */
 export function isMissingLead(
   projectStateCategory: string | null,
@@ -101,8 +102,12 @@ export function isMissingLead(
     state.includes("progress") ||
     state.includes("started") ||
     state === "started";
+  const isPlanningState = state.includes("planned");
 
-  return (hasActiveWork || isActiveState) && !projectLeadName;
+  // Require lead if: has active work, is in active state, OR is in planning phase
+  return (
+    (hasActiveWork || isActiveState || isPlanningState) && !projectLeadName
+  );
 }
 
 /**
