@@ -34,6 +34,7 @@
     null
   );
   let _syncingProjectId = $state<string | null>(null);
+  let apiQueryCount = $state<number | null>(null);
 
   // Sync stats
   interface SyncStats {
@@ -123,6 +124,7 @@
         partialSyncProgress = data.partialSyncProgress ?? null;
         _syncingProjectId = data.syncingProjectId ?? null;
         syncStats = data.stats ?? null;
+        apiQueryCount = data.apiQueryCount ?? null;
 
         // Generate status message for streaming display
         if (syncStatus === "syncing" && syncStats) {
@@ -394,13 +396,32 @@
                   Last synced {formatLastSync(lastSyncDate)}
                 </p>
               {/if}
+              {#if apiQueryCount !== null}
+                <p class="text-xs text-neutral-500">
+                  API Queries: {apiQueryCount}
+                </p>
+              {/if}
             </div>
           {:else if lastSyncDate}
-            <p class="text-xs text-neutral-500">
-              Last synced {formatLastSync(lastSyncDate)}
-            </p>
+            <div>
+              <p class="text-xs text-neutral-500">
+                Last synced {formatLastSync(lastSyncDate)}
+              </p>
+              {#if apiQueryCount !== null}
+                <p class="text-xs text-neutral-500">
+                  API Queries: {apiQueryCount}
+                </p>
+              {/if}
+            </div>
           {:else}
-            <p class="text-xs text-neutral-500">Never synced</p>
+            <div>
+              <p class="text-xs text-neutral-500">Never synced</p>
+              {#if apiQueryCount !== null}
+                <p class="text-xs text-neutral-500">
+                  API Queries: {apiQueryCount}
+                </p>
+              {/if}
+            </div>
           {/if}
         </div>
 
