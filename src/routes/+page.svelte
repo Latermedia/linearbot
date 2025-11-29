@@ -65,7 +65,6 @@
   // Use $derived to create reactive values from stores
   const loading = $derived($databaseStore.loading);
   const error = $derived($databaseStore.error);
-  const lastSync = $derived($databaseStore.lastSync);
 
   // Create reactive derived values from stores
   // This ensures they update when stores change

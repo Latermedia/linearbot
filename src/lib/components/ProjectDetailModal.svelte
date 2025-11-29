@@ -27,7 +27,6 @@
   import {
     hasMissingEstimate,
     hasNoRecentComment,
-    hasMissingPriority,
     hasSubissueStatusMismatch,
   } from "../../utils/issue-validators";
   import PriorityDisplay from "./PriorityDisplay.svelte";

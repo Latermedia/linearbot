@@ -341,7 +341,7 @@
       <div class="relative h-8">
         <!-- Month labels -->
         <div class="absolute inset-0">
-          {#each monthLabels as month, i}
+          {#each monthLabels as month, _i}
             <div
               class="flex absolute top-0 bottom-0 items-center text-xs font-medium text-neutral-600 dark:text-neutral-400"
               style="left: {month.startPercent}%; width: {month.endPercent -

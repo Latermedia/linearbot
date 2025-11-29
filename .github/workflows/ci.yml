@@ -20,6 +20,6 @@ jobs:
       - name: Install dependencies
         run: bun install
 
-      - name: Lint, Test & Build
-        run: bunx svelte-kit sync && bun lint && bun run test && bun run build
+      - name: Typecheck, Lint, Test & Build
+        run: bunx svelte-kit sync && bun run typecheck && bun lint && bun run test && bun run build
 

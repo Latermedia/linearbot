@@ -76,7 +76,7 @@
 
   let groupBy: GroupByOption = $state("none");
 
-  function formatIssueWIPAge(issue: IssueData): string {
+  function _formatIssueWIPAge(issue: IssueData): string {
     if (!issue.started_at) return "—";
     const started = new Date(issue.started_at);
     const now = new Date();
@@ -86,7 +86,7 @@
     return `${Math.round(diffDays)}d`;
   }
 
-  function isStaleWIP(issue: IssueData): boolean {
+  function _isStaleWIP(issue: IssueData): boolean {
     if (shouldSuppressAlerts(issue)) return false;
     if (!issue.started_at) return false;
     const started = new Date(issue.started_at);
@@ -96,19 +96,19 @@
     return diffDays >= 14; // WIP_AGE_THRESHOLDS.WIP_AGE_DAYS
   }
 
-  function checkMissingEstimate(issue: IssueData): boolean {
+  function _checkMissingEstimate(issue: IssueData): boolean {
     if (shouldSuppressAlerts(issue)) return false;
     return issue.estimate === null || issue.estimate === undefined;
   }
 
-  function checkMissingPriority(issue: IssueData): boolean {
+  function _checkMissingPriority(issue: IssueData): boolean {
     // Exclude subissues from priority warnings
     if (issue.parent_id) return false;
     if (shouldSuppressAlerts(issue)) return false;
     return !issue.priority || issue.priority === 0;
   }
 
-  function checkNoRecentComment(issue: IssueData): boolean {
+  function _checkNoRecentComment(issue: IssueData): boolean {
     // Only check comment recency for WIP issues
     if (issue.state_type !== "started") return false;
     if (shouldSuppressAlerts(issue)) return false;
@@ -120,7 +120,7 @@
     return hoursSince > 24;
   }
 
-  function getCommentRecency(lastCommentAt: string | null): string {
+  function _getCommentRecency(lastCommentAt: string | null): string {
     if (!lastCommentAt) return "Never";
     const date = new Date(lastCommentAt);
     const now = new Date();

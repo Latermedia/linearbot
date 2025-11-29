@@ -4,12 +4,14 @@ import svelte from "eslint-plugin-svelte";
 import prettier from "eslint-config-prettier";
 import globals from "globals";
 
-export default ts.config(
+export default [
+  // Base recommended configs
   js.configs.recommended,
   ...ts.configs.recommended,
   ...svelte.configs["flat/recommended"],
   prettier,
   ...svelte.configs["flat/prettier"],
+  // Global settings
   {
     languageOptions: {
       globals: {
@@ -21,7 +23,7 @@ export default ts.config(
     rules: {
       // Allow unused vars prefixed with underscore
       "@typescript-eslint/no-unused-vars": [
-        "warn",
+        "error",
         {
           argsIgnorePattern: "^_",
           varsIgnorePattern: "^_",
@@ -34,14 +36,25 @@ export default ts.config(
       "@typescript-eslint/no-unused-expressions": "off",
     },
   },
+  // Svelte-specific overrides
   {
     files: ["**/*.svelte"],
     languageOptions: {
       parserOptions: {
         parser: ts.parser,
+        extraFileExtensions: [".svelte"],
       },
     },
     rules: {
+      // Allow unused vars prefixed with underscore
+      "@typescript-eslint/no-unused-vars": [
+        "error",
+        {
+          argsIgnorePattern: "^_",
+          varsIgnorePattern: "^_",
+          caughtErrorsIgnorePattern: "^_",
+        },
+      ],
       // Svelte 5 reactivity rules - warn instead of error
       "svelte/prefer-svelte-reactivity": "warn",
       // Each key is good practice but not always necessary
@@ -52,7 +65,8 @@ export default ts.config(
       "svelte/no-dupe-style-properties": "warn",
     },
   },
+  // Ignore patterns
   {
     ignores: ["build/", ".svelte-kit/", "node_modules/", "terminal/"],
-  }
-);
+  },
+];

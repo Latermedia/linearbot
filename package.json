@@ -17,6 +17,7 @@
     "build": "bun --bun vite build",
     "preview": "bun --bun vite preview",
     "start": "bun --bun run server.js",
+    "typecheck": "tsc --noEmit",
     "lint": "eslint .",
     "lint:fix": "eslint . --fix",
     "format": "prettier --write .",

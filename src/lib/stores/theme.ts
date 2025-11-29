@@ -22,7 +22,7 @@ function createThemeStore() {
     }
   }
 
-  const { subscribe, set, update } = writable<Theme>(initialTheme);
+  const { subscribe, set } = writable<Theme>(initialTheme);
 
   return {
     subscribe,

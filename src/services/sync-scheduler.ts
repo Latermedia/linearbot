@@ -68,9 +68,13 @@ export function initializeSyncScheduler(): void {
   );
 
   // Check if Bun.cron is available (Bun-specific API)
-  if (typeof Bun !== "undefined" && typeof Bun.cron === "function") {
+  if (
+    typeof Bun !== "undefined" &&
+    "cron" in Bun &&
+    typeof (Bun as any).cron === "function"
+  ) {
     try {
-      Bun.cron("*/30 * * * *", runScheduledSync);
+      (Bun as any).cron("*/30 * * * *", runScheduledSync);
       console.log("[SYNC-SCHEDULER] Using Bun.cron for scheduled syncs");
       return;
     } catch (error) {

@@ -18,12 +18,7 @@
   import GanttChart from "$lib/components/GanttChart.svelte";
   import ToggleGroupRoot from "$lib/components/ToggleGroupRoot.svelte";
   import ToggleGroupItem from "$lib/components/ToggleGroupItem.svelte";
-  import type {
-    ProjectSummary,
-    TeamSummary,
-    DomainSummary,
-  } from "$lib/project-data";
-  import type { Issue } from "../../db/schema";
+  import type { ProjectSummary, TeamSummary } from "$lib/project-data";
   import {
     getRecentProgress,
     formatDateFull,
@@ -82,8 +77,8 @@
   const error = $derived($databaseStore.error);
   const projects = $derived($projectsStore);
   const issues = $derived($databaseStore.issues);
-  const allTeams = $derived($teamsStore);
-  const allDomains = $derived($domainsStore);
+  const _allTeams = $derived($teamsStore);
+  const _allDomains = $derived($domainsStore);
 
   // Filter projects: Executive Visibility label + in progress
   const executiveProjects = $derived.by(() => {

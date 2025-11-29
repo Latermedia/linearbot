@@ -12,8 +12,6 @@ import {
   groupProjectsByDomains,
   projectToSummary,
   type ProjectSummary,
-  type TeamSummary,
-  type DomainSummary,
 } from "../project-data";
 import { getProjectById } from "../queries";
 import type { Project } from "../../db/schema";

@@ -33,7 +33,7 @@
   let partialSyncProgress = $state<{ completed: number; total: number } | null>(
     null
   );
-  let syncingProjectId = $state<string | null>(null);
+  let _syncingProjectId = $state<string | null>(null);
 
   // Sync stats
   interface SyncStats {
@@ -121,7 +121,7 @@
         syncProgressPercent = data.progressPercent ?? null;
         hasPartialSync = data.hasPartialSync ?? false;
         partialSyncProgress = data.partialSyncProgress ?? null;
-        syncingProjectId = data.syncingProjectId ?? null;
+        _syncingProjectId = data.syncingProjectId ?? null;
         syncStats = data.stats ?? null;
 
         // Generate status message for streaming display

@@ -165,7 +165,7 @@ async function main() {
   try {
     await $`bun install`;
     console.log("\n   ✅ Dependencies installed");
-  } catch (error) {
+  } catch (_error) {
     console.log("\n   ❌ Failed to install dependencies");
     console.log("      Try running: bun install\n");
     process.exit(1);

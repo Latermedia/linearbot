@@ -3,7 +3,6 @@
   import { browser } from "$app/environment";
   import Card from "$lib/components/Card.svelte";
   import Skeleton from "$lib/components/Skeleton.svelte";
-  import Badge from "$lib/components/Badge.svelte";
   import EngineersTable from "$lib/components/EngineersTable.svelte";
   import EngineerDetailModal from "$lib/components/EngineerDetailModal.svelte";
   import { WIP_THRESHOLDS } from "../../constants/thresholds";

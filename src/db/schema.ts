@@ -246,22 +246,22 @@ export function initializeDatabase(db: Database): void {
   // Add project lead columns if they don't exist (migration)
   try {
     db.run(`ALTER TABLE issues ADD COLUMN project_lead_id TEXT`);
-  } catch (e) {
+  } catch (_e) {
     // Column already exists, ignore
   }
   try {
     db.run(`ALTER TABLE issues ADD COLUMN project_lead_name TEXT`);
-  } catch (e) {
+  } catch (_e) {
     // Column already exists, ignore
   }
   try {
     db.run(`ALTER TABLE issues ADD COLUMN project_health TEXT`);
-  } catch (e) {
+  } catch (_e) {
     // Column already exists, ignore
   }
   try {
     db.run(`ALTER TABLE issues ADD COLUMN project_status TEXT`);
-  } catch (e) {
+  } catch (_e) {
     // Column already exists, ignore
   }
   // Rename project_state to project_state_category in issues table (migration)
@@ -269,98 +269,98 @@ export function initializeDatabase(db: Database): void {
     db.run(
       `ALTER TABLE issues RENAME COLUMN project_state TO project_state_category`
     );
-  } catch (e) {
+  } catch (_e) {
     // Column might not exist or already renamed, ignore
   }
 
   // Add creator columns if they don't exist (migration)
   try {
     db.run(`ALTER TABLE issues ADD COLUMN creator_id TEXT`);
-  } catch (e) {
+  } catch (_e) {
     // Column already exists, ignore
   }
   try {
     db.run(`ALTER TABLE issues ADD COLUMN creator_name TEXT`);
-  } catch (e) {
+  } catch (_e) {
     // Column already exists, ignore
   }
 
   // Add assignee avatar column if it doesn't exist (migration)
   try {
     db.run(`ALTER TABLE issues ADD COLUMN assignee_avatar_url TEXT`);
-  } catch (e) {
+  } catch (_e) {
     // Column already exists, ignore
   }
 
   // Add estimate and last_comment_at columns if they don't exist (migration)
   try {
     db.run(`ALTER TABLE issues ADD COLUMN estimate REAL`);
-  } catch (e) {
+  } catch (_e) {
     // Column already exists, ignore
   }
   try {
     db.run(`ALTER TABLE issues ADD COLUMN last_comment_at TEXT`);
-  } catch (e) {
+  } catch (_e) {
     // Column already exists, ignore
   }
   try {
     db.run(`ALTER TABLE issues ADD COLUMN comment_count INTEGER`);
-  } catch (e) {
+  } catch (_e) {
     // Column already exists, ignore
   }
   try {
     db.run(`ALTER TABLE issues ADD COLUMN started_at TEXT`);
-  } catch (e) {
+  } catch (_e) {
     // Column already exists, ignore
   }
   try {
     db.run(`ALTER TABLE issues ADD COLUMN completed_at TEXT`);
-  } catch (e) {
+  } catch (_e) {
     // Column already exists, ignore
   }
   try {
     db.run(`ALTER TABLE issues ADD COLUMN canceled_at TEXT`);
-  } catch (e) {
+  } catch (_e) {
     // Column already exists, ignore
   }
   try {
     db.run(`ALTER TABLE issues ADD COLUMN parent_id TEXT`);
-  } catch (e) {
+  } catch (_e) {
     // Column already exists, ignore
   }
   try {
     db.run(`ALTER TABLE issues ADD COLUMN project_target_date TEXT`);
-  } catch (e) {
+  } catch (_e) {
     // Column already exists, ignore
   }
   try {
     db.run(`ALTER TABLE issues ADD COLUMN project_start_date TEXT`);
-  } catch (e) {
+  } catch (_e) {
     // Column already exists, ignore
   }
 
   // Add labels column to projects table if it doesn't exist (migration)
   try {
     db.run(`ALTER TABLE projects ADD COLUMN labels TEXT`);
-  } catch (e) {
+  } catch (_e) {
     // Column already exists, ignore
   }
   // Add project_description column to projects table if it doesn't exist (migration)
   try {
     db.run(`ALTER TABLE projects ADD COLUMN project_description TEXT`);
-  } catch (e) {
+  } catch (_e) {
     // Column already exists, ignore
   }
   // Add project_updates column to projects table if it doesn't exist (migration)
   try {
     db.run(`ALTER TABLE projects ADD COLUMN project_updates TEXT`);
-  } catch (e) {
+  } catch (_e) {
     // Column already exists, ignore
   }
   // Add target_date column to projects table if it doesn't exist (migration)
   try {
     db.run(`ALTER TABLE projects ADD COLUMN target_date TEXT`);
-  } catch (e) {
+  } catch (_e) {
     // Column already exists, ignore
   }
   // Add has_date_discrepancy column to projects table if it doesn't exist (migration)
@@ -368,13 +368,13 @@ export function initializeDatabase(db: Database): void {
     db.run(
       `ALTER TABLE projects ADD COLUMN has_date_discrepancy INTEGER NOT NULL DEFAULT 0`
     );
-  } catch (e) {
+  } catch (_e) {
     // Column already exists, ignore
   }
   // Add project_status column to projects table if it doesn't exist (migration)
   try {
     db.run(`ALTER TABLE projects ADD COLUMN project_status TEXT`);
-  } catch (e) {
+  } catch (_e) {
     // Column already exists, ignore
   }
   // Rename project_state to project_state_category in projects table (migration)
@@ -382,7 +382,7 @@ export function initializeDatabase(db: Database): void {
     db.run(
       `ALTER TABLE projects RENAME COLUMN project_state TO project_state_category`
     );
-  } catch (e) {
+  } catch (_e) {
     // Column might not exist or already renamed, ignore
   }
 
@@ -458,14 +458,14 @@ export function initializeDatabase(db: Database): void {
   // Add avatar_url column to engineers table if it doesn't exist (migration)
   try {
     db.run(`ALTER TABLE engineers ADD COLUMN avatar_url TEXT`);
-  } catch (e) {
+  } catch (_e) {
     // Column already exists, ignore
   }
 
   // Add last_synced_at column to projects table if it doesn't exist (migration)
   try {
     db.run(`ALTER TABLE projects ADD COLUMN last_synced_at TEXT`);
-  } catch (e) {
+  } catch (_e) {
     // Column already exists, ignore
   }
 
@@ -484,7 +484,7 @@ export function initializeDatabase(db: Database): void {
   // Add partial_sync_state column if it doesn't exist (migration)
   try {
     db.run(`ALTER TABLE sync_metadata ADD COLUMN partial_sync_state TEXT`);
-  } catch (e) {
+  } catch (_e) {
     // Column already exists, ignore
   }
 

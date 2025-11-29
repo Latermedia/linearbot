@@ -220,7 +220,7 @@ export function loadProjectsData(): ProjectsData {
   }
 
   const projViolations: ProjectViolation[] = [];
-  for (const [projectId, issues] of projectGroups) {
+  for (const [_projectId, issues] of projectGroups) {
     const hasStartedIssues = issues.some((i) => i.state_type === "started");
     if (!hasStartedIssues) continue; // Only active projects
 

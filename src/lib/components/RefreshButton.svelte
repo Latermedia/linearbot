@@ -109,7 +109,7 @@
     return `${diffHours} hours ago`;
   }
 
-  function formatDateTime(date: Date | null): string {
+  function _formatDateTime(date: Date | null): string {
     if (!date) return "Never";
 
     return date.toLocaleString("en-US", {

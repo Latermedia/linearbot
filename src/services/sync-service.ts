@@ -910,9 +910,9 @@ export async function syncProject(
     // Check for mock mode
     if (isMockMode()) {
       console.log("[SYNC] Mock mode: skipping project sync");
-      const mockIssues = generateMockData();
-      const projectMockIssues = mockIssues.filter(
-        (i) => i.projectId === projectId
+      const mockData = generateMockData();
+      const projectMockIssues = mockData.issues.filter(
+        (i: LinearIssueData) => i.projectId === projectId
       );
       const counts = writeIssuesToDatabase(projectMockIssues);
       cumulativeNewCount += counts.newCount;
