@@ -101,9 +101,17 @@ export interface ProjectUpdate {
 
 export class LinearAPIClient {
   private client: LinearClient;
+  private queryCounter?: () => void;
 
-  constructor(apiKey: string) {
+  constructor(apiKey: string, queryCounter?: () => void) {
     this.client = new LinearClient({ apiKey });
+    this.queryCounter = queryCounter;
+  }
+
+  private incrementQueryCount(): void {
+    if (this.queryCounter) {
+      this.queryCounter();
+    }
   }
 
   async fetchStartedIssues(
@@ -198,6 +206,7 @@ export class LinearAPIClient {
     while (hasMore) {
       let response: any;
       try {
+        this.incrementQueryCount();
         response = await this.client.client.rawRequest(query, {
           first: PAGINATION.GRAPHQL_PAGE_SIZE,
           after: cursor,
@@ -594,6 +603,7 @@ export class LinearAPIClient {
       while (hasMore) {
         let response: any;
         try {
+          this.incrementQueryCount();
           response = await this.client.client.rawRequest(query, {
             first: PAGINATION.GRAPHQL_PAGE_SIZE,
             after: cursor,
@@ -760,6 +770,7 @@ export class LinearAPIClient {
 
   async testConnection(): Promise<boolean> {
     try {
+      this.incrementQueryCount();
       // Add a timeout to avoid hanging
       const timeoutPromise = new Promise<never>((_, reject) =>
         setTimeout(
@@ -791,6 +802,7 @@ export class LinearAPIClient {
 
     let response: any;
     try {
+      this.incrementQueryCount();
       response = await this.client.client.rawRequest(query, {
         projectId,
       });
@@ -840,6 +852,7 @@ export class LinearAPIClient {
 
     let response: any;
     try {
+      this.incrementQueryCount();
       response = await this.client.client.rawRequest(query, {
         projectId,
       });
@@ -872,12 +885,176 @@ export class LinearAPIClient {
       userAvatarUrl: node.user?.avatarUrl || null,
     }));
   }
+
+  /**
+   * Fetch all planned projects (project_state_category contains "planned")
+   * Returns array of project IDs
+   */
+  async fetchPlannedProjects(): Promise<string[]> {
+    const projectIds: string[] = [];
+    let hasMore = true;
+    let cursor: string | undefined;
+    let pageCount = 0;
+
+    const query = `
+      query GetPlannedProjects($first: Int!, $after: String) {
+        projects(
+          first: $first
+          after: $after
+        ) {
+          nodes {
+            id
+            state
+          }
+          pageInfo {
+            hasNextPage
+            endCursor
+          }
+        }
+      }
+    `;
+
+    while (hasMore) {
+      let response: any;
+      try {
+        this.incrementQueryCount();
+        response = await this.client.client.rawRequest(query, {
+          first: PAGINATION.GRAPHQL_PAGE_SIZE,
+          after: cursor,
+        });
+      } catch (error: any) {
+        if (isRateLimitError(error)) {
+          throw new RateLimitError("Linear API rate limit exceeded");
+        }
+        throw error;
+      }
+
+      const data = response.data.projects;
+
+      for (const project of data.nodes) {
+        // Check if project state contains "planned" (case-insensitive)
+        const state = (project.state || "").toLowerCase();
+        if (state.includes("planned")) {
+          projectIds.push(project.id);
+        }
+      }
+
+      hasMore = data.pageInfo.hasNextPage;
+      cursor = data.pageInfo.endCursor ?? undefined;
+      pageCount++;
+
+      // Safety break to avoid infinite loops
+      if (pageCount > PAGINATION.MAX_PAGES) {
+        console.warn(
+          `Warning: Fetched ${PAGINATION.MAX_PAGES}+ pages of projects, stopping to avoid infinite loop`
+        );
+        break;
+      }
+    }
+
+    return projectIds;
+  }
+
+  /**
+   * Fetch projects completed in the last 6 months
+   * Returns array of project IDs
+   */
+  async fetchCompletedProjects(): Promise<string[]> {
+    const projectIds: string[] = [];
+    let hasMore = true;
+    let cursor: string | undefined;
+    let pageCount = 0;
+
+    // Calculate date 6 months ago
+    const sixMonthsAgo = new Date();
+    sixMonthsAgo.setMonth(sixMonthsAgo.getMonth() - 6);
+    const _sixMonthsAgoISO = sixMonthsAgo.toISOString();
+
+    const query = `
+      query GetCompletedProjects($first: Int!, $after: String) {
+        projects(
+          first: $first
+          after: $after
+        ) {
+          nodes {
+            id
+            state
+            completedAt
+            updatedAt
+          }
+          pageInfo {
+            hasNextPage
+            endCursor
+          }
+        }
+      }
+    `;
+
+    while (hasMore) {
+      let response: any;
+      try {
+        this.incrementQueryCount();
+        response = await this.client.client.rawRequest(query, {
+          first: PAGINATION.GRAPHQL_PAGE_SIZE,
+          after: cursor,
+        });
+      } catch (error: any) {
+        if (isRateLimitError(error)) {
+          throw new RateLimitError("Linear API rate limit exceeded");
+        }
+        throw error;
+      }
+
+      const data = response.data.projects;
+
+      for (const project of data.nodes) {
+        // Check if project is completed and was completed/updated in last 6 months
+        const state = (project.state || "").toLowerCase();
+        const isCompleted =
+          state.includes("completed") ||
+          state.includes("done") ||
+          state === "canceled";
+
+        if (isCompleted) {
+          // Check if completedAt or updatedAt is within last 6 months
+          const completedAt = project.completedAt
+            ? new Date(project.completedAt)
+            : null;
+          const updatedAt = project.updatedAt
+            ? new Date(project.updatedAt)
+            : null;
+
+          const relevantDate = completedAt || updatedAt;
+          if (relevantDate && relevantDate >= sixMonthsAgo) {
+            projectIds.push(project.id);
+          }
+        }
+      }
+
+      hasMore = data.pageInfo.hasNextPage;
+      cursor = data.pageInfo.endCursor ?? undefined;
+      pageCount++;
+
+      // Safety break to avoid infinite loops
+      if (pageCount > PAGINATION.MAX_PAGES) {
+        console.warn(
+          `Warning: Fetched ${PAGINATION.MAX_PAGES}+ pages of projects, stopping to avoid infinite loop`
+        );
+        break;
+      }
+    }
+
+    return projectIds;
+  }
 }
 
-export function createLinearClient(apiKey?: string): LinearAPIClient {
+export function createLinearClient(
+  apiKey?: string,
+  queryCounter?: () => void
+): LinearAPIClient {
   const key = apiKey || process.env.LINEAR_API_KEY;
   if (!key) {
     throw new Error("LINEAR_API_KEY is not set in environment variables");
   }
-  return new LinearAPIClient(key);
+  return new LinearAPIClient(key, queryCounter);
 }
