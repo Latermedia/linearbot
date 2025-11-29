@@ -2,6 +2,7 @@ import type { Issue, Project } from "../db/schema";
 import { getAllProjects } from "./queries";
 import { getDomainForTeam, getAllDomains } from "../utils/domain-mapping";
 import type { ProjectUpdate } from "../linear/client";
+import { isPlannedProject, isWIPProject } from "../utils/status-helpers";
 
 export interface ProjectSummary {
   projectId: string;
@@ -316,4 +317,37 @@ export function groupProjectsByDomains(teams: TeamSummary[]): DomainSummary[] {
     if (b.domainName === "Unmapped") return -1;
     return a.domainName.localeCompare(b.domainName);
   });
+}
+
+/**
+ * Filter projects by mode: planning, wip, or all
+ */
+export function filterProjectsByMode(
+  projects: Map<string, ProjectSummary>,
+  issues: Issue[],
+  mode: "planning" | "wip" | "all"
+): Map<string, ProjectSummary> {
+  if (mode === "all") {
+    return projects;
+  }
+
+  const filtered = new Map<string, ProjectSummary>();
+
+  for (const [projectId, project] of projects) {
+    const projectIssues = issues.filter((i) => i.project_id === projectId);
+
+    if (mode === "planning") {
+      // Show only planned projects
+      if (isPlannedProject(project.projectStateCategory)) {
+        filtered.set(projectId, project);
+      }
+    } else if (mode === "wip") {
+      // Show only WIP projects (has started issues)
+      if (isWIPProject(projectIssues)) {
+        filtered.set(projectId, project);
+      }
+    }
+  }
+
+  return filtered;
 }

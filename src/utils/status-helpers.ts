@@ -104,3 +104,54 @@ export function isMissingLead(
 
   return (hasActiveWork || isActiveState) && !projectLeadName;
 }
+
+/**
+ * Check if a project is in planned state
+ * Planned = project_state_category contains "planned" (case-insensitive)
+ */
+export function isPlannedProject(projectStateCategory: string | null): boolean {
+  if (!projectStateCategory) return false;
+  return projectStateCategory.toLowerCase().includes("planned");
+}
+
+/**
+ * Check if a project is completed in the last 6 months
+ * Completed = project_state_category indicates completion AND completedAt/updatedAt within last 6 months
+ */
+export function isCompletedProject(
+  projectStateCategory: string | null,
+  completedAt: Date | string | null,
+  updatedAt?: Date | string | null
+): boolean {
+  if (!projectStateCategory) return false;
+
+  const state = projectStateCategory.toLowerCase();
+  const isCompleted =
+    state.includes("completed") ||
+    state.includes("done") ||
+    state === "canceled";
+
+  if (!isCompleted) return false;
+
+  // Check if completed/updated within last 6 months
+  const sixMonthsAgo = new Date();
+  sixMonthsAgo.setMonth(sixMonthsAgo.getMonth() - 6);
+
+  const completedDate = completedAt
+    ? new Date(completedAt)
+    : updatedAt
+      ? new Date(updatedAt)
+      : null;
+
+  if (!completedDate) return false;
+
+  return completedDate >= sixMonthsAgo;
+}
+
+/**
+ * Check if a project has WIP (work in progress) issues
+ * WIP = has at least one issue with state_type = "started"
+ */
+export function isWIPProject(issues: Issue[]): boolean {
+  return issues.some((i) => i.state_type === "started");
+}
