@@ -554,6 +554,16 @@ export interface PartialSyncState {
     projectId: string;
     status: "complete" | "incomplete";
   }>;
+  plannedProjectsSync?: "complete" | "incomplete";
+  plannedProjectSyncs?: Array<{
+    projectId: string;
+    status: "complete" | "incomplete";
+  }>;
+  completedProjectsSync?: "complete" | "incomplete";
+  completedProjectSyncs?: Array<{
+    projectId: string;
+    status: "complete" | "incomplete";
+  }>;
 }
 
 /**
@@ -566,6 +576,7 @@ export interface SyncMetadata {
   sync_error: string | null;
   sync_progress_percent: number | null;
   partial_sync_state: string | null;
+  api_query_count: number | null;
 }
 
 /**
@@ -587,6 +598,7 @@ export function updateSyncMetadata(updates: {
   sync_error?: string | null;
   sync_progress_percent?: number | null;
   partial_sync_state?: string | null;
+  api_query_count?: number | null;
 }): void {
   const db = getDatabase();
   const fields: string[] = [];
@@ -611,6 +623,10 @@ export function updateSyncMetadata(updates: {
   if (updates.partial_sync_state !== undefined) {
     fields.push("partial_sync_state = ?");
     values.push(updates.partial_sync_state);
+  }
+  if (updates.api_query_count !== undefined) {
+    fields.push("api_query_count = ?");
+    values.push(updates.api_query_count);
   }
 
   if (fields.length === 0) return;

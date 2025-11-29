@@ -477,13 +477,21 @@ export function initializeDatabase(db: Database): void {
       sync_status TEXT NOT NULL DEFAULT 'idle',
       sync_error TEXT,
       sync_progress_percent INTEGER,
-      partial_sync_state TEXT
+      partial_sync_state TEXT,
+      api_query_count INTEGER
     )
   `);
 
   // Add partial_sync_state column if it doesn't exist (migration)
   try {
     db.run(`ALTER TABLE sync_metadata ADD COLUMN partial_sync_state TEXT`);
+  } catch (_e) {
+    // Column already exists, ignore
+  }
+
+  // Add api_query_count column if it doesn't exist (migration)
+  try {
+    db.run(`ALTER TABLE sync_metadata ADD COLUMN api_query_count INTEGER`);
   } catch (_e) {
     // Column already exists, ignore
   }
