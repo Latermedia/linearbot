@@ -24,6 +24,9 @@ export function getStartedIssues(): Issue[] {
   const query = db.prepare(`
     SELECT * FROM issues
     WHERE state_type = 'started'
+      AND completed_at IS NULL
+      AND canceled_at IS NULL
+      AND (state_name NOT LIKE '%done%' AND state_name NOT LIKE '%completed%')
     ORDER BY assignee_name, team_name, title
   `);
   return query.all() as Issue[];
@@ -40,7 +43,10 @@ export function getStartedIssuesByTeams(teamKeys: string[]): Issue[] {
   const query = db.prepare(`
     SELECT * FROM issues
     WHERE state_type = 'started'
-    AND team_key IN (${placeholders})
+      AND completed_at IS NULL
+      AND canceled_at IS NULL
+      AND (state_name NOT LIKE '%done%' AND state_name NOT LIKE '%completed%')
+      AND team_key IN (${placeholders})
     ORDER BY assignee_name, team_name, title
   `);
   return query.all(...teamKeys) as Issue[];
@@ -302,9 +308,9 @@ export function upsertProject(project: Project): void {
       linear_progress, velocity, estimate_accuracy, days_per_story_point,
       has_status_mismatch, is_stale_update, missing_lead, has_violations, missing_health, has_date_discrepancy,
       start_date, last_activity_date, estimated_end_date, target_date,
-      issues_by_state, engineers, teams, velocity_by_team, labels, project_updates
+      issues_by_state, engineers, teams, velocity_by_team, labels, project_updates, last_synced_at
     ) VALUES (
-      ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?
+      ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?
     )
     ON CONFLICT(project_id) DO UPDATE SET
       project_name = excluded.project_name,
@@ -346,7 +352,8 @@ export function upsertProject(project: Project): void {
       teams = excluded.teams,
       velocity_by_team = excluded.velocity_by_team,
       labels = excluded.labels,
-      project_updates = excluded.project_updates
+      project_updates = excluded.project_updates,
+      last_synced_at = excluded.last_synced_at
   `);
 
   query.run(
@@ -390,7 +397,8 @@ export function upsertProject(project: Project): void {
     project.teams,
     project.velocity_by_team,
     project.labels,
-    project.project_updates
+    project.project_updates,
+    project.last_synced_at
   );
 }
 

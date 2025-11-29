@@ -137,9 +137,12 @@ export class LinearAPIClient {
             parent {
               id
             }
-            comments(first: 1, orderBy: createdAt) {
+            comments(first: 250, orderBy: createdAt) {
               nodes {
                 createdAt
+              }
+              pageInfo {
+                hasNextPage
               }
             }
             team {
@@ -210,8 +213,9 @@ export class LinearAPIClient {
         if (!issue.team || !issue.state) continue;
 
         const lastComment = issue.comments?.nodes?.[0];
-        // Comment count not available in Linear API - set to null
-        const commentCount = null;
+        // Count comments from nodes array (fetches up to 250 comments)
+        // Note: If there are more than 250 comments, we'll only count up to 250
+        const commentCount = issue.comments?.nodes?.length ?? null;
         issues.push({
           id: issue.id,
           identifier: issue.identifier,
@@ -336,9 +340,12 @@ export class LinearAPIClient {
               parent {
                 id
               }
-              comments(first: 1, orderBy: createdAt) {
+              comments(first: 250, orderBy: createdAt) {
                 nodes {
                   createdAt
+                }
+                pageInfo {
+                  hasNextPage
                 }
               }
               team {
@@ -418,8 +425,9 @@ export class LinearAPIClient {
           }
 
           const lastComment = issue.comments?.nodes?.[0];
-          // Comment count not available in Linear API - set to null
-          const commentCount = null;
+          // Count comments from nodes array (fetches up to 250 comments)
+          // Note: If there are more than 250 comments, we'll only count up to 250
+          const commentCount = issue.comments?.nodes?.length ?? null;
           const issueData = {
             id: issue.id,
             identifier: issue.identifier,

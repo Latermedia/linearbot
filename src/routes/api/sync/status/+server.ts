@@ -47,5 +47,7 @@ export const GET: RequestHandler = async () => {
     partialSyncProgress,
     // Include detailed sync stats from in-memory state
     stats: syncState.stats ?? null,
+    // Include project sync info
+    syncingProjectId: syncState.syncingProjectId ?? null,
   });
 };

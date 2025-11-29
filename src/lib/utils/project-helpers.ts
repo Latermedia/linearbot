@@ -704,7 +704,11 @@ export function groupIssuesByParent(issues: Issue[]): GroupedIssue[] {
     const subissues = subissuesByParent.get(parent.id) || [];
     if (subissues.length > 0) {
       // Sort subissues by state_name to maintain state-based ordering
-      subissues.sort((a, b) => a.state_name.localeCompare(b.state_name));
+      subissues.sort((a, b) => {
+        const aState = a.state_name || "";
+        const bState = b.state_name || "";
+        return aState.localeCompare(bState);
+      });
       result.push({ parent, subissues });
     } else {
       // Standalone issue (no subissues)
@@ -717,7 +721,9 @@ export function groupIssuesByParent(issues: Issue[]): GroupedIssue[] {
   result.sort((a, b) => {
     const aParent = "parent" in a ? a.parent : a;
     const bParent = "parent" in b ? b.parent : b;
-    return aParent.state_name.localeCompare(bParent.state_name);
+    const aState = aParent.state_name || "";
+    const bState = bParent.state_name || "";
+    return aState.localeCompare(bState);
   });
 
   return result;

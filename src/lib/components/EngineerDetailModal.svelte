@@ -12,10 +12,13 @@
     estimate: number | null;
     priority: number;
     last_comment_at: string | null;
+    comment_count: number | null;
     started_at: string | null;
     url: string;
     team_name: string;
     project_name: string | null;
+    state_name?: string;
+    state_type?: string;
   }
 
   interface EngineerData {

@@ -7,6 +7,18 @@
     type GroupByOption,
   } from "$lib/utils/project-helpers";
   import { hasSubissueStatusMismatch } from "../../utils/issue-validators";
+  import {
+    calculateWIPAge,
+    formatWIPAge,
+    calculateIssueAccuracyRatio,
+    formatAccuracyRatio,
+    getAccuracyColorClass,
+    formatCommentRecency,
+  } from "$lib/utils/project-helpers";
+  import {
+    hasNoRecentComment,
+    hasMissingEstimate,
+  } from "../../utils/issue-validators";
   import UserProfile from "./UserProfile.svelte";
   import PriorityDisplay from "./PriorityDisplay.svelte";
   import StatusDisplay from "./StatusDisplay.svelte";
@@ -47,10 +59,18 @@
   let {
     issues,
     showAssignee = false,
+    showTeam = true,
+    showEstimateAccuracy = false,
+    daysPerStoryPoint = null,
+    groupByState = false,
     hideWarnings = false,
   }: {
     issues: IssueData[];
     showAssignee?: boolean;
+    showTeam?: boolean;
+    showEstimateAccuracy?: boolean;
+    daysPerStoryPoint?: number | null;
+    groupByState?: boolean;
     hideWarnings?: boolean;
   } = $props();
 
@@ -114,9 +134,45 @@
     return `${diffDays}d ago`;
   }
 
+  function formatCommentCount(count: number | null | undefined): string {
+    if (count === null || count === undefined || count === 0) {
+      return "—";
+    }
+    return String(count);
+  }
+
   // Prepare grouped data
   const groupedData = $derived(() => {
     const issuesAsIssues = issues as Issue[];
+
+    // State-based grouping (like ProjectDetailModal)
+    if (groupByState) {
+      const issuesByState = new Map<string, Issue[]>();
+      for (const issue of issuesAsIssues) {
+        const stateName = issue.state_name || "Unknown";
+        if (!issuesByState.has(stateName)) {
+          issuesByState.set(stateName, []);
+        }
+        issuesByState.get(stateName)!.push(issue);
+      }
+
+      // Sort states: completed first, then in progress, then others
+      const sortedStates = Array.from(issuesByState.entries()).sort((a, b) => {
+        const aLower = a[0].toLowerCase();
+        const bLower = b[0].toLowerCase();
+        if (aLower.includes("done") || aLower.includes("completed")) return -1;
+        if (bLower.includes("done") || bLower.includes("completed")) return 1;
+        if (aLower.includes("progress") || aLower.includes("started"))
+          return -1;
+        if (bLower.includes("progress") || bLower.includes("started")) return 1;
+        return a[0].localeCompare(b[0]);
+      });
+
+      return sortedStates.map(([state, stateIssues]) => ({
+        key: state,
+        issues: groupIssuesByParent(stateIssues),
+      }));
+    }
 
     if (groupBy === "none") {
       // Just group by parent-subissue
@@ -145,27 +201,34 @@
 {#if issues.length === 0}
   <div class="text-sm text-neutral-400">No issues found</div>
 {:else}
+  {@const columnCount =
+    (showAssignee ? 1 : 0) +
+    (showTeam ? 1 : 0) +
+    (showEstimateAccuracy ? 1 : 0) +
+    6}
   <div class="space-y-2">
-    <!-- Group by selector -->
-    <div class="flex justify-end items-center gap-2">
-      <label class="text-xs text-neutral-400">Group by:</label>
-      <select
-        bind:value={groupBy}
-        class="px-2 py-1 text-xs text-white rounded border transition-colors duration-150 bg-neutral-900 border-white/10 focus:border-violet-500 focus:ring-1 focus:ring-violet-500/50 focus:outline-none"
-      >
-        <option value="none">None</option>
-        <option value="assignee">Assignee</option>
-        <option value="status">Status</option>
-        <option value="priority">Priority</option>
-      </select>
-    </div>
+    <!-- Group by selector (hidden when groupByState is true) -->
+    {#if !groupByState}
+      <div class="flex justify-end items-center gap-2">
+        <label class="text-xs text-neutral-400">Group by:</label>
+        <select
+          bind:value={groupBy}
+          class="px-2 py-1 text-xs text-white rounded border transition-colors duration-150 bg-neutral-900 border-white/10 focus:border-violet-500 focus:ring-1 focus:ring-violet-500/50 focus:outline-none"
+        >
+          <option value="none">None</option>
+          <option value="assignee">Assignee</option>
+          <option value="status">Status</option>
+          <option value="priority">Priority</option>
+        </select>
+      </div>
+    {/if}
     <div class="overflow-x-auto">
-      <table class="w-full text-xs min-w-[600px]">
+      <table class="w-full text-xs min-w-[680px]">
         <thead>
           <tr class="border-b border-white/10">
             <th
-              class="px-2 py-1.5 font-medium text-left text-neutral-400 min-w-[200px]"
-              >Issue</th
+              class="px-2 py-1.5 font-medium text-left text-neutral-400 w-[310px] min-w-[310px]"
+              >Title</th
             >
             {#if showAssignee}
               <th
@@ -173,10 +236,6 @@
                 >Assignee</th
               >
             {/if}
-            <th
-              class="px-2 py-1.5 font-medium text-left text-neutral-400 w-[100px] min-w-[100px]"
-              >Team</th
-            >
             <th
               class="px-2 py-1.5 font-medium text-left text-neutral-400 w-[120px] min-w-[120px]"
               >Status</th
@@ -190,7 +249,7 @@
               >Priority</th
             >
             <th
-              class="px-2 py-1.5 font-medium text-right text-neutral-400 w-[100px] min-w-[100px]"
+              class="px-2 py-1.5 font-medium text-right text-neutral-400 w-[110px] min-w-[110px]"
               title="Time since last comment">Last Comment</th
             >
             <th
@@ -201,18 +260,22 @@
               class="px-2 py-1.5 font-medium text-right text-neutral-400 w-[70px] min-w-[70px]"
               >WIP Age</th
             >
+            {#if showEstimateAccuracy}
+              <th
+                class="px-2 py-1.5 font-medium text-right text-neutral-400 w-[120px] min-w-[120px]"
+                title="Ratio of actual time to estimated time. 1.0x = perfect match. < 1.0x = faster than estimated, > 1.0x = slower than estimated. Green = within 30%, Yellow = 30-70% off, Red = 70%+ off."
+                >Estimate Accuracy</th
+              >
+            {/if}
           </tr>
         </thead>
         <tbody>
           {#each groupedData() as group}
-            {#if groupBy !== "none"}
-              <!-- Group header -->
+            {#if groupByState || groupBy !== "none"}
+              <!-- Group header (State divider or other grouping) -->
               <tr>
-                <td
-                  colspan={showAssignee ? 9 : 8}
-                  class="px-2 py-2.5 bg-white/5"
-                >
-                  <span class="text-xs font-semibold text-neutral-400">
+                <td colspan={columnCount} class="px-2 py-2.5">
+                  <span class="-ml-1 text-xs font-semibold text-neutral-400">
                     {group.key} ({group.issues.reduce(
                       (count, gi) =>
                         count + ("parent" in gi ? 1 + gi.subissues.length : 1),
@@ -226,15 +289,32 @@
               {#if "parent" in groupedIssue}
                 {@const parent = groupedIssue.parent}
                 {@const subissues = groupedIssue.subissues}
-                {@const missingEstimate = checkMissingEstimate(parent)}
-                {@const noRecentComment = checkNoRecentComment(parent)}
-                {@const staleWIP = isStaleWIP(parent)}
-                {@const commentRecency = getCommentRecency(
+                {@const isCompleted = (() => {
+                  const stateName = parent.state_name?.toLowerCase() || "";
+                  return (
+                    stateName.includes("done") ||
+                    stateName.includes("completed")
+                  );
+                })()}
+                {@const wipAge = calculateWIPAge(parent, isCompleted)}
+                {@const issueAccuracyRatio =
+                  showEstimateAccuracy &&
+                  daysPerStoryPoint !== null &&
+                  isCompleted
+                    ? calculateIssueAccuracyRatio(parent, daysPerStoryPoint)
+                    : null}
+                {@const commentRecency = formatCommentRecency(
                   parent.last_comment_at
+                )}
+                {@const hasOldComment = hasNoRecentComment(parent)}
+                {@const missingEstimate = hasMissingEstimate(parent)}
+                {@const hasStatusMismatch = hasSubissueStatusMismatch(
+                  parent,
+                  issues as Issue[]
                 )}
                 <!-- Parent issue row -->
                 <tr
-                  class="border-b transition-colors cursor-pointer border-white/5 hover:bg-white/5"
+                  class="border-b transition-colors cursor-pointer border-white/5 hover:bg-white/5 focus:outline-none"
                   onclick={() => {
                     if (parent.url && browser) {
                       window.open(parent.url, "_blank", "noopener,noreferrer");
@@ -253,22 +333,17 @@
                     }
                   }}
                 >
-                  <td class="px-2 py-1.5">
-                    <div class="flex gap-2 items-center">
-                      <span class="font-mono text-neutral-500 shrink-0"
-                        >{parent.identifier}</span
-                      >
-                      <span
-                        class="text-neutral-200 truncate"
-                        title={parent.title}>{parent.title}</span
-                      >
+                  <td
+                    class="px-2 py-1.5 text-neutral-200 w-[310px] min-w-[310px] max-w-[310px]"
+                  >
+                    <div
+                      class="overflow-hidden truncate whitespace-nowrap text-ellipsis"
+                      title={parent.title}
+                    >
+                      {parent.title}
                       {#if subissues.length > 0}
-                        <span
-                          class="text-xs text-neutral-500"
-                          title="{subissues.length} subissue{subissues.length ===
-                          1
-                            ? ''
-                            : 's'}">({subissues.length})</span
+                        <span class="ml-1 text-xs text-neutral-500"
+                          >({subissues.length})</span
                         >
                       {/if}
                     </div>
@@ -284,25 +359,16 @@
                           size="xs"
                         />
                       {:else}
-                        <span class="text-neutral-500 text-xs">Unassigned</span>
+                        <span class="text-xs text-neutral-500">Unassigned</span>
                       {/if}
                     </td>
                   {/if}
-                  <td
-                    class="px-2 py-1.5 text-neutral-400 truncate max-w-[100px]"
-                  >
-                    {parent.team_name}
-                  </td>
                   <td class="px-2 py-1.5">
                     <StatusDisplay
                       stateName={parent.state_name || ""}
                       stateType={parent.state_type || ""}
                       showWarnings={!hideWarnings}
-                      warnings={!parent.parent_id &&
-                      hasSubissueStatusMismatch(
-                        parent as Issue,
-                        issues as Issue[]
-                      )
+                      warnings={hasStatusMismatch
                         ? [
                             {
                               type: "status-mismatch",
@@ -313,11 +379,13 @@
                         : []}
                     />
                   </td>
-                  <td class="px-2 py-1.5 text-right text-neutral-300">
-                    <div class="flex gap-1 justify-end items-center">
+                  <td
+                    class="px-2 py-1.5 text-right text-neutral-300 w-[70px] min-w-[70px]"
+                  >
+                    <div class="flex gap-1.5 justify-end items-center">
                       {#if parent.estimate !== null && parent.estimate !== undefined}
                         {Math.round(parent.estimate)}
-                      {:else if !hideWarnings}
+                      {:else if !hideWarnings && missingEstimate}
                         <span class="text-amber-400" title="Missing estimate"
                           >⚠️</span
                         >
@@ -326,58 +394,78 @@
                       {/if}
                     </div>
                   </td>
-                  <td class="px-2 py-1.5 text-right">
+                  <td class="px-2 py-1.5 text-right w-[80px] min-w-[80px]">
                     <div class="flex justify-end">
                       <PriorityDisplay priority={parent.priority || 0} />
                     </div>
                   </td>
-                  <td class="px-2 py-1.5 text-right">
-                    <div class="flex gap-1 justify-end items-center">
-                      {#if !hideWarnings && noRecentComment}
+                  <td class="px-2 py-1.5 text-right w-[110px] min-w-[110px]">
+                    <div class="flex gap-1.5 justify-end items-center">
+                      {#if !hideWarnings && hasOldComment}
                         <span
                           class="text-amber-400 shrink-0"
                           title="No comment since last business day">⚠️</span
                         >
                       {/if}
                       <span
-                        class={!hideWarnings && noRecentComment
+                        class={!hideWarnings && hasOldComment
                           ? "text-amber-400"
                           : "text-neutral-300"}>{commentRecency}</span
                       >
                     </div>
                   </td>
-                  <td class="px-2 py-1.5 text-right text-neutral-300">
-                    {parent.comment_count !== null &&
-                    parent.comment_count !== undefined
-                      ? parent.comment_count
-                      : "—"}
+                  <td
+                    class="px-2 py-1.5 text-right text-neutral-300 w-[80px] min-w-[80px]"
+                  >
+                    {formatCommentCount(parent.comment_count)}
                   </td>
-                  <td class="px-2 py-1.5 text-right">
-                    <div class="flex gap-1 justify-end items-center">
-                      {#if !hideWarnings && staleWIP}
+                  <td
+                    class="px-2 py-1.5 text-right text-neutral-300 w-[70px] min-w-[70px]"
+                  >
+                    {formatWIPAge(wipAge)}
+                  </td>
+                  {#if showEstimateAccuracy}
+                    <td class="px-2 py-1.5 text-right w-[120px] min-w-[120px]">
+                      {#if issueAccuracyRatio !== null}
                         <span
-                          class="text-amber-400 shrink-0"
-                          title="Over 14 days in WIP">⚠️</span
+                          class={getAccuracyColorClass(issueAccuracyRatio)}
+                          title={issueAccuracyRatio === 1.0
+                            ? "Perfect match! Actual time equals estimated time (1.0x)"
+                            : issueAccuracyRatio >= 1.0
+                              ? `Took ${((issueAccuracyRatio - 1) * 100).toFixed(0)}% longer than estimated (goal: 1.0x)`
+                              : `Completed ${((1 - issueAccuracyRatio) * 100).toFixed(0)}% faster than estimated (goal: 1.0x)`}
                         >
+                          {formatAccuracyRatio(issueAccuracyRatio)}
+                        </span>
+                      {:else}
+                        <span class="text-neutral-500">—</span>
                       {/if}
-                      <span
-                        class={!hideWarnings && staleWIP
-                          ? "text-amber-400"
-                          : "text-neutral-300"}
-                        >{formatIssueWIPAge(parent)}</span
-                      >
-                    </div>
-                  </td>
+                    </td>
+                  {/if}
                 </tr>
                 <!-- Subissue rows -->
                 {#each subissues as subissue}
-                  {@const subNoRecentComment = checkNoRecentComment(subissue)}
-                  {@const subStaleWIP = isStaleWIP(subissue)}
-                  {@const subCommentRecency = getCommentRecency(
+                  {@const subIsCompleted = (() => {
+                    const stateName = subissue.state_name?.toLowerCase() || "";
+                    return (
+                      stateName.includes("done") ||
+                      stateName.includes("completed")
+                    );
+                  })()}
+                  {@const subWipAge = calculateWIPAge(subissue, subIsCompleted)}
+                  {@const subIssueAccuracyRatio =
+                    showEstimateAccuracy &&
+                    daysPerStoryPoint !== null &&
+                    subIsCompleted
+                      ? calculateIssueAccuracyRatio(subissue, daysPerStoryPoint)
+                      : null}
+                  {@const subCommentRecency = formatCommentRecency(
                     subissue.last_comment_at
                   )}
+                  {@const subHasOldComment = hasNoRecentComment(subissue)}
+                  {@const subMissingEstimate = hasMissingEstimate(subissue)}
                   <tr
-                    class="border-b transition-colors cursor-pointer border-white/5 hover:bg-white/5"
+                    class="border-b transition-colors cursor-pointer border-white/5 hover:bg-white/5 focus:outline-none"
                     onclick={() => {
                       if (subissue.url && browser) {
                         window.open(
@@ -404,16 +492,15 @@
                       }
                     }}
                   >
-                    <td class="px-2 py-1.5">
-                      <div class="flex gap-2 items-center pl-6">
-                        <span class="text-neutral-400 shrink-0">↳</span>
-                        <span class="font-mono text-neutral-500 shrink-0"
-                          >{subissue.identifier}</span
-                        >
-                        <span
-                          class="text-neutral-200 truncate"
-                          title={subissue.title}>{subissue.title}</span
-                        >
+                    <td
+                      class="px-2 py-1.5 text-neutral-200 w-[310px] min-w-[310px] max-w-[310px]"
+                    >
+                      <div
+                        class="overflow-hidden pl-6 truncate whitespace-nowrap text-ellipsis"
+                        title={subissue.title}
+                      >
+                        <span class="mr-1 text-neutral-400 shrink-0">↳</span>
+                        {subissue.title}
                       </div>
                     </td>
                     {#if showAssignee}
@@ -427,17 +514,12 @@
                             size="xs"
                           />
                         {:else}
-                          <span class="text-neutral-500 text-xs"
+                          <span class="text-xs text-neutral-500"
                             >Unassigned</span
                           >
                         {/if}
                       </td>
                     {/if}
-                    <td
-                      class="px-2 py-1.5 text-neutral-400 truncate max-w-[100px]"
-                    >
-                      {subissue.team_name}
-                    </td>
                     <td class="px-2 py-1.5">
                       <StatusDisplay
                         stateName={subissue.state_name || ""}
@@ -446,11 +528,13 @@
                         warnings={[]}
                       />
                     </td>
-                    <td class="px-2 py-1.5 text-right text-neutral-300">
-                      <div class="flex gap-1 justify-end items-center">
+                    <td
+                      class="px-2 py-1.5 text-right text-neutral-300 w-[70px] min-w-[70px]"
+                    >
+                      <div class="flex gap-1.5 justify-end items-center">
                         {#if subissue.estimate !== null && subissue.estimate !== undefined}
                           {Math.round(subissue.estimate)}
-                        {:else if !hideWarnings}
+                        {:else if !hideWarnings && subMissingEstimate}
                           <span class="text-amber-400" title="Missing estimate"
                             >⚠️</span
                           >
@@ -459,60 +543,81 @@
                         {/if}
                       </div>
                     </td>
-                    <td class="px-2 py-1.5 text-right">
+                    <td class="px-2 py-1.5 text-right w-[80px] min-w-[80px]">
                       <div class="flex justify-end">
                         <PriorityDisplay priority={subissue.priority || 0} />
                       </div>
                     </td>
-                    <td class="px-2 py-1.5 text-right">
-                      <div class="flex gap-1 justify-end items-center">
-                        {#if !hideWarnings && subNoRecentComment}
+                    <td class="px-2 py-1.5 text-right w-[110px] min-w-[110px]">
+                      <div class="flex gap-1.5 justify-end items-center">
+                        {#if !hideWarnings && subHasOldComment}
                           <span
                             class="text-amber-400 shrink-0"
                             title="No comment since last business day">⚠️</span
                           >
                         {/if}
                         <span
-                          class={!hideWarnings && subNoRecentComment
+                          class={!hideWarnings && subHasOldComment
                             ? "text-amber-400"
                             : "text-neutral-300"}>{subCommentRecency}</span
                         >
                       </div>
                     </td>
-                    <td class="px-2 py-1.5 text-right text-neutral-300">
-                      {subissue.comment_count !== null &&
-                      subissue.comment_count !== undefined
-                        ? subissue.comment_count
-                        : "—"}
+                    <td
+                      class="px-2 py-1.5 text-right text-neutral-300 w-[80px] min-w-[80px]"
+                    >
+                      {formatCommentCount(subissue.comment_count)}
                     </td>
-                    <td class="px-2 py-1.5 text-right">
-                      <div class="flex gap-1 justify-end items-center">
-                        {#if !hideWarnings && subStaleWIP}
+                    <td
+                      class="px-2 py-1.5 text-right text-neutral-300 w-[70px] min-w-[70px]"
+                    >
+                      {formatWIPAge(subWipAge)}
+                    </td>
+                    {#if showEstimateAccuracy}
+                      <td
+                        class="px-2 py-1.5 text-right w-[120px] min-w-[120px]"
+                      >
+                        {#if subIssueAccuracyRatio !== null}
                           <span
-                            class="text-amber-400 shrink-0"
-                            title="Over 14 days in WIP">⚠️</span
+                            class={getAccuracyColorClass(subIssueAccuracyRatio)}
+                            title={subIssueAccuracyRatio === 1.0
+                              ? "Perfect match! Actual time equals estimated time (1.0x)"
+                              : subIssueAccuracyRatio >= 1.0
+                                ? `Took ${((subIssueAccuracyRatio - 1) * 100).toFixed(0)}% longer than estimated (goal: 1.0x)`
+                                : `Completed ${((1 - subIssueAccuracyRatio) * 100).toFixed(0)}% faster than estimated (goal: 1.0x)`}
                           >
+                            {formatAccuracyRatio(subIssueAccuracyRatio)}
+                          </span>
+                        {:else}
+                          <span class="text-neutral-500">—</span>
                         {/if}
-                        <span
-                          class={!hideWarnings && subStaleWIP
-                            ? "text-amber-400"
-                            : "text-neutral-300"}
-                          >{formatIssueWIPAge(subissue)}</span
-                        >
-                      </div>
-                    </td>
+                      </td>
+                    {/if}
                   </tr>
                 {/each}
               {:else}
                 {@const issue = groupedIssue}
-                {@const missingEstimate = checkMissingEstimate(issue)}
-                {@const noRecentComment = checkNoRecentComment(issue)}
-                {@const staleWIP = isStaleWIP(issue)}
-                {@const commentRecency = getCommentRecency(
+                {@const isCompleted = (() => {
+                  const stateName = issue.state_name?.toLowerCase() || "";
+                  return (
+                    stateName.includes("done") ||
+                    stateName.includes("completed")
+                  );
+                })()}
+                {@const wipAge = calculateWIPAge(issue, isCompleted)}
+                {@const issueAccuracyRatio =
+                  showEstimateAccuracy &&
+                  daysPerStoryPoint !== null &&
+                  isCompleted
+                    ? calculateIssueAccuracyRatio(issue, daysPerStoryPoint)
+                    : null}
+                {@const commentRecency = formatCommentRecency(
                   issue.last_comment_at
                 )}
+                {@const hasOldComment = hasNoRecentComment(issue)}
+                {@const missingEstimate = hasMissingEstimate(issue)}
                 <tr
-                  class="border-b transition-colors cursor-pointer border-white/5 hover:bg-white/5"
+                  class="border-b transition-colors cursor-pointer border-white/5 hover:bg-white/5 focus:outline-none"
                   onclick={() => {
                     if (issue.url && browser) {
                       window.open(issue.url, "_blank", "noopener,noreferrer");
@@ -531,15 +636,14 @@
                     }
                   }}
                 >
-                  <td class="px-2 py-1.5">
-                    <div class="flex gap-2 items-center">
-                      <span class="font-mono text-neutral-500 shrink-0"
-                        >{issue.identifier}</span
-                      >
-                      <span
-                        class="text-neutral-200 truncate"
-                        title={issue.title}>{issue.title}</span
-                      >
+                  <td
+                    class="px-2 py-1.5 text-neutral-200 w-[310px] min-w-[310px] max-w-[310px]"
+                  >
+                    <div
+                      class="overflow-hidden truncate whitespace-nowrap text-ellipsis"
+                      title={issue.title}
+                    >
+                      {issue.title}
                     </div>
                   </td>
                   {#if showAssignee}
@@ -553,40 +657,25 @@
                           size="xs"
                         />
                       {:else}
-                        <span class="text-neutral-500 text-xs">Unassigned</span>
+                        <span class="text-xs text-neutral-500">Unassigned</span>
                       {/if}
                     </td>
                   {/if}
-                  <td
-                    class="px-2 py-1.5 text-neutral-400 truncate max-w-[100px]"
-                  >
-                    {issue.team_name}
-                  </td>
                   <td class="px-2 py-1.5">
                     <StatusDisplay
                       stateName={issue.state_name || ""}
                       stateType={issue.state_type || ""}
                       showWarnings={!hideWarnings}
-                      warnings={!issue.parent_id &&
-                      hasSubissueStatusMismatch(
-                        issue as Issue,
-                        issues as Issue[]
-                      )
-                        ? [
-                            {
-                              type: "status-mismatch",
-                              message:
-                                "Parent issue is done but has incomplete subissues",
-                            },
-                          ]
-                        : []}
+                      warnings={[]}
                     />
                   </td>
-                  <td class="px-2 py-1.5 text-right text-neutral-300">
-                    <div class="flex gap-1 justify-end items-center">
+                  <td
+                    class="px-2 py-1.5 text-right text-neutral-300 w-[70px] min-w-[70px]"
+                  >
+                    <div class="flex gap-1.5 justify-end items-center">
                       {#if issue.estimate !== null && issue.estimate !== undefined}
                         {Math.round(issue.estimate)}
-                      {:else if !hideWarnings}
+                      {:else if !hideWarnings && missingEstimate}
                         <span class="text-amber-400" title="Missing estimate"
                           >⚠️</span
                         >
@@ -595,47 +684,54 @@
                       {/if}
                     </div>
                   </td>
-                  <td class="px-2 py-1.5 text-right">
+                  <td class="px-2 py-1.5 text-right w-[80px] min-w-[80px]">
                     <div class="flex justify-end">
                       <PriorityDisplay priority={issue.priority || 0} />
                     </div>
                   </td>
-                  <td class="px-2 py-1.5 text-right">
-                    <div class="flex gap-1 justify-end items-center">
-                      {#if !hideWarnings && noRecentComment}
+                  <td class="px-2 py-1.5 text-right w-[110px] min-w-[110px]">
+                    <div class="flex gap-1.5 justify-end items-center">
+                      {#if !hideWarnings && hasOldComment}
                         <span
                           class="text-amber-400 shrink-0"
                           title="No comment since last business day">⚠️</span
                         >
                       {/if}
                       <span
-                        class={!hideWarnings && noRecentComment
+                        class={!hideWarnings && hasOldComment
                           ? "text-amber-400"
                           : "text-neutral-300"}>{commentRecency}</span
                       >
                     </div>
                   </td>
-                  <td class="px-2 py-1.5 text-right text-neutral-300">
-                    {issue.comment_count !== null &&
-                    issue.comment_count !== undefined
-                      ? issue.comment_count
-                      : "—"}
+                  <td
+                    class="px-2 py-1.5 text-right text-neutral-300 w-[80px] min-w-[80px]"
+                  >
+                    {formatCommentCount(issue.comment_count)}
                   </td>
-                  <td class="px-2 py-1.5 text-right">
-                    <div class="flex gap-1 justify-end items-center">
-                      {#if !hideWarnings && staleWIP}
+                  <td
+                    class="px-2 py-1.5 text-right text-neutral-300 w-[70px] min-w-[70px]"
+                  >
+                    {formatWIPAge(wipAge)}
+                  </td>
+                  {#if showEstimateAccuracy}
+                    <td class="px-2 py-1.5 text-right w-[120px] min-w-[120px]">
+                      {#if issueAccuracyRatio !== null}
                         <span
-                          class="text-amber-400 shrink-0"
-                          title="Over 14 days in WIP">⚠️</span
+                          class={getAccuracyColorClass(issueAccuracyRatio)}
+                          title={issueAccuracyRatio === 1.0
+                            ? "Perfect match! Actual time equals estimated time (1.0x)"
+                            : issueAccuracyRatio >= 1.0
+                              ? `Took ${((issueAccuracyRatio - 1) * 100).toFixed(0)}% longer than estimated (goal: 1.0x)`
+                              : `Completed ${((1 - issueAccuracyRatio) * 100).toFixed(0)}% faster than estimated (goal: 1.0x)`}
                         >
+                          {formatAccuracyRatio(issueAccuracyRatio)}
+                        </span>
+                      {:else}
+                        <span class="text-neutral-500">—</span>
                       {/if}
-                      <span
-                        class={!hideWarnings && staleWIP
-                          ? "text-amber-400"
-                          : "text-neutral-300"}>{formatIssueWIPAge(issue)}</span
-                      >
-                    </div>
-                  </td>
+                    </td>
+                  {/if}
                 </tr>
               {/if}
             {/each}

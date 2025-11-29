@@ -45,6 +45,7 @@ export interface ProjectSummary {
   velocityByTeam: Map<string, number>;
   labels: string[];
   projectUpdates: ProjectUpdate[];
+  lastSyncedAt: string | null;
 }
 
 export interface TeamSummary {
@@ -122,6 +123,7 @@ function projectToSummary(project: Project): ProjectSummary {
     velocityByTeam,
     labels: project.labels ? JSON.parse(project.labels) : [],
     projectUpdates,
+    lastSyncedAt: project.last_synced_at,
   };
 }
 

@@ -80,6 +80,7 @@ export interface Project {
   velocity_by_team: string;
   labels: string | null;
   project_updates: string | null;
+  last_synced_at: string | null;
 }
 
 export interface Engineer {
@@ -425,6 +426,13 @@ export function initializeDatabase(db: Database): void {
   // Add avatar_url column to engineers table if it doesn't exist (migration)
   try {
     db.run(`ALTER TABLE engineers ADD COLUMN avatar_url TEXT`);
+  } catch (e) {
+    // Column already exists, ignore
+  }
+
+  // Add last_synced_at column to projects table if it doesn't exist (migration)
+  try {
+    db.run(`ALTER TABLE projects ADD COLUMN last_synced_at TEXT`);
   } catch (e) {
     // Column already exists, ignore
   }

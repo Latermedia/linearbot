@@ -15,6 +15,7 @@ export interface SyncState {
   status: "idle" | "syncing" | "error";
   error?: string;
   progressPercent?: number;
+  syncingProjectId?: string; // Track which project is being synced (undefined = full sync)
   stats?: SyncStats;
 }
 

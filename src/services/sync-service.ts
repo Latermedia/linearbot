@@ -311,7 +311,8 @@ export async function performSync(
       const computedProjectCount = await computeAndStoreProjects(
         projectLabelsMap,
         projectDescriptions,
-        projectUpdates
+        projectUpdates,
+        projectIds // All projects were synced in mock data path
       );
 
       // Compute and store engineer WIP metrics
@@ -729,10 +730,18 @@ export async function performSync(
 
     // Compute and store project metrics
     console.log(`[SYNC] Computing project metrics...`);
+    // Collect all project IDs that were synced (from both started issues and project issues)
+    const allSyncedProjectIds = new Set<string>();
+    for (const issue of [...startedIssues, ...projectIssues]) {
+      if (issue.projectId) {
+        allSyncedProjectIds.add(issue.projectId);
+      }
+    }
     const computedProjectCount = await computeAndStoreProjects(
       projectLabelsMap,
       projectDescriptionsMap,
-      projectUpdatesMap
+      projectUpdatesMap,
+      allSyncedProjectIds
     );
     console.log(
       `[SYNC] Computed metrics for ${computedProjectCount} project(s)`
@@ -867,13 +876,260 @@ export async function performSync(
 }
 
 /**
+ * Sync a single project by project ID
+ * @param projectId - The Linear project ID to sync
+ * @param callbacks - Optional callbacks for progress updates
+ */
+export async function syncProject(
+  projectId: string,
+  callbacks?: SyncCallbacks
+): Promise<SyncResult> {
+  let cumulativeNewCount = 0;
+  let cumulativeUpdatedCount = 0;
+
+  try {
+    // Update sync status to 'syncing'
+    setSyncStatus("syncing");
+    updateSyncMetadata({ sync_error: null, sync_progress_percent: 0 });
+
+    // Check for mock mode
+    if (isMockMode()) {
+      console.log("[SYNC] Mock mode: skipping project sync");
+      const mockIssues = generateMockData();
+      const projectMockIssues = mockIssues.filter(
+        (i) => i.projectId === projectId
+      );
+      const counts = writeIssuesToDatabase(projectMockIssues);
+      cumulativeNewCount += counts.newCount;
+      cumulativeUpdatedCount += counts.updatedCount;
+
+      callbacks?.onProgressPercent?.(100);
+      setSyncProgress(100);
+
+      const syncTime = new Date().toISOString();
+      setSyncStatus("idle");
+      updateSyncMetadata({
+        last_sync_time: syncTime,
+        sync_error: null,
+        sync_progress_percent: null,
+      });
+
+      const total = getTotalIssueCount();
+      return {
+        success: true,
+        newCount: counts.newCount,
+        updatedCount: counts.updatedCount,
+        totalCount: total,
+        issueCount: projectMockIssues.length,
+        projectCount: 1,
+        projectIssueCount: projectMockIssues.length,
+      };
+    }
+
+    // Connect to Linear
+    const linearClient = createLinearClient();
+    callbacks?.onProgressPercent?.(10);
+    setSyncProgress(10);
+
+    console.log(`[SYNC] Testing Linear API connection...`);
+    const connected = await linearClient.testConnection();
+
+    if (!connected) {
+      const errorMsg = "Failed to connect to Linear. Check your API key.";
+      console.error("[SYNC] Failed to connect to Linear API");
+      setSyncStatus("error");
+      updateSyncMetadata({ sync_error: errorMsg, sync_progress_percent: null });
+      return {
+        success: false,
+        newCount: 0,
+        updatedCount: 0,
+        totalCount: 0,
+        issueCount: 0,
+        projectCount: 0,
+        projectIssueCount: 0,
+        error: errorMsg,
+      };
+    }
+    console.log("[SYNC] Linear API connection successful");
+
+    // Fetch project issues
+    callbacks?.onProgressPercent?.(30);
+    setSyncProgress(30);
+
+    console.log(`[SYNC] Fetching issues for project: ${projectId}`);
+    let projectIssues: LinearIssueData[] = [];
+    let projectName: string | null = null;
+
+    try {
+      projectIssues = await linearClient.fetchIssuesByProjects(
+        [projectId],
+        (count, pageSize, projectIndex, totalProjects) => {
+          callbacks?.onProjectIssueCountUpdate?.(count);
+          if (projectIndex !== undefined && totalProjects !== undefined) {
+            const percent = Math.min(30 + Math.round((count / 100) * 50), 80);
+            callbacks?.onProgressPercent?.(percent);
+            setSyncProgress(percent);
+          }
+        }
+      );
+
+      // Get project name from first issue
+      if (projectIssues.length > 0 && projectIssues[0].projectName) {
+        projectName = projectIssues[0].projectName;
+        callbacks?.onProjectProgress?.(1, 1, projectName);
+      }
+
+      // Write project issues to database
+      if (projectIssues.length > 0) {
+        console.log(
+          `[SYNC] Writing ${projectIssues.length} project issues to database...`
+        );
+        const counts = writeIssuesToDatabase(projectIssues);
+        cumulativeNewCount += counts.newCount;
+        cumulativeUpdatedCount += counts.updatedCount;
+        console.log(
+          `[SYNC] Wrote project issues - New: ${counts.newCount}, Updated: ${counts.updatedCount}`
+        );
+      }
+
+      callbacks?.onProgressPercent?.(80);
+      setSyncProgress(80);
+    } catch (error) {
+      const errorMessage =
+        error instanceof Error ? error.message : "Unknown error";
+      console.error(`[SYNC] Error fetching project issues:`, errorMessage);
+
+      if (error instanceof RateLimitError) {
+        const errorMsg = "Rate limit exceeded during project sync";
+        console.error(`[SYNC] ${errorMsg}`);
+        setSyncStatus("error");
+        updateSyncMetadata({
+          sync_error: errorMsg,
+          sync_progress_percent: null,
+        });
+        const total = getTotalIssueCount();
+        return {
+          success: false,
+          newCount: cumulativeNewCount,
+          updatedCount: cumulativeUpdatedCount,
+          totalCount: total,
+          issueCount: 0,
+          projectCount: 0,
+          projectIssueCount: projectIssues.length,
+          error: errorMsg,
+        };
+      }
+      throw error;
+    }
+
+    // Collect project labels from fetched issues
+    const projectLabelsMap = new Map<string, string[]>();
+    for (const issue of projectIssues) {
+      if (
+        issue.projectId &&
+        issue.projectLabels &&
+        issue.projectLabels.length > 0
+      ) {
+        if (!projectLabelsMap.has(issue.projectId)) {
+          projectLabelsMap.set(issue.projectId, issue.projectLabels);
+        }
+      }
+    }
+
+    // Compute and store project metrics for this project
+    console.log(`[SYNC] Computing project metrics...`);
+    callbacks?.onProgressPercent?.(90);
+    setSyncProgress(90);
+
+    const computedProjectCount = await computeAndStoreProjects(
+      projectLabelsMap,
+      undefined,
+      undefined,
+      new Set([projectId]) // Only this project was synced
+    );
+    console.log(
+      `[SYNC] Computed metrics for ${computedProjectCount} project(s)`
+    );
+
+    // Compute and store engineer WIP metrics
+    console.log(`[SYNC] Computing engineer WIP metrics...`);
+    const computedEngineerCount = computeAndStoreEngineers();
+    console.log(
+      `[SYNC] Computed metrics for ${computedEngineerCount} engineer(s)`
+    );
+
+    callbacks?.onProgressPercent?.(100);
+    setSyncProgress(100);
+
+    // Update sync metadata on success
+    const syncTime = new Date().toISOString();
+    setSyncStatus("idle");
+    updateSyncMetadata({
+      last_sync_time: syncTime,
+      sync_error: null,
+      sync_progress_percent: null,
+    });
+
+    const total = getTotalIssueCount();
+    console.log(
+      `[SYNC] Project sync complete - New: ${cumulativeNewCount}, Updated: ${cumulativeUpdatedCount}, Total: ${total}, Project Issues: ${projectIssues.length}`
+    );
+
+    return {
+      success: true,
+      newCount: cumulativeNewCount,
+      updatedCount: cumulativeUpdatedCount,
+      totalCount: total,
+      issueCount: projectIssues.length,
+      projectCount: computedProjectCount,
+      projectIssueCount: projectIssues.length,
+    };
+  } catch (error) {
+    const errorMessage =
+      error instanceof Error ? error.message : "Unknown error";
+    console.error(`[SYNC] Project sync error:`, errorMessage);
+
+    // Check if it's a schema mismatch error
+    const isSchemaError =
+      (errorMessage.includes("values for") &&
+        errorMessage.includes("columns")) ||
+      errorMessage.includes("no such column") ||
+      errorMessage.includes("table_info");
+
+    const finalError = isSchemaError
+      ? `${errorMessage}\n\n💡 Tip: This looks like a schema mismatch. Try resetting the database:\n   bun run reset-db`
+      : errorMessage;
+
+    // Update sync metadata on error
+    setSyncStatus("error");
+    updateSyncMetadata({
+      sync_error: finalError,
+      sync_progress_percent: null,
+    });
+
+    return {
+      success: false,
+      newCount: cumulativeNewCount,
+      updatedCount: cumulativeUpdatedCount,
+      totalCount: 0,
+      issueCount: 0,
+      projectCount: 0,
+      projectIssueCount: 0,
+      error: finalError,
+    };
+  }
+}
+
+/**
  * Compute project metrics from issues and store in projects table
  */
 async function computeAndStoreProjects(
   projectLabelsMap?: Map<string, string[]>,
   projectDescriptionsMap?: Map<string, string | null>,
-  projectUpdatesMap?: Map<string, ProjectUpdate[]>
+  projectUpdatesMap?: Map<string, ProjectUpdate[]>,
+  syncedProjectIds?: Set<string>
 ): Promise<number> {
+  const syncTimestamp = syncedProjectIds ? new Date().toISOString() : null;
   const allIssues = getAllIssues();
 
   // Group issues by project
@@ -1153,6 +1409,7 @@ async function computeAndStoreProjects(
       velocity_by_team: velocityByTeamJson,
       labels: labelsJson,
       project_updates: projectUpdatesJson,
+      last_synced_at: syncedProjectIds?.has(projectId) ? syncTimestamp : null,
     };
 
     upsertProject(project);
@@ -1184,10 +1441,13 @@ interface IssueSummary {
   estimate: number | null;
   priority: number;
   last_comment_at: string | null;
+  comment_count: number | null;
   started_at: string | null;
   url: string;
   team_name: string;
   project_name: string | null;
+  state_name?: string;
+  state_type?: string;
 }
 
 /**
@@ -1286,10 +1546,13 @@ function computeAndStoreEngineers(): number {
       estimate: issue.estimate,
       priority: issue.priority,
       last_comment_at: issue.last_comment_at,
+      comment_count: issue.comment_count,
       started_at: issue.started_at,
       url: issue.url,
       team_name: issue.team_name,
       project_name: issue.project_name,
+      state_name: issue.state_name,
+      state_type: issue.state_type,
     }));
 
     const engineer: Engineer = {

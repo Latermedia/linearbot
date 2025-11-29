@@ -2,7 +2,6 @@
   import { onMount, onDestroy } from "svelte";
   import { browser } from "$app/environment";
   import Modal from "$lib/components/Modal.svelte";
-  import SyncIndicator from "$lib/components/SyncIndicator.svelte";
   import StatusScroller from "$lib/components/StatusScroller.svelte";
   import Button from "$lib/components/Button.svelte";
   import { databaseStore } from "../stores/database";
@@ -29,6 +28,12 @@
   let pollIntervalId: number | undefined;
   let statusPollIntervalId: number | undefined;
   let syncErrorMessage = $state<string | null>(null);
+  let syncProgressPercent = $state<number | null>(null);
+  let hasPartialSync = $state(false);
+  let partialSyncProgress = $state<{ completed: number; total: number } | null>(
+    null
+  );
+  let syncingProjectId = $state<string | null>(null);
 
   // Sync stats
   interface SyncStats {
@@ -113,6 +118,10 @@
         syncStatus = data.status;
         serverLastSyncTime = data.lastSyncTime;
         syncErrorMessage = data.error || null;
+        syncProgressPercent = data.progressPercent ?? null;
+        hasPartialSync = data.hasPartialSync ?? false;
+        partialSyncProgress = data.partialSyncProgress ?? null;
+        syncingProjectId = data.syncingProjectId ?? null;
         syncStats = data.stats ?? null;
 
         // Generate status message for streaming display
@@ -145,6 +154,7 @@
           previousLastSyncTime = serverLastSyncTime;
           syncStats = null;
           statusMessages = [];
+          syncProgressPercent = null;
           await databaseStore.load();
           await fetchSystemStats(); // Refresh system stats after sync
         } else if (
@@ -156,6 +166,7 @@
           previousLastSyncTime = serverLastSyncTime;
           syncStats = null;
           statusMessages = [];
+          syncProgressPercent = null;
           await databaseStore.load();
           await fetchSystemStats();
         } else if (syncStatus === "error" && isRefreshing) {
@@ -167,6 +178,7 @@
         } else if (syncStatus === "idle" && !data.isRunning) {
           isRefreshing = false;
           syncStats = null;
+          syncProgressPercent = null;
         }
 
         // Update previous sync time if it changed
@@ -340,17 +352,49 @@
       <div class="space-y-3">
         <div class="flex items-center justify-between gap-2">
           <span class="text-xs font-medium text-neutral-400">Sync Status</span>
-          <div class="flex items-center shrink-0">
-            <SyncIndicator />
-          </div>
         </div>
 
         <!-- Status message or last sync time -->
-        <div class="min-h-[3rem]">
+        <div class="min-h-[3rem] space-y-1.5">
           {#if isSyncing && statusMessages.length > 0}
             <StatusScroller messages={statusMessages} />
+            {#if syncProgressPercent !== null}
+              <div class="flex items-center gap-2">
+                <div
+                  class="flex-1 h-1 bg-neutral-800 rounded-full overflow-hidden"
+                >
+                  <div
+                    class="h-full bg-violet-500 transition-all duration-300"
+                    style="width: {syncProgressPercent}%"
+                  ></div>
+                </div>
+                <span class="text-xs text-neutral-500 tabular-nums shrink-0">
+                  {syncProgressPercent}%
+                </span>
+              </div>
+            {/if}
           {:else if syncErrorMessage}
-            <p class="text-xs text-red-400">{syncErrorMessage}</p>
+            <div class="space-y-1">
+              <p class="text-xs text-red-400">{syncErrorMessage}</p>
+              {#if hasPartialSync && partialSyncProgress}
+                <p class="text-xs text-amber-400">
+                  Partial sync: {partialSyncProgress.completed} of {partialSyncProgress.total}
+                  projects completed
+                </p>
+              {/if}
+            </div>
+          {:else if hasPartialSync && partialSyncProgress}
+            <div class="space-y-1">
+              <p class="text-xs text-amber-400">
+                Partial sync detected: {partialSyncProgress.completed} of {partialSyncProgress.total}
+                projects completed
+              </p>
+              {#if lastSyncDate}
+                <p class="text-xs text-neutral-500">
+                  Last synced {formatLastSync(lastSyncDate)}
+                </p>
+              {/if}
+            </div>
           {:else if lastSyncDate}
             <p class="text-xs text-neutral-500">
               Last synced {formatLastSync(lastSyncDate)}

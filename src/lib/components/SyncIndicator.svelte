@@ -4,6 +4,12 @@
   import { tweened } from "svelte/motion";
   import { cubicOut } from "svelte/easing";
 
+  let {
+    projectId,
+  }: {
+    projectId?: string;
+  } = $props();
+
   let syncStatus = $state<"idle" | "syncing" | "error">("idle");
   let isRunning = $state(false);
   let progressPercent = $state<number | null>(null);
@@ -12,6 +18,7 @@
   let partialSyncProgress = $state<{ completed: number; total: number } | null>(
     null
   );
+  let syncingProjectId = $state<string | null>(null);
   let pollIntervalId: number | undefined;
 
   // Animated progress value for smooth transitions
@@ -24,6 +31,20 @@
       const response = await fetch("/api/sync/status");
       if (response.ok) {
         const data = await response.json();
+        syncingProjectId = data.syncingProjectId || null;
+
+        // If this is a project-specific indicator, only show if syncing this project or full sync
+        // If no projectId prop, show for any sync
+        const shouldShow = projectId
+          ? syncingProjectId === projectId || syncingProjectId === null
+          : true;
+
+        if (!shouldShow) {
+          syncStatus = "idle";
+          isRunning = false;
+          return;
+        }
+
         syncStatus = data.status || "idle";
         isRunning = data.isRunning || false;
         error = data.error || null;
@@ -62,11 +83,17 @@
 
   // Build tooltip text
   const tooltipText = $derived(() => {
+    const syncType = syncingProjectId
+      ? `project (${syncingProjectId})`
+      : "all projects";
     if (hasPartialSync && partialSyncProgress) {
       return `Partial sync: ${partialSyncProgress.completed} of ${partialSyncProgress.total} projects completed. ${error || "Will resume on next sync."}`;
     }
     if (error) {
-      return error;
+      return `Sync error (${syncType}): ${error}`;
+    }
+    if (isSyncing) {
+      return `Syncing ${syncType}...`;
     }
     return null;
   });

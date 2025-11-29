@@ -32,6 +32,8 @@
   } from "../../utils/issue-validators";
   import PriorityDisplay from "./PriorityDisplay.svelte";
   import StatusDisplay from "./StatusDisplay.svelte";
+  import SyncIndicator from "./SyncIndicator.svelte";
+  import { RefreshCw } from "lucide-svelte";
 
   let {
     project,
@@ -47,6 +49,7 @@
   let projectIssues = $state<Issue[]>([]);
   let issuesLoading = $state(true);
   let showAllHealthUpdates = $state(false);
+  let isSyncingProject = $state(false);
 
   async function fetchProjectUrl() {
     if (!browser) return;
@@ -92,6 +95,37 @@
     }
   }
 
+  function formatCommentCount(count: number | null | undefined): string {
+    if (count === null || count === undefined || count === 0) {
+      return "—";
+    }
+    return String(count);
+  }
+
+  async function syncProject() {
+    if (!browser || isSyncingProject) return;
+    try {
+      isSyncingProject = true;
+      const response = await fetch(`/api/sync/project/${project.projectId}`, {
+        method: "POST",
+      });
+      if (response.ok) {
+        // Refresh project issues after sync completes
+        // We'll poll for completion via SyncIndicator
+        setTimeout(() => {
+          fetchProjectIssues();
+        }, 2000);
+      } else {
+        const data = await response.json();
+        console.error("Failed to start project sync:", data.message);
+      }
+    } catch (error) {
+      console.error("Failed to sync project:", error);
+    } finally {
+      isSyncingProject = false;
+    }
+  }
+
   // Use pre-computed metrics from project (computed during sync)
   // Only compute projectAge on-demand since it depends on current time
   const projectAge = $derived(calculateProjectAge(project.startDate));
@@ -120,24 +154,17 @@
           class="flex gap-2 items-center text-xl font-medium text-white"
         >
           {project.projectName}
-          {#if !hideWarnings && (project.hasStatusMismatch || project.isStaleUpdate || project.missingLead || project.hasViolations || project.hasDateDiscrepancy)}
-            <span
-              class="text-amber-500"
-              title={[
-                project.hasStatusMismatch &&
-                  "Status Mismatch: Project status doesn't match active work",
-                project.isStaleUpdate &&
-                  "Stale Update: Project hasn't been updated in 7+ days",
-                project.missingLead && "Missing Lead: No project lead assigned",
-                project.hasViolations &&
-                  "Violations: Some issues have missing estimates, no recent comments, or missing priority",
-                project.hasDateDiscrepancy &&
-                  "Date Discrepancy: Target and predicted dates differ by 30+ days",
-              ]
-                .filter(Boolean)
-                .join("\n")}>⚠️</span
-            >
-          {/if}
+          <button
+            class="ml-2 inline-flex justify-center items-center p-1.5 rounded transition-colors duration-150 cursor-pointer text-neutral-400 hover:text-white hover:bg-white/10 disabled:opacity-50 disabled:cursor-not-allowed"
+            onclick={syncProject}
+            disabled={isSyncingProject}
+            aria-label="Sync project"
+            title="Sync this project"
+          >
+            <RefreshCw
+              class="w-4 h-4 {isSyncingProject ? 'animate-spin' : ''}"
+            />
+          </button>
           {#if projectUrl}
             <a
               href={projectUrl}
@@ -154,27 +181,37 @@
             {project.projectDescription}
           </div>
         {/if}
+        {#if project.lastSyncedAt}
+          <div class="mt-1.5 text-xs text-neutral-500">
+            Last synced: {formatRelativeDate(project.lastSyncedAt)}
+          </div>
+        {:else}
+          <div class="mt-1.5 text-xs text-neutral-500">Never synced</div>
+        {/if}
       </div>
-      <button
-        class="inline-flex items-center justify-center p-1.5 rounded transition-colors duration-150 cursor-pointer text-neutral-400 hover:text-white hover:bg-white/10"
-        onclick={onclose}
-        aria-label="Close modal"
-        title="Close (ESC)"
-      >
-        <svg
-          class="w-5 h-5"
-          fill="none"
-          stroke="currentColor"
-          viewBox="0 0 24 24"
+      <div class="flex gap-2 items-center">
+        <SyncIndicator projectId={project.projectId} />
+        <button
+          class="inline-flex justify-center items-center p-1.5 rounded transition-colors duration-150 cursor-pointer text-neutral-400 hover:text-white hover:bg-white/10"
+          onclick={onclose}
+          aria-label="Close modal"
+          title="Close (ESC)"
         >
-          <path
-            stroke-linecap="round"
-            stroke-linejoin="round"
-            stroke-width="2"
-            d="M6 18L18 6M6 6l12 12"
-          />
-        </svg>
-      </button>
+          <svg
+            class="w-5 h-5"
+            fill="none"
+            stroke="currentColor"
+            viewBox="0 0 24 24"
+          >
+            <path
+              stroke-linecap="round"
+              stroke-linejoin="round"
+              stroke-width="2"
+              d="M6 18L18 6M6 6l12 12"
+            />
+          </svg>
+        </button>
+      </div>
     </div>
   {/snippet}
 
@@ -703,7 +740,7 @@
                       >
                         {parent.title}
                         {#if subissues.length > 0}
-                          <span class="text-xs text-neutral-500 ml-1"
+                          <span class="ml-1 text-xs text-neutral-500"
                             >({subissues.length})</span
                           >
                         {/if}
@@ -776,10 +813,7 @@
                     <td
                       class="px-2 py-1.5 text-right text-neutral-300 w-[80px] min-w-[80px]"
                     >
-                      {parent.comment_count !== null &&
-                      parent.comment_count !== undefined
-                        ? parent.comment_count
-                        : "—"}
+                      {formatCommentCount(parent.comment_count)}
                     </td>
                     <td
                       class="px-2 py-1.5 text-right text-neutral-300 w-[70px] min-w-[70px]"
@@ -865,10 +899,10 @@
                         class="px-2 py-1.5 text-neutral-200 w-[310px] min-w-[310px] max-w-[310px]"
                       >
                         <div
-                          class="overflow-hidden truncate whitespace-nowrap text-ellipsis pl-6"
+                          class="overflow-hidden pl-6 truncate whitespace-nowrap text-ellipsis"
                           title={subissue.title}
                         >
-                          <span class="text-neutral-400 shrink-0 mr-1">↳</span>
+                          <span class="mr-1 text-neutral-400 shrink-0">↳</span>
                           {subissue.title}
                         </div>
                       </td>
@@ -937,10 +971,7 @@
                       <td
                         class="px-2 py-1.5 text-right text-neutral-300 w-[80px] min-w-[80px]"
                       >
-                        {subissue.comment_count !== null &&
-                        subissue.comment_count !== undefined
-                          ? subissue.comment_count
-                          : "—"}
+                        {formatCommentCount(subissue.comment_count)}
                       </td>
                       <td
                         class="px-2 py-1.5 text-right text-neutral-300 w-[70px] min-w-[70px]"
@@ -1082,10 +1113,7 @@
                     <td
                       class="px-2 py-1.5 text-right text-neutral-300 w-[80px] min-w-[80px]"
                     >
-                      {issue.comment_count !== null &&
-                      issue.comment_count !== undefined
-                        ? issue.comment_count
-                        : "—"}
+                      {formatCommentCount(issue.comment_count)}
                     </td>
                     <td
                       class="px-2 py-1.5 text-right text-neutral-300 w-[70px] min-w-[70px]"

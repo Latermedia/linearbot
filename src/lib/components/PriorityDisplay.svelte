@@ -15,7 +15,7 @@
         return {
           icon: Minus,
           label: "No priority",
-          color: "text-neutral-500",
+          color: "text-neutral-300",
         };
       case 1:
         return {
@@ -27,25 +27,25 @@
         return {
           icon: SignalHigh,
           label: "High",
-          color: "text-orange-400",
+          color: "text-neutral-300",
         };
       case 3:
         return {
           icon: SignalMedium,
           label: "Medium",
-          color: "text-yellow-400",
+          color: "text-neutral-300",
         };
       case 4:
         return {
           icon: SignalLow,
           label: "Low",
-          color: "text-blue-400",
+          color: "text-neutral-300",
         };
       default:
         return {
           icon: Minus,
           label: "No priority",
-          color: "text-neutral-500",
+          color: "text-neutral-300",
         };
     }
   });
