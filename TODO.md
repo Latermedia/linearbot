@@ -33,6 +33,10 @@ Planned features and known issues for LinearBot.
 
 - **Missing points label** — clearer messaging, exclude cancelled
 
+### Real-time Updates
+
+- **Webhook listeners** — implement Linear webhook listeners to receive real-time updates for issues and projects, eliminating the need for periodic syncing and ensuring immediate updates when issues are completed or projects change state
+
 ---
 
 ## Known Issues

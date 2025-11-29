@@ -29,7 +29,7 @@ import {
   type PartialSyncState,
 } from "../db/queries.js";
 import type { Issue, Project, Engineer } from "../db/schema.js";
-import { WIP_THRESHOLDS } from "../constants/thresholds.js";
+import { WIP_THRESHOLDS, PROJECT_THRESHOLDS } from "../constants/thresholds.js";
 import { isProjectActive } from "../utils/status-helpers.js";
 import {
   hasStatusMismatch,
@@ -481,6 +481,84 @@ export async function performSync(
       );
     }
 
+    // Fetch recently updated issues to catch projects that had their last WIP issue completed
+    let recentlyUpdatedIssues: LinearIssueData[] = [];
+    if (
+      !isResuming ||
+      !existingPartialSync ||
+      existingPartialSync.initialIssuesSync === "incomplete"
+    ) {
+      try {
+        recentlyUpdatedIssues = await linearClient.fetchRecentlyUpdatedIssues(
+          PROJECT_THRESHOLDS.RECENT_ACTIVITY_DAYS,
+          (_count) => {
+            // Progress callback for recently updated issues
+            // Note: This is separate from started issues count
+          }
+        );
+        console.log(
+          `[SYNC] Fetched ${recentlyUpdatedIssues.length} recently updated issues from Linear`
+        );
+
+        // Filter ignored teams from recently updated issues
+        recentlyUpdatedIssues = recentlyUpdatedIssues.filter(
+          (issue) => !ignoredTeamKeys.includes(issue.teamKey)
+        );
+
+        // Deduplicate: remove issues that are already in startedIssues
+        const startedIssueIds = new Set(startedIssues.map((i) => i.id));
+        recentlyUpdatedIssues = recentlyUpdatedIssues.filter(
+          (issue) => !startedIssueIds.has(issue.id)
+        );
+
+        // Write recently updated issues to database (deduplicated)
+        if (recentlyUpdatedIssues.length > 0) {
+          console.log(
+            `[SYNC] Writing ${recentlyUpdatedIssues.length} recently updated issues to database...`
+          );
+          const counts = writeIssuesToDatabase(recentlyUpdatedIssues);
+          cumulativeNewCount += counts.newCount;
+          cumulativeUpdatedCount += counts.updatedCount;
+          console.log(
+            `[SYNC] Wrote recently updated issues - New: ${counts.newCount}, Updated: ${counts.updatedCount}`
+          );
+        }
+      } catch (error) {
+        if (error instanceof RateLimitError) {
+          // Save partial sync state before exiting
+          const partialState: PartialSyncState = {
+            initialIssuesSync: "incomplete",
+            projectSyncs: [],
+          };
+          savePartialSyncState(partialState);
+          const errorMsg =
+            "Rate limit exceeded during recently updated issues sync";
+          console.error(`[SYNC] ${errorMsg}`);
+          setSyncStatus("error");
+          updateSyncMetadata({
+            sync_error: errorMsg,
+            sync_progress_percent: null,
+          });
+          const total = getTotalIssueCount();
+          return {
+            success: false,
+            newCount: cumulativeNewCount,
+            updatedCount: cumulativeUpdatedCount,
+            totalCount: total,
+            issueCount: startedIssues.length,
+            projectCount: 0,
+            projectIssueCount: 0,
+            error: errorMsg,
+          };
+        }
+        // For non-rate-limit errors, log but continue (recently updated issues are supplementary)
+        console.error(
+          `[SYNC] Error fetching recently updated issues (continuing anyway):`,
+          error instanceof Error ? error.message : error
+        );
+      }
+    }
+
     // Phase 2: Fetch all issues for projects with active work (optional)
     let projectCount = 0;
     const activeProjectIds = new Set<string>();
@@ -488,15 +566,31 @@ export async function performSync(
     const projectUpdatesMap = new Map<string, ProjectUpdate[]>();
 
     if (includeProjectSync) {
-      const projectIdsFromIssues = new Set(
+      // Collect project IDs from both started issues and recently updated issues
+      const projectIdsFromStartedIssues = new Set(
         startedIssues
           .filter((issue) => issue.projectId)
           .map((issue) => issue.projectId as string)
       );
 
-      // Build a map of project IDs to project names from started issues
+      const projectIdsFromRecentlyUpdated = new Set(
+        recentlyUpdatedIssues
+          .filter((issue) => issue.projectId)
+          .map((issue) => issue.projectId as string)
+      );
+
+      // Merge project IDs from both sources
+      const projectIdsFromIssues = new Set<string>();
+      for (const id of projectIdsFromStartedIssues) {
+        projectIdsFromIssues.add(id);
+      }
+      for (const id of projectIdsFromRecentlyUpdated) {
+        projectIdsFromIssues.add(id);
+      }
+
+      // Build a map of project IDs to project names from both sources
       const projectNameMap = new Map<string, string>();
-      for (const issue of startedIssues) {
+      for (const issue of [...startedIssues, ...recentlyUpdatedIssues]) {
         if (issue.projectId && issue.projectName) {
           projectNameMap.set(issue.projectId, issue.projectName);
         }
@@ -509,8 +603,10 @@ export async function performSync(
 
       projectCount = projectIdsFromIssues.size;
       callbacks?.onProjectCountUpdate?.(projectCount);
+      const startedCount = projectIdsFromStartedIssues.size;
+      const recentlyUpdatedCount = projectIdsFromRecentlyUpdated.size;
       console.log(
-        `[SYNC] Found ${projectCount} active project(s) with started issues`
+        `[SYNC] Found ${projectCount} active project(s): ${startedCount} from started issues, ${recentlyUpdatedCount} from recently updated issues`
       );
 
       if (projectIdsFromIssues.size > 0) {
@@ -709,7 +805,11 @@ export async function performSync(
     // Collect project labels from fetched issues for project metrics computation
     // (Issues are already written to database incrementally above)
     const projectLabelsMap = new Map<string, string[]>();
-    for (const issue of [...startedIssues, ...projectIssues]) {
+    for (const issue of [
+      ...startedIssues,
+      ...recentlyUpdatedIssues,
+      ...projectIssues,
+    ]) {
       // Collect project labels
       if (
         issue.projectId &&
@@ -746,7 +846,11 @@ export async function performSync(
     } else {
       // Fallback: if no project sync or no updates map, use projects from issues
       // This handles the case where project sync is disabled
-      for (const issue of [...startedIssues, ...projectIssues]) {
+      for (const issue of [
+        ...startedIssues,
+        ...recentlyUpdatedIssues,
+        ...projectIssues,
+      ]) {
         if (issue.projectId) {
           allSyncedProjectIds.add(issue.projectId);
         }

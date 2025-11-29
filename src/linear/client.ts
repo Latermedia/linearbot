@@ -288,6 +288,195 @@ export class LinearAPIClient {
     return issues;
   }
 
+  async fetchRecentlyUpdatedIssues(
+    days: number,
+    onProgress?: (current: number, pageSize: number) => void
+  ): Promise<LinearIssueData[]> {
+    const issues: LinearIssueData[] = [];
+    let hasMore = true;
+    let cursor: string | undefined;
+    let pageCount = 0;
+
+    // Calculate cutoff date (days ago)
+    const cutoffDate = new Date();
+    cutoffDate.setDate(cutoffDate.getDate() - days);
+    const cutoffDateISO = cutoffDate.toISOString();
+
+    // Use raw GraphQL to fetch everything in ONE query per page
+    const query = `
+      query GetRecentlyUpdatedIssues($first: Int!, $after: String, $cutoffDate: DateTime!) {
+        issues(
+          first: $first
+          after: $after
+          filter: { updatedAt: { gte: $cutoffDate } }
+        ) {
+          nodes {
+            id
+            identifier
+            title
+            description
+            priority
+            estimate
+            url
+            createdAt
+            updatedAt
+            startedAt
+            completedAt
+            canceledAt
+            parent {
+              id
+            }
+            comments(first: 250, orderBy: createdAt) {
+              nodes {
+                createdAt
+              }
+              pageInfo {
+                hasNextPage
+              }
+            }
+            team {
+              id
+              name
+              key
+            }
+            state {
+              id
+              name
+              type
+            }
+            assignee {
+              id
+              name
+              avatarUrl
+            }
+            creator {
+              id
+              name
+            }
+            project {
+              id
+              name
+              state
+              status {
+                name
+              }
+              health
+              updatedAt
+              targetDate
+              startDate
+              labels {
+                nodes {
+                  name
+                }
+              }
+              lead {
+                id
+                name
+              }
+            }
+          }
+          pageInfo {
+            hasNextPage
+            endCursor
+          }
+        }
+      }
+    `;
+
+    while (hasMore) {
+      let response: any;
+      try {
+        response = await this.client.client.rawRequest(query, {
+          first: PAGINATION.GRAPHQL_PAGE_SIZE,
+          after: cursor,
+          cutoffDate: cutoffDateISO,
+        });
+      } catch (error: any) {
+        // Check for rate limit using comprehensive detection
+        if (isRateLimitError(error)) {
+          throw new RateLimitError("Linear API rate limit exceeded");
+        }
+        throw error;
+      }
+
+      const data = response.data.issues;
+
+      for (const issue of data.nodes) {
+        // Skip issues without team or state (shouldn't happen but be safe)
+        if (!issue.team || !issue.state) continue;
+
+        const lastComment = issue.comments?.nodes?.[0];
+        // Count comments from nodes array (fetches up to 250 comments)
+        // Note: If there are more than 250 comments, we'll only count up to 250
+        const commentCount = issue.comments?.nodes?.length ?? null;
+        issues.push({
+          id: issue.id,
+          identifier: issue.identifier,
+          title: issue.title,
+          description: issue.description || null,
+          teamId: issue.team.id,
+          teamName: issue.team.name,
+          teamKey: issue.team.key,
+          stateId: issue.state.id,
+          stateName: issue.state.name,
+          stateType: issue.state.type,
+          assigneeId: issue.assignee?.id || null,
+          assigneeName: issue.assignee?.name || null,
+          assigneeAvatarUrl: issue.assignee?.avatarUrl || null,
+          creatorId: issue.creator?.id || null,
+          creatorName: issue.creator?.name || null,
+          priority: issue.priority,
+          estimate: issue.estimate || null,
+          lastCommentAt: lastComment?.createdAt
+            ? new Date(lastComment.createdAt)
+            : null,
+          commentCount: commentCount,
+          createdAt: new Date(issue.createdAt),
+          updatedAt: new Date(issue.updatedAt),
+          startedAt: issue.startedAt ? new Date(issue.startedAt) : null,
+          completedAt: issue.completedAt ? new Date(issue.completedAt) : null,
+          canceledAt: issue.canceledAt ? new Date(issue.canceledAt) : null,
+          url: issue.url,
+          projectId: issue.project?.id || null,
+          projectName: issue.project?.name || null,
+          projectStateCategory: issue.project?.state || null,
+          projectStatus: issue.project?.status?.name || null,
+          projectHealth: issue.project?.health || null,
+          projectUpdatedAt: issue.project?.updatedAt
+            ? new Date(issue.project.updatedAt)
+            : null,
+          projectLeadId: issue.project?.lead?.id || null,
+          projectLeadName: issue.project?.lead?.name || null,
+          projectLabels:
+            issue.project?.labels?.nodes?.map(
+              (l: { name: string }) => l.name
+            ) || [],
+          projectTargetDate: issue.project?.targetDate || null,
+          projectStartDate: issue.project?.startDate || null,
+          parentId: issue.parent?.id || null,
+        });
+      }
+
+      hasMore = data.pageInfo.hasNextPage;
+      cursor = data.pageInfo.endCursor ?? undefined;
+      pageCount++;
+
+      if (onProgress) {
+        onProgress(issues.length, data.nodes.length);
+      }
+
+      // Safety break to avoid infinite loops
+      if (pageCount > PAGINATION.MAX_PAGES) {
+        console.warn(
+          `Warning: Fetched ${PAGINATION.MAX_PAGES}+ pages, stopping to avoid infinite loop`
+        );
+        break;
+      }
+    }
+
+    return issues;
+  }
+
   async fetchIssuesByProjects(
     projectIds: string[],
     onProgress?: (
