@@ -1,5 +1,32 @@
 # Release Notes
 
+## v0.3.0
+
+### Added
+
+- Sync phase tracking for better visibility into sync progress
+- API query count display in dev menu
+- Gantt timeline extended to 5 quarters with view mode toggle
+- Project filtering functionality
+- Planned and completed project syncing with API query tracking
+- Sync projects with recently completed WIP issues
+- Subissue handling with status column and priority display
+- Modal animations for smoother transitions
+- Comment count display on issues
+
+### Changed
+
+- Improved project modal sync and status display
+- Enhanced issue display and WIP filtering
+- Dev tools modal refactored with shared components and system stats
+- Consolidated all modals to use shared Modal component
+- Navigation items reordered and hidden on login page
+
+### Fixed
+
+- Filter reactivity issues
+- Project modal resync and project updates sync issues
+
 ## v0.2.0
 
 ### Project Target Dates
