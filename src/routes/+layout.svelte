@@ -90,8 +90,7 @@
     // Check auth status and redirect if not authenticated
     checkAuth().then((authenticated) => {
       if (!authenticated && $page.url.pathname !== "/login") {
-        const redirectTo = $page.url.pathname + $page.url.search;
-        goto(`/login?redirect=${encodeURIComponent(redirectTo)}`);
+        goto("/login");
       }
     });
   });

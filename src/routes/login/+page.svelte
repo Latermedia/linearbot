@@ -1,6 +1,5 @@
 <script lang="ts">
   import { onMount } from "svelte";
-  import { page } from "$app/stores";
   import { goto } from "$app/navigation";
   import Button from "$lib/components/Button.svelte";
 
@@ -9,14 +8,7 @@
   let isLoading = $state(false);
   let passwordInput: HTMLInputElement;
 
-  // Get redirect destination from query params
-  let redirectTo = $state("/");
-
   onMount(() => {
-    const redirectParam = $page.url.searchParams.get("redirect");
-    if (redirectParam) {
-      redirectTo = redirectParam;
-    }
     passwordInput?.focus();
   });
 
@@ -41,11 +33,10 @@
         return;
       }
 
-      // Update auth state and redirect to intended destination or home
-      // Import auth store to update state
+      // Update auth state and redirect to home page
       const { isAuthenticated } = await import("$lib/stores/auth");
       isAuthenticated.set(true);
-      goto(redirectTo);
+      goto("/");
     } catch (err) {
       error = "An error occurred. Please try again.";
       console.error("Login error:", err);

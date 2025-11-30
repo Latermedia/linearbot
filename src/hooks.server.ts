@@ -31,8 +31,7 @@ export const handle: Handle = async ({ event, resolve }) => {
     }
 
     // For page routes, redirect to login
-    const redirectTo = url.pathname + url.search;
-    throw redirect(303, `/login?redirect=${encodeURIComponent(redirectTo)}`);
+    throw redirect(303, "/login");
   }
 
   return resolve(event);
