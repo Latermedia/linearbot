@@ -69,10 +69,13 @@
   // Delete confirmation state
   let showDeleteSection = $state(false);
   let deleteConfirmationInput = $state("");
+  let adminPasswordInput = $state("");
   let deleteInputRef = $state<HTMLInputElement | null>(null);
+  let adminPasswordInputRef = $state<HTMLInputElement | null>(null);
 
   const canDelete = $derived(
-    deleteConfirmationInput === DELETE_CONFIRMATION_TEXT
+    deleteConfirmationInput === DELETE_CONFIRMATION_TEXT &&
+      adminPasswordInput.length > 0
   );
 
   function handleKeydown(event: KeyboardEvent): void {
@@ -88,7 +91,7 @@
     if (event.shiftKey && event.key === "D" && !showDeleteSection) {
       event.preventDefault();
       showDeleteSection = true;
-      // Focus the input after the section appears
+      // Focus the confirmation input after the section appears
       setTimeout(() => {
         deleteInputRef?.focus();
       }, 50);
@@ -250,6 +253,10 @@
     try {
       const response = await fetch("/api/db/reset", {
         method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({ adminPassword: adminPasswordInput }),
       });
 
       const data = await response.json();
@@ -261,6 +268,7 @@
 
       resetSuccess = true;
       deleteConfirmationInput = "";
+      adminPasswordInput = "";
       showDeleteSection = false;
       // Reload data after reset
       await databaseStore.load();
@@ -531,12 +539,33 @@
             placeholder="Type DELETE to confirm"
             autocomplete="off"
             spellcheck="false"
+            onkeydown={(e) => {
+              if (e.key === "Enter" && canDelete) {
+                adminPasswordInputRef?.focus();
+              }
+            }}
+          />
+          <input
+            id="admin-password"
+            type="password"
+            bind:value={adminPasswordInput}
+            bind:this={adminPasswordInputRef}
+            class="px-2.5 py-1.5 w-full text-xs text-white rounded bg-neutral-800/50 placeholder-neutral-600 focus:outline-none focus:ring-1 focus:ring-red-500/50"
+            placeholder="Enter admin password"
+            autocomplete="off"
+            spellcheck="false"
+            onkeydown={(e) => {
+              if (e.key === "Enter" && canDelete && !isResetting) {
+                handleResetDatabase();
+              }
+            }}
           />
           <div class="flex gap-2">
             <button
               onclick={() => {
                 showDeleteSection = false;
                 deleteConfirmationInput = "";
+                adminPasswordInput = "";
               }}
               class="flex-1 px-3 py-1.5 text-xs transition-colors text-neutral-400 hover:text-white"
             >

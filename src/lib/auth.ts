@@ -113,3 +113,33 @@ export function getSessionCookieName(): string {
 export function getSessionDuration(): number {
   return SESSION_DURATION_MS;
 }
+
+/**
+ * Get the expected admin password from environment variable
+ */
+export function getExpectedAdminPassword(): string {
+  const password = process.env.ADMIN_PASSWORD;
+  if (!password) {
+    throw new Error("ADMIN_PASSWORD environment variable is not set");
+  }
+  return password;
+}
+
+/**
+ * Verify admin password using constant-time comparison to prevent timing attacks
+ */
+export function verifyAdminPassword(inputPassword: string): boolean {
+  const expectedPassword = getExpectedAdminPassword();
+
+  // Constant-time comparison
+  if (inputPassword.length !== expectedPassword.length) {
+    return false;
+  }
+
+  let result = 0;
+  for (let i = 0; i < inputPassword.length; i++) {
+    result |= inputPassword.charCodeAt(i) ^ expectedPassword.charCodeAt(i);
+  }
+
+  return result === 0;
+}
