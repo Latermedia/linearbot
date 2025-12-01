@@ -6,9 +6,39 @@ import {
   getSessionCookieName,
   getSessionDuration,
 } from "$lib/auth.js";
+import {
+  getClientIP,
+  checkRateLimit,
+  logFailedLoginAttempt,
+} from "$lib/rate-limit.js";
 
-export const POST: RequestHandler = async ({ request, cookies }) => {
+export const POST: RequestHandler = async ({
+  request,
+  cookies,
+  getClientAddress,
+}) => {
   try {
+    // Get client IP for rate limiting
+    const clientIP = getClientIP(request, { getClientAddress });
+
+    // Check rate limit before processing (check with isFailedAttempt=false to see current status)
+    const rateLimitCheck = checkRateLimit(clientIP, false);
+    if (rateLimitCheck.blocked) {
+      logFailedLoginAttempt(clientIP, rateLimitCheck.attempts);
+      return json(
+        {
+          error: "Too many login attempts. Please try again later.",
+          retryAfter: rateLimitCheck.retryAfter,
+        },
+        {
+          status: 429,
+          headers: {
+            "Retry-After": rateLimitCheck.retryAfter.toString(),
+          },
+        }
+      );
+    }
+
     const { password } = await request.json();
 
     if (!password || typeof password !== "string") {
@@ -16,9 +46,34 @@ export const POST: RequestHandler = async ({ request, cookies }) => {
     }
 
     // Verify password
-    if (!verifyPassword(password)) {
+    const isValidPassword = verifyPassword(password);
+    if (!isValidPassword) {
+      // Record failed attempt and check if this causes a block
+      const failedCheck = checkRateLimit(clientIP, true);
+      logFailedLoginAttempt(clientIP, failedCheck.attempts);
+
+      // Check if this failure caused a block
+      if (failedCheck.blocked) {
+        return json(
+          {
+            error:
+              "Invalid password. Too many failed attempts. Please try again later.",
+            retryAfter: failedCheck.retryAfter,
+          },
+          {
+            status: 429,
+            headers: {
+              "Retry-After": failedCheck.retryAfter.toString(),
+            },
+          }
+        );
+      }
+
       return json({ error: "Invalid password" }, { status: 401 });
     }
+
+    // Successful login - reset rate limit counter (pass false to reset without incrementing)
+    checkRateLimit(clientIP, false);
 
     // Create session
     const sessionToken = createSession();
