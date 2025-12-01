@@ -12,10 +12,9 @@ export const GET: RequestHandler = async ({ params }) => {
     const linearClient = createLinearClient();
     const description = await linearClient.fetchProjectDescription(projectId);
     return json({ description });
-  } catch (error) {
-    const errorMsg = error instanceof Error ? error.message : "Unknown error";
-    console.error("[API] Error fetching project description:", errorMsg);
+  } catch (_error) {
     // Return null instead of error to gracefully handle missing descriptions
+    // Global error handler will log the error server-side
     return json({ description: null });
   }
 };
