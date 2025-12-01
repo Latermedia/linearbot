@@ -42,6 +42,32 @@ function getMimeType(url) {
   return mimeTypes[ext] || null;
 }
 
+/**
+ * Adds security headers to a response.
+ * HSTS is only added in production to avoid issues in local development.
+ */
+function addSecurityHeaders(response) {
+  const headers = new Headers(response.headers);
+
+  // Always add these headers
+  headers.set("X-Content-Type-Options", "nosniff");
+  headers.set("X-Frame-Options", "DENY");
+
+  // Only add HSTS in production
+  if (process.env.NODE_ENV === "production") {
+    headers.set(
+      "Strict-Transport-Security",
+      "max-age=31536000; includeSubDomains"
+    );
+  }
+
+  return new Response(response.body, {
+    status: response.status,
+    statusText: response.statusText,
+    headers,
+  });
+}
+
 Bun.serve({
   port,
   fetch: async (request) => {
@@ -59,17 +85,18 @@ Bun.serve({
       if (await file.exists()) {
         const mimeType = getMimeType(url) || "application/octet-stream";
 
-        return new Response(file, {
+        const staticResponse = new Response(file, {
           headers: {
             "Content-Type": mimeType,
             "Cache-Control": "public, max-age=31536000, immutable",
           },
         });
+        return addSecurityHeaders(staticResponse);
       }
     }
 
     // Let adapter-bun handle everything else
-    const response = await server.respond(request);
+    let response = await server.respond(request);
 
     // Fix MIME type for any remaining static assets that adapter-bun serves
     const mimeType = getMimeType(url);
@@ -87,7 +114,7 @@ Bun.serve({
         const newHeaders = new Headers(response.headers);
         newHeaders.set("Content-Type", mimeType);
 
-        return new Response(response.body, {
+        response = new Response(response.body, {
           status: response.status,
           statusText: response.statusText,
           headers: newHeaders,
@@ -95,7 +122,8 @@ Bun.serve({
       }
     }
 
-    return response;
+    // Add security headers to all responses
+    return addSecurityHeaders(response);
   },
 });
 

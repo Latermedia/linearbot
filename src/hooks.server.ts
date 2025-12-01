@@ -52,6 +52,32 @@ function logError(error: unknown, context: string, event?: any) {
   });
 }
 
+/**
+ * Adds security headers to a response.
+ * HSTS is only added in production to avoid issues in local development.
+ */
+function addSecurityHeaders(response: Response): Response {
+  const headers = new Headers(response.headers);
+
+  // Always add these headers
+  headers.set("X-Content-Type-Options", "nosniff");
+  headers.set("X-Frame-Options", "DENY");
+
+  // Only add HSTS in production
+  if (process.env.NODE_ENV === "production") {
+    headers.set(
+      "Strict-Transport-Security",
+      "max-age=31536000; includeSubDomains"
+    );
+  }
+
+  return new Response(response.body, {
+    status: response.status,
+    statusText: response.statusText,
+    headers,
+  });
+}
+
 export const handle: Handle = async ({ event, resolve }) => {
   const { url, cookies } = event;
   const sessionToken = cookies.get(getSessionCookieName());
@@ -64,7 +90,8 @@ export const handle: Handle = async ({ event, resolve }) => {
       throw redirect(303, "/");
     }
     try {
-      return await resolve(event);
+      const response = await resolve(event);
+      return addSecurityHeaders(response);
     } catch (error) {
       // Don't catch redirects or HTTP errors - let them propagate
       if (shouldRethrowError(error)) {
@@ -73,10 +100,14 @@ export const handle: Handle = async ({ event, resolve }) => {
       // For API routes, catch errors and return generic responses
       if (url.pathname.startsWith("/api/")) {
         logError(error, `[API] ${url.pathname}`, event);
-        return new Response(JSON.stringify({ error: "An error occurred" }), {
-          status: 500,
-          headers: { "Content-Type": "application/json" },
-        });
+        const errorResponse = new Response(
+          JSON.stringify({ error: "An error occurred" }),
+          {
+            status: 500,
+            headers: { "Content-Type": "application/json" },
+          }
+        );
+        return addSecurityHeaders(errorResponse);
       }
       // Re-throw for page routes to let SvelteKit handle them
       throw error;
@@ -87,10 +118,14 @@ export const handle: Handle = async ({ event, resolve }) => {
   if (!isAuthenticated) {
     // For API routes, return 401 instead of redirect
     if (url.pathname.startsWith("/api/")) {
-      return new Response(JSON.stringify({ error: "Unauthorized" }), {
-        status: 401,
-        headers: { "Content-Type": "application/json" },
-      });
+      const unauthorizedResponse = new Response(
+        JSON.stringify({ error: "Unauthorized" }),
+        {
+          status: 401,
+          headers: { "Content-Type": "application/json" },
+        }
+      );
+      return addSecurityHeaders(unauthorizedResponse);
     }
 
     // For page routes, redirect to login
@@ -98,7 +133,8 @@ export const handle: Handle = async ({ event, resolve }) => {
   }
 
   try {
-    return await resolve(event);
+    const response = await resolve(event);
+    return addSecurityHeaders(response);
   } catch (error) {
     // Don't catch redirects or HTTP errors - let them propagate
     if (shouldRethrowError(error)) {
@@ -107,10 +143,14 @@ export const handle: Handle = async ({ event, resolve }) => {
     // For API routes, catch errors and return generic responses
     if (url.pathname.startsWith("/api/")) {
       logError(error, `[API] ${url.pathname}`, event);
-      return new Response(JSON.stringify({ error: "An error occurred" }), {
-        status: 500,
-        headers: { "Content-Type": "application/json" },
-      });
+      const errorResponse = new Response(
+        JSON.stringify({ error: "An error occurred" }),
+        {
+          status: 500,
+          headers: { "Content-Type": "application/json" },
+        }
+      );
+      return addSecurityHeaders(errorResponse);
     }
     // Re-throw for page routes to let SvelteKit handle them
     throw error;
