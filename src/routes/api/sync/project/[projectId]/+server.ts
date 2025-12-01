@@ -7,6 +7,7 @@ import {
   setSyncStatus,
 } from "../../../../../db/queries.js";
 import { validateCsrfTokenFromHeader } from "$lib/csrf.js";
+import { validateProjectId } from "$lib/utils.js";
 
 const MIN_SYNC_INTERVAL_MS = 30 * 1000; // 30 seconds for project-level syncs
 
@@ -18,11 +19,12 @@ export const POST: RequestHandler = async (event) => {
 
   const { params } = event;
   const projectId = params.projectId;
-  if (!projectId) {
+  const validation = validateProjectId(projectId);
+  if (!validation.valid) {
     return json(
       {
         success: false,
-        message: "Project ID is required",
+        message: validation.error,
       },
       { status: 400 }
     );

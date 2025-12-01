@@ -1,16 +1,18 @@
 import { json } from "@sveltejs/kit";
 import type { RequestHandler } from "./$types";
 import { createLinearClient } from "../../../../../linear/client.js";
+import { validateProjectId } from "$lib/utils.js";
 
 export const GET: RequestHandler = async ({ params }) => {
   try {
     const { projectId } = params;
-    if (!projectId) {
-      return json({ error: "Project ID is required" }, { status: 400 });
+    const validation = validateProjectId(projectId);
+    if (!validation.valid) {
+      return json({ error: validation.error }, { status: 400 });
     }
 
     const linearClient = createLinearClient();
-    const description = await linearClient.fetchProjectDescription(projectId);
+    const description = await linearClient.fetchProjectDescription(projectId!);
     return json({ description });
   } catch (_error) {
     // Return null instead of error to gracefully handle missing descriptions
