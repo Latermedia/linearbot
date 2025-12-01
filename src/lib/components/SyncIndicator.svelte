@@ -78,7 +78,9 @@
   });
 
   const isSyncing = $derived(syncStatus === "syncing" || isRunning);
-  const hasError = $derived(syncStatus === "error" || hasPartialSync);
+  // Only show error if there's an actual error status, not just partial sync state
+  // Partial sync state is saved during normal operation for resumability
+  const hasError = $derived(syncStatus === "error");
   const displayProgress = $derived($animatedProgress);
 
   // Build tooltip text
