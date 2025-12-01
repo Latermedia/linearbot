@@ -111,9 +111,8 @@
     if (!browser || isSyncingProject) return;
     try {
       isSyncingProject = true;
-      const response = await fetch(`/api/sync/project/${project.projectId}`, {
-        method: "POST",
-      });
+      const { csrfPost } = await import("$lib/utils/csrf");
+      const response = await csrfPost(`/api/sync/project/${project.projectId}`);
       if (response.ok) {
         // Poll for sync completion and reload data
         const pollInterval = setInterval(async () => {

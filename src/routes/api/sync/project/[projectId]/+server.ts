@@ -6,10 +6,17 @@ import {
   updateSyncMetadata,
   setSyncStatus,
 } from "../../../../../db/queries.js";
+import { validateCsrfTokenFromHeader } from "$lib/csrf.js";
 
 const MIN_SYNC_INTERVAL_MS = 30 * 1000; // 30 seconds for project-level syncs
 
-export const POST: RequestHandler = async ({ params }) => {
+export const POST: RequestHandler = async (event) => {
+  // Validate CSRF token
+  if (!validateCsrfTokenFromHeader(event)) {
+    return json({ error: "Invalid CSRF token" }, { status: 403 });
+  }
+
+  const { params } = event;
   const projectId = params.projectId;
   if (!projectId) {
     return json(

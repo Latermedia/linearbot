@@ -35,6 +35,9 @@
 
       // Update auth state and redirect to home page
       const { isAuthenticated } = await import("$lib/stores/auth");
+      // Fetch CSRF token after successful login
+      const { getCsrfToken } = await import("$lib/utils/csrf");
+      await getCsrfToken();
       isAuthenticated.set(true);
       goto("/");
     } catch (err) {

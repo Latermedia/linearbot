@@ -2,11 +2,13 @@ import { randomBytes } from "node:crypto";
 
 const SESSION_COOKIE_NAME = "linear-bot-session";
 const SESSION_TOKEN_LENGTH = 32;
+const CSRF_TOKEN_LENGTH = 32;
 const SESSION_DURATION_MS = 24 * 60 * 60 * 1000; // 24 hours
 
 // In-memory session store (simple implementation for testing phase)
 // In production, consider using Redis or database
 const activeSessions = new Map<string, number>(); // token -> expiration timestamp
+const sessionCsrfTokens = new Map<string, string>(); // sessionToken -> csrfToken
 
 /**
  * Get the expected password from environment variable
@@ -46,12 +48,21 @@ export function generateSessionToken(): string {
 }
 
 /**
+ * Generate a secure random CSRF token
+ */
+export function generateCsrfToken(): string {
+  return randomBytes(CSRF_TOKEN_LENGTH).toString("hex");
+}
+
+/**
  * Create a new session and return the token
  */
 export function createSession(): string {
   const token = generateSessionToken();
+  const csrfToken = generateCsrfToken();
   const expiration = Date.now() + SESSION_DURATION_MS;
   activeSessions.set(token, expiration);
+  sessionCsrfTokens.set(token, csrfToken);
 
   // Clean up expired sessions periodically
   cleanupExpiredSessions();
@@ -75,6 +86,7 @@ export function verifySession(token: string | undefined): boolean {
   // Check if session has expired
   if (Date.now() > expiration) {
     activeSessions.delete(token);
+    sessionCsrfTokens.delete(token);
     return false;
   }
 
@@ -82,10 +94,61 @@ export function verifySession(token: string | undefined): boolean {
 }
 
 /**
+ * Get CSRF token for a session
+ */
+export function getCsrfToken(sessionToken: string | undefined): string | null {
+  if (!sessionToken) {
+    return null;
+  }
+
+  // Verify session is still valid
+  if (!verifySession(sessionToken)) {
+    return null;
+  }
+
+  return sessionCsrfTokens.get(sessionToken) || null;
+}
+
+/**
+ * Verify CSRF token for a session
+ */
+export function verifyCsrfToken(
+  sessionToken: string | undefined,
+  csrfToken: string | undefined
+): boolean {
+  if (!sessionToken || !csrfToken) {
+    return false;
+  }
+
+  // Verify session is still valid
+  if (!verifySession(sessionToken)) {
+    return false;
+  }
+
+  const expectedCsrfToken = sessionCsrfTokens.get(sessionToken);
+  if (!expectedCsrfToken) {
+    return false;
+  }
+
+  // Constant-time comparison to prevent timing attacks
+  if (csrfToken.length !== expectedCsrfToken.length) {
+    return false;
+  }
+
+  let result = 0;
+  for (let i = 0; i < csrfToken.length; i++) {
+    result |= csrfToken.charCodeAt(i) ^ expectedCsrfToken.charCodeAt(i);
+  }
+
+  return result === 0;
+}
+
+/**
  * Delete a session token
  */
 export function deleteSession(token: string): void {
   activeSessions.delete(token);
+  sessionCsrfTokens.delete(token);
 }
 
 /**
@@ -96,6 +159,7 @@ function cleanupExpiredSessions(): void {
   for (const [token, expiration] of activeSessions.entries()) {
     if (now > expiration) {
       activeSessions.delete(token);
+      sessionCsrfTokens.delete(token);
     }
   }
 }

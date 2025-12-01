@@ -151,7 +151,16 @@
               variant="outline"
               size="sm"
               onclick={async () => {
-                await fetch("/api/auth/logout", { method: "POST" });
+                const { csrfPost, clearCsrfToken } = await import("$lib/utils/csrf");
+                try {
+                  await csrfPost("/api/auth/logout");
+                } catch (error) {
+                  console.error("Logout error:", error);
+                } finally {
+                  // Always clear CSRF token cache on logout attempt, regardless of success/failure
+                  // This ensures stale tokens don't persist if logout fails (e.g., network error, expired session)
+                  clearCsrfToken();
+                }
                 isAuthenticated.set(false);
                 goto("/login");
               }}

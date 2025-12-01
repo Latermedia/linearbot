@@ -5,10 +5,18 @@ import {
   getDatabase,
 } from "../../../../db/connection.js";
 import { verifyAdminPassword } from "$lib/auth.js";
+import { validateCsrfToken } from "$lib/csrf.js";
 
-export const POST: RequestHandler = async ({ request }) => {
+export const POST: RequestHandler = async (event) => {
   try {
-    const { adminPassword } = await request.json();
+    const { request } = event;
+    const body = await request.json();
+    const { adminPassword } = body;
+
+    // Validate CSRF token
+    if (!validateCsrfToken(event, body)) {
+      return json({ error: "Invalid CSRF token" }, { status: 403 });
+    }
 
     // Require admin password
     if (!adminPassword || typeof adminPassword !== "string") {

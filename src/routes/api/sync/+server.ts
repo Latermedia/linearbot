@@ -3,10 +3,15 @@ import type { RequestHandler } from "./$types";
 import { performSync } from "../../../services/sync-service.js";
 import { getSyncState, setSyncState, updateSyncStats } from "./state.js";
 import { updateSyncMetadata, setSyncStatus } from "../../../db/queries.js";
+import { validateCsrfTokenFromHeader } from "$lib/csrf.js";
 
 const MIN_SYNC_INTERVAL_MS = 60 * 1000; // 1 minute
 
-export const POST: RequestHandler = async () => {
+export const POST: RequestHandler = async (event) => {
+  // Validate CSRF token
+  if (!validateCsrfTokenFromHeader(event)) {
+    return json({ error: "Invalid CSRF token" }, { status: 403 });
+  }
   const syncState = getSyncState();
 
   // Check if sync is already running

@@ -4,6 +4,7 @@
   import Button from "$lib/components/Button.svelte";
   import { databaseStore } from "../stores/database";
   import { RefreshCw } from "lucide-svelte";
+  import { csrfPost } from "$lib/utils/csrf";
 
   const POLL_INTERVAL = 1000; // Poll every 1 second when syncing
   const STATUS_POLL_INTERVAL = 5000; // Poll status every 5 seconds when idle
@@ -58,9 +59,7 @@
     errorMessage = null;
 
     try {
-      const response = await fetch("/api/sync", {
-        method: "POST",
-      });
+      const response = await csrfPost("/api/sync");
 
       const data = await response.json();
 

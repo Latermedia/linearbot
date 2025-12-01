@@ -20,6 +20,13 @@ export async function checkAuth(): Promise<boolean> {
 
     const authenticated = response.ok;
     isAuthenticated.set(authenticated);
+
+    // If authenticated, fetch CSRF token
+    if (authenticated) {
+      const { getCsrfToken } = await import("../utils/csrf");
+      await getCsrfToken();
+    }
+
     return authenticated;
   } catch (error) {
     console.error("Auth check failed:", error);

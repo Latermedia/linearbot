@@ -6,6 +6,7 @@
   import Button from "$lib/components/Button.svelte";
   import { databaseStore } from "../stores/database";
   import { AlertTriangle, RefreshCw } from "lucide-svelte";
+  import { csrfPost } from "$lib/utils/csrf";
 
   let {
     onclose,
@@ -83,6 +84,7 @@
       if (showDeleteSection) {
         showDeleteSection = false;
         deleteConfirmationInput = "";
+        adminPasswordInput = "";
       } else {
         onclose();
       }
@@ -212,9 +214,7 @@
     statusMessages = [];
 
     try {
-      const response = await fetch("/api/sync", {
-        method: "POST",
-      });
+      const response = await csrfPost("/api/sync");
 
       const data = await response.json();
 
@@ -251,12 +251,8 @@
     resetSuccess = false;
 
     try {
-      const response = await fetch("/api/db/reset", {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify({ adminPassword: adminPasswordInput }),
+      const response = await csrfPost("/api/db/reset", {
+        adminPassword: adminPasswordInput,
       });
 
       const data = await response.json();

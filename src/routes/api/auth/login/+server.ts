@@ -25,6 +25,7 @@ export const POST: RequestHandler = async ({ request, cookies }) => {
 
     // Set secure HTTP-only cookie
     // On Vercel, use secure cookies for HTTPS (production/preview)
+    // Use sameSite: "strict" for better CSRF protection
     const isSecure =
       process.env.VERCEL_ENV === "production" ||
       process.env.VERCEL_ENV === "preview";
@@ -32,7 +33,7 @@ export const POST: RequestHandler = async ({ request, cookies }) => {
       path: "/",
       httpOnly: true,
       secure: isSecure,
-      sameSite: "lax",
+      sameSite: "strict",
       maxAge: Math.floor(getSessionDuration() / 1000), // Convert to seconds
     });
 
