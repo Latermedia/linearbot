@@ -24,11 +24,15 @@ export const POST: RequestHandler = async ({ request, cookies }) => {
     const sessionToken = createSession();
 
     // Set secure HTTP-only cookie
-    // On Vercel, use secure cookies for HTTPS (production/preview)
-    // Use sameSite: "strict" for better CSRF protection
+    // Detect HTTPS reliably across different deployment platforms (Fly.io, Vercel, etc.)
+    // Check request URL and X-Forwarded-Proto header for HTTPS detection
+    const url = new URL(request.url);
+    const forwardedProto = request.headers.get("x-forwarded-proto");
     const isSecure =
-      process.env.VERCEL_ENV === "production" ||
-      process.env.VERCEL_ENV === "preview";
+      url.protocol === "https:" ||
+      forwardedProto === "https" ||
+      process.env.NODE_ENV === "production";
+
     cookies.set(getSessionCookieName(), sessionToken, {
       path: "/",
       httpOnly: true,
