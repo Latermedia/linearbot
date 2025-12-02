@@ -51,6 +51,7 @@ export interface Project {
   project_lead_id: string | null;
   project_lead_name: string | null;
   project_description: string | null;
+  project_content: string | null;
   total_issues: number;
   completed_issues: number;
   in_progress_issues: number;
@@ -388,6 +389,12 @@ export function initializeDatabase(db: Database): void {
   } catch (_e) {
     // Column already exists, ignore
   }
+  // Add project_content column to projects table if it doesn't exist (migration)
+  try {
+    db.run(`ALTER TABLE projects ADD COLUMN project_content TEXT`);
+  } catch (_e) {
+    // Column already exists, ignore
+  }
   // Add project_updates column to projects table if it doesn't exist (migration)
   try {
     db.run(`ALTER TABLE projects ADD COLUMN project_updates TEXT`);
@@ -441,6 +448,7 @@ export function initializeDatabase(db: Database): void {
       project_lead_id TEXT,
       project_lead_name TEXT,
       project_description TEXT,
+      project_content TEXT,
       total_issues INTEGER NOT NULL,
       completed_issues INTEGER NOT NULL,
       in_progress_issues INTEGER NOT NULL,

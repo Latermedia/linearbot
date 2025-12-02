@@ -309,7 +309,7 @@ export function upsertProject(project: Project): void {
   const query = db.prepare(`
     INSERT INTO projects (
       project_id, project_name, project_state_category, project_status, project_health, project_updated_at,
-      project_lead_id, project_lead_name, project_description,
+      project_lead_id, project_lead_name, project_description, project_content,
       total_issues, completed_issues, in_progress_issues, engineer_count,
       missing_estimate_count, missing_priority_count, no_recent_comment_count,
       wip_age_violation_count, missing_description_count,
@@ -319,7 +319,7 @@ export function upsertProject(project: Project): void {
       start_date, last_activity_date, estimated_end_date, target_date, completed_at,
       issues_by_state, engineers, teams, velocity_by_team, labels, project_updates, last_synced_at
     ) VALUES (
-      ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?
+      ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?
     )
     ON CONFLICT(project_id) DO UPDATE SET
       project_name = excluded.project_name,
@@ -330,6 +330,7 @@ export function upsertProject(project: Project): void {
       project_lead_id = excluded.project_lead_id,
       project_lead_name = excluded.project_lead_name,
       project_description = excluded.project_description,
+      project_content = excluded.project_content,
       total_issues = excluded.total_issues,
       completed_issues = excluded.completed_issues,
       in_progress_issues = excluded.in_progress_issues,
@@ -377,6 +378,7 @@ export function upsertProject(project: Project): void {
     project.project_lead_id,
     project.project_lead_name,
     project.project_description,
+    project.project_content,
     project.total_issues,
     project.completed_issues,
     project.in_progress_issues,
