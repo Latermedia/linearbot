@@ -36,7 +36,9 @@ export interface Issue {
   project_lead_name: string | null;
   project_target_date: string | null; // Linear's target date for the project
   project_start_date: string | null; // Linear's start date for the project
+  project_completed_at: string | null; // Linear's completedAt date for the project
   parent_id: string | null; // For subissue detection
+  labels: string | null; // JSON array of label objects
 }
 
 export interface Project {
@@ -83,6 +85,7 @@ export interface Project {
   labels: string | null;
   project_updates: string | null;
   last_synced_at: string | null;
+  completed_at: string | null; // ISO timestamp when project was completed
 }
 
 export interface Engineer {
@@ -101,6 +104,27 @@ export interface Engineer {
   no_recent_comment_count: number;
   wip_age_violation_count: number;
   active_issues: string; // JSON array of issue summaries
+}
+
+export interface Initiative {
+  id: string;
+  name: string;
+  description: string | null;
+  status: string | null;
+  target_date: string | null; // ISO timestamp
+  completed_at: string | null; // ISO timestamp
+  started_at: string | null; // ISO timestamp
+  archived_at: string | null; // ISO timestamp
+  health: string | null;
+  health_updated_at: string | null; // ISO timestamp
+  health_updates: string | null; // JSON array of health updates (ProjectUpdate[])
+  owner_id: string | null;
+  owner_name: string | null;
+  creator_id: string | null;
+  creator_name: string | null;
+  project_ids: string | null; // JSON array of project IDs
+  created_at: string; // ISO timestamp
+  updated_at: string; // ISO timestamp
 }
 
 /**
@@ -142,7 +166,9 @@ const EXPECTED_ISSUES_COLUMNS = [
   "project_lead_name",
   "project_target_date",
   "project_start_date",
+  "project_completed_at",
   "parent_id",
+  "labels",
 ];
 
 /**
@@ -199,6 +225,7 @@ export function resetDatabase(db: Database): void {
   db.run("DROP TABLE IF EXISTS engineers");
   db.run("DROP TABLE IF EXISTS projects");
   db.run("DROP TABLE IF EXISTS issues");
+  db.run("DROP TABLE IF EXISTS initiatives");
   initializeDatabase(db);
   console.log("[DB] Database reset complete");
 }
@@ -338,6 +365,16 @@ export function initializeDatabase(db: Database): void {
   } catch (_e) {
     // Column already exists, ignore
   }
+  try {
+    db.run(`ALTER TABLE issues ADD COLUMN project_completed_at TEXT`);
+  } catch (_e) {
+    // Column already exists, ignore
+  }
+  try {
+    db.run(`ALTER TABLE issues ADD COLUMN labels TEXT`);
+  } catch (_e) {
+    // Column already exists, ignore
+  }
 
   // Add labels column to projects table if it doesn't exist (migration)
   try {
@@ -374,6 +411,12 @@ export function initializeDatabase(db: Database): void {
   // Add project_status column to projects table if it doesn't exist (migration)
   try {
     db.run(`ALTER TABLE projects ADD COLUMN project_status TEXT`);
+  } catch (_e) {
+    // Column already exists, ignore
+  }
+  // Add completed_at column to projects table if it doesn't exist (migration)
+  try {
+    db.run(`ALTER TABLE projects ADD COLUMN completed_at TEXT`);
   } catch (_e) {
     // Column already exists, ignore
   }
@@ -454,6 +497,37 @@ export function initializeDatabase(db: Database): void {
       active_issues TEXT NOT NULL
     )
   `);
+
+  // Create initiatives table
+  db.run(`
+    CREATE TABLE IF NOT EXISTS initiatives (
+      id TEXT PRIMARY KEY,
+      name TEXT NOT NULL,
+      description TEXT,
+      status TEXT,
+      target_date TEXT,
+      completed_at TEXT,
+      started_at TEXT,
+      archived_at TEXT,
+      health TEXT,
+      health_updated_at TEXT,
+      health_updates TEXT,
+      owner_id TEXT,
+      owner_name TEXT,
+      creator_id TEXT,
+      creator_name TEXT,
+      project_ids TEXT,
+      created_at TEXT NOT NULL,
+      updated_at TEXT NOT NULL
+    )
+  `);
+
+  // Add health_updates column to initiatives table if it doesn't exist (migration)
+  try {
+    db.run(`ALTER TABLE initiatives ADD COLUMN health_updates TEXT`);
+  } catch (_e) {
+    // Column already exists, ignore
+  }
 
   // Add avatar_url column to engineers table if it doesn't exist (migration)
   try {

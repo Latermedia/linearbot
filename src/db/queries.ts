@@ -1,5 +1,5 @@
 import { getDatabase } from "./connection.js";
-import type { Issue, Project, Engineer } from "./schema.js";
+import type { Issue, Project, Engineer, Initiative } from "./schema.js";
 
 /**
  * Centralized database queries for the Linear bot.
@@ -151,7 +151,9 @@ export function upsertIssue(issue: {
   project_lead_name: string | null;
   project_target_date: string | null;
   project_start_date: string | null;
+  project_completed_at: string | null;
   parent_id: string | null;
+  labels: string | null;
 }): void {
   const db = getDatabase();
   const query = db.prepare(`
@@ -162,7 +164,7 @@ export function upsertIssue(issue: {
       priority, estimate, last_comment_at, comment_count,
       created_at, updated_at, started_at, completed_at, canceled_at, url,
       project_id, project_name, project_state_category, project_status, project_health, project_updated_at,
-      project_lead_id, project_lead_name, project_target_date, project_start_date, parent_id
+      project_lead_id, project_lead_name, project_target_date, project_start_date, project_completed_at, parent_id, labels
     ) VALUES (
       ?, ?, ?, ?, ?, ?, ?,
       ?, ?, ?,
@@ -170,7 +172,7 @@ export function upsertIssue(issue: {
       ?, ?, ?, ?,
       ?, ?, ?, ?, ?, ?,
       ?, ?, ?, ?, ?, ?,
-      ?, ?, ?, ?, ?
+      ?, ?, ?, ?, ?, ?, ?
     )
     ON CONFLICT(id) DO UPDATE SET
       identifier = excluded.identifier,
@@ -206,7 +208,9 @@ export function upsertIssue(issue: {
       project_lead_name = excluded.project_lead_name,
       project_target_date = excluded.project_target_date,
       project_start_date = excluded.project_start_date,
-      parent_id = excluded.parent_id
+      project_completed_at = excluded.project_completed_at,
+      parent_id = excluded.parent_id,
+      labels = excluded.labels
   `);
 
   query.run(
@@ -245,7 +249,9 @@ export function upsertIssue(issue: {
     issue.project_lead_name,
     issue.project_target_date,
     issue.project_start_date,
-    issue.parent_id
+    issue.project_completed_at,
+    issue.parent_id,
+    issue.labels
   );
 }
 
@@ -310,10 +316,10 @@ export function upsertProject(project: Project): void {
       total_points, missing_points, average_cycle_time, average_lead_time,
       linear_progress, velocity, estimate_accuracy, days_per_story_point,
       has_status_mismatch, is_stale_update, missing_lead, has_violations, missing_health, has_date_discrepancy,
-      start_date, last_activity_date, estimated_end_date, target_date,
+      start_date, last_activity_date, estimated_end_date, target_date, completed_at,
       issues_by_state, engineers, teams, velocity_by_team, labels, project_updates, last_synced_at
     ) VALUES (
-      ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?
+      ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?
     )
     ON CONFLICT(project_id) DO UPDATE SET
       project_name = excluded.project_name,
@@ -351,6 +357,7 @@ export function upsertProject(project: Project): void {
       last_activity_date = excluded.last_activity_date,
       estimated_end_date = excluded.estimated_end_date,
       target_date = excluded.target_date,
+      completed_at = excluded.completed_at,
       issues_by_state = excluded.issues_by_state,
       engineers = excluded.engineers,
       teams = excluded.teams,
@@ -397,6 +404,7 @@ export function upsertProject(project: Project): void {
     project.last_activity_date,
     project.estimated_end_date,
     project.target_date,
+    project.completed_at,
     project.issues_by_state,
     project.engineers,
     project.teams,
@@ -554,7 +562,9 @@ export type SyncPhase =
   | "active_projects"
   | "planned_projects"
   | "completed_projects"
+  | "initiative_projects"
   | "computing_metrics"
+  | "initiatives"
   | "complete";
 
 /**
@@ -577,6 +587,7 @@ export interface PartialSyncState {
     projectId: string;
     status: "complete" | "incomplete";
   }>;
+  initiativesSync?: "complete" | "incomplete";
 }
 
 /**
@@ -715,4 +726,89 @@ export function clearPartialSyncState(): void {
     WHERE id = 1
   `);
   query.run();
+}
+
+/**
+ * Get all initiatives
+ */
+export function getAllInitiatives(): Initiative[] {
+  const db = getDatabase();
+  const query = db.prepare(`SELECT * FROM initiatives`);
+  return query.all() as Initiative[];
+}
+
+/**
+ * Get a single initiative by ID
+ */
+export function getInitiativeById(initiativeId: string): Initiative | null {
+  const db = getDatabase();
+  const query = db.prepare(`SELECT * FROM initiatives WHERE id = ?`);
+  const result = query.get(initiativeId) as Initiative | undefined;
+  return result || null;
+}
+
+/**
+ * Upsert an initiative (insert or update)
+ */
+export function upsertInitiative(initiative: Initiative): void {
+  const db = getDatabase();
+  const query = db.prepare(`
+    INSERT INTO initiatives (
+      id, name, description, status, target_date, completed_at, started_at, archived_at,
+      health, health_updated_at, health_updates, owner_id, owner_name, creator_id, creator_name,
+      project_ids, created_at, updated_at
+    ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+    ON CONFLICT(id) DO UPDATE SET
+      name = excluded.name,
+      description = excluded.description,
+      status = excluded.status,
+      target_date = excluded.target_date,
+      completed_at = excluded.completed_at,
+      started_at = excluded.started_at,
+      archived_at = excluded.archived_at,
+      health = excluded.health,
+      health_updated_at = excluded.health_updated_at,
+      health_updates = excluded.health_updates,
+      owner_id = excluded.owner_id,
+      owner_name = excluded.owner_name,
+      creator_id = excluded.creator_id,
+      creator_name = excluded.creator_name,
+      project_ids = excluded.project_ids,
+      updated_at = excluded.updated_at
+  `);
+
+  query.run(
+    initiative.id,
+    initiative.name,
+    initiative.description,
+    initiative.status,
+    initiative.target_date,
+    initiative.completed_at,
+    initiative.started_at,
+    initiative.archived_at,
+    initiative.health,
+    initiative.health_updated_at,
+    initiative.health_updates,
+    initiative.owner_id,
+    initiative.owner_name,
+    initiative.creator_id,
+    initiative.creator_name,
+    initiative.project_ids,
+    initiative.created_at,
+    initiative.updated_at
+  );
+}
+
+/**
+ * Delete initiatives by their IDs
+ */
+export function deleteInitiativesByIds(initiativeIds: string[]): void {
+  if (initiativeIds.length === 0) return;
+
+  const db = getDatabase();
+  const placeholders = initiativeIds.map(() => "?").join(",");
+  const query = db.prepare(`
+    DELETE FROM initiatives WHERE id IN (${placeholders})
+  `);
+  query.run(...initiativeIds);
 }
