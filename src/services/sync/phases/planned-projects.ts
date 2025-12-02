@@ -1,6 +1,6 @@
 import type { PhaseContext } from "../types.js";
 import pLimit from "p-limit";
-import { PROJECT_SYNC_CONCURRENCY, getProjectSyncLimit } from "../helpers.js";
+import { PROJECT_SYNC_CONCURRENCY } from "../helpers.js";
 import { writeIssuesToDatabase } from "../utils.js";
 import { computeAndStoreProjects } from "../compute-projects.js";
 import {
@@ -11,7 +11,6 @@ import {
 } from "../../../db/queries.js";
 import type { PartialSyncState } from "../../../db/queries.js";
 import { RateLimitError } from "../../../linear/client.js";
-import { getTotalIssueCount } from "../../../db/queries.js";
 
 export interface PlannedProjectsResult {
   newCount: number;
@@ -29,12 +28,9 @@ export async function syncPlannedProjects(
     activeProjectIds,
     projectDescriptionsMap,
     projectUpdatesMap,
-    cumulativeNewCount,
-    cumulativeUpdatedCount,
     apiQueryCount,
     updatePhase,
     shouldRunPhase,
-    getProjectSyncLimit,
   } = context;
 
   let newCount = 0;
@@ -61,10 +57,8 @@ export async function syncPlannedProjects(
 
   try {
     console.log("[SYNC] Fetching planned projects...");
-    let plannedProjectIds = await linearClient.fetchPlannedProjects();
-    console.log(
-      `[SYNC] Found ${plannedProjectIds.length} planned project(s)`
-    );
+    const plannedProjectIds = await linearClient.fetchPlannedProjects();
+    console.log(`[SYNC] Found ${plannedProjectIds.length} planned project(s)`);
 
     let plannedProjectsToSync: string[] = plannedProjectIds;
     let plannedProjectSyncStatuses: Array<{
@@ -109,36 +103,36 @@ export async function syncPlannedProjects(
 
     if (plannedProjectsToSync.length > 0) {
       const limit = pLimit(PROJECT_SYNC_CONCURRENCY);
-      let completedCount = 0;
 
       const processPlannedProject = async (
         projectId: string,
         projectIndex: number
       ) => {
-        const singleProjectIssues =
-          await linearClient.fetchIssuesByProjects(
-            [projectId],
-            undefined,
-            projectDescriptionsMap,
-            projectUpdatesMap
-          );
+        const singleProjectIssues = await linearClient.fetchIssuesByProjects(
+          [projectId],
+          undefined,
+          projectDescriptionsMap,
+          projectUpdatesMap
+        );
 
         let issueCounts = { newCount: 0, updatedCount: 0 };
         if (singleProjectIssues.length > 0) {
           issueCounts = writeIssuesToDatabase(singleProjectIssues);
         }
 
+        // Fetch project labels and content directly from Linear API
         const projectLabelsMap = new Map<string, string[]>();
-        for (const issue of singleProjectIssues) {
-          if (
-            issue.projectId &&
-            issue.projectLabels &&
-            issue.projectLabels.length > 0
-          ) {
-            if (!projectLabelsMap.has(issue.projectId)) {
-              projectLabelsMap.set(issue.projectId, issue.projectLabels);
-            }
-          }
+        const projectContentMap = new Map<string, string | null>();
+        try {
+          const projectData = await linearClient.fetchProjectData(projectId);
+          projectLabelsMap.set(projectId, projectData.labels);
+          projectContentMap.set(projectId, projectData.content);
+        } catch (error) {
+          console.error(
+            `[SYNC] Failed to fetch project data for ${projectId}:`,
+            error instanceof Error ? error.message : error
+          );
+          // Continue without labels/content - they're optional
         }
 
         await computeAndStoreProjects(
@@ -146,7 +140,8 @@ export async function syncPlannedProjects(
           projectDescriptionsMap,
           projectUpdatesMap,
           new Set([projectId]),
-          true
+          true,
+          projectContentMap
         );
 
         const statusIndex = plannedProjectSyncStatuses.findIndex(
@@ -157,16 +152,6 @@ export async function syncPlannedProjects(
         }
 
         activeProjectIds.add(projectId);
-
-        completedCount++;
-        const plannedProjectProgressAfter =
-          plannedProjectsProgressStart +
-          Math.round(
-            (completedCount / plannedProjectsToSync.length) *
-              plannedProjectsProgressRange
-          );
-        callbacks?.onProgressPercent?.(plannedProjectProgressAfter);
-        setSyncProgress(plannedProjectProgressAfter);
 
         const partialState: PartialSyncState = {
           currentPhase: "planned_projects",
@@ -180,7 +165,7 @@ export async function syncPlannedProjects(
         };
         savePartialSyncState(partialState);
 
-        return issueCounts;
+        return { issueCounts, projectIndex };
       };
 
       const results = await Promise.all(
@@ -189,9 +174,26 @@ export async function syncPlannedProjects(
         )
       );
 
+      // Collect counts safely after all promises complete
       for (const result of results) {
-        newCount += result.newCount;
-        updatedCount += result.updatedCount;
+        newCount += result.issueCounts.newCount;
+        updatedCount += result.issueCounts.updatedCount;
+      }
+
+      // Update progress sequentially based on sorted results to avoid race conditions
+      const sortedResults = [...results].sort(
+        (a, b) => a.projectIndex - b.projectIndex
+      );
+      for (let i = 0; i < sortedResults.length; i++) {
+        const completedCount = i + 1;
+        const plannedProjectProgressAfter =
+          plannedProjectsProgressStart +
+          Math.round(
+            (completedCount / plannedProjectsToSync.length) *
+              plannedProjectsProgressRange
+          );
+        callbacks?.onProgressPercent?.(plannedProjectProgressAfter);
+        setSyncProgress(plannedProjectProgressAfter);
       }
 
       callbacks?.onProgressPercent?.(85);
@@ -199,8 +201,7 @@ export async function syncPlannedProjects(
 
       const partialState: PartialSyncState = {
         currentPhase: "planned_projects",
-        initialIssuesSync:
-          existingPartialSync?.initialIssuesSync || "complete",
+        initialIssuesSync: existingPartialSync?.initialIssuesSync || "complete",
         projectSyncs: existingPartialSync?.projectSyncs || [],
         plannedProjectsSync: "complete",
         plannedProjectSyncs: plannedProjectSyncStatuses,
@@ -216,8 +217,7 @@ export async function syncPlannedProjects(
     if (error instanceof RateLimitError) {
       const partialState: PartialSyncState = {
         currentPhase: "planned_projects",
-        initialIssuesSync:
-          existingPartialSync?.initialIssuesSync || "complete",
+        initialIssuesSync: existingPartialSync?.initialIssuesSync || "complete",
         projectSyncs: existingPartialSync?.projectSyncs || [],
         plannedProjectsSync: "incomplete",
         plannedProjectSyncs: [],
@@ -243,4 +243,3 @@ export async function syncPlannedProjects(
 
   return { newCount, updatedCount };
 }
-

@@ -1,6 +1,6 @@
 import type { PhaseContext } from "../types.js";
 import pLimit from "p-limit";
-import { PROJECT_SYNC_CONCURRENCY, getProjectSyncLimit } from "../helpers.js";
+import { PROJECT_SYNC_CONCURRENCY } from "../helpers.js";
 import { writeIssuesToDatabase } from "../utils.js";
 import { computeAndStoreProjects } from "../compute-projects.js";
 import {
@@ -11,7 +11,6 @@ import {
   updateSyncMetadata,
 } from "../../../db/queries.js";
 import { RateLimitError } from "../../../linear/client.js";
-import { getTotalIssueCount } from "../../../db/queries.js";
 
 export interface InitiativeProjectsResult {
   newCount: number;
@@ -26,13 +25,9 @@ export async function syncInitiativeProjects(
     callbacks,
     projectDescriptionsMap,
     projectUpdatesMap,
-    startedIssues,
-    cumulativeNewCount,
-    cumulativeUpdatedCount,
     apiQueryCount,
     updatePhase,
     shouldRunPhase,
-    getProjectSyncLimit,
   } = context;
 
   let newCount = 0;
@@ -51,13 +46,15 @@ export async function syncInitiativeProjects(
     // Use initiatives from database (which were synced in the previous phase)
     // This ensures we're finding projects for initiatives we've actually loaded
     const dbInitiatives = getAllInitiatives();
-    
-    let projectIdsFromInitiatives = new Set<string>();
-    
+
+    const projectIdsFromInitiatives = new Set<string>();
+
     if (dbInitiatives.length === 0) {
       // Fallback: if no initiatives in DB, fetch from API
       // This handles the case where initiative_projects is run without initiatives phase
-      console.log("[SYNC] No initiatives in database, fetching from API as fallback...");
+      console.log(
+        "[SYNC] No initiatives in database, fetching from API as fallback..."
+      );
       const apiInitiatives = await linearClient.fetchInitiatives();
       for (const initiative of apiInitiatives) {
         for (const projectId of initiative.projectIds || []) {
@@ -68,7 +65,9 @@ export async function syncInitiativeProjects(
         `[SYNC] Found ${projectIdsFromInitiatives.size} unique project(s) across ${apiInitiatives.length} initiative(s) from API`
       );
     } else {
-      console.log(`[SYNC] Reading ${dbInitiatives.length} initiative(s) from database to identify missing projects...`);
+      console.log(
+        `[SYNC] Reading ${dbInitiatives.length} initiative(s) from database to identify missing projects...`
+      );
       // Collect all project IDs from database initiatives
       for (const initiative of dbInitiatives) {
         if (initiative.project_ids) {
@@ -78,7 +77,10 @@ export async function syncInitiativeProjects(
               projectIdsFromInitiatives.add(projectId);
             }
           } catch (e) {
-            console.warn(`[SYNC] Failed to parse project_ids for initiative ${initiative.id}:`, e);
+            console.warn(
+              `[SYNC] Failed to parse project_ids for initiative ${initiative.id}:`,
+              e
+            );
           }
         }
       }
@@ -89,7 +91,9 @@ export async function syncInitiativeProjects(
 
     // Get existing project IDs from database
     const existingProjects = getAllProjects();
-    const existingProjectIds = new Set(existingProjects.map((p) => p.project_id));
+    const existingProjectIds = new Set(
+      existingProjects.map((p) => p.project_id)
+    );
 
     // Find projects that are in initiatives but not in database
     const missingProjectIds = Array.from(projectIdsFromInitiatives).filter(
@@ -111,7 +115,8 @@ export async function syncInitiativeProjects(
       }
 
       const limit = pLimit(PROJECT_SYNC_CONCURRENCY);
-      let initiativeProjectIssues: import("../../../linear/client.js").LinearIssueData[] = [];
+      const initiativeProjectIssues: import("../../../linear/client.js").LinearIssueData[] =
+        [];
 
       const processInitiativeProject = async (projectId: string) => {
         const projectIssues = await linearClient.fetchIssuesByProjects(
@@ -142,25 +147,34 @@ export async function syncInitiativeProjects(
         updatedCount = counts.updatedCount;
       }
 
+      // Fetch project labels and content directly from Linear API for each project
       const initiativeProjectLabelsMap = new Map<string, string[]>();
-      for (const issue of initiativeProjectIssues) {
-        if (
-          issue.projectId &&
-          issue.projectLabels &&
-          issue.projectLabels.length > 0
-        ) {
-          if (!initiativeProjectLabelsMap.has(issue.projectId)) {
-            initiativeProjectLabelsMap.set(issue.projectId, issue.projectLabels);
-          }
+      const initiativeProjectContentMap = new Map<string, string | null>();
+
+      // Fetch labels and content for each project in parallel
+      const projectDataPromises = projectsToSync.map(async (projectId) => {
+        try {
+          const projectData = await linearClient.fetchProjectData(projectId);
+          initiativeProjectLabelsMap.set(projectId, projectData.labels);
+          initiativeProjectContentMap.set(projectId, projectData.content);
+        } catch (error) {
+          console.error(
+            `[SYNC] Failed to fetch project data for ${projectId}:`,
+            error instanceof Error ? error.message : error
+          );
+          // Continue without labels/content - they're optional
         }
-      }
+      });
+
+      await Promise.all(projectDataPromises);
 
       await computeAndStoreProjects(
         initiativeProjectLabelsMap,
         projectDescriptionsMap,
         projectUpdatesMap,
         new Set(projectsToSync),
-        true
+        true,
+        initiativeProjectContentMap
       );
       console.log(
         `[SYNC] Computed metrics for ${projectsToSync.length} initiative project(s)`
@@ -186,4 +200,3 @@ export async function syncInitiativeProjects(
 
   return { newCount, updatedCount };
 }
-

@@ -1,6 +1,6 @@
 import type { PhaseContext } from "../types.js";
 import pLimit from "p-limit";
-import { PROJECT_SYNC_CONCURRENCY, getProjectSyncLimit } from "../helpers.js";
+import { PROJECT_SYNC_CONCURRENCY } from "../helpers.js";
 import { writeIssuesToDatabase } from "../utils.js";
 import { computeAndStoreProjects } from "../compute-projects.js";
 import {
@@ -58,7 +58,7 @@ export async function syncCompletedProjects(
 
   try {
     console.log("[SYNC] Fetching completed projects (last 6 months)...");
-    let completedProjectIds = await linearClient.fetchCompletedProjects();
+    const completedProjectIds = await linearClient.fetchCompletedProjects();
     console.log(
       `[SYNC] Found ${completedProjectIds.length} completed project(s) from last 6 months`
     );
@@ -106,36 +106,36 @@ export async function syncCompletedProjects(
 
     if (completedProjectsToSync.length > 0) {
       const limit = pLimit(PROJECT_SYNC_CONCURRENCY);
-      let completedCount = 0;
 
       const processCompletedProject = async (
         projectId: string,
         projectIndex: number
       ) => {
-        const singleProjectIssues =
-          await linearClient.fetchIssuesByProjects(
-            [projectId],
-            undefined,
-            projectDescriptionsMap,
-            projectUpdatesMap
-          );
+        const singleProjectIssues = await linearClient.fetchIssuesByProjects(
+          [projectId],
+          undefined,
+          projectDescriptionsMap,
+          projectUpdatesMap
+        );
 
         let issueCounts = { newCount: 0, updatedCount: 0 };
         if (singleProjectIssues.length > 0) {
           issueCounts = writeIssuesToDatabase(singleProjectIssues);
         }
 
+        // Fetch project labels and content directly from Linear API
         const projectLabelsMap = new Map<string, string[]>();
-        for (const issue of singleProjectIssues) {
-          if (
-            issue.projectId &&
-            issue.projectLabels &&
-            issue.projectLabels.length > 0
-          ) {
-            if (!projectLabelsMap.has(issue.projectId)) {
-              projectLabelsMap.set(issue.projectId, issue.projectLabels);
-            }
-          }
+        const projectContentMap = new Map<string, string | null>();
+        try {
+          const projectData = await linearClient.fetchProjectData(projectId);
+          projectLabelsMap.set(projectId, projectData.labels);
+          projectContentMap.set(projectId, projectData.content);
+        } catch (error) {
+          console.error(
+            `[SYNC] Failed to fetch project data for ${projectId}:`,
+            error instanceof Error ? error.message : error
+          );
+          // Continue without labels/content - they're optional
         }
 
         await computeAndStoreProjects(
@@ -143,7 +143,8 @@ export async function syncCompletedProjects(
           projectDescriptionsMap,
           projectUpdatesMap,
           new Set([projectId]),
-          true
+          true,
+          projectContentMap
         );
 
         const statusIndex = completedProjectSyncStatuses.findIndex(
@@ -154,16 +155,6 @@ export async function syncCompletedProjects(
         }
 
         activeProjectIds.add(projectId);
-
-        completedCount++;
-        const completedProjectProgressAfter =
-          completedProjectsProgressStart +
-          Math.round(
-            (completedCount / completedProjectsToSync.length) *
-              completedProjectsProgressRange
-          );
-        callbacks?.onProgressPercent?.(completedProjectProgressAfter);
-        setSyncProgress(completedProjectProgressAfter);
 
         const partialState: PartialSyncState = {
           currentPhase: "completed_projects",
@@ -178,7 +169,7 @@ export async function syncCompletedProjects(
         };
         savePartialSyncState(partialState);
 
-        return issueCounts;
+        return { issueCounts, projectIndex };
       };
 
       const results = await Promise.all(
@@ -187,9 +178,26 @@ export async function syncCompletedProjects(
         )
       );
 
+      // Collect counts safely after all promises complete
       for (const result of results) {
-        newCount += result.newCount;
-        updatedCount += result.updatedCount;
+        newCount += result.issueCounts.newCount;
+        updatedCount += result.issueCounts.updatedCount;
+      }
+
+      // Update progress sequentially based on sorted results to avoid race conditions
+      const sortedResults = [...results].sort(
+        (a, b) => a.projectIndex - b.projectIndex
+      );
+      for (let i = 0; i < sortedResults.length; i++) {
+        const completedCount = i + 1;
+        const completedProjectProgressAfter =
+          completedProjectsProgressStart +
+          Math.round(
+            (completedCount / completedProjectsToSync.length) *
+              completedProjectsProgressRange
+          );
+        callbacks?.onProgressPercent?.(completedProjectProgressAfter);
+        setSyncProgress(completedProjectProgressAfter);
       }
 
       callbacks?.onProgressPercent?.(95);
@@ -197,8 +205,7 @@ export async function syncCompletedProjects(
 
       const partialState: PartialSyncState = {
         currentPhase: "completed_projects",
-        initialIssuesSync:
-          existingPartialSync?.initialIssuesSync || "complete",
+        initialIssuesSync: existingPartialSync?.initialIssuesSync || "complete",
         projectSyncs: existingPartialSync?.projectSyncs || [],
         plannedProjectsSync:
           existingPartialSync?.plannedProjectsSync || "complete",
@@ -215,8 +222,7 @@ export async function syncCompletedProjects(
     if (error instanceof RateLimitError) {
       const partialState: PartialSyncState = {
         currentPhase: "completed_projects",
-        initialIssuesSync:
-          existingPartialSync?.initialIssuesSync || "complete",
+        initialIssuesSync: existingPartialSync?.initialIssuesSync || "complete",
         projectSyncs: existingPartialSync?.projectSyncs || [],
         plannedProjectsSync:
           existingPartialSync?.plannedProjectsSync || "complete",
@@ -225,8 +231,7 @@ export async function syncCompletedProjects(
         completedProjectSyncs: [],
       };
       savePartialSyncState(partialState);
-      const errorMsg =
-        "Rate limit exceeded during completed projects sync";
+      const errorMsg = "Rate limit exceeded during completed projects sync";
       console.error(`[SYNC] ${errorMsg}`);
       setSyncStatus("error");
       updateSyncMetadata({
@@ -244,4 +249,3 @@ export async function syncCompletedProjects(
 
   return { newCount, updatedCount };
 }
-

@@ -1,7 +1,7 @@
 import type { LinearIssueData } from "../../../linear/client.js";
 import type { PhaseContext } from "../types.js";
 import pLimit from "p-limit";
-import { PROJECT_SYNC_CONCURRENCY, getProjectSyncLimit } from "../helpers.js";
+import { PROJECT_SYNC_CONCURRENCY } from "../helpers.js";
 import { writeIssuesToDatabase } from "../utils.js";
 import { computeAndStoreProjects } from "../compute-projects.js";
 import {
@@ -12,7 +12,6 @@ import {
 } from "../../../db/queries.js";
 import type { PartialSyncState } from "../../../db/queries.js";
 import { RateLimitError } from "../../../linear/client.js";
-import { getTotalIssueCount } from "../../../db/queries.js";
 
 export interface ActiveProjectsResult {
   newCount: number;
@@ -32,12 +31,9 @@ export async function syncActiveProjects(
     activeProjectIds,
     projectDescriptionsMap,
     projectUpdatesMap,
-    cumulativeNewCount,
-    cumulativeUpdatedCount,
     apiQueryCount,
     updatePhase,
     shouldRunPhase,
-    getProjectSyncLimit,
   } = context;
 
   let newCount = 0;
@@ -140,46 +136,49 @@ export async function syncActiveProjects(
 
     try {
       const limit = pLimit(PROJECT_SYNC_CONCURRENCY);
-      let completedCount = 0;
-      let totalProjectIssues = 0;
 
-      const processProject = async (projectId: string, projectIndex: number) => {
+      const processProject = async (
+        projectId: string,
+        projectIndex: number
+      ) => {
         const projectName = projectNameMap.get(projectId) || null;
 
         console.log(
-          `[SYNC] Processing project ${projectIndex + 1}/${projectsToSync.length}: ${projectName || projectId}`
+          `[SYNC] Processing project ${projectIndex}/${projectsToSync.length}: ${projectName || projectId}`
         );
 
-        const singleProjectIssues =
-          await linearClient.fetchIssuesByProjects(
-            [projectId],
-            (count) => {
-              callbacks?.onProjectIssueCountUpdate?.(count);
-            },
-            projectDescriptionsMap,
-            projectUpdatesMap
-          );
+        const singleProjectIssues = await linearClient.fetchIssuesByProjects(
+          [projectId],
+          (count) => {
+            callbacks?.onProjectIssueCountUpdate?.(count);
+          },
+          projectDescriptionsMap,
+          projectUpdatesMap
+        );
 
         let issueCounts = { newCount: 0, updatedCount: 0 };
+        let projectIssueCount = 0;
         if (singleProjectIssues.length > 0) {
           console.log(
             `[SYNC] Writing ${singleProjectIssues.length} issues for project ${projectName || projectId}...`
           );
           issueCounts = writeIssuesToDatabase(singleProjectIssues);
-          totalProjectIssues += singleProjectIssues.length;
+          projectIssueCount = singleProjectIssues.length;
         }
 
+        // Fetch project labels and content directly from Linear API
         const projectLabelsMap = new Map<string, string[]>();
-        for (const issue of singleProjectIssues) {
-          if (
-            issue.projectId &&
-            issue.projectLabels &&
-            issue.projectLabels.length > 0
-          ) {
-            if (!projectLabelsMap.has(issue.projectId)) {
-              projectLabelsMap.set(issue.projectId, issue.projectLabels);
-            }
-          }
+        const projectContentMap = new Map<string, string | null>();
+        try {
+          const projectData = await linearClient.fetchProjectData(projectId);
+          projectLabelsMap.set(projectId, projectData.labels);
+          projectContentMap.set(projectId, projectData.content);
+        } catch (error) {
+          console.error(
+            `[SYNC] Failed to fetch project data for ${projectId}:`,
+            error instanceof Error ? error.message : error
+          );
+          // Continue without labels/content - they're optional
         }
 
         await computeAndStoreProjects(
@@ -187,7 +186,8 @@ export async function syncActiveProjects(
           projectDescriptionsMap,
           projectUpdatesMap,
           new Set([projectId]),
-          true
+          true,
+          projectContentMap
         );
 
         const statusIndex = projectSyncStatuses.findIndex(
@@ -199,7 +199,42 @@ export async function syncActiveProjects(
           projectSyncStatuses.push({ projectId, status: "complete" });
         }
 
-        completedCount++;
+        const partialState: PartialSyncState = {
+          currentPhase: "active_projects",
+          initialIssuesSync: "complete",
+          projectSyncs: [...projectSyncStatuses],
+        };
+        savePartialSyncState(partialState);
+
+        return {
+          projectId,
+          issueCounts,
+          projectIndex,
+          projectIssueCount,
+          projectName,
+        };
+      };
+
+      const results = await Promise.all(
+        projectsToSync.map((projectId, index) =>
+          limit(() => processProject(projectId, index + 1))
+        )
+      );
+
+      // Collect counts safely after all promises complete
+      let totalProjectIssues = 0;
+      for (const result of results) {
+        newCount += result.issueCounts.newCount;
+        updatedCount += result.issueCounts.updatedCount;
+        totalProjectIssues += result.projectIssueCount;
+      }
+
+      // Update progress sequentially based on sorted results to avoid race conditions
+      const sortedResults = [...results].sort(
+        (a, b) => a.projectIndex - b.projectIndex
+      );
+      for (let i = 0; i < sortedResults.length; i++) {
+        const completedCount = i + 1;
         const projectProgressAfter =
           activeProjectsProgressStart +
           Math.round(
@@ -209,30 +244,10 @@ export async function syncActiveProjects(
         callbacks?.onProjectProgress?.(
           completedCount,
           projectsToSync.length,
-          projectName
+          sortedResults[i].projectName
         );
         callbacks?.onProgressPercent?.(projectProgressAfter);
         setSyncProgress(projectProgressAfter);
-
-        const partialState: PartialSyncState = {
-          currentPhase: "active_projects",
-          initialIssuesSync: "complete",
-          projectSyncs: [...projectSyncStatuses],
-        };
-        savePartialSyncState(partialState);
-
-        return { projectId, issueCounts };
-      };
-
-      const results = await Promise.all(
-        projectsToSync.map((projectId, index) =>
-          limit(() => processProject(projectId, index + 1))
-        )
-      );
-
-      for (const result of results) {
-        newCount += result.issueCounts.newCount;
-        updatedCount += result.issueCounts.updatedCount;
       }
 
       callbacks?.onProgressPercent?.(70);
@@ -267,4 +282,3 @@ export async function syncActiveProjects(
 
   return { newCount, updatedCount };
 }
-

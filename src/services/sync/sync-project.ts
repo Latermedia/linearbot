@@ -154,17 +154,19 @@ export async function syncProject(
       throw error;
     }
 
+    // Fetch project labels and content directly from Linear API
     const projectLabelsMap = new Map<string, string[]>();
-    for (const issue of projectIssues) {
-      if (
-        issue.projectId &&
-        issue.projectLabels &&
-        issue.projectLabels.length > 0
-      ) {
-        if (!projectLabelsMap.has(issue.projectId)) {
-          projectLabelsMap.set(issue.projectId, issue.projectLabels);
-        }
-      }
+    const projectContentMap = new Map<string, string | null>();
+    try {
+      const projectData = await linearClient.fetchProjectData(projectId);
+      projectLabelsMap.set(projectId, projectData.labels);
+      projectContentMap.set(projectId, projectData.content);
+    } catch (error) {
+      console.error(
+        `[SYNC] Failed to fetch project data for ${projectId}:`,
+        error instanceof Error ? error.message : error
+      );
+      // Continue without labels/content - they're optional
     }
 
     const projectUpdatesMap = new Map<string, ProjectUpdate[]>();
@@ -187,11 +189,13 @@ export async function syncProject(
       projectLabelsMap,
       undefined,
       projectUpdatesMap,
-      new Set([projectId])
+      new Set([projectId]),
+      false,
+      projectContentMap
     );
 
     console.log(`[SYNC] Computing engineer WIP metrics...`);
-    const computedEngineerCount = computeAndStoreEngineers();
+    computeAndStoreEngineers();
 
     callbacks?.onProgressPercent?.(100);
     setSyncProgress(100);
@@ -251,4 +255,3 @@ export async function syncProject(
     };
   }
 }
-
