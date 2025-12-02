@@ -7,6 +7,8 @@ export interface SyncStats {
   currentProjectIndex: number;
   currentProjectName: string | null;
   projectIssuesCount: number;
+  newCount: number;
+  updatedCount: number;
 }
 
 export interface SyncState {

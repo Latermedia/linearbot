@@ -104,6 +104,8 @@ export const POST: RequestHandler = async (event) => {
       currentProjectIndex: 0,
       currentProjectName: null,
       projectIssuesCount: 0,
+      newCount: 0,
+      updatedCount: 0,
     },
   });
 
@@ -120,6 +122,12 @@ export const POST: RequestHandler = async (event) => {
         currentProjectIndex: index,
         totalProjectsCount: total,
         currentProjectName: projectName,
+      });
+    },
+    onIssueCountsUpdate: (newCount, updatedCount) => {
+      updateSyncStats({
+        newCount,
+        updatedCount,
       });
     },
   })

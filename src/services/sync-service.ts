@@ -74,6 +74,7 @@ export interface SyncCallbacks {
     total: number,
     projectName: string | null
   ) => void;
+  onIssueCountsUpdate?: (newCount: number, updatedCount: number) => void;
 }
 
 export interface SyncOptions {
@@ -562,6 +563,11 @@ export async function performSync(
       console.log(
         `[SYNC] Wrote started issues - New: ${counts.newCount}, Updated: ${counts.updatedCount}`
       );
+      // Update stats after writing started issues
+      callbacks?.onIssueCountsUpdate?.(
+        cumulativeNewCount,
+        cumulativeUpdatedCount
+      );
     } else if (
       isResuming &&
       existingPartialSync &&
@@ -616,6 +622,11 @@ export async function performSync(
             cumulativeUpdatedCount += counts.updatedCount;
             console.log(
               `[SYNC] Wrote recently updated issues - New: ${counts.newCount}, Updated: ${counts.updatedCount}`
+            );
+            // Update stats after writing recently updated issues
+            callbacks?.onIssueCountsUpdate?.(
+              cumulativeNewCount,
+              cumulativeUpdatedCount
             );
           }
         } catch (error) {
@@ -807,6 +818,11 @@ export async function performSync(
                 totalProjectIssues += singleProjectIssues.length;
                 console.log(
                   `[SYNC] Wrote project issues - New: ${issueCounts.newCount}, Updated: ${issueCounts.updatedCount}`
+                );
+                // Update stats incrementally after each project
+                callbacks?.onIssueCountsUpdate?.(
+                  cumulativeNewCount,
+                  cumulativeUpdatedCount
                 );
               }
 
@@ -1056,6 +1072,11 @@ export async function performSync(
                 totalPlannedProjectIssues += singleProjectIssues.length;
                 console.log(
                   `[SYNC] Wrote planned project issues - New: ${issueCounts.newCount}, Updated: ${issueCounts.updatedCount}`
+                );
+                // Update stats incrementally after each project
+                callbacks?.onIssueCountsUpdate?.(
+                  cumulativeNewCount,
+                  cumulativeUpdatedCount
                 );
               }
 
@@ -1317,6 +1338,11 @@ export async function performSync(
                 totalCompletedProjectIssues += singleProjectIssues.length;
                 console.log(
                   `[SYNC] Wrote completed project issues - New: ${issueCounts.newCount}, Updated: ${issueCounts.updatedCount}`
+                );
+                // Update stats incrementally after each project
+                callbacks?.onIssueCountsUpdate?.(
+                  cumulativeNewCount,
+                  cumulativeUpdatedCount
                 );
               }
 
@@ -1638,6 +1664,11 @@ export async function performSync(
             console.log(
               `[SYNC] Wrote initiative project issues - New: ${counts.newCount}, Updated: ${counts.updatedCount}`
             );
+            // Update stats incrementally after writing initiative project issues
+            callbacks?.onIssueCountsUpdate?.(
+              cumulativeNewCount,
+              cumulativeUpdatedCount
+            );
           }
 
           // Compute and store project metrics for these projects
@@ -1853,6 +1884,12 @@ export async function performSync(
 
     console.log(
       `[SYNC] Summary - New: ${cumulativeNewCount}, Updated: ${cumulativeUpdatedCount}, Started: ${startedCount}, Projects: ${projectCount}, Computed Projects: ${computedProjectCount}, Engineers: ${computedEngineerCount}`
+    );
+
+    // Final update to ensure counts are accurate (eventually consistent)
+    callbacks?.onIssueCountsUpdate?.(
+      cumulativeNewCount,
+      cumulativeUpdatedCount
     );
 
     // Update sync metadata on success

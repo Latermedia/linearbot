@@ -122,6 +122,11 @@ export async function syncProject(
         const counts = writeIssuesToDatabase(projectIssues);
         cumulativeNewCount += counts.newCount;
         cumulativeUpdatedCount += counts.updatedCount;
+        // Update stats incrementally after writing issues
+        callbacks?.onIssueCountsUpdate?.(
+          cumulativeNewCount,
+          cumulativeUpdatedCount
+        );
       }
 
       callbacks?.onProgressPercent?.(80);
@@ -211,6 +216,12 @@ export async function syncProject(
     const total = getTotalIssueCount();
     console.log(
       `[SYNC] Project sync complete - New: ${cumulativeNewCount}, Updated: ${cumulativeUpdatedCount}, Total: ${total}, Project Issues: ${projectIssues.length}`
+    );
+
+    // Final update to ensure counts are accurate (eventually consistent)
+    callbacks?.onIssueCountsUpdate?.(
+      cumulativeNewCount,
+      cumulativeUpdatedCount
     );
 
     return {

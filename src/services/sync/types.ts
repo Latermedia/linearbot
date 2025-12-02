@@ -21,6 +21,7 @@ export interface SyncCallbacks {
     total: number,
     projectName: string | null
   ) => void;
+  onIssueCountsUpdate?: (newCount: number, updatedCount: number) => void;
 }
 
 export interface SyncOptions {
@@ -51,4 +52,3 @@ export interface PhaseContext {
   shouldRunPhase: (phase: SyncPhase) => boolean;
   getProjectSyncLimit: () => number | null;
 }
-

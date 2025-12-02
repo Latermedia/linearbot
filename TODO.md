@@ -37,6 +37,8 @@ Planned features and known issues for LinearBot.
 
 - **Webhook listeners** — implement Linear webhook listeners to receive real-time updates for issues and projects, eliminating the need for periodic syncing and ensuring immediate updates when issues are completed or projects change state
 
+### filter engineers by manager
+
 ---
 
 ## Known Issues

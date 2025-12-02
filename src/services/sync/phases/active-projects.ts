@@ -34,6 +34,7 @@ export async function syncActiveProjects(
     apiQueryCount,
     updatePhase,
     shouldRunPhase,
+    getProjectSyncLimit,
   } = context;
 
   let newCount = 0;
