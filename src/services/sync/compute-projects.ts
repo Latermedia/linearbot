@@ -2,10 +2,8 @@ import type { ProjectUpdate } from "../../linear/client.js";
 import type { Issue, Project } from "../../db/schema.js";
 import {
   getAllIssues,
-  getAllProjects,
   getProjectById,
   upsertProject,
-  deleteProjectsByProjectIds,
 } from "../../db/queries.js";
 import {
   hasStatusMismatch,
@@ -40,7 +38,8 @@ export async function computeAndStoreProjects(
   projectDescriptionsMap?: Map<string, string | null>,
   projectUpdatesMap?: Map<string, ProjectUpdate[]>,
   syncedProjectIds?: Set<string>,
-  skipDeletion: boolean = false
+  _skipDeletion: boolean = false,
+  projectContentMap?: Map<string, string | null>
 ): Promise<number> {
   const syncTimestamp = syncedProjectIds ? new Date().toISOString() : null;
   const allIssues = getAllIssues();
@@ -179,7 +178,7 @@ export async function computeAndStoreProjects(
     const missingHealthFlag =
       !firstIssue.project_health &&
       !(isPlanningPhase && startedIssuesCount === 0);
-    
+
     // Check for missing RICE scoped labels (will be set below after we get existing project)
     let missingRICEScopedLabelsFlag = false;
 
@@ -284,19 +283,42 @@ export async function computeAndStoreProjects(
       Object.fromEntries(velocityByTeam)
     );
 
-    // Get project labels from map or default to empty array
-    const projectLabels = projectLabelsMap?.get(projectId) || [];
+    // Get existing project to check for existing labels/content
+    const existingProject = getProjectById(projectId);
+
+    // Get project labels from map, or preserve existing labels if project wasn't synced
+    let projectLabels: string[] = [];
+    if (projectLabelsMap?.has(projectId)) {
+      projectLabels = projectLabelsMap.get(projectId) || [];
+    } else if (existingProject?.labels) {
+      // Preserve existing labels if project wasn't synced in this run
+      try {
+        projectLabels = JSON.parse(existingProject.labels) as string[];
+      } catch (_e) {
+        // Invalid JSON, use empty array
+        projectLabels = [];
+      }
+    }
     const labelsJson =
       projectLabels.length > 0 ? JSON.stringify(projectLabels) : null;
 
     // Get project description from map
     const projectDescription = projectDescriptionsMap?.get(projectId) || null;
 
+    // Get project content from map, or preserve existing content if project wasn't synced
+    let projectContent: string | null = null;
+    if (projectContentMap?.has(projectId)) {
+      projectContent = projectContentMap.get(projectId) || null;
+    } else if (existingProject?.project_content) {
+      // Preserve existing content if project wasn't synced in this run
+      projectContent = existingProject.project_content;
+    }
+
     // Check for missing RICE scoped labels
-    // Get existing project to check its labels (labelsJson above only has names, not full objects)
-    const existingProject = getProjectById(projectId);
+    // Use existingProject we already fetched above
     if (existingProject) {
-      missingRICEScopedLabelsFlag = hasMissingProjectScopedLabels(existingProject);
+      missingRICEScopedLabelsFlag =
+        hasMissingProjectScopedLabels(existingProject);
     }
 
     // Get project updates from map, sort by createdAt descending (newest first), and serialize to JSON
@@ -328,6 +350,7 @@ export async function computeAndStoreProjects(
       project_lead_id: firstIssue.project_lead_id,
       project_lead_name: firstIssue.project_lead_name,
       project_description: projectDescription,
+      project_content: projectContent,
       total_issues: projectIssues.length,
       completed_issues: completedCount,
       in_progress_issues: inProgressCount,
@@ -355,7 +378,9 @@ export async function computeAndStoreProjects(
       last_activity_date: lastActivityDate,
       estimated_end_date: estimatedEndDate,
       target_date: targetDate, // Linear's explicit target date for the project
-      completed_at: linearCompletedAt ? new Date(linearCompletedAt).toISOString() : null, // Linear's completedAt date for the project
+      completed_at: linearCompletedAt
+        ? new Date(linearCompletedAt).toISOString()
+        : null, // Linear's completedAt date for the project
       issues_by_state: issuesByStateJson,
       engineers: engineersJson,
       teams: teamsJson,
@@ -368,21 +393,7 @@ export async function computeAndStoreProjects(
     upsertProject(project);
   }
 
-  // Delete projects that no longer exist (skip during incremental sync)
-  if (!skipDeletion) {
-    const allProjects = getAllProjects();
-    const projectsToDelete = allProjects
-      .filter((p) => !activeProjectIds.has(p.project_id))
-      .map((p) => p.project_id);
-
-    if (projectsToDelete.length > 0) {
-      deleteProjectsByProjectIds(projectsToDelete);
-      console.log(
-        `[SYNC] Deleted ${projectsToDelete.length} inactive project(s)`
-      );
-    }
-  }
+  // Note: We no longer delete projects - all data is preserved for historical tracking
 
   return activeProjectIds.size;
 }
-
