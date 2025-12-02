@@ -6,7 +6,6 @@ import {
 } from "../../linear/client.js";
 import { isMockMode, generateMockData } from "../mock-data.js";
 import {
-  deleteIssuesByTeams,
   getTotalIssueCount,
   updateSyncMetadata,
   setSyncStatus,
@@ -15,19 +14,12 @@ import {
   savePartialSyncState,
   clearPartialSyncState,
   getSyncMetadata,
-  getStartedIssues,
 } from "../../db/queries.js";
 import type { SyncPhase } from "../../db/queries.js";
-import type {
-  SyncResult,
-  SyncCallbacks,
-  SyncOptions,
-} from "./types.js";
-import { convertDbIssueToLinearFormat } from "./utils.js";
+import type { SyncResult, SyncCallbacks, SyncOptions } from "./types.js";
 import { writeIssuesToDatabase } from "./utils.js";
 import {
   getProjectSyncLimit,
-  PROJECT_SYNC_CONCURRENCY,
   createShouldRunPhase,
   createUpdatePhase,
 } from "./helpers.js";
@@ -302,11 +294,10 @@ export async function performSync(
       console.log("[SYNC] Skipping completed projects phase (not selected)");
     }
 
-    // Remove ignored teams from database
+    // Note: We no longer delete issues from ignored teams - all data is preserved for historical tracking
     if (ignoredTeamKeys.length > 0) {
-      deleteIssuesByTeams(ignoredTeamKeys);
       console.log(
-        `[SYNC] Removed issues from ${ignoredTeamKeys.length} ignored team(s)`
+        `[SYNC] Note: ${ignoredTeamKeys.length} team(s) are ignored but their data is preserved`
       );
     }
 
@@ -327,7 +318,8 @@ export async function performSync(
     // Phase 8: Initiative Projects (runs after initiatives are synced to DB)
     // This ensures we have all projects for the initiatives we've loaded
     if (shouldRunPhase("initiative_projects")) {
-      const initiativeProjectsResult = await syncInitiativeProjects(phaseContext);
+      const initiativeProjectsResult =
+        await syncInitiativeProjects(phaseContext);
       cumulativeNewCount += initiativeProjectsResult.newCount;
       cumulativeUpdatedCount += initiativeProjectsResult.updatedCount;
       phaseContext.cumulativeNewCount = cumulativeNewCount;
@@ -339,19 +331,16 @@ export async function performSync(
     let computedProjectCount = activeProjectIds.size;
     let computedEngineerCount = 0;
 
-    // Phase 9: Computing Metrics (final phase - runs after all data is synced)
-    if (shouldRunPhase("computing_metrics")) {
-      const computingMetricsResult = await syncComputingMetrics(
-        phaseContext,
-        startedIssues,
-        recentlyUpdatedIssues,
-        activeProjectIds
-      );
-      computedProjectCount = computingMetricsResult.projectCount;
-      computedEngineerCount = computingMetricsResult.engineerCount;
-    } else {
-      console.log("[SYNC] Skipping computing metrics phase (not selected)");
-    }
+    // Phase 9: Computing Metrics (final phase - always required)
+    // This phase computes projects that weren't synced incrementally and engineer WIP metrics
+    const computingMetricsResult = await syncComputingMetrics(
+      phaseContext,
+      startedIssues,
+      recentlyUpdatedIssues,
+      activeProjectIds
+    );
+    computedProjectCount = computingMetricsResult.projectCount;
+    computedEngineerCount = computingMetricsResult.engineerCount;
 
     // Final phase complete
     updatePhase("complete");
@@ -463,4 +452,3 @@ export async function performSync(
 
 // Re-export syncProject function
 export { syncProject } from "./sync-project.js";
-

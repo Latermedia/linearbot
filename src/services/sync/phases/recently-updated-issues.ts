@@ -27,8 +27,6 @@ export async function syncRecentlyUpdatedIssues(
     existingPartialSync,
     isResuming,
     ignoredTeamKeys,
-    cumulativeNewCount,
-    cumulativeUpdatedCount,
     apiQueryCount,
     updatePhase,
     shouldRunPhase,
@@ -46,12 +44,6 @@ export async function syncRecentlyUpdatedIssues(
   updatePhase("recently_updated_issues");
   callbacks?.onProgressPercent?.(10);
   setSyncProgress(10);
-
-  const skipRecentlyUpdated = process.env.SKIP_RECENTLY_UPDATED_ISSUES === "true";
-  if (skipRecentlyUpdated) {
-    console.log("[SYNC] Skipping recently updated issues fetch (SKIP_RECENTLY_UPDATED_ISSUES=true)");
-    return { recentlyUpdatedIssues, newCount, updatedCount };
-  }
 
   if (
     !isResuming ||
@@ -122,4 +114,3 @@ export async function syncRecentlyUpdatedIssues(
 
   return { recentlyUpdatedIssues, newCount, updatedCount };
 }
-

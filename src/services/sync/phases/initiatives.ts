@@ -1,8 +1,6 @@
 import type { PhaseContext } from "../types.js";
 import {
-  getAllInitiatives,
   upsertInitiative,
-  deleteInitiativesByIds,
   savePartialSyncState,
   setSyncProgress,
   setSyncStatus,
@@ -10,19 +8,13 @@ import {
 } from "../../../db/queries.js";
 import type { Initiative, PartialSyncState } from "../../../db/queries.js";
 import { RateLimitError } from "../../../linear/client.js";
-import { getTotalIssueCount } from "../../../db/queries.js";
-import { getProjectSyncLimit } from "../helpers.js";
 
-export async function syncInitiatives(
-  context: PhaseContext
-): Promise<void> {
+export async function syncInitiatives(context: PhaseContext): Promise<void> {
   const {
     linearClient,
     callbacks,
     existingPartialSync,
     isResuming,
-    cumulativeNewCount,
-    cumulativeUpdatedCount,
     apiQueryCount,
     updatePhase,
     shouldRunPhase,
@@ -54,10 +46,7 @@ export async function syncInitiatives(
 
     const initiativeLimit = getProjectSyncLimit();
     let initiatives = allInitiatives;
-    if (
-      initiativeLimit !== null &&
-      allInitiatives.length > initiativeLimit
-    ) {
+    if (initiativeLimit !== null && allInitiatives.length > initiativeLimit) {
       initiatives = allInitiatives.slice(0, initiativeLimit);
       console.log(
         `[SYNC] Limiting initiatives to ${initiativeLimit} (found ${allInitiatives.length} total). Set LIMIT_SYNC=false to sync all initiatives.`
@@ -68,18 +57,17 @@ export async function syncInitiatives(
       console.log(
         `[SYNC] Writing ${initiatives.length} initiative(s) to database...`
       );
-      const existingInitiativeIds = new Set(
-        getAllInitiatives().map((i) => i.id)
-      );
       const activeInitiativeIds = new Set<string>();
 
       for (const initiativeData of initiatives) {
         activeInitiativeIds.add(initiativeData.id);
-        
+
         // Fetch health updates for this initiative
         let healthUpdates: any[] = [];
         try {
-          const updates = await linearClient.fetchInitiativeUpdates(initiativeData.id);
+          const updates = await linearClient.fetchInitiativeUpdates(
+            initiativeData.id
+          );
           healthUpdates = updates;
           if (updates.length > 0) {
             console.log(
@@ -93,7 +81,7 @@ export async function syncInitiatives(
           );
           // Continue without updates - they're optional
         }
-        
+
         const initiative: Initiative = {
           id: initiativeData.id,
           name: initiativeData.name,
@@ -105,45 +93,35 @@ export async function syncInitiatives(
           archived_at: initiativeData.archivedAt,
           health: initiativeData.health,
           health_updated_at: initiativeData.healthUpdatedAt,
-          health_updates: healthUpdates.length > 0
-            ? JSON.stringify(healthUpdates)
-            : null,
+          health_updates:
+            healthUpdates.length > 0 ? JSON.stringify(healthUpdates) : null,
           owner_id: initiativeData.ownerId,
           owner_name: initiativeData.ownerName,
           creator_id: initiativeData.creatorId,
           creator_name: initiativeData.creatorName,
-          project_ids: initiativeData.projectIds.length > 0
-            ? JSON.stringify(initiativeData.projectIds)
-            : null,
+          project_ids:
+            initiativeData.projectIds.length > 0
+              ? JSON.stringify(initiativeData.projectIds)
+              : null,
           created_at: initiativeData.createdAt,
           updated_at: initiativeData.updatedAt,
         };
         upsertInitiative(initiative);
       }
 
-      const initiativesToDelete = Array.from(existingInitiativeIds).filter(
-        (id) => !activeInitiativeIds.has(id)
-      );
-      if (initiativesToDelete.length > 0) {
-        deleteInitiativesByIds(initiativesToDelete);
-        console.log(
-          `[SYNC] Deleted ${initiativesToDelete.length} inactive initiative(s)`
-        );
-      }
+      // Note: We no longer delete initiatives - all data is preserved for historical tracking
     }
 
     const partialState: PartialSyncState = {
       currentPhase: "initiatives",
-      initialIssuesSync:
-        existingPartialSync?.initialIssuesSync || "complete",
+      initialIssuesSync: existingPartialSync?.initialIssuesSync || "complete",
       projectSyncs: existingPartialSync?.projectSyncs || [],
       plannedProjectsSync:
         existingPartialSync?.plannedProjectsSync || "complete",
       plannedProjectSyncs: existingPartialSync?.plannedProjectSyncs || [],
       completedProjectsSync:
         existingPartialSync?.completedProjectsSync || "complete",
-      completedProjectSyncs:
-        existingPartialSync?.completedProjectSyncs || [],
+      completedProjectSyncs: existingPartialSync?.completedProjectSyncs || [],
       initiativesSync: "complete",
     };
     savePartialSyncState(partialState);
@@ -152,16 +130,14 @@ export async function syncInitiatives(
     if (error instanceof RateLimitError) {
       const partialState: PartialSyncState = {
         currentPhase: "initiatives",
-        initialIssuesSync:
-          existingPartialSync?.initialIssuesSync || "complete",
+        initialIssuesSync: existingPartialSync?.initialIssuesSync || "complete",
         projectSyncs: existingPartialSync?.projectSyncs || [],
         plannedProjectsSync:
           existingPartialSync?.plannedProjectsSync || "complete",
         plannedProjectSyncs: existingPartialSync?.plannedProjectSyncs || [],
         completedProjectsSync:
           existingPartialSync?.completedProjectsSync || "complete",
-        completedProjectSyncs:
-          existingPartialSync?.completedProjectSyncs || [],
+        completedProjectSyncs: existingPartialSync?.completedProjectSyncs || [],
         initiativesSync: "incomplete",
       };
       savePartialSyncState(partialState);
@@ -181,4 +157,3 @@ export async function syncInitiatives(
     );
   }
 }
-
