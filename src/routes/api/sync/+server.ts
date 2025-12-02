@@ -14,7 +14,21 @@ export const POST: RequestHandler = async (event) => {
     return json({ error: "Invalid CSRF token" }, { status: 403 });
   }
 
-  const body = await event.request.json();
+  // Parse request body, handling empty or invalid JSON
+  let body: { adminPassword?: string; syncOptions?: SyncOptions } = {};
+  try {
+    const text = await event.request.text();
+    if (text.trim()) {
+      body = JSON.parse(text);
+    }
+  } catch (_error) {
+    // If JSON parsing fails, return error
+    return json(
+      { success: false, error: "Invalid JSON in request body" },
+      { status: 400 }
+    );
+  }
+
   const { adminPassword, syncOptions } = body;
 
   // Require admin password
@@ -130,7 +144,9 @@ export const POST: RequestHandler = async (event) => {
       parsedSyncOptions.phases
     );
   } else {
-    console.log("[SYNC API] No sync options provided, using default (full sync)");
+    console.log(
+      "[SYNC API] No sync options provided, using default (full sync)"
+    );
   }
 
   // Determine includeProjectSync from syncOptions if provided
@@ -141,27 +157,31 @@ export const POST: RequestHandler = async (event) => {
     : true;
 
   // Run sync asynchronously
-  performSync(includeProjectSync, {
-    onProgressPercent: (percent) => {
-      setSyncState({ progressPercent: percent });
+  performSync(
+    includeProjectSync,
+    {
+      onProgressPercent: (percent) => {
+        setSyncState({ progressPercent: percent });
+      },
+      onIssueCountUpdate: (count) => {
+        updateSyncStats({ startedIssuesCount: count });
+      },
+      onProjectCountUpdate: (count) => {
+        updateSyncStats({ totalProjectsCount: count });
+      },
+      onProjectIssueCountUpdate: (count) => {
+        updateSyncStats({ projectIssuesCount: count });
+      },
+      onProjectProgress: (index, total, projectName) => {
+        updateSyncStats({
+          currentProjectIndex: index,
+          totalProjectsCount: total,
+          currentProjectName: projectName,
+        });
+      },
     },
-    onIssueCountUpdate: (count) => {
-      updateSyncStats({ startedIssuesCount: count });
-    },
-    onProjectCountUpdate: (count) => {
-      updateSyncStats({ totalProjectsCount: count });
-    },
-    onProjectIssueCountUpdate: (count) => {
-      updateSyncStats({ projectIssuesCount: count });
-    },
-    onProjectProgress: (index, total, projectName) => {
-      updateSyncStats({
-        currentProjectIndex: index,
-        totalProjectsCount: total,
-        currentProjectName: projectName,
-      });
-    },
-  }, parsedSyncOptions)
+    parsedSyncOptions
+  )
     .then((result) => {
       const duration = Date.now() - syncStartTime;
       if (result.success) {
