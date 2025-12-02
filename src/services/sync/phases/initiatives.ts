@@ -6,7 +6,8 @@ import {
   setSyncStatus,
   updateSyncMetadata,
 } from "../../../db/queries.js";
-import type { Initiative, PartialSyncState } from "../../../db/queries.js";
+import type { Initiative } from "../../../db/schema.js";
+import type { PartialSyncState } from "../../../db/queries.js";
 import { RateLimitError } from "../../../linear/client.js";
 
 export async function syncInitiatives(context: PhaseContext): Promise<void> {

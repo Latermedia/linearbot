@@ -632,6 +632,22 @@ export class LinearAPIClient {
               parent {
                 id
               }
+              labels {
+                nodes {
+                  id
+                  name
+                  color
+                  description
+                  team {
+                    id
+                    name
+                  }
+                  parent {
+                    id
+                    name
+                  }
+                }
+              }
               comments(first: 250, orderBy: createdAt) {
                 nodes {
                   createdAt
@@ -670,6 +686,7 @@ export class LinearAPIClient {
                 updatedAt
                 targetDate
                 startDate
+                completedAt
                 labels {
                   nodes {
                     name
@@ -768,7 +785,19 @@ export class LinearAPIClient {
               ) || [],
             projectTargetDate: issue.project?.targetDate || null,
             projectStartDate: issue.project?.startDate || null,
+            projectCompletedAt: issue.project?.completedAt || null,
             parentId: issue.parent?.id || null,
+            labels:
+              issue.labels?.nodes?.map((l: any) => ({
+                id: l.id,
+                name: l.name,
+                color: l.color,
+                description: l.description || null,
+                team: l.team ? { id: l.team.id, name: l.team.name } : null,
+                parent: l.parent
+                  ? { id: l.parent.id, name: l.parent.name }
+                  : null,
+              })) || null,
           };
 
           issues.push(issueData);

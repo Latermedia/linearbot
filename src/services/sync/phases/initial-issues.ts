@@ -26,8 +26,6 @@ export async function syncInitialIssues(
     callbacks,
     existingPartialSync,
     isResuming,
-    cumulativeNewCount,
-    cumulativeUpdatedCount,
     apiQueryCount,
     updatePhase,
     shouldRunPhase,
@@ -132,4 +130,3 @@ export async function syncInitialIssues(
 
   return { allIssues: startedIssues, newCount, updatedCount };
 }
-

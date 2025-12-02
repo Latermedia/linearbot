@@ -45,7 +45,9 @@ const createMockIssue = (overrides: Partial<Issue> = {}): Issue => ({
   project_lead_name: null,
   project_target_date: null,
   project_start_date: null,
+  project_completed_at: null,
   parent_id: null,
+  labels: null,
   ...overrides,
 });
 

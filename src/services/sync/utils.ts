@@ -1,10 +1,6 @@
 import type { Issue } from "../../db/schema.js";
 import type { LinearIssueData } from "../../linear/client.js";
-import {
-  getExistingIssueIds,
-  upsertIssue,
-  getAllProjects,
-} from "../../db/queries.js";
+import { getExistingIssueIds, upsertIssue } from "../../db/queries.js";
 
 /**
  * Convert database Issue format to LinearIssueData format
@@ -168,4 +164,3 @@ export function writeIssuesToDatabase(
 
   return { newCount, updatedCount };
 }
-

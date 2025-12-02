@@ -75,7 +75,7 @@
 
 <div
   use:portal={document.body}
-  class="flex fixed inset-0 z-[9999] justify-center items-center modal-backdrop bg-black/70"
+  class="flex fixed inset-0 z-9999 justify-center items-center modal-backdrop bg-black/70"
   style="position: fixed; top: 0; left: 0; right: 0; bottom: 0;"
   onclick={handleBackdropClick}
   onkeydown={handleBackdropKeydown}

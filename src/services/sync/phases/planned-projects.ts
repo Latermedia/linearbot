@@ -1,6 +1,6 @@
 import type { PhaseContext } from "../types.js";
 import pLimit from "p-limit";
-import { PROJECT_SYNC_CONCURRENCY } from "../helpers.js";
+import { PROJECT_SYNC_CONCURRENCY, getProjectSyncLimit } from "../helpers.js";
 import { writeIssuesToDatabase } from "../utils.js";
 import { computeAndStoreProjects } from "../compute-projects.js";
 import {

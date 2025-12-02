@@ -685,13 +685,15 @@ export async function performSync(
       );
     }
 
+    // Declare project tracking variables in outer scope for use across multiple phases
+    let projectCount = 0;
+    const activeProjectIds = new Set<string>();
+    const projectDescriptionsMap = new Map<string, string | null>();
+    const projectUpdatesMap = new Map<string, ProjectUpdate[]>();
+
     // Phase 3: Fetch all issues for projects with active work (optional)
     if (shouldRunPhase("active_projects") && effectiveIncludeProjectSync) {
       updatePhase("active_projects");
-      let projectCount = 0;
-      const activeProjectIds = new Set<string>();
-      const projectDescriptionsMap = new Map<string, string | null>();
-      const projectUpdatesMap = new Map<string, ProjectUpdate[]>();
 
       if (includeProjectSync) {
         // Collect project IDs from both started issues and recently updated issues
@@ -1830,6 +1832,7 @@ export async function performSync(
                 archived_at: initiativeData.archivedAt,
                 health: initiativeData.health,
                 health_updated_at: initiativeData.healthUpdatedAt,
+                health_updates: null, // Not fetched from Linear API
                 owner_id: initiativeData.ownerId,
                 owner_name: initiativeData.ownerName,
                 creator_id: initiativeData.creatorId,
@@ -2581,6 +2584,14 @@ async function computeAndStoreProjects(
     // Get project description from map
     const projectDescription = projectDescriptionsMap?.get(projectId) || null;
 
+    // Get project content - preserve existing if project wasn't synced, otherwise null (not fetched)
+    let projectContent: string | null = null;
+    if (!syncedProjectIds?.has(projectId)) {
+      // Project was not synced - preserve existing content from database
+      const existingProject = getProjectById(projectId);
+      projectContent = existingProject?.project_content || null;
+    }
+
     // Check for missing RICE scoped labels
     // Get existing project to check its labels (labelsJson above only has names, not full objects)
     const existingProject = getProjectById(projectId);
@@ -2618,6 +2629,7 @@ async function computeAndStoreProjects(
       project_lead_id: firstIssue.project_lead_id,
       project_lead_name: firstIssue.project_lead_name,
       project_description: projectDescription,
+      project_content: projectContent,
       total_issues: projectIssues.length,
       completed_issues: completedCount,
       in_progress_issues: inProgressCount,
