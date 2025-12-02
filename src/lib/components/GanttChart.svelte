@@ -443,7 +443,7 @@
               <div class="absolute inset-0">
                 {#each quarterBoundaries as boundary}
                   <div
-                    class="absolute top-0 bottom-0 z-30 border-l-2 border-neutral-400 dark:border-neutral-600"
+                    class="absolute top-0 bottom-0 z-30 border-l border-white/10 dark:border-white/5"
                     style="left: {boundary.startPercent}%;"
                     title={boundary.quarter}
                   ></div>
@@ -489,9 +489,32 @@
   {/if}
 
   <!-- Projects grouped by team or domain -->
-  <div class="overflow-x-auto -mx-4 sm:-mx-6 lg:-mx-8">
-    <div style="min-width: {viewMode === 'quarters' ? '1400px' : '100%'};">
-      <div class="px-4 sm:px-6 lg:px-8">
+  <div
+    class="overflow-x-auto overflow-y-visible px-4 -mx-4 sm:-mx-6 lg:-mx-8 sm:px-6 lg:px-8"
+  >
+    <div
+      style="min-width: {viewMode === 'quarters' ? '1400px' : '100%'};"
+      class="overflow-visible"
+    >
+      <div class="relative overflow-visible">
+        <!-- Quarter boundaries (for 5-quarter view) -->
+        {#if viewMode === "quarters"}
+          <div class="absolute inset-0 pointer-events-none z-0">
+            {#each quarterBoundaries as boundary}
+              <div
+                class="absolute top-0 bottom-0 border-l border-white/10 dark:border-white/5"
+                style="left: {boundary.startPercent}%;"
+              ></div>
+            {/each}
+          </div>
+        {/if}
+        <!-- Current date background indicator -->
+        {#if currentDayPercent !== null}
+          <div
+            class="absolute -top-32 bottom-0 z-0 pointer-events-none w-0.5 bg-violet-500/30 dark:bg-violet-500/40"
+            style="left: {currentDayPercent}%;"
+          ></div>
+        {/if}
         {#each groups as group (getSectionKey(group))}
           {@const sectionKey = getSectionKey(group)}
           <div
