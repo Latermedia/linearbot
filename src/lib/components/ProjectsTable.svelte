@@ -5,6 +5,7 @@
   import ProjectTableHead from "./ProjectTableHead.svelte";
   import ProjectTableRow from "./ProjectTableRow.svelte";
   import ProjectHoverTooltip from "./ProjectHoverTooltip.svelte";
+  import { FolderOpen } from "lucide-svelte";
   import type {
     ProjectSummary,
     TeamSummary,
@@ -116,30 +117,52 @@
 </script>
 
 <div class="space-y-8">
-  {#each groups as group (getGroupKey(group))}
+  {#if groups.length === 0 || groups.every((g) => g.projects.length === 0)}
     <Card class="px-4 py-4">
-      <ProjectTableHeader {group} />
-      <div>
-        <div class="overflow-x-auto">
-          <table class="w-full">
-            <ProjectTableHead />
-            <tbody>
-              {#each group.projects as project}
-                <ProjectTableRow
-                  {project}
-                  {hideWarnings}
-                  onmouseenter={(e) => handleRowMouseEnter(e, project)}
-                  onmousemove={handleRowMouseMove}
-                  onmouseleave={handleRowMouseLeave}
-                  onclick={() => handleRowClick(project)}
-                />
-              {/each}
-            </tbody>
-          </table>
-        </div>
+      <div class="overflow-x-auto">
+        <table class="w-full">
+          <ProjectTableHead />
+          <tbody>
+            <tr>
+              <td colspan="10" class="p-0">
+                <div class="flex justify-center items-center min-h-[33vh]">
+                  <div class="flex flex-col gap-3 items-center text-center">
+                    <FolderOpen class="w-8 h-8 text-neutral-500 dark:text-neutral-600" strokeWidth={1.5} />
+                    <div class="text-sm text-neutral-400 dark:text-neutral-500">No projects found</div>
+                  </div>
+                </div>
+              </td>
+            </tr>
+          </tbody>
+        </table>
       </div>
     </Card>
-  {/each}
+  {:else}
+    {#each groups as group (getGroupKey(group))}
+      <Card class="px-4 py-4">
+        <ProjectTableHeader {group} />
+        <div>
+          <div class="overflow-x-auto">
+            <table class="w-full">
+              <ProjectTableHead />
+              <tbody>
+                {#each group.projects as project}
+                  <ProjectTableRow
+                    {project}
+                    {hideWarnings}
+                    onmouseenter={(e) => handleRowMouseEnter(e, project)}
+                    onmousemove={handleRowMouseMove}
+                    onmouseleave={handleRowMouseLeave}
+                    onclick={() => handleRowClick(project)}
+                  />
+                {/each}
+              </tbody>
+            </table>
+          </div>
+        </div>
+      </Card>
+    {/each}
+  {/if}
 </div>
 
 <!-- Hover tooltip -->
