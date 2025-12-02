@@ -1,4 +1,4 @@
-import type { Issue } from "../db/schema.js";
+import type { Issue, Project } from "../db/schema.js";
 import { WIP_AGE_THRESHOLDS } from "../constants/thresholds.js";
 
 /**
@@ -143,6 +143,7 @@ export function getViolationIndicators(issue: Issue): string {
   if (hasMissingEstimate(issue)) indicators.push("📏"); // Missing estimate
   if (hasNoRecentComment(issue)) indicators.push("💬"); // No recent comment
   if (hasMissingPriority(issue)) indicators.push("🔴"); // Missing/zero priority
+  if (hasMissingScopedLabel(issue)) indicators.push("🏷️"); // Missing scoped label
   return indicators.join(" ");
 }
 
@@ -153,6 +154,7 @@ export interface ViolationCounts {
   missingEstimate: number;
   noRecentComment: number;
   missingPriority: number;
+  missingScopedLabel: number;
   total: number;
 }
 
@@ -163,12 +165,18 @@ export function countViolations(issues: Issue[]): ViolationCounts {
   const missingEstimate = issues.filter(hasMissingEstimate).length;
   const noRecentComment = issues.filter(hasNoRecentComment).length;
   const missingPriority = issues.filter(hasMissingPriority).length;
+  const missingScopedLabel = issues.filter(hasMissingScopedLabel).length;
 
   return {
     missingEstimate,
     noRecentComment,
     missingPriority,
-    total: missingEstimate + noRecentComment + missingPriority,
+    missingScopedLabel,
+    total:
+      missingEstimate +
+      noRecentComment +
+      missingPriority +
+      missingScopedLabel,
   };
 }
 
@@ -196,6 +204,39 @@ export function hasMissingDescription(issue: Issue): boolean {
 }
 
 /**
+ * Check if issue is missing required scoped label
+ * Required scoped label for issues is "type:" (with colon)
+ * Note: Testing needed to verify API structure - scoped labels may appear as
+ * parent.name === "scoped" with name === "type:", or may have different structure
+ */
+export function hasMissingScopedLabel(issue: Issue): boolean {
+  // Suppress alerts for cancelled/duplicate issues
+  if (shouldSuppressAlerts(issue)) return false;
+  
+  // If no labels, it's missing
+  if (!issue.labels) return true;
+  
+  try {
+    const labels = JSON.parse(issue.labels) as Array<{
+      name: string;
+      parent?: { name: string } | null;
+    }>;
+    
+    // Check if any label has parent.name === "scoped" AND name starts with "type:"
+    const hasTypeLabel = labels.some(
+      (label) =>
+        label.parent?.name === "scoped" && label.name.startsWith("type:")
+    );
+    
+    return !hasTypeLabel;
+  } catch (error) {
+    // If JSON parsing fails, consider it missing
+    console.error("Failed to parse labels JSON:", error);
+    return true;
+  }
+}
+
+/**
  * Check if issues have any violations
  */
 export function hasViolations(issues: Issue[]): boolean {
@@ -203,6 +244,61 @@ export function hasViolations(issues: Issue[]): boolean {
     (issue) =>
       hasMissingEstimate(issue) ||
       hasNoRecentComment(issue) ||
-      hasMissingPriority(issue)
+      hasMissingPriority(issue) ||
+      hasMissingScopedLabel(issue)
   );
+}
+
+/**
+ * Required RICE scoped labels for projects
+ */
+const REQUIRED_RICE_LABELS = [
+  "RICE - Confidence:",
+  "RICE - Effort Project Size:",
+  "RICE - Impact:",
+  "RICE - Reach:",
+];
+
+/**
+ * Check if project is missing required RICE scoped labels
+ * Required labels:
+ * - RICE - Confidence:
+ * - RICE - Effort Project Size:
+ * - RICE - Impact:
+ * - RICE - Reach:
+ * Note: Testing needed to verify API structure - scoped labels may appear as
+ * parent.name === "scoped" with names matching the RICE labels above, or may have different structure
+ */
+export function hasMissingProjectScopedLabels(project: Project): boolean {
+  // If no labels, it's missing
+  if (!project.labels) return true;
+
+  try {
+    const labels = JSON.parse(project.labels) as Array<{
+      name: string;
+      parent?: { name: string } | null;
+    }>;
+
+    // Check if all required RICE labels are present
+    // Labels should have parent.name === "scoped" and name matching one of the required labels
+    const foundLabels = new Set<string>();
+    for (const label of labels) {
+      if (label.parent?.name === "scoped") {
+        // Check if this label matches any of the required RICE labels
+        for (const requiredLabel of REQUIRED_RICE_LABELS) {
+          if (label.name === requiredLabel || label.name.startsWith(requiredLabel)) {
+            foundLabels.add(requiredLabel);
+            break;
+          }
+        }
+      }
+    }
+
+    // Return true if any required label is missing
+    return foundLabels.size < REQUIRED_RICE_LABELS.length;
+  } catch (error) {
+    // If JSON parsing fails, consider it missing
+    console.error("Failed to parse project labels JSON:", error);
+    return true;
+  }
 }

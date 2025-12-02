@@ -61,18 +61,32 @@
     }
   }
 
+  let modalElement: HTMLDivElement | undefined = $state();
+
   onMount(() => {
+    // Move modal to body to escape any parent stacking contexts
+    if (modalElement) {
+      document.body.appendChild(modalElement);
+    }
+
     document.addEventListener("keydown", handleKeydown);
     document.body.style.overflow = "hidden";
+
     return () => {
       document.removeEventListener("keydown", handleKeydown);
       document.body.style.overflow = "";
+      // Clean up: move modal back or remove it
+      if (modalElement && modalElement.parentNode) {
+        modalElement.parentNode.removeChild(modalElement);
+      }
     };
   });
 </script>
 
 <div
-  class="flex fixed inset-0 z-50 justify-center items-center modal-backdrop bg-black/70"
+  bind:this={modalElement}
+  class="flex fixed inset-0 z-[9999] justify-center items-center modal-backdrop bg-black/70"
+  style="position: fixed; top: 0; left: 0; right: 0; bottom: 0;"
   onclick={handleBackdropClick}
   onkeydown={handleBackdropKeydown}
   role="dialog"

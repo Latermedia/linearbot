@@ -311,21 +311,6 @@
         No Linear API key? Mock data will be generated automatically.
       </p>
     </Card>
-  {:else if teams.length === 0}
-    <Card>
-      <div class="mb-3 text-sm font-medium text-neutral-900 dark:text-white">
-        No Projects Found
-      </div>
-      <p class="mb-3 text-neutral-700 dark:text-neutral-400">
-        No active projects with started issues.
-      </p>
-      <p class="text-sm text-neutral-600 dark:text-neutral-500">
-        Run: <code
-          class="px-2 py-1 font-mono text-xs rounded bg-neutral-100 dark:bg-neutral-800 text-neutral-700 dark:text-neutral-300"
-          >bun run sync</code
-        > to sync Linear data or generate mock data.
-      </p>
-    </Card>
   {:else if viewType === "table"}
     {#key `${projectFilter}-${groupBy}`}
       <ProjectsTable {teams} {domains} {groupBy} />
