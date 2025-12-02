@@ -3,8 +3,10 @@ import {
   type ProjectUpdate,
   RateLimitError,
   type LinearIssueData,
+  type LinearInitiativeData,
 } from "../linear/client.js";
 import { isMockMode, generateMockData } from "./mock-data.js";
+import pLimit from "p-limit";
 import {
   getExistingIssueIds,
   upsertIssue,
@@ -26,10 +28,13 @@ import {
   upsertEngineer,
   getExistingEngineerIds,
   deleteEngineersByIds,
+  getAllInitiatives,
+  upsertInitiative,
+  deleteInitiativesByIds,
   type PartialSyncState,
   type SyncPhase,
 } from "../db/queries.js";
-import type { Issue, Project, Engineer } from "../db/schema.js";
+import type { Issue, Project, Engineer, Initiative } from "../db/schema.js";
 import { WIP_THRESHOLDS, PROJECT_THRESHOLDS } from "../constants/thresholds.js";
 import {
   hasStatusMismatch,
@@ -43,6 +48,7 @@ import {
   hasNoRecentComment,
   hasWIPAgeViolation,
   hasMissingDescription,
+  hasMissingProjectScopedLabels,
 } from "../utils/issue-validators.js";
 import {
   calculateTotalPoints,
@@ -77,17 +83,27 @@ export interface SyncCallbacks {
   ) => void;
 }
 
+export interface SyncOptions {
+  phases: SyncPhase[];
+  isFullSync: boolean;
+}
+
 /**
- * Get the maximum number of projects to sync per project type
- * Defaults to 10 for local development, can be overridden with SYNC_ALL_PROJECTS=true
+ * Get the maximum number of projects/initiatives to sync per type
+ * Defaults to no limit (full sync). Set LIMIT_SYNC=true to limit to 10 for local development
  */
 function getProjectSyncLimit(): number | null {
-  const syncAll = process.env.SYNC_ALL_PROJECTS === "true";
-  if (syncAll) {
-    return null; // null means no limit
+  const limitSync = process.env.LIMIT_SYNC === "true";
+  if (limitSync) {
+    return 10; // Limit to 10 when LIMIT_SYNC is enabled
   }
-  return 10; // Default limit for local development
+  return null; // null means no limit (default: full sync)
 }
+
+/**
+ * Concurrency limit for parallel project processing
+ */
+const PROJECT_SYNC_CONCURRENCY = 3;
 
 /**
  * Convert database Issue format to LinearIssueData format
@@ -134,7 +150,9 @@ function convertDbIssueToLinearFormat(dbIssue: Issue): LinearIssueData {
     projectLabels: [], // Database doesn't store project labels, but that's okay for determining project IDs
     projectTargetDate: dbIssue.project_target_date,
     projectStartDate: dbIssue.project_start_date,
+    projectCompletedAt: dbIssue.project_completed_at,
     parentId: dbIssue.parent_id,
+    labels: dbIssue.labels ? JSON.parse(dbIssue.labels) : null,
   };
 }
 
@@ -178,7 +196,16 @@ function writeIssuesToDatabase(
     projectLeadName: string | null;
     projectTargetDate: string | null;
     projectStartDate: string | null;
+    projectCompletedAt: string | null;
     parentId: string | null;
+    labels: Array<{
+      id: string;
+      name: string;
+      color: string;
+      description: string | null;
+      team: { id: string; name: string } | null;
+      parent: { id: string; name: string } | null;
+    }> | null;
   }>
 ): { newCount: number; updatedCount: number } {
   const existingIds = getExistingIssueIds();
@@ -232,7 +259,9 @@ function writeIssuesToDatabase(
       project_lead_name: issue.projectLeadName,
       project_target_date: issue.projectTargetDate,
       project_start_date: issue.projectStartDate,
+      project_completed_at: issue.projectCompletedAt,
       parent_id: issue.parentId,
+      labels: issue.labels ? JSON.stringify(issue.labels) : null,
     });
   }
 
@@ -241,12 +270,14 @@ function writeIssuesToDatabase(
 
 /**
  * Performs sync of Linear issues to local database
- * @param includeProjectSync - Whether to also fetch all issues from active projects
+ * @param includeProjectSync - Whether to also fetch all issues from active projects (deprecated, use syncOptions instead)
  * @param callbacks - Optional callbacks for progress updates
+ * @param syncOptions - Optional sync options specifying which phases to run
  */
 export async function performSync(
   includeProjectSync: boolean = true,
-  callbacks?: SyncCallbacks
+  callbacks?: SyncCallbacks,
+  syncOptions?: SyncOptions
 ): Promise<SyncResult> {
   // Declare variables at function scope so they're accessible in catch blocks
   let allIssues: LinearIssueData[] = [];
@@ -274,6 +305,19 @@ export async function performSync(
       savePartialSyncState(existingPartialSync);
     }
   };
+
+  // Helper function to check if a phase should run
+  const shouldRunPhase = (phase: SyncPhase): boolean => {
+    if (!syncOptions) {
+      // Default behavior: run all phases if no options provided
+      return true;
+    }
+    return syncOptions.phases.includes(phase);
+  };
+
+  // Determine includeProjectSync from syncOptions if provided
+  const effectiveIncludeProjectSync =
+    syncOptions?.phases.includes("active_projects") ?? includeProjectSync;
 
   // Wrap entire function in try-catch to ensure we never crash the app
   try {
@@ -426,14 +470,15 @@ export async function performSync(
     console.log("[SYNC] Linear API connection successful");
 
     // Phase 1: Fetch started issues (5% of total)
-    updatePhase("initial_issues");
-    callbacks?.onProgressPercent?.(5);
-    setSyncProgress(5);
-    if (
-      !isResuming ||
-      !existingPartialSync ||
-      existingPartialSync.initialIssuesSync === "incomplete"
-    ) {
+    if (shouldRunPhase("initial_issues")) {
+      updatePhase("initial_issues");
+      callbacks?.onProgressPercent?.(5);
+      setSyncProgress(5);
+      if (
+        !isResuming ||
+        !existingPartialSync ||
+        existingPartialSync.initialIssuesSync === "incomplete"
+      ) {
       // Fetch started issues from Linear API
       try {
         allIssues = await linearClient.fetchStartedIssues((count) => {
@@ -485,6 +530,15 @@ export async function performSync(
       console.log(
         `[SYNC] Loaded ${allIssues.length} started issues from database`
       );
+      }
+    } else {
+      // Phase skipped - load started issues from database if they exist
+      console.log("[SYNC] Skipping initial issues phase (not selected)");
+      const dbStartedIssues = getStartedIssues();
+      allIssues = dbStartedIssues.map(convertDbIssueToLinearFormat);
+      console.log(
+        `[SYNC] Loaded ${allIssues.length} started issues from database`
+      );
     }
 
     // Filter ignored teams
@@ -526,11 +580,15 @@ export async function performSync(
     }
 
     // Phase 2: Fetch recently updated issues (5% of total, cumulative 10%)
-    updatePhase("recently_updated_issues");
-    callbacks?.onProgressPercent?.(10);
-    setSyncProgress(10);
     let recentlyUpdatedIssues: LinearIssueData[] = [];
-    if (
+    if (shouldRunPhase("recently_updated_issues")) {
+      updatePhase("recently_updated_issues");
+      callbacks?.onProgressPercent?.(10);
+      setSyncProgress(10);
+      const skipRecentlyUpdated = process.env.SKIP_RECENTLY_UPDATED_ISSUES === "true";
+      if (skipRecentlyUpdated) {
+        console.log("[SYNC] Skipping recently updated issues fetch (SKIP_RECENTLY_UPDATED_ISSUES=true)");
+      } else if (
       !isResuming ||
       !existingPartialSync ||
       existingPartialSync.initialIssuesSync === "incomplete"
@@ -606,10 +664,14 @@ export async function performSync(
           error instanceof Error ? error.message : error
         );
       }
+    } else {
+      console.log("[SYNC] Skipping recently updated issues phase (not selected)");
     }
 
+
     // Phase 3: Fetch all issues for projects with active work (optional)
-    updatePhase("active_projects");
+    if (shouldRunPhase("active_projects") && effectiveIncludeProjectSync) {
+      updatePhase("active_projects");
     let projectCount = 0;
     const activeProjectIds = new Set<string>();
     const projectDescriptionsMap = new Map<string, string | null>();
@@ -698,11 +760,11 @@ export async function performSync(
         if (projectLimit !== null && projectsToSync.length > projectLimit) {
           projectsToSync = projectsToSync.slice(0, projectLimit);
           console.log(
-            `[SYNC] Limiting to ${projectLimit} projects (found ${originalProjectCount} total). Set SYNC_ALL_PROJECTS=true to sync all projects.`
+            `[SYNC] Limiting to ${projectLimit} projects (found ${originalProjectCount} total). Set LIMIT_SYNC=false to sync all projects.`
           );
         } else if (projectLimit === null) {
           console.log(
-            `[SYNC] Syncing all ${projectsToSync.length} projects (SYNC_ALL_PROJECTS override enabled)`
+            `[SYNC] Syncing all ${projectsToSync.length} projects (full sync enabled by default)`
           );
         }
 
@@ -712,34 +774,14 @@ export async function performSync(
         const activeProjectsProgressStart = 10; // After initial + recently updated
         const activeProjectsProgressRange = 60; // 60% allocated to active projects
 
-        // Process projects one at a time for incremental updates
+        // Process projects in parallel with concurrency limit
         try {
+          const limit = pLimit(PROJECT_SYNC_CONCURRENCY);
+          let completedCount = 0;
           let totalProjectIssues = 0;
-          for (
-            let projectIndex = 0;
-            projectIndex < projectsToSync.length;
-            projectIndex++
-          ) {
-            const projectId = projectsToSync[projectIndex];
+
+          const processProject = async (projectId: string, projectIndex: number) => {
             const projectName = projectNameMap.get(projectId) || null;
-
-            // Update progress callback
-            callbacks?.onProjectProgress?.(
-              projectIndex + 1,
-              projectsToSync.length,
-              projectName
-            );
-
-            // Calculate progress for this project
-            // Progress = start (10%) + (projectIndex / totalProjects) * range (60%)
-            const projectProgress =
-              activeProjectsProgressStart +
-              Math.round(
-                (projectIndex / projectsToSync.length) *
-                  activeProjectsProgressRange
-              );
-            callbacks?.onProgressPercent?.(projectProgress);
-            setSyncProgress(projectProgress);
 
             console.log(
               `[SYNC] Processing project ${projectIndex + 1}/${projectsToSync.length}: ${projectName || projectId}`
@@ -757,16 +799,17 @@ export async function performSync(
               );
 
             // Write issues to database immediately
+            let issueCounts = { newCount: 0, updatedCount: 0 };
             if (singleProjectIssues.length > 0) {
               console.log(
                 `[SYNC] Writing ${singleProjectIssues.length} issues for project ${projectName || projectId}...`
               );
-              const counts = writeIssuesToDatabase(singleProjectIssues);
-              cumulativeNewCount += counts.newCount;
-              cumulativeUpdatedCount += counts.updatedCount;
+              issueCounts = writeIssuesToDatabase(singleProjectIssues);
+              cumulativeNewCount += issueCounts.newCount;
+              cumulativeUpdatedCount += issueCounts.updatedCount;
               totalProjectIssues += singleProjectIssues.length;
               console.log(
-                `[SYNC] Wrote project issues - New: ${counts.newCount}, Updated: ${counts.updatedCount}`
+                `[SYNC] Wrote project issues - New: ${issueCounts.newCount}, Updated: ${issueCounts.updatedCount}`
               );
             }
 
@@ -796,7 +839,7 @@ export async function performSync(
               `[SYNC] Computed metrics for project ${projectName || projectId}`
             );
 
-            // Mark this project as complete
+            // Mark this project as complete and update progress
             const statusIndex = projectSyncStatuses.findIndex(
               (p) => p.projectId === projectId
             );
@@ -806,24 +849,39 @@ export async function performSync(
               projectSyncStatuses.push({ projectId, status: "complete" });
             }
 
+            // Update completed count and progress
+            completedCount++;
+            const projectProgressAfter =
+              activeProjectsProgressStart +
+              Math.round(
+                (completedCount / projectsToSync.length) *
+                  activeProjectsProgressRange
+              );
+            callbacks?.onProjectProgress?.(
+              completedCount,
+              projectsToSync.length,
+              projectName
+            );
+            callbacks?.onProgressPercent?.(projectProgressAfter);
+            setSyncProgress(projectProgressAfter);
+
             // Save partial sync state after each project (in case of interruption)
             const partialState: PartialSyncState = {
               currentPhase: "active_projects",
               initialIssuesSync: "complete",
-              projectSyncs: projectSyncStatuses,
+              projectSyncs: [...projectSyncStatuses], // Copy array for thread safety
             };
             savePartialSyncState(partialState);
 
-            // Update progress after this project completes
-            const projectProgressAfter =
-              activeProjectsProgressStart +
-              Math.round(
-                ((projectIndex + 1) / projectsToSync.length) *
-                  activeProjectsProgressRange
-              );
-            callbacks?.onProgressPercent?.(projectProgressAfter);
-            setSyncProgress(projectProgressAfter);
-          }
+            return { projectId, issueCount: singleProjectIssues.length };
+          };
+
+          // Process all projects in parallel with concurrency limit
+          await Promise.all(
+            projectsToSync.map((projectId, index) =>
+              limit(() => processProject(projectId, index + 1))
+            )
+          );
 
           // Accumulate all project issues for reporting
           projectIssues = []; // Will be empty since we wrote incrementally, but that's fine
@@ -957,30 +1015,24 @@ export async function performSync(
               plannedProjectLimit
             );
             console.log(
-              `[SYNC] Limiting planned projects to ${plannedProjectLimit} (found ${originalPlannedCount} total). Set SYNC_ALL_PROJECTS=true to sync all projects.`
+              `[SYNC] Limiting planned projects to ${plannedProjectLimit} (found ${originalPlannedCount} total). Set LIMIT_SYNC=false to sync all projects.`
+            );
+          } else if (plannedProjectLimit === null) {
+            console.log(
+              `[SYNC] Syncing all ${plannedProjectsToSync.length} planned projects (full sync enabled by default)`
             );
           }
 
-          // Process planned projects one at a time for incremental updates
+          // Process planned projects in parallel with concurrency limit
           if (plannedProjectsToSync.length > 0) {
+            const limit = pLimit(PROJECT_SYNC_CONCURRENCY);
+            let completedCount = 0;
             let totalPlannedProjectIssues = 0;
-            for (
-              let projectIndex = 0;
-              projectIndex < plannedProjectsToSync.length;
-              projectIndex++
-            ) {
-              const projectId = plannedProjectsToSync[projectIndex];
 
-              // Calculate progress for this planned project
-              const plannedProjectProgress =
-                plannedProjectsProgressStart +
-                Math.round(
-                  (projectIndex / plannedProjectsToSync.length) *
-                    plannedProjectsProgressRange
-                );
-              callbacks?.onProgressPercent?.(plannedProjectProgress);
-              setSyncProgress(plannedProjectProgress);
-
+            const processPlannedProject = async (
+              projectId: string,
+              projectIndex: number
+            ) => {
               console.log(
                 `[SYNC] Processing planned project ${projectIndex + 1}/${plannedProjectsToSync.length}: ${projectId}`
               );
@@ -995,16 +1047,17 @@ export async function performSync(
                 );
 
               // Write issues to database immediately
+              let issueCounts = { newCount: 0, updatedCount: 0 };
               if (singleProjectIssues.length > 0) {
                 console.log(
                   `[SYNC] Writing ${singleProjectIssues.length} issues for planned project ${projectId}...`
                 );
-                const counts = writeIssuesToDatabase(singleProjectIssues);
-                cumulativeNewCount += counts.newCount;
-                cumulativeUpdatedCount += counts.updatedCount;
+                issueCounts = writeIssuesToDatabase(singleProjectIssues);
+                cumulativeNewCount += issueCounts.newCount;
+                cumulativeUpdatedCount += issueCounts.updatedCount;
                 totalPlannedProjectIssues += singleProjectIssues.length;
                 console.log(
-                  `[SYNC] Wrote planned project issues - New: ${counts.newCount}, Updated: ${counts.updatedCount}`
+                  `[SYNC] Wrote planned project issues - New: ${issueCounts.newCount}, Updated: ${issueCounts.updatedCount}`
                 );
               }
 
@@ -1050,6 +1103,17 @@ export async function performSync(
               // Add to activeProjectIds
               activeProjectIds.add(projectId);
 
+              // Update completed count and progress
+              completedCount++;
+              const plannedProjectProgressAfter =
+                plannedProjectsProgressStart +
+                Math.round(
+                  (completedCount / plannedProjectsToSync.length) *
+                    plannedProjectsProgressRange
+                );
+              callbacks?.onProgressPercent?.(plannedProjectProgressAfter);
+              setSyncProgress(plannedProjectProgressAfter);
+
               // Save partial sync state after each project
               const partialState: PartialSyncState = {
                 currentPhase: "planned_projects",
@@ -1057,7 +1121,7 @@ export async function performSync(
                   existingPartialSync?.initialIssuesSync || "complete",
                 projectSyncs: existingPartialSync?.projectSyncs || [],
                 plannedProjectsSync: "incomplete", // Still processing
-                plannedProjectSyncs: plannedProjectSyncStatuses,
+                plannedProjectSyncs: [...plannedProjectSyncStatuses], // Copy for thread safety
                 completedProjectsSync:
                   existingPartialSync?.completedProjectsSync,
                 completedProjectSyncs:
@@ -1065,16 +1129,15 @@ export async function performSync(
               };
               savePartialSyncState(partialState);
 
-              // Update progress after this planned project completes
-              const plannedProjectProgressAfter =
-                plannedProjectsProgressStart +
-                Math.round(
-                  ((projectIndex + 1) / plannedProjectsToSync.length) *
-                    plannedProjectsProgressRange
-                );
-              callbacks?.onProgressPercent?.(plannedProjectProgressAfter);
-              setSyncProgress(plannedProjectProgressAfter);
-            }
+              return { projectId, issueCount: singleProjectIssues.length };
+            };
+
+            // Process all planned projects in parallel with concurrency limit
+            await Promise.all(
+              plannedProjectsToSync.map((projectId, index) =>
+                limit(() => processPlannedProject(projectId, index + 1))
+              )
+            );
 
             // Accumulate all planned project issues for reporting
             plannedProjectIssues = []; // Will be empty since we wrote incrementally
@@ -1213,30 +1276,24 @@ export async function performSync(
               completedProjectLimit
             );
             console.log(
-              `[SYNC] Limiting completed projects to ${completedProjectLimit} (found ${originalCompletedCount} total). Set SYNC_ALL_PROJECTS=true to sync all projects.`
+              `[SYNC] Limiting completed projects to ${completedProjectLimit} (found ${originalCompletedCount} total). Set LIMIT_SYNC=false to sync all projects.`
+            );
+          } else if (completedProjectLimit === null) {
+            console.log(
+              `[SYNC] Syncing all ${completedProjectsToSync.length} completed projects (full sync enabled by default)`
             );
           }
 
-          // Process completed projects one at a time for incremental updates
+          // Process completed projects in parallel with concurrency limit
           if (completedProjectsToSync.length > 0) {
+            const limit = pLimit(PROJECT_SYNC_CONCURRENCY);
+            let completedCount = 0;
             let totalCompletedProjectIssues = 0;
-            for (
-              let projectIndex = 0;
-              projectIndex < completedProjectsToSync.length;
-              projectIndex++
-            ) {
-              const projectId = completedProjectsToSync[projectIndex];
 
-              // Calculate progress for this completed project
-              const completedProjectProgress =
-                completedProjectsProgressStart +
-                Math.round(
-                  (projectIndex / completedProjectsToSync.length) *
-                    completedProjectsProgressRange
-                );
-              callbacks?.onProgressPercent?.(completedProjectProgress);
-              setSyncProgress(completedProjectProgress);
-
+            const processCompletedProject = async (
+              projectId: string,
+              projectIndex: number
+            ) => {
               console.log(
                 `[SYNC] Processing completed project ${projectIndex + 1}/${completedProjectsToSync.length}: ${projectId}`
               );
@@ -1251,16 +1308,17 @@ export async function performSync(
                 );
 
               // Write issues to database immediately
+              let issueCounts = { newCount: 0, updatedCount: 0 };
               if (singleProjectIssues.length > 0) {
                 console.log(
                   `[SYNC] Writing ${singleProjectIssues.length} issues for completed project ${projectId}...`
                 );
-                const counts = writeIssuesToDatabase(singleProjectIssues);
-                cumulativeNewCount += counts.newCount;
-                cumulativeUpdatedCount += counts.updatedCount;
+                issueCounts = writeIssuesToDatabase(singleProjectIssues);
+                cumulativeNewCount += issueCounts.newCount;
+                cumulativeUpdatedCount += issueCounts.updatedCount;
                 totalCompletedProjectIssues += singleProjectIssues.length;
                 console.log(
-                  `[SYNC] Wrote completed project issues - New: ${counts.newCount}, Updated: ${counts.updatedCount}`
+                  `[SYNC] Wrote completed project issues - New: ${issueCounts.newCount}, Updated: ${issueCounts.updatedCount}`
                 );
               }
 
@@ -1306,6 +1364,17 @@ export async function performSync(
               // Add to activeProjectIds
               activeProjectIds.add(projectId);
 
+              // Update completed count and progress
+              completedCount++;
+              const completedProjectProgressAfter =
+                completedProjectsProgressStart +
+                Math.round(
+                  (completedCount / completedProjectsToSync.length) *
+                    completedProjectsProgressRange
+                );
+              callbacks?.onProgressPercent?.(completedProjectProgressAfter);
+              setSyncProgress(completedProjectProgressAfter);
+
               // Save partial sync state after each project
               const partialState: PartialSyncState = {
                 currentPhase: "completed_projects",
@@ -1317,20 +1386,19 @@ export async function performSync(
                 plannedProjectSyncs:
                   existingPartialSync?.plannedProjectSyncs || [],
                 completedProjectsSync: "incomplete", // Still processing
-                completedProjectSyncs: completedProjectSyncStatuses,
+                completedProjectSyncs: [...completedProjectSyncStatuses], // Copy for thread safety
               };
               savePartialSyncState(partialState);
 
-              // Update progress after this completed project completes
-              const completedProjectProgressAfter =
-                completedProjectsProgressStart +
-                Math.round(
-                  ((projectIndex + 1) / completedProjectsToSync.length) *
-                    completedProjectsProgressRange
-                );
-              callbacks?.onProgressPercent?.(completedProjectProgressAfter);
-              setSyncProgress(completedProjectProgressAfter);
-            }
+              return { projectId, issueCount: singleProjectIssues.length };
+            };
+
+            // Process all completed projects in parallel with concurrency limit
+            await Promise.all(
+              completedProjectsToSync.map((projectId, index) =>
+                limit(() => processCompletedProject(projectId, index + 1))
+              )
+            );
 
             // Accumulate all completed project issues for reporting
             completedProjectIssues = []; // Will be empty since we wrote incrementally
@@ -1425,60 +1493,356 @@ export async function performSync(
       (i) => i.stateType === "started"
     ).length;
 
+    // Declare variables for computed counts (used in final summary)
+    let computedProjectCount = projectCount;
+    let computedEngineerCount = 0;
+
     // Phase 6: Final cleanup - recompute projects that weren't synced and delete inactive ones (5% of total, cumulative 100%)
     // Note: Projects synced incrementally above are already computed, but we need to
     // recompute projects that only have started/recently updated issues (not full project sync)
-    updatePhase("computing_metrics");
-    callbacks?.onProgressPercent?.(95);
-    setSyncProgress(95);
-    console.log(`[SYNC] Performing final project cleanup and recomputation...`);
+    if (shouldRunPhase("computing_metrics")) {
+      updatePhase("computing_metrics");
+      callbacks?.onProgressPercent?.(95);
+      setSyncProgress(95);
+      console.log(`[SYNC] Performing final project cleanup and recomputation...`);
 
-    // Collect project IDs that were synced incrementally (these don't need recomputation)
-    const incrementallySyncedProjectIds = new Set<string>();
-    for (const projectId of projectUpdatesMap.keys()) {
-      incrementallySyncedProjectIds.add(projectId);
-    }
-    // Also add from activeProjectIds set which was populated during sync
-    for (const projectId of activeProjectIds) {
-      incrementallySyncedProjectIds.add(projectId);
-    }
+      // Collect project IDs that were synced incrementally (these don't need recomputation)
+      const incrementallySyncedProjectIds = new Set<string>();
+      for (const projectId of projectUpdatesMap.keys()) {
+        incrementallySyncedProjectIds.add(projectId);
+      }
+      // Also add from activeProjectIds set which was populated during sync
+      for (const projectId of activeProjectIds) {
+        incrementallySyncedProjectIds.add(projectId);
+      }
 
-    // Collect project labels from started/recently updated issues for projects not synced incrementally
-    const projectLabelsMapForCleanup = new Map<string, string[]>();
-    for (const issue of [...startedIssues, ...recentlyUpdatedIssues]) {
-      if (
-        issue.projectId &&
-        issue.projectLabels &&
-        issue.projectLabels.length > 0 &&
-        !incrementallySyncedProjectIds.has(issue.projectId)
-      ) {
-        if (!projectLabelsMapForCleanup.has(issue.projectId)) {
-          projectLabelsMapForCleanup.set(issue.projectId, issue.projectLabels);
+      // Collect project labels from started/recently updated issues for projects not synced incrementally
+      const projectLabelsMapForCleanup = new Map<string, string[]>();
+      for (const issue of [...startedIssues, ...recentlyUpdatedIssues]) {
+        if (
+          issue.projectId &&
+          issue.projectLabels &&
+          issue.projectLabels.length > 0 &&
+          !incrementallySyncedProjectIds.has(issue.projectId)
+        ) {
+          if (!projectLabelsMapForCleanup.has(issue.projectId)) {
+            projectLabelsMapForCleanup.set(issue.projectId, issue.projectLabels);
+          }
         }
       }
+
+      // Do final pass: recompute projects that weren't synced incrementally and delete inactive ones
+      // Pass the set of incrementally synced projects so their last_synced_at isn't overwritten
+      computedProjectCount = await computeAndStoreProjects(
+        projectLabelsMapForCleanup,
+        projectDescriptionsMap, // May have descriptions for projects not synced incrementally
+        projectUpdatesMap, // May have updates for projects not synced incrementally
+        incrementallySyncedProjectIds, // Projects synced incrementally (preserve their last_synced_at)
+        false // Don't skip deletion - this is the final cleanup
+      );
+      console.log(
+        `[SYNC] Final cleanup complete. Active projects: ${computedProjectCount}`
+      );
+
+      // Compute and store engineer WIP metrics
+      console.log(`[SYNC] Computing engineer WIP metrics...`);
+      callbacks?.onProgressPercent?.(95);
+      setSyncProgress(95);
+      computedEngineerCount = computeAndStoreEngineers();
+      console.log(
+        `[SYNC] Computed metrics for ${computedEngineerCount} engineer(s)`
+      );
+    } else {
+      console.log("[SYNC] Skipping computing metrics phase (not selected)");
     }
 
-    // Do final pass: recompute projects that weren't synced incrementally and delete inactive ones
-    // Pass the set of incrementally synced projects so their last_synced_at isn't overwritten
-    const computedProjectCount = await computeAndStoreProjects(
-      projectLabelsMapForCleanup,
-      projectDescriptionsMap, // May have descriptions for projects not synced incrementally
-      projectUpdatesMap, // May have updates for projects not synced incrementally
-      incrementallySyncedProjectIds, // Projects synced incrementally (preserve their last_synced_at)
-      false // Don't skip deletion - this is the final cleanup
-    );
-    console.log(
-      `[SYNC] Final cleanup complete. Active projects: ${computedProjectCount}`
-    );
+    // Phase 6.5: Sync projects associated with initiatives that aren't already synced
+    if (shouldRunPhase("initiative_projects")) {
+      updatePhase("initiative_projects");
+      callbacks?.onProgressPercent?.(96);
+      setSyncProgress(96);
+      try {
+        console.log("[SYNC] Fetching initiatives to identify missing projects...");
+        const allInitiatives = await linearClient.fetchInitiatives();
+        
+        // Collect all project IDs from initiatives
+        const projectIdsFromInitiatives = new Set<string>();
+        for (const initiative of allInitiatives) {
+          for (const projectId of initiative.projectIds || []) {
+            projectIdsFromInitiatives.add(projectId);
+          }
+        }
 
-    // Compute and store engineer WIP metrics
-    console.log(`[SYNC] Computing engineer WIP metrics...`);
-    callbacks?.onProgressPercent?.(98);
-    setSyncProgress(98);
-    const computedEngineerCount = computeAndStoreEngineers();
-    console.log(
-      `[SYNC] Computed metrics for ${computedEngineerCount} engineer(s)`
-    );
+        // Get existing project IDs from database
+        const existingProjects = getAllProjects();
+        const existingProjectIds = new Set(existingProjects.map((p) => p.project_id));
+
+        // Find projects that are in initiatives but not in database
+        const missingProjectIds = Array.from(projectIdsFromInitiatives).filter(
+          (id) => !existingProjectIds.has(id)
+        );
+
+        console.log(
+          `[SYNC] Found ${missingProjectIds.length} project(s) associated with initiatives that aren't in database`
+        );
+
+        if (missingProjectIds.length > 0) {
+          // Apply project limit for local development
+          const projectLimit = getProjectSyncLimit();
+          let projectsToSync = missingProjectIds;
+          if (projectLimit !== null && projectsToSync.length > projectLimit) {
+            projectsToSync = projectsToSync.slice(0, projectLimit);
+            console.log(
+              `[SYNC] Limiting initiative projects to ${projectLimit} (found ${missingProjectIds.length} total). Set LIMIT_SYNC=false to sync all.`
+            );
+          }
+
+          // Fetch issues for these projects
+          const limit = pLimit(PROJECT_SYNC_CONCURRENCY);
+          let initiativeProjectIssues: LinearIssueData[] = [];
+
+          const processInitiativeProject = async (projectId: string) => {
+            const projectIssues = await linearClient.fetchIssuesByProjects(
+              [projectId],
+              () => {},
+              projectDescriptionsMap,
+              projectUpdatesMap
+            );
+            return projectIssues;
+          };
+
+          const allInitiativeProjectIssues = await Promise.all(
+            projectsToSync.map((projectId) =>
+              limit(() => processInitiativeProject(projectId))
+            )
+          );
+
+          // Flatten and write issues
+          for (const issues of allInitiativeProjectIssues) {
+            initiativeProjectIssues.push(...issues);
+          }
+
+          if (initiativeProjectIssues.length > 0) {
+            console.log(
+              `[SYNC] Writing ${initiativeProjectIssues.length} issues from ${projectsToSync.length} initiative project(s)...`
+            );
+            const counts = writeIssuesToDatabase(initiativeProjectIssues);
+            cumulativeNewCount += counts.newCount;
+            cumulativeUpdatedCount += counts.updatedCount;
+            console.log(
+              `[SYNC] Wrote initiative project issues - New: ${counts.newCount}, Updated: ${counts.updatedCount}`
+            );
+          }
+
+          // Compute and store project metrics for these projects
+          const initiativeProjectLabelsMap = new Map<string, string[]>();
+          for (const issue of initiativeProjectIssues) {
+            if (
+              issue.projectId &&
+              issue.projectLabels &&
+              issue.projectLabels.length > 0
+            ) {
+              if (!initiativeProjectLabelsMap.has(issue.projectId)) {
+                initiativeProjectLabelsMap.set(issue.projectId, issue.projectLabels);
+              }
+            }
+          }
+
+          await computeAndStoreProjects(
+            initiativeProjectLabelsMap,
+            projectDescriptionsMap,
+            projectUpdatesMap,
+            new Set(projectsToSync),
+            true // Skip deletion during incremental sync
+          );
+          console.log(
+            `[SYNC] Computed metrics for ${projectsToSync.length} initiative project(s)`
+          );
+        }
+      } catch (error) {
+        if (error instanceof RateLimitError) {
+          const errorMsg = "Rate limit exceeded during initiative projects sync";
+          console.error(`[SYNC] ${errorMsg}`);
+          setSyncStatus("error");
+          updateSyncMetadata({
+            sync_error: errorMsg,
+            sync_progress_percent: null,
+            api_query_count: apiQueryCount,
+          });
+          const total = getTotalIssueCount();
+          return {
+            success: false,
+            newCount: cumulativeNewCount,
+            updatedCount: cumulativeUpdatedCount,
+            totalCount: total,
+            issueCount: startedIssues.filter((i) => i.stateType === "started").length,
+            projectCount: 0,
+            projectIssueCount: 0,
+            error: errorMsg,
+          };
+        }
+        // For non-rate-limit errors, log but continue
+        console.error(
+          `[SYNC] Error syncing initiative projects (continuing anyway):`,
+          error instanceof Error ? error.message : error
+        );
+      }
+    } else {
+      console.log("[SYNC] Skipping initiative projects phase (not selected)");
+    }
+
+    // Phase 7: Sync initiatives
+    if (shouldRunPhase("initiatives")) {
+      updatePhase("initiatives");
+      let initiativesSynced = false;
+      const shouldSyncInitiatives =
+        !isResuming ||
+        !existingPartialSync ||
+        existingPartialSync.initiativesSync !== "complete";
+
+      if (shouldSyncInitiatives) {
+      try {
+        console.log("[SYNC] Fetching initiatives...");
+        callbacks?.onProgressPercent?.(97);
+        setSyncProgress(97);
+        const allInitiatives = await linearClient.fetchInitiatives((count) => {
+          // Progress callback for initiatives
+        });
+        console.log(
+          `[SYNC] Fetched ${allInitiatives.length} initiative(s) from Linear`
+        );
+
+        // Apply initiative limit for local development (same as projects)
+        const initiativeLimit = getProjectSyncLimit();
+        let initiatives = allInitiatives;
+        const originalInitiativeCount = allInitiatives.length;
+        if (
+          initiativeLimit !== null &&
+          allInitiatives.length > initiativeLimit
+        ) {
+          initiatives = allInitiatives.slice(0, initiativeLimit);
+          console.log(
+            `[SYNC] Limiting initiatives to ${initiativeLimit} (found ${originalInitiativeCount} total). Set LIMIT_SYNC=false to sync all initiatives.`
+          );
+        } else if (initiativeLimit === null) {
+          console.log(
+            `[SYNC] Syncing all ${allInitiatives.length} initiatives (full sync enabled by default)`
+          );
+        }
+
+        // Write initiatives to database
+        if (initiatives.length > 0) {
+          console.log(
+            `[SYNC] Writing ${initiatives.length} initiative(s) to database...`
+          );
+          const existingInitiativeIds = new Set(
+            getAllInitiatives().map((i) => i.id)
+          );
+          const activeInitiativeIds = new Set<string>();
+
+          for (const initiativeData of initiatives) {
+            activeInitiativeIds.add(initiativeData.id);
+            const initiative: Initiative = {
+              id: initiativeData.id,
+              name: initiativeData.name,
+              description: initiativeData.description,
+              status: initiativeData.status,
+              target_date: initiativeData.targetDate,
+              completed_at: initiativeData.completedAt,
+              started_at: initiativeData.startedAt,
+              archived_at: initiativeData.archivedAt,
+              health: initiativeData.health,
+              health_updated_at: initiativeData.healthUpdatedAt,
+              owner_id: initiativeData.ownerId,
+              owner_name: initiativeData.ownerName,
+              creator_id: initiativeData.creatorId,
+              creator_name: initiativeData.creatorName,
+              project_ids: initiativeData.projectIds.length > 0
+                ? JSON.stringify(initiativeData.projectIds)
+                : null,
+              created_at: initiativeData.createdAt,
+              updated_at: initiativeData.updatedAt,
+            };
+            upsertInitiative(initiative);
+          }
+
+          // Delete initiatives that no longer exist
+          const initiativesToDelete = Array.from(existingInitiativeIds).filter(
+            (id) => !activeInitiativeIds.has(id)
+          );
+          if (initiativesToDelete.length > 0) {
+            deleteInitiativesByIds(initiativesToDelete);
+            console.log(
+              `[SYNC] Deleted ${initiativesToDelete.length} inactive initiative(s)`
+            );
+          }
+        }
+
+        // Save partial sync state for initiatives
+        const partialState: PartialSyncState = {
+          currentPhase: "initiatives",
+          initialIssuesSync:
+            existingPartialSync?.initialIssuesSync || "complete",
+          projectSyncs: existingPartialSync?.projectSyncs || [],
+          plannedProjectsSync:
+            existingPartialSync?.plannedProjectsSync || "complete",
+          plannedProjectSyncs: existingPartialSync?.plannedProjectSyncs || [],
+          completedProjectsSync:
+            existingPartialSync?.completedProjectsSync || "complete",
+          completedProjectSyncs:
+            existingPartialSync?.completedProjectSyncs || [],
+          initiativesSync: "complete",
+        };
+        savePartialSyncState(partialState);
+        initiativesSynced = true;
+        console.log(`[SYNC] Synced ${initiatives.length} initiative(s)`);
+      } catch (error) {
+        if (error instanceof RateLimitError) {
+          const partialState: PartialSyncState = {
+            currentPhase: "initiatives",
+            initialIssuesSync:
+              existingPartialSync?.initialIssuesSync || "complete",
+            projectSyncs: existingPartialSync?.projectSyncs || [],
+            plannedProjectsSync:
+              existingPartialSync?.plannedProjectsSync || "complete",
+            plannedProjectSyncs: existingPartialSync?.plannedProjectSyncs || [],
+            completedProjectsSync:
+              existingPartialSync?.completedProjectsSync || "complete",
+            completedProjectSyncs:
+              existingPartialSync?.completedProjectSyncs || [],
+            initiativesSync: "incomplete",
+          };
+          savePartialSyncState(partialState);
+          const errorMsg = "Rate limit exceeded during initiatives sync";
+          console.error(`[SYNC] ${errorMsg}`);
+          setSyncStatus("error");
+          updateSyncMetadata({
+            sync_error: errorMsg,
+            sync_progress_percent: null,
+            api_query_count: apiQueryCount,
+          });
+          const total = getTotalIssueCount();
+          return {
+            success: false,
+            newCount: cumulativeNewCount,
+            updatedCount: cumulativeUpdatedCount,
+            totalCount: total,
+            issueCount: startedCount,
+            projectCount: computedProjectCount,
+            projectIssueCount: 0,
+            error: errorMsg,
+          };
+        }
+        // For non-rate-limit errors, log but continue
+        console.error(
+          `[SYNC] Error fetching initiatives (continuing anyway):`,
+          error instanceof Error ? error.message : error
+        );
+      }
+      }
+    } else {
+      console.log("[SYNC] Skipping initiatives phase (not selected)");
+    }
 
     // Final phase complete - set to 100%
     updatePhase("complete");
@@ -1923,6 +2287,7 @@ async function computeAndStoreProjects(
     let earliestStartedAt: string | null = firstIssue.started_at; // Track when work actually began
     let linearTargetDate: string | null = firstIssue.project_target_date; // Linear's target date
     let linearStartDate: string | null = firstIssue.project_start_date; // Linear's start date
+    let linearCompletedAt: string | null = null; // Linear's completedAt date
     let completedCount = 0;
     let inProgressCount = 0;
 
@@ -1980,6 +2345,10 @@ async function computeAndStoreProjects(
       if (issue.project_start_date && !linearStartDate) {
         linearStartDate = issue.project_start_date;
       }
+      // Capture Linear's project completedAt date (should be same for all issues in project)
+      if (issue.project_completed_at && !linearCompletedAt) {
+        linearCompletedAt = issue.project_completed_at;
+      }
     }
 
     // Calculate violation counts
@@ -2023,6 +2392,9 @@ async function computeAndStoreProjects(
     const missingHealthFlag =
       !firstIssue.project_health &&
       !(isPlanningPhase && startedIssuesCount === 0);
+    
+    // Check for missing RICE scoped labels (will be set below after we get existing project)
+    let missingRICEScopedLabelsFlag = false;
 
     // Calculate metrics using helper functions
     const totalPoints = calculateTotalPoints(projectIssues);
@@ -2133,6 +2505,13 @@ async function computeAndStoreProjects(
     // Get project description from map
     const projectDescription = projectDescriptionsMap?.get(projectId) || null;
 
+    // Check for missing RICE scoped labels
+    // Get existing project to check its labels (labelsJson above only has names, not full objects)
+    const existingProject = getProjectById(projectId);
+    if (existingProject) {
+      missingRICEScopedLabelsFlag = hasMissingProjectScopedLabels(existingProject);
+    }
+
     // Get project updates from map, sort by createdAt descending (newest first), and serialize to JSON
     // Only update project_updates if this project was synced in this run
     // Otherwise, preserve existing updates from the database
@@ -2182,13 +2561,14 @@ async function computeAndStoreProjects(
       has_status_mismatch: hasStatusMismatchFlag ? 1 : 0,
       is_stale_update: isStaleUpdateFlag ? 1 : 0,
       missing_lead: missingLeadFlag ? 1 : 0,
-      has_violations: hasViolationsFlag ? 1 : 0,
+      has_violations: hasViolationsFlag || missingRICEScopedLabelsFlag ? 1 : 0,
       missing_health: missingHealthFlag ? 1 : 0,
       has_date_discrepancy: hasDateDiscrepancyFlag ? 1 : 0,
       start_date: linearStartDate || earliestStartedAt || earliestCreatedAt, // Prefer Linear's start date, then started_at, fallback to created_at
       last_activity_date: lastActivityDate,
       estimated_end_date: estimatedEndDate,
       target_date: targetDate, // Linear's explicit target date for the project
+      completed_at: linearCompletedAt ? new Date(linearCompletedAt).toISOString() : null, // Linear's completedAt date for the project
       issues_by_state: issuesByStateJson,
       engineers: engineersJson,
       teams: teamsJson,
