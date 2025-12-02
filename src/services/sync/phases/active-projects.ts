@@ -137,6 +137,8 @@ export async function syncActiveProjects(
 
     try {
       const limit = pLimit(PROJECT_SYNC_CONCURRENCY);
+      // Use atomic counter to prevent race conditions when updating progress
+      const completedCountLock = { value: 0 };
 
       const processProject = async (
         projectId: string,
@@ -148,10 +150,32 @@ export async function syncActiveProjects(
           `[SYNC] Processing project ${projectIndex}/${projectsToSync.length}: ${projectName || projectId}`
         );
 
+        // Calculate base progress for this project (before fetching)
+        const projectBaseProgress =
+          activeProjectsProgressStart +
+          Math.round(
+            ((projectIndex - 1) / projectsToSync.length) *
+              activeProjectsProgressRange
+          );
+        const projectProgressRange =
+          activeProjectsProgressRange / projectsToSync.length;
+
+        let maxIssueCount = 0;
         const singleProjectIssues = await linearClient.fetchIssuesByProjects(
           [projectId],
           (count) => {
             callbacks?.onProjectIssueCountUpdate?.(count);
+            // Update progress during fetch: base + incremental based on issues fetched
+            maxIssueCount = Math.max(maxIssueCount, count);
+            // Estimate: assume up to 100 issues per project, scale progress accordingly
+            const fetchProgress =
+              projectBaseProgress +
+              Math.min(
+                Math.round((count / 100) * projectProgressRange),
+                Math.round(projectProgressRange * 0.8)
+              );
+            callbacks?.onProgressPercent?.(fetchProgress);
+            setSyncProgress(fetchProgress);
           },
           projectDescriptionsMap,
           projectUpdatesMap
@@ -200,6 +224,24 @@ export async function syncActiveProjects(
           projectSyncStatuses.push({ projectId, status: "complete" });
         }
 
+        // Update progress incrementally after each project completes
+        // Use atomic counter to prevent race conditions
+        completedCountLock.value++;
+        const currentCompleted = completedCountLock.value;
+        const projectProgressAfter =
+          activeProjectsProgressStart +
+          Math.round(
+            (currentCompleted / projectsToSync.length) *
+              activeProjectsProgressRange
+          );
+        callbacks?.onProjectProgress?.(
+          currentCompleted,
+          projectsToSync.length,
+          projectName
+        );
+        callbacks?.onProgressPercent?.(projectProgressAfter);
+        setSyncProgress(projectProgressAfter);
+
         const partialState: PartialSyncState = {
           currentPhase: "active_projects",
           initialIssuesSync: "complete",
@@ -230,27 +272,8 @@ export async function syncActiveProjects(
         totalProjectIssues += result.projectIssueCount;
       }
 
-      // Update progress sequentially based on sorted results to avoid race conditions
-      const sortedResults = [...results].sort(
-        (a, b) => a.projectIndex - b.projectIndex
-      );
-      for (let i = 0; i < sortedResults.length; i++) {
-        const completedCount = i + 1;
-        const projectProgressAfter =
-          activeProjectsProgressStart +
-          Math.round(
-            (completedCount / projectsToSync.length) *
-              activeProjectsProgressRange
-          );
-        callbacks?.onProjectProgress?.(
-          completedCount,
-          projectsToSync.length,
-          sortedResults[i].projectName
-        );
-        callbacks?.onProgressPercent?.(projectProgressAfter);
-        setSyncProgress(projectProgressAfter);
-      }
-
+      // Progress is already updated incrementally inside processProject
+      // Just ensure we're at 70% after all projects complete
       callbacks?.onProgressPercent?.(70);
       setSyncProgress(70);
       console.log(

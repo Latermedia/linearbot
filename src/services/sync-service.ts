@@ -568,6 +568,9 @@ export async function performSync(
         cumulativeNewCount,
         cumulativeUpdatedCount
       );
+      // Update progress after completing initial issues phase (5%)
+      callbacks?.onProgressPercent?.(5);
+      setSyncProgress(5);
     } else if (
       isResuming &&
       existingPartialSync &&
@@ -582,19 +585,26 @@ export async function performSync(
     let recentlyUpdatedIssues: LinearIssueData[] = [];
     if (shouldRunPhase("recently_updated_issues")) {
       updatePhase("recently_updated_issues");
-      callbacks?.onProgressPercent?.(10);
-      setSyncProgress(10);
+      // Start at 5% (after initial issues), will progress to 10% during fetch
+      callbacks?.onProgressPercent?.(5);
+      setSyncProgress(5);
       if (
         !isResuming ||
         !existingPartialSync ||
         existingPartialSync.initialIssuesSync === "incomplete"
       ) {
         try {
+          let maxFetchedCount = 0;
           recentlyUpdatedIssues = await linearClient.fetchRecentlyUpdatedIssues(
             PROJECT_THRESHOLDS.RECENT_ACTIVITY_DAYS,
-            (_count) => {
-              // Progress callback for recently updated issues
-              // Note: This is separate from started issues count
+            (count) => {
+              // Update progress during fetch: 5% base + up to 5% for fetching
+              maxFetchedCount = Math.max(maxFetchedCount, count);
+              // Estimate progress: assume we might fetch up to 1000 issues, scale accordingly
+              const fetchProgress =
+                5 + Math.min(Math.round((count / 1000) * 5), 5);
+              callbacks?.onProgressPercent?.(fetchProgress);
+              setSyncProgress(fetchProgress);
             }
           );
           console.log(
@@ -629,6 +639,9 @@ export async function performSync(
               cumulativeUpdatedCount
             );
           }
+          // Set progress to 10% after completing recently updated issues phase
+          callbacks?.onProgressPercent?.(10);
+          setSyncProgress(10);
         } catch (error) {
           if (error instanceof RateLimitError) {
             // Save partial sync state before exiting
@@ -782,8 +795,9 @@ export async function performSync(
           // Process projects in parallel with concurrency limit
           try {
             const limit = pLimit(PROJECT_SYNC_CONCURRENCY);
-            let completedCount = 0;
             let totalProjectIssues = 0;
+            // Use atomic counter to prevent race conditions
+            const completedCountLock = { value: 0 };
 
             const processProject = async (
               projectId: string,
@@ -795,12 +809,34 @@ export async function performSync(
                 `[SYNC] Processing project ${projectIndex + 1}/${projectsToSync.length}: ${projectName || projectId}`
               );
 
+              // Calculate base progress for this project (before fetching)
+              const projectBaseProgress =
+                activeProjectsProgressStart +
+                Math.round(
+                  ((projectIndex - 1) / projectsToSync.length) *
+                    activeProjectsProgressRange
+                );
+              const projectProgressRange =
+                activeProjectsProgressRange / projectsToSync.length;
+
               // Fetch issues for this single project
+              let maxIssueCount = 0;
               const singleProjectIssues =
                 await linearClient.fetchIssuesByProjects(
                   [projectId],
                   (count) => {
                     callbacks?.onProjectIssueCountUpdate?.(count);
+                    // Update progress during fetch: base + incremental based on issues fetched
+                    maxIssueCount = Math.max(maxIssueCount, count);
+                    // Estimate: assume up to 100 issues per project, scale progress accordingly
+                    const fetchProgress =
+                      projectBaseProgress +
+                      Math.min(
+                        Math.round((count / 100) * projectProgressRange),
+                        Math.round(projectProgressRange * 0.8)
+                      );
+                    callbacks?.onProgressPercent?.(fetchProgress);
+                    setSyncProgress(fetchProgress);
                   },
                   projectDescriptionsMap,
                   projectUpdatesMap
@@ -862,16 +898,17 @@ export async function performSync(
                 projectSyncStatuses.push({ projectId, status: "complete" });
               }
 
-              // Update completed count and progress
-              completedCount++;
+              // Update completed count and progress atomically
+              completedCountLock.value++;
+              const currentCompleted = completedCountLock.value;
               const projectProgressAfter =
                 activeProjectsProgressStart +
                 Math.round(
-                  (completedCount / projectsToSync.length) *
+                  (currentCompleted / projectsToSync.length) *
                     activeProjectsProgressRange
                 );
               callbacks?.onProjectProgress?.(
-                completedCount,
+                currentCompleted,
                 projectsToSync.length,
                 projectName
               );
