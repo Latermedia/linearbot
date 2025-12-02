@@ -39,7 +39,8 @@
     {
       phase: "active_projects",
       label: "Active Projects",
-      description: "Sync projects with active work (from started/recently updated issues)",
+      description:
+        "Sync projects with active work (from started/recently updated issues)",
     },
     {
       phase: "planned_projects",
@@ -59,22 +60,32 @@
     {
       phase: "initiative_projects",
       label: "Initiative Projects",
-      description: "Sync projects associated with initiatives that aren't already synced",
+      description:
+        "Sync projects associated with initiatives that aren't already synced",
     },
     {
       phase: "computing_metrics",
       label: "Compute Metrics",
-      description: "Calculate project and engineer metrics (runs after all data is synced)",
+      description: "Calculate project and engineer metrics (always required)",
     },
   ];
 
+  // Computing metrics is always required
+  const REQUIRED_PHASE: SyncPhase = "computing_metrics";
+
   let isFullSync = $state(true);
-  let selectedPhases = $state<Set<SyncPhase>>(new Set(phaseOptions.map((p) => p.phase)));
+  let selectedPhases = $state<Set<SyncPhase>>(
+    new Set(phaseOptions.map((p) => p.phase))
+  );
   let adminPassword = $state("");
   let isSubmitting = $state(false);
   let error = $state<string | null>(null);
 
   function togglePhase(phase: SyncPhase) {
+    // Don't allow deselecting the required phase
+    if (phase === REQUIRED_PHASE) {
+      return;
+    }
     const newSelected = new Set(selectedPhases);
     if (newSelected.has(phase)) {
       newSelected.delete(phase);
@@ -90,12 +101,16 @@
       // Select all phases
       selectedPhases = new Set(phaseOptions.map((p) => p.phase));
     } else {
-      // Clear all selections so user can easily select a single phase
-      selectedPhases = new Set();
+      // Clear all selections except required phase
+      selectedPhases = new Set([REQUIRED_PHASE]);
     }
   }
 
   function handlePhaseToggle(phase: SyncPhase) {
+    // Don't allow deselecting the required phase
+    if (phase === REQUIRED_PHASE) {
+      return;
+    }
     togglePhase(phase);
     // If unchecking a phase, disable full sync mode
     if (!selectedPhases.has(phase)) {
@@ -118,6 +133,11 @@
       return;
     }
 
+    // Ensure required phase is always selected
+    if (!selectedPhases.has(REQUIRED_PHASE)) {
+      selectedPhases = new Set([...selectedPhases, REQUIRED_PHASE]);
+    }
+
     isSubmitting = true;
     error = null;
 
@@ -125,6 +145,11 @@
       const phasesToRun = isFullSync
         ? phaseOptions.map((p) => p.phase)
         : Array.from(selectedPhases);
+
+      // Always ensure required phase is included
+      if (!phasesToRun.includes(REQUIRED_PHASE)) {
+        phasesToRun.push(REQUIRED_PHASE);
+      }
 
       const response = await csrfPost("/api/sync", {
         adminPassword,
@@ -163,7 +188,7 @@
 
 <svelte:window onkeydown={handleKeydown} />
 
-<Modal title="Sync Options" onclose={onclose} size="lg">
+<Modal title="Sync Options" {onclose} size="lg">
   <div class="space-y-6">
     <!-- Full Sync Toggle -->
     <div
@@ -186,11 +211,15 @@
         class="mt-1 w-4 h-4 rounded border-neutral-600 bg-neutral-700 text-blue-600 focus:ring-2 focus:ring-blue-500 focus:ring-offset-0 focus:ring-offset-neutral-900 pointer-events-none"
       />
       <div class="flex-1">
-        <label for="fullSync" class="block text-sm font-medium text-white cursor-pointer">
+        <label
+          for="fullSync"
+          class="block text-sm font-medium text-white cursor-pointer"
+        >
           Full Sync
         </label>
         <p class="mt-1 text-xs text-neutral-400">
-          Run all sync phases ({phaseOptions.length} phases). Uncheck to select specific phases.
+          Run all sync phases ({phaseOptions.length} phases). Uncheck to select specific
+          phases.
         </p>
       </div>
     </div>
@@ -207,19 +236,26 @@
       </div>
       <div class="space-y-2 max-h-96 overflow-y-auto">
         {#each phaseOptions as option}
+          {@const isRequired = option.phase === REQUIRED_PHASE}
           <div
-            class="flex items-start gap-3 p-3 rounded-lg border border-neutral-700 bg-neutral-800/30 hover:bg-neutral-800/50 transition-colors {isFullSync
-              ? ''
-              : 'cursor-pointer'}"
+            class="flex items-start gap-3 p-3 rounded-lg border border-neutral-700 bg-neutral-800/30 {isRequired
+              ? 'opacity-75 cursor-not-allowed'
+              : isFullSync
+                ? ''
+                : 'hover:bg-neutral-800/50 cursor-pointer'} transition-colors"
             onclick={() => {
-              if (!isFullSync) {
+              if (!isFullSync && !isRequired) {
                 handlePhaseToggle(option.phase);
               }
             }}
-            role={isFullSync ? undefined : "button"}
-            tabindex={isFullSync ? undefined : 0}
+            role={isFullSync || isRequired ? undefined : "button"}
+            tabindex={isFullSync || isRequired ? undefined : 0}
             onkeydown={(e) => {
-              if (!isFullSync && (e.key === "Enter" || e.key === " ")) {
+              if (
+                !isFullSync &&
+                !isRequired &&
+                (e.key === "Enter" || e.key === " ")
+              ) {
                 e.preventDefault();
                 handlePhaseToggle(option.phase);
               }
@@ -230,13 +266,14 @@
               id="phase-{option.phase}"
               checked={selectedPhases.has(option.phase)}
               onchange={() => handlePhaseToggle(option.phase)}
-              disabled={isFullSync}
+              disabled={isFullSync || isRequired}
               class="mt-0.5 w-4 h-4 rounded border-neutral-600 bg-neutral-700 text-blue-600 focus:ring-2 focus:ring-blue-500 focus:ring-offset-0 focus:ring-offset-neutral-900 disabled:opacity-50 disabled:cursor-not-allowed pointer-events-none"
             />
             <div class="flex-1 min-w-0">
               <label
                 for="phase-{option.phase}"
-                class="block text-sm font-medium text-white {isFullSync
+                class="block text-sm font-medium text-white {isFullSync ||
+                isRequired
                   ? 'opacity-50 cursor-not-allowed'
                   : 'cursor-pointer'}"
               >
@@ -279,7 +316,9 @@
       </Button>
       <Button
         onclick={handleSubmit}
-        disabled={isSubmitting || !adminPassword || (!isFullSync && selectedPhases.size === 0)}
+        disabled={isSubmitting ||
+          !adminPassword ||
+          (!isFullSync && selectedPhases.size === 0)}
       >
         {isSubmitting
           ? "Starting..."
@@ -290,4 +329,3 @@
     </div>
   </div>
 </Modal>
-
