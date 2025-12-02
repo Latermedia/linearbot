@@ -1,5 +1,5 @@
 import type { Issue, Engineer } from "../../db/schema.js";
-import { getStartedIssues, upsertEngineer, getExistingEngineerIds, deleteEngineersByIds } from "../../db/queries.js";
+import { getStartedIssues, upsertEngineer } from "../../db/queries.js";
 import { WIP_THRESHOLDS } from "../../constants/thresholds.js";
 import {
   hasMissingEstimate,
@@ -153,19 +153,7 @@ export function computeAndStoreEngineers(): number {
     upsertEngineer(engineer);
   }
 
-  // Delete engineers that no longer have WIP
-  const existingEngineerIds = getExistingEngineerIds();
-  const engineersToDelete = Array.from(existingEngineerIds).filter(
-    (id) => !activeEngineerIds.has(id)
-  );
-
-  if (engineersToDelete.length > 0) {
-    deleteEngineersByIds(engineersToDelete);
-    console.log(
-      `[SYNC] Deleted ${engineersToDelete.length} engineer(s) with no WIP`
-    );
-  }
+  // Note: We no longer delete engineers - all data is preserved for historical tracking
 
   return activeEngineerIds.size;
 }
-
