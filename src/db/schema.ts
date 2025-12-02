@@ -476,12 +476,14 @@ export function initializeDatabase(db: Database): void {
       last_activity_date TEXT NOT NULL,
       estimated_end_date TEXT,
       target_date TEXT,
+      completed_at TEXT,
       issues_by_state TEXT NOT NULL,
       engineers TEXT NOT NULL,
       teams TEXT NOT NULL,
       velocity_by_team TEXT NOT NULL,
       labels TEXT,
-      project_updates TEXT
+      project_updates TEXT,
+      last_synced_at TEXT
     )
   `);
 

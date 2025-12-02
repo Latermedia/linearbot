@@ -6,6 +6,12 @@ import type { RequestEvent } from "@sveltejs/kit";
  * Returns true if valid, false otherwise
  */
 export function validateCsrfTokenFromHeader(event: RequestEvent): boolean {
+  // Check if CSRF protection is disabled
+  const csrfEnabled = process.env.DISABLE_CSRF !== "true";
+  if (!csrfEnabled) {
+    return true;
+  }
+
   const { request, cookies } = event;
   const sessionToken = cookies.get(getSessionCookieName());
   const csrfToken = request.headers.get("X-CSRF-Token") || undefined;
@@ -21,6 +27,12 @@ export function validateCsrfTokenFromBody(
   event: RequestEvent,
   body: { csrfToken?: string }
 ): boolean {
+  // Check if CSRF protection is disabled
+  const csrfEnabled = process.env.DISABLE_CSRF !== "true";
+  if (!csrfEnabled) {
+    return true;
+  }
+
   const { cookies } = event;
   const sessionToken = cookies.get(getSessionCookieName());
   const csrfToken = body.csrfToken;
@@ -37,6 +49,12 @@ export function validateCsrfToken(
   event: RequestEvent,
   body?: { csrfToken?: string }
 ): boolean {
+  // Check if CSRF protection is disabled
+  const csrfEnabled = process.env.DISABLE_CSRF !== "true";
+  if (!csrfEnabled) {
+    return true;
+  }
+
   // Check header first (preferred method)
   const headerValid = validateCsrfTokenFromHeader(event);
   if (headerValid) {

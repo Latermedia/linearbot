@@ -83,6 +83,10 @@ export const handle: Handle = async ({ event, resolve }) => {
   const sessionToken = cookies.get(getSessionCookieName());
   const isAuthenticated = verifySession(sessionToken);
 
+  // Check if security headers are disabled
+  const securityHeadersEnabled =
+    process.env.DISABLE_SECURITY_HEADERS !== "true";
+
   // Allow access to login page and login API without authentication
   if (url.pathname === "/login" || url.pathname === "/api/auth/login") {
     // If already authenticated and accessing login page, redirect to home
@@ -91,7 +95,7 @@ export const handle: Handle = async ({ event, resolve }) => {
     }
     try {
       const response = await resolve(event);
-      return addSecurityHeaders(response);
+      return securityHeadersEnabled ? addSecurityHeaders(response) : response;
     } catch (error) {
       // Don't catch redirects or HTTP errors - let them propagate
       if (shouldRethrowError(error)) {
@@ -107,7 +111,9 @@ export const handle: Handle = async ({ event, resolve }) => {
             headers: { "Content-Type": "application/json" },
           }
         );
-        return addSecurityHeaders(errorResponse);
+        return securityHeadersEnabled
+          ? addSecurityHeaders(errorResponse)
+          : errorResponse;
       }
       // Re-throw for page routes to let SvelteKit handle them
       throw error;
@@ -125,7 +131,9 @@ export const handle: Handle = async ({ event, resolve }) => {
           headers: { "Content-Type": "application/json" },
         }
       );
-      return addSecurityHeaders(unauthorizedResponse);
+      return securityHeadersEnabled
+        ? addSecurityHeaders(unauthorizedResponse)
+        : unauthorizedResponse;
     }
 
     // For page routes, redirect to login
@@ -134,7 +142,7 @@ export const handle: Handle = async ({ event, resolve }) => {
 
   try {
     const response = await resolve(event);
-    return addSecurityHeaders(response);
+    return securityHeadersEnabled ? addSecurityHeaders(response) : response;
   } catch (error) {
     // Don't catch redirects or HTTP errors - let them propagate
     if (shouldRethrowError(error)) {
@@ -150,7 +158,9 @@ export const handle: Handle = async ({ event, resolve }) => {
           headers: { "Content-Type": "application/json" },
         }
       );
-      return addSecurityHeaders(errorResponse);
+      return securityHeadersEnabled
+        ? addSecurityHeaders(errorResponse)
+        : errorResponse;
     }
     // Re-throw for page routes to let SvelteKit handle them
     throw error;

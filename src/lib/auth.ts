@@ -16,6 +16,7 @@ const sessionCsrfTokens = new Map<string, string>(); // sessionToken -> csrfToke
 export function getExpectedPassword(): string {
   const password = process.env.APP_PASSWORD;
   if (!password) {
+    console.error("[AUTH] APP_PASSWORD environment variable is not set");
     throw new Error("APP_PASSWORD environment variable is not set");
   }
   return password;
@@ -25,19 +26,27 @@ export function getExpectedPassword(): string {
  * Verify password using constant-time comparison to prevent timing attacks
  */
 export function verifyPassword(inputPassword: string): boolean {
-  const expectedPassword = getExpectedPassword();
+  try {
+    const expectedPassword = getExpectedPassword();
 
-  // Constant-time comparison
-  if (inputPassword.length !== expectedPassword.length) {
-    return false;
+    // Constant-time comparison
+    if (inputPassword.length !== expectedPassword.length) {
+      return false;
+    }
+
+    let result = 0;
+    for (let i = 0; i < inputPassword.length; i++) {
+      result |= inputPassword.charCodeAt(i) ^ expectedPassword.charCodeAt(i);
+    }
+
+    return result === 0;
+  } catch (error) {
+    console.error("[AUTH] Error in verifyPassword", {
+      error: error instanceof Error ? error.message : String(error),
+      stack: error instanceof Error ? error.stack : undefined,
+    });
+    throw error;
   }
-
-  let result = 0;
-  for (let i = 0; i < inputPassword.length; i++) {
-    result |= inputPassword.charCodeAt(i) ^ expectedPassword.charCodeAt(i);
-  }
-
-  return result === 0;
 }
 
 /**
@@ -58,16 +67,25 @@ export function generateCsrfToken(): string {
  * Create a new session and return the token
  */
 export function createSession(): string {
-  const token = generateSessionToken();
-  const csrfToken = generateCsrfToken();
-  const expiration = Date.now() + SESSION_DURATION_MS;
-  activeSessions.set(token, expiration);
-  sessionCsrfTokens.set(token, csrfToken);
+  try {
+    const token = generateSessionToken();
+    const csrfToken = generateCsrfToken();
+    const expiration = Date.now() + SESSION_DURATION_MS;
 
-  // Clean up expired sessions periodically
-  cleanupExpiredSessions();
+    activeSessions.set(token, expiration);
+    sessionCsrfTokens.set(token, csrfToken);
 
-  return token;
+    // Clean up expired sessions periodically
+    cleanupExpiredSessions();
+
+    return token;
+  } catch (error) {
+    console.error("[AUTH] Error creating session", {
+      error: error instanceof Error ? error.message : String(error),
+      stack: error instanceof Error ? error.stack : undefined,
+    });
+    throw error;
+  }
 }
 
 /**

@@ -33,6 +33,10 @@ EXPOSE 3000
 ENV NODE_ENV=production
 ENV PORT=3000
 
+# Enable limited sync mode for safer deployments
+# Set to "false" to disable limited sync mode
+ENV LIMIT_SYNC=true
+
 # Start the application with Bun
 CMD ["bun", "--bun", "run", "server.js"]
 

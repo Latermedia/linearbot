@@ -31,9 +31,19 @@ export function getClientIP(
   request: Request,
   event?: { getClientAddress?: () => string }
 ): string {
-  // Try to use SvelteKit's getClientAddress if available
+  // Try to use SvelteKit's getClientAddress if available (only if not Bun adapter)
   if (event?.getClientAddress) {
-    return event.getClientAddress();
+    try {
+      return event.getClientAddress();
+    } catch {
+      // Bun adapter throws - fall through to headers
+    }
+  }
+
+  // Fly.io provides fly-client-ip header (most reliable)
+  const flyClientIP = request.headers.get("fly-client-ip");
+  if (flyClientIP) {
+    return flyClientIP.trim();
   }
 
   // Fallback: check headers for proxy-forwarded IP
@@ -105,6 +115,15 @@ export function checkRateLimit(
 ):
   | { blocked: false; attempts: number }
   | { blocked: true; retryAfter: number; attempts: number } {
+  // Check if rate limiting is disabled
+  const rateLimitEnabled = process.env.DISABLE_RATE_LIMIT !== "true";
+  if (!rateLimitEnabled) {
+    console.log(
+      "[RATE_LIMIT] Rate limiting disabled via DISABLE_RATE_LIMIT env var"
+    );
+    return { blocked: false, attempts: 0 };
+  }
+
   const now = Date.now();
 
   // Periodic cleanup
