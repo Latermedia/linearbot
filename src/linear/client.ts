@@ -916,6 +916,58 @@ export class LinearAPIClient {
     return project.description || null;
   }
 
+  /**
+   * Fetch project labels and content from Linear API
+   */
+  async fetchProjectData(projectId: string): Promise<{
+    labels: string[];
+    content: string | null;
+  }> {
+    const query = `
+      query GetProjectData($projectId: String!) {
+        project(id: $projectId) {
+          id
+          labels {
+            nodes {
+              name
+            }
+          }
+          content
+        }
+      }
+    `;
+
+    let response: any;
+    try {
+      this.incrementQueryCount();
+      response = await this.client.client.rawRequest(query, {
+        projectId,
+      });
+    } catch (error: any) {
+      // Check for rate limit using comprehensive detection
+      if (isRateLimitError(error)) {
+        throw new RateLimitError("Linear API rate limit exceeded");
+      }
+      // For other errors, log but don't fail the sync - labels/content are optional
+      console.error(
+        `Failed to fetch project data for ${projectId}:`,
+        error instanceof Error ? error.message : error
+      );
+      return { labels: [], content: null };
+    }
+
+    const project = response.data?.project;
+    if (!project) {
+      return { labels: [], content: null };
+    }
+
+    const labels =
+      project.labels?.nodes?.map((l: { name: string }) => l.name) || [];
+    const content = project.content || null;
+
+    return { labels, content };
+  }
+
   async fetchProjectUpdates(projectId: string): Promise<ProjectUpdate[]> {
     const query = `
       query GetProjectUpdates($projectId: String!) {
