@@ -1,6 +1,6 @@
 import { json } from "@sveltejs/kit";
 import type { RequestHandler } from "./$types";
-import { syncProject } from "../../../../../services/sync-service.js";
+import { syncProject } from "../../../../../services/sync/index.js";
 import { getSyncState, setSyncState, updateSyncStats } from "../../state.js";
 import {
   updateSyncMetadata,

@@ -1,6 +1,6 @@
 import { getDatabase } from "../db/connection.js";
 import { getTotalIssueCount } from "../db/queries.js";
-import { performSync } from "./sync-service.js";
+import { performSync } from "./sync/index.js";
 import { initializeSyncScheduler } from "./sync-scheduler.js";
 
 let startupInitialized = false;

@@ -1,4 +1,4 @@
-import { performSync } from "./sync-service.js";
+import { performSync } from "./sync/index.js";
 import { getSyncMetadata, getPartialSyncState } from "../db/queries.js";
 
 const SYNC_INTERVAL_MS = 30 * 60 * 1000; // 30 minutes

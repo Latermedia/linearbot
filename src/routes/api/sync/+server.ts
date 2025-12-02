@@ -1,9 +1,10 @@
 import { json } from "@sveltejs/kit";
 import type { RequestHandler } from "./$types";
-import { performSync } from "../../../services/sync-service.js";
+import { performSync, type SyncOptions } from "../../../services/sync/index.js";
 import { getSyncState, setSyncState, updateSyncStats } from "./state.js";
 import { updateSyncMetadata, setSyncStatus } from "../../../db/queries.js";
 import { validateCsrfTokenFromHeader } from "$lib/csrf.js";
+import { verifyAdminPassword } from "$lib/auth.js";
 
 const MIN_SYNC_INTERVAL_MS = 60 * 1000; // 1 minute
 
@@ -11,6 +12,42 @@ export const POST: RequestHandler = async (event) => {
   // Validate CSRF token
   if (!validateCsrfTokenFromHeader(event)) {
     return json({ error: "Invalid CSRF token" }, { status: 403 });
+  }
+
+  const body = await event.request.json();
+  const { adminPassword, syncOptions } = body;
+
+  // Require admin password
+  if (!adminPassword || typeof adminPassword !== "string") {
+    return json(
+      { success: false, error: "Admin password is required" },
+      { status: 400 }
+    );
+  }
+
+  // Verify admin password
+  try {
+    if (!verifyAdminPassword(adminPassword)) {
+      return json(
+        { success: false, error: "Invalid admin password" },
+        { status: 401 }
+      );
+    }
+  } catch (error) {
+    // Check if it's the ADMIN_PASSWORD not set error
+    if (error instanceof Error && error.message.includes("ADMIN_PASSWORD")) {
+      return json(
+        {
+          success: false,
+          error: "Server configuration error. Please contact administrator.",
+        },
+        { status: 500 }
+      );
+    }
+    return json(
+      { success: false, error: "Invalid admin password" },
+      { status: 401 }
+    );
   }
   const syncState = getSyncState();
 
@@ -78,8 +115,33 @@ export const POST: RequestHandler = async (event) => {
     },
   });
 
+  // Parse sync options if provided
+  const parsedSyncOptions: SyncOptions | undefined = syncOptions
+    ? {
+        phases: syncOptions.phases || [],
+        isFullSync: syncOptions.isFullSync ?? true,
+      }
+    : undefined;
+
+  // Log sync options for debugging
+  if (parsedSyncOptions) {
+    console.log(
+      `[SYNC API] Sync options received: ${parsedSyncOptions.isFullSync ? "Full Sync" : `Partial Sync (${parsedSyncOptions.phases.length} phases)`}`,
+      parsedSyncOptions.phases
+    );
+  } else {
+    console.log("[SYNC API] No sync options provided, using default (full sync)");
+  }
+
+  // Determine includeProjectSync from syncOptions if provided
+  // If syncOptions is provided, use it to determine project sync
+  // Otherwise default to true for backward compatibility
+  const includeProjectSync = parsedSyncOptions
+    ? parsedSyncOptions.phases.includes("active_projects")
+    : true;
+
   // Run sync asynchronously
-  performSync(true, {
+  performSync(includeProjectSync, {
     onProgressPercent: (percent) => {
       setSyncState({ progressPercent: percent });
     },
@@ -99,7 +161,7 @@ export const POST: RequestHandler = async (event) => {
         currentProjectName: projectName,
       });
     },
-  })
+  }, parsedSyncOptions)
     .then((result) => {
       const duration = Date.now() - syncStartTime;
       if (result.success) {
