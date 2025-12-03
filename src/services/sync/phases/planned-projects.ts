@@ -7,6 +7,7 @@ import {
   savePartialSyncState,
   setSyncProgress,
   setSyncStatus,
+  setSyncStatusMessage,
   updateSyncMetadata,
 } from "../../../db/queries.js";
 import type { PartialSyncState } from "../../../db/queries.js";
@@ -42,7 +43,7 @@ export async function syncPlannedProjects(
   }
 
   updatePhase("planned_projects");
-  const plannedProjectsProgressStart = 70;
+  const plannedProjectsProgressStart = 35;
   const plannedProjectsProgressRange = 15;
 
   const shouldSyncPlanned =
@@ -56,6 +57,7 @@ export async function syncPlannedProjects(
   }
 
   try {
+    setSyncStatusMessage("Fetching planned projects...");
     console.log("[SYNC] Fetching planned projects...");
     const plannedProjectIds = await linearClient.fetchPlannedProjects();
     console.log(`[SYNC] Found ${plannedProjectIds.length} planned project(s)`);
@@ -108,6 +110,10 @@ export async function syncPlannedProjects(
         projectId: string,
         projectIndex: number
       ) => {
+        setSyncStatusMessage(
+          `Syncing planned project ${projectIndex} of ${plannedProjectsToSync.length}`
+        );
+
         const singleProjectIssues = await linearClient.fetchIssuesByProjects(
           [projectId],
           undefined,
@@ -196,8 +202,8 @@ export async function syncPlannedProjects(
         setSyncProgress(plannedProjectProgressAfter);
       }
 
-      callbacks?.onProgressPercent?.(85);
-      setSyncProgress(85);
+      callbacks?.onProgressPercent?.(50);
+      setSyncProgress(50);
 
       const partialState: PartialSyncState = {
         currentPhase: "planned_projects",
@@ -210,8 +216,8 @@ export async function syncPlannedProjects(
       };
       savePartialSyncState(partialState);
     } else {
-      callbacks?.onProgressPercent?.(85);
-      setSyncProgress(85);
+      callbacks?.onProgressPercent?.(50);
+      setSyncProgress(50);
     }
   } catch (error) {
     if (error instanceof RateLimitError) {

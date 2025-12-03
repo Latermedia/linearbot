@@ -8,6 +8,7 @@ import {
   savePartialSyncState,
   setSyncProgress,
   setSyncStatus,
+  setSyncStatusMessage,
   updateSyncMetadata,
 } from "../../../db/queries.js";
 import type { PartialSyncState } from "../../../db/queries.js";
@@ -132,8 +133,8 @@ export async function syncActiveProjects(
       );
     }
 
-    const activeProjectsProgressStart = 10;
-    const activeProjectsProgressRange = 60;
+    const activeProjectsProgressStart = 20;
+    const activeProjectsProgressRange = 15;
 
     try {
       const limit = pLimit(PROJECT_SYNC_CONCURRENCY);
@@ -145,6 +146,11 @@ export async function syncActiveProjects(
         projectIndex: number
       ) => {
         const projectName = projectNameMap.get(projectId) || null;
+        const displayName = projectName || projectId.slice(0, 8);
+
+        setSyncStatusMessage(
+          `Syncing project ${projectIndex} of ${projectsToSync.length}: ${displayName}`
+        );
 
         console.log(
           `[SYNC] Processing project ${projectIndex}/${projectsToSync.length}: ${projectName || projectId}`
@@ -273,9 +279,9 @@ export async function syncActiveProjects(
       }
 
       // Progress is already updated incrementally inside processProject
-      // Just ensure we're at 70% after all projects complete
-      callbacks?.onProgressPercent?.(70);
-      setSyncProgress(70);
+      // Just ensure we're at 35% after all projects complete
+      callbacks?.onProgressPercent?.(35);
+      setSyncProgress(35);
       console.log(
         `[SYNC] Fetched ${totalProjectIssues} issues from ${projectsToSync.length} project(s)`
       );
@@ -300,8 +306,8 @@ export async function syncActiveProjects(
       throw error;
     }
   } else {
-    callbacks?.onProgressPercent?.(70);
-    setSyncProgress(70);
+    callbacks?.onProgressPercent?.(35);
+    setSyncProgress(35);
   }
 
   return { newCount, updatedCount };

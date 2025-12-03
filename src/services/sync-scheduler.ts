@@ -1,7 +1,7 @@
 import { performSync } from "./sync/index.js";
 import { getSyncMetadata, getPartialSyncState } from "../db/queries.js";
 
-const SYNC_INTERVAL_MS = 30 * 60 * 1000; // 30 minutes
+const SYNC_INTERVAL_MS = 60 * 60 * 1000; // 1 hour
 
 /**
  * Run a scheduled sync (shared logic for both cron and interval)
@@ -60,12 +60,10 @@ async function runScheduledSync(): Promise<void> {
 }
 
 /**
- * Initialize the sync scheduler with a cron job or interval that runs every 10 minutes
+ * Initialize the sync scheduler with a cron job or interval that runs every hour
  */
 export function initializeSyncScheduler(): void {
-  console.log(
-    "[SYNC-SCHEDULER] Initializing sync scheduler (every 30 minutes)"
-  );
+  console.log("[SYNC-SCHEDULER] Initializing sync scheduler (every 1 hour)");
 
   // Check if Bun.cron is available (Bun-specific API)
   if (
@@ -74,7 +72,8 @@ export function initializeSyncScheduler(): void {
     typeof (Bun as any).cron === "function"
   ) {
     try {
-      (Bun as any).cron("*/30 * * * *", runScheduledSync);
+      // Run at the top of every hour
+      (Bun as any).cron("0 * * * *", runScheduledSync);
       console.log("[SYNC-SCHEDULER] Using Bun.cron for scheduled syncs");
       return;
     } catch (error) {

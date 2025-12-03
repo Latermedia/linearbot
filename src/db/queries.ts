@@ -603,6 +603,8 @@ export interface SyncMetadata {
   sync_progress_percent: number | null;
   partial_sync_state: string | null;
   api_query_count: number | null;
+  sync_status_message: string | null;
+  phase_query_counts: string | null; // JSON string mapping phase names to query counts
 }
 
 /**
@@ -625,6 +627,8 @@ export function updateSyncMetadata(updates: {
   sync_progress_percent?: number | null;
   partial_sync_state?: string | null;
   api_query_count?: number | null;
+  sync_status_message?: string | null;
+  phase_query_counts?: string | null;
 }): void {
   const db = getDatabase();
   const fields: string[] = [];
@@ -654,6 +658,14 @@ export function updateSyncMetadata(updates: {
     fields.push("api_query_count = ?");
     values.push(updates.api_query_count);
   }
+  if (updates.sync_status_message !== undefined) {
+    fields.push("sync_status_message = ?");
+    values.push(updates.sync_status_message);
+  }
+  if (updates.phase_query_counts !== undefined) {
+    fields.push("phase_query_counts = ?");
+    values.push(updates.phase_query_counts);
+  }
 
   if (fields.length === 0) return;
 
@@ -678,6 +690,36 @@ export function setSyncStatus(status: "idle" | "syncing" | "error"): void {
  */
 export function setSyncProgress(percent: number | null): void {
   updateSyncMetadata({ sync_progress_percent: percent });
+}
+
+/**
+ * Get phase query counts from sync metadata
+ * Returns a map of phase names to query counts, or null if not available
+ */
+export function getPhaseQueryCounts(): Record<string, number> | null {
+  const metadata = getSyncMetadata();
+  if (!metadata?.phase_query_counts) {
+    return null;
+  }
+  try {
+    return JSON.parse(metadata.phase_query_counts) as Record<string, number>;
+  } catch {
+    return null;
+  }
+}
+
+/**
+ * Save phase query counts to sync metadata
+ */
+export function savePhaseQueryCounts(counts: Record<string, number>): void {
+  updateSyncMetadata({ phase_query_counts: JSON.stringify(counts) });
+}
+
+/**
+ * Helper to set sync status message
+ */
+export function setSyncStatusMessage(message: string | null): void {
+  updateSyncMetadata({ sync_status_message: message });
 }
 
 /**

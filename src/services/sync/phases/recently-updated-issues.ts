@@ -5,6 +5,7 @@ import {
   savePartialSyncState,
   setSyncProgress,
   setSyncStatus,
+  setSyncStatusMessage,
   updateSyncMetadata,
 } from "../../../db/queries.js";
 import { PROJECT_THRESHOLDS } from "../../../constants/thresholds.js";
@@ -30,6 +31,7 @@ export async function syncRecentlyUpdatedIssues(
     apiQueryCount,
     updatePhase,
     shouldRunPhase,
+    getProjectSyncLimit,
   } = context;
 
   let recentlyUpdatedIssues: LinearIssueData[] = [];
@@ -44,6 +46,7 @@ export async function syncRecentlyUpdatedIssues(
   updatePhase("recently_updated_issues");
   callbacks?.onProgressPercent?.(10);
   setSyncProgress(10);
+  setSyncStatusMessage("Fetching recently updated issues...");
 
   if (
     !isResuming ||
@@ -51,10 +54,18 @@ export async function syncRecentlyUpdatedIssues(
     existingPartialSync.initialIssuesSync === "incomplete"
   ) {
     try {
+      // In LIMIT_SYNC mode, use 12 hours (0.5 days) instead of 14 days
+      const limitSync = getProjectSyncLimit() !== null;
+      const daysToFetch = limitSync
+        ? 0.5
+        : PROJECT_THRESHOLDS.RECENT_ACTIVITY_DAYS;
+
       recentlyUpdatedIssues = await linearClient.fetchRecentlyUpdatedIssues(
-        PROJECT_THRESHOLDS.RECENT_ACTIVITY_DAYS,
-        (_count) => {
-          // Progress callback for recently updated issues
+        daysToFetch,
+        (count) => {
+          setSyncStatusMessage(
+            `Fetching recently updated issues... (${count} found)`
+          );
         }
       );
       console.log(
@@ -111,6 +122,10 @@ export async function syncRecentlyUpdatedIssues(
       );
     }
   }
+
+  // Phase complete - set to 20%
+  callbacks?.onProgressPercent?.(20);
+  setSyncProgress(20);
 
   return { recentlyUpdatedIssues, newCount, updatedCount };
 }

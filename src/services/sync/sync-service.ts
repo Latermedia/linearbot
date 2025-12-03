@@ -10,10 +10,13 @@ import {
   updateSyncMetadata,
   setSyncStatus,
   setSyncProgress,
+  setSyncStatusMessage,
   getPartialSyncState,
   savePartialSyncState,
   clearPartialSyncState,
   getSyncMetadata,
+  getPhaseQueryCounts,
+  savePhaseQueryCounts,
 } from "../../db/queries.js";
 import type { SyncPhase } from "../../db/queries.js";
 import type { SyncResult, SyncCallbacks, SyncOptions } from "./types.js";
@@ -22,6 +25,7 @@ import {
   getProjectSyncLimit,
   createShouldRunPhase,
   createUpdatePhase,
+  calculateExpectedTotalQueries,
 } from "./helpers.js";
 import { computeAndStoreProjects } from "./compute-projects.js";
 import { computeAndStoreEngineers } from "./compute-engineers.js";
@@ -55,15 +59,60 @@ export async function performSync(
   let apiQueryCount = 0;
   let currentPhase: SyncPhase = "initial_issues";
 
-  // Helper function to increment API query count and update database
-  const incrementApiQuery = () => {
-    apiQueryCount++;
-    updateSyncMetadata({ api_query_count: apiQueryCount });
-  };
+  // Track API queries per phase
+  const phaseQueryCounts: Record<string, number> = {};
 
   // Create helper functions
   const { updatePhase, currentPhaseRef } = createUpdatePhase();
   const shouldRunPhase = createShouldRunPhase(syncOptions);
+
+  // Determine which phases will run
+  const phasesToRun: SyncPhase[] = syncOptions?.phases || [
+    "initial_issues",
+    "recently_updated_issues",
+    "active_projects",
+    "planned_projects",
+    "completed_projects",
+    "initiatives",
+    "initiative_projects",
+    "computing_metrics",
+  ];
+
+  // Get historical phase query counts
+  const historicalCounts = getPhaseQueryCounts();
+
+  // Calculate expected total queries for this sync
+  const expectedTotalQueries = calculateExpectedTotalQueries(
+    phasesToRun,
+    historicalCounts
+  );
+
+  // Helper function to increment API query count and update progress based on query count
+  const incrementApiQuery = () => {
+    apiQueryCount++;
+    const currentPhase = currentPhaseRef.current;
+
+    // Track queries per phase
+    phaseQueryCounts[currentPhase] = (phaseQueryCounts[currentPhase] || 0) + 1;
+
+    // Update total API query count in database
+    updateSyncMetadata({ api_query_count: apiQueryCount });
+
+    // Calculate progress based on executed queries vs expected queries
+    // Progress = (executed queries / expected queries) * 100
+    // Cap at 99.99% to allow for slight variations
+    let progress = Math.min(
+      (apiQueryCount / expectedTotalQueries) * 100,
+      99.99
+    );
+
+    // Round to 2 decimal places for precision
+    progress = Math.round(progress * 100) / 100;
+
+    // Update progress via callbacks and database
+    callbacks?.onProgressPercent?.(progress);
+    setSyncProgress(progress);
+  };
 
   // Determine includeProjectSync from syncOptions if provided
   const effectiveIncludeProjectSync =
@@ -98,9 +147,23 @@ export async function performSync(
       }
     }
 
-    // Update sync status to 'syncing'
+    // Reset sync status completely at start of sync
     setSyncStatus("syncing");
-    updateSyncMetadata({ sync_error: null, sync_progress_percent: 0 });
+
+    // Initialize phase query counts tracking
+    for (const phase of phasesToRun) {
+      phaseQueryCounts[phase] = 0;
+    }
+
+    updateSyncMetadata({
+      sync_error: null,
+      sync_progress_percent: 0,
+      sync_status_message: "Starting sync...",
+    });
+
+    console.log(
+      `[SYNC] Expected total queries: ${expectedTotalQueries} (based on ${historicalCounts ? "historical" : "default"} data)`
+    );
 
     // Check for mock mode
     if (isMockMode()) {
@@ -154,13 +217,19 @@ export async function performSync(
 
       callbacks?.onProgressPercent?.(100);
       setSyncProgress(100);
+      setSyncStatusMessage("Sync complete");
 
       const syncTime = new Date().toISOString();
       setSyncStatus("idle");
+
+      // Save phase query counts (mock mode - use empty object as no real queries)
+      savePhaseQueryCounts({});
+
       updateSyncMetadata({
         last_sync_time: syncTime,
         sync_error: null,
         sync_progress_percent: null,
+        sync_status_message: null,
       });
 
       const total = getTotalIssueCount();
@@ -344,20 +413,31 @@ export async function performSync(
 
     // Final phase complete
     updatePhase("complete");
+
+    // Set progress to 100% and save phase query counts for next sync
     callbacks?.onProgressPercent?.(100);
     setSyncProgress(100);
+    setSyncStatusMessage("Sync complete");
 
     console.log(
-      `[SYNC] Summary - New: ${cumulativeNewCount}, Updated: ${cumulativeUpdatedCount}, Started: ${startedCount}, Projects: ${computedProjectCount}, Engineers: ${computedEngineerCount}`
+      `[SYNC] Summary - New: ${cumulativeNewCount}, Updated: ${cumulativeUpdatedCount}, Started: ${startedCount}, Projects: ${computedProjectCount}, Engineers: ${computedEngineerCount}, Total API Queries: ${apiQueryCount}`
+    );
+    console.log(
+      `[SYNC] Phase query counts: ${JSON.stringify(phaseQueryCounts)}`
     );
 
     const syncTime = new Date().toISOString();
     clearPartialSyncState();
     setSyncStatus("idle");
+
+    // Save phase query counts for use in next sync
+    savePhaseQueryCounts(phaseQueryCounts);
+
     updateSyncMetadata({
       last_sync_time: syncTime,
       sync_error: null,
       sync_progress_percent: null,
+      sync_status_message: null,
       api_query_count: apiQueryCount,
     });
 
@@ -401,6 +481,7 @@ export async function performSync(
       updateSyncMetadata({
         sync_error: errorMsg,
         sync_progress_percent: null,
+        sync_status_message: null,
         api_query_count: apiQueryCount,
       });
       const total = getTotalIssueCount();
@@ -435,6 +516,7 @@ export async function performSync(
     updateSyncMetadata({
       sync_error: finalError,
       sync_progress_percent: null,
+      sync_status_message: null,
     });
 
     return {

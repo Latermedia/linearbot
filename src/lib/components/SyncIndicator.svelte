@@ -150,21 +150,22 @@
 >
   <!-- Container with progress bar background -->
   <div
-    class="relative px-3 py-1.5 overflow-clip rounded-md sync-container bg-neutral-100 dark:bg-white/5 {hasError
+    class="relative px-3 py-1.5 overflow-clip rounded-md sync-container bg-neutral-100 dark:bg-white/5 cursor-pointer {hasError
       ? 'border border-red-500/50'
       : isSyncing
         ? ''
-        : 'cursor-pointer hover:bg-neutral-200 dark:hover:bg-white/10'} transition-colors"
-    title={tooltipText() || (isSyncing ? undefined : "Click to sync (Cmd+Shift+S)")}
+        : 'hover:bg-neutral-200 dark:hover:bg-white/10'} transition-colors"
+    title={tooltipText() ||
+      (isSyncing
+        ? "Click to view sync progress"
+        : "Click to sync (Cmd+Shift+S)")}
     onclick={() => {
-      if (!isSyncing) {
-        showSyncModal = true;
-      }
+      showSyncModal = true;
     }}
-    role={isSyncing ? undefined : "button"}
-    tabindex={isSyncing ? undefined : 0}
+    role="button"
+    tabindex="0"
     onkeydown={(e) => {
-      if (!isSyncing && (e.key === "Enter" || e.key === " ")) {
+      if (e.key === "Enter" || e.key === " ") {
         e.preventDefault();
         showSyncModal = true;
       }
@@ -227,6 +228,10 @@
   </div>
 </div>
 
+{#if showSyncModal}
+  <SyncModal onclose={() => (showSyncModal = false)} />
+{/if}
+
 <style>
   @keyframes sync-pulse {
     0% {
@@ -253,7 +258,3 @@
       inset 0 0 0 1px rgb(0 0 0 / 0.05);
   }
 </style>
-
-{#if showSyncModal}
-  <SyncModal onclose={() => (showSyncModal = false)} />
-{/if}

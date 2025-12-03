@@ -1,7 +1,10 @@
 <script lang="ts">
+  import { onMount, onDestroy } from "svelte";
+  import { browser } from "$app/environment";
   import Modal from "$lib/components/Modal.svelte";
   import Button from "$lib/components/Button.svelte";
   import { csrfPost } from "$lib/utils/csrf";
+  import { databaseStore } from "../stores/database";
 
   let {
     onclose,
@@ -73,6 +76,11 @@
   // Computing metrics is always required
   const REQUIRED_PHASE: SyncPhase = "computing_metrics";
 
+  // Polling intervals
+  const POLL_INTERVAL_SYNCING = 1000; // Poll every 1 second when syncing
+  const POLL_INTERVAL_IDLE = 5000; // Poll every 5 seconds when idle
+
+  // Form state
   let isFullSync = $state(true);
   let selectedPhases = $state<Set<SyncPhase>>(
     new Set(phaseOptions.map((p) => p.phase))
@@ -80,6 +88,26 @@
   let adminPassword = $state("");
   let isSubmitting = $state(false);
   let error = $state<string | null>(null);
+
+  // Sync status state
+  let syncStatus = $state<"idle" | "syncing" | "error">("idle");
+  let syncProgressPercent = $state<number | null>(null);
+  let syncErrorMessage = $state<string | null>(null);
+  let statusMessage = $state<string | null>(null);
+  let apiQueryCount = $state<number | null>(null);
+  let phases = $state<
+    Array<{
+      phase: string;
+      label: string;
+      status: "pending" | "in_progress" | "complete";
+    }>
+  >([]);
+  let serverLastSyncTime: number | null = $state(null);
+  let previousLastSyncTime: number | null = $state(null);
+
+  let pollIntervalId: number | undefined;
+
+  const isSyncing = $derived(syncStatus === "syncing");
 
   function togglePhase(phase: SyncPhase) {
     // Don't allow deselecting the required phase
@@ -119,6 +147,54 @@
     // If all phases are selected, enable full sync mode
     if (selectedPhases.size === phaseOptions.length) {
       isFullSync = true;
+    }
+  }
+
+  async function checkSyncStatus() {
+    if (!browser) return;
+
+    try {
+      const response = await fetch("/api/sync/status");
+      if (response.ok) {
+        const data = await response.json();
+        const wasSyncing = syncStatus === "syncing";
+        const previousSyncTime = serverLastSyncTime;
+
+        syncStatus = data.status;
+        serverLastSyncTime = data.lastSyncTime;
+        syncErrorMessage = data.error || null;
+        syncProgressPercent = data.progressPercent ?? null;
+        statusMessage = data.statusMessage ?? null;
+        apiQueryCount = data.apiQueryCount ?? null;
+        phases = data.phases ?? [];
+
+        // Detect if sync just completed
+        const syncTimeChanged =
+          serverLastSyncTime !== null &&
+          previousSyncTime !== null &&
+          serverLastSyncTime !== previousSyncTime;
+
+        if (wasSyncing && syncStatus === "idle" && serverLastSyncTime) {
+          // Sync just completed - reload data
+          previousLastSyncTime = serverLastSyncTime;
+          await databaseStore.load();
+        } else if (
+          syncStatus === "idle" &&
+          syncTimeChanged &&
+          previousSyncTime !== null
+        ) {
+          // Automatic sync completed - reload data
+          previousLastSyncTime = serverLastSyncTime;
+          await databaseStore.load();
+        }
+
+        // Update previous sync time
+        if (serverLastSyncTime !== previousSyncTime) {
+          previousLastSyncTime = serverLastSyncTime;
+        }
+      }
+    } catch (err) {
+      console.debug("Status poll error:", err);
     }
   }
 
@@ -164,8 +240,9 @@
         throw new Error(data.error || data.message || "Failed to start sync");
       }
 
-      // Close modal on success
-      onclose();
+      // Sync started - status polling will handle the rest
+      syncStatus = "syncing";
+      adminPassword = ""; // Clear password
     } catch (err) {
       error = err instanceof Error ? err.message : "Failed to start sync";
     } finally {
@@ -177,155 +254,336 @@
     if (event.key === "Escape") {
       onclose();
     }
-    if (event.key === "Enter" && (event.ctrlKey || event.metaKey)) {
+    if (
+      event.key === "Enter" &&
+      (event.ctrlKey || event.metaKey) &&
+      !isSyncing
+    ) {
       event.preventDefault();
       if (adminPassword && (isFullSync || selectedPhases.size > 0)) {
         handleSubmit();
       }
     }
   }
+
+  function formatLastSync(timestamp: number | null): string {
+    if (!timestamp) return "Never synced";
+
+    const date = new Date(timestamp);
+    const now = new Date();
+    const diffMs = now.getTime() - date.getTime();
+    const diffMins = Math.floor(diffMs / (1000 * 60));
+
+    if (diffMins < 1) return "Just now";
+    if (diffMins === 1) return "1 minute ago";
+    if (diffMins < 60) return `${diffMins} minutes ago`;
+
+    const diffHours = Math.floor(diffMins / 60);
+    if (diffHours === 1) return "1 hour ago";
+    return `${diffHours} hours ago`;
+  }
+
+  onMount(() => {
+    if (!browser) return;
+
+    // Initial status check
+    checkSyncStatus().then(() => {
+      // Initialize previousLastSyncTime to prevent false reload on modal open
+      if (serverLastSyncTime !== null && previousLastSyncTime === null) {
+        previousLastSyncTime = serverLastSyncTime;
+      }
+    });
+
+    // Start polling
+    pollIntervalId = setInterval(
+      () => {
+        checkSyncStatus();
+      },
+      isSyncing ? POLL_INTERVAL_SYNCING : POLL_INTERVAL_IDLE
+    ) as unknown as number;
+  });
+
+  // Adjust polling frequency based on sync status
+  $effect(() => {
+    if (!browser || !pollIntervalId) return;
+
+    // Clear existing interval and set new one with appropriate frequency
+    clearInterval(pollIntervalId);
+    const interval = isSyncing ? POLL_INTERVAL_SYNCING : POLL_INTERVAL_IDLE;
+    pollIntervalId = setInterval(
+      checkSyncStatus,
+      interval
+    ) as unknown as number;
+
+    return () => {
+      if (pollIntervalId) {
+        clearInterval(pollIntervalId);
+      }
+    };
+  });
+
+  onDestroy(() => {
+    if (pollIntervalId) {
+      clearInterval(pollIntervalId);
+    }
+  });
 </script>
 
 <svelte:window onkeydown={handleKeydown} />
 
-<Modal title="Sync Options" {onclose} size="lg">
+<Modal title="Sync" {onclose} size="lg">
   <div class="space-y-6">
-    <!-- Full Sync Toggle -->
-    <div
-      class="flex items-start gap-3 p-4 rounded-lg border border-neutral-700 bg-neutral-800/50 cursor-pointer hover:bg-neutral-800/70 transition-colors"
-      onclick={toggleFullSync}
-      role="button"
-      tabindex="0"
-      onkeydown={(e) => {
-        if (e.key === "Enter" || e.key === " ") {
-          e.preventDefault();
-          toggleFullSync();
-        }
-      }}
-    >
-      <input
-        type="checkbox"
-        id="fullSync"
-        checked={isFullSync}
-        onchange={toggleFullSync}
-        class="mt-1 w-4 h-4 rounded border-neutral-600 bg-neutral-700 text-blue-600 focus:ring-2 focus:ring-blue-500 focus:ring-offset-0 focus:ring-offset-neutral-900 pointer-events-none"
-      />
-      <div class="flex-1">
-        <label
-          for="fullSync"
-          class="block text-sm font-medium text-white cursor-pointer"
-        >
-          Full Sync
-        </label>
-        <p class="mt-1 text-xs text-neutral-400">
-          Run all sync phases ({phaseOptions.length} phases). Uncheck to select specific
-          phases.
-        </p>
-      </div>
-    </div>
+    {#if isSyncing}
+      <!-- Sync In Progress View -->
+      <div class="space-y-4">
+        <!-- Status Message -->
+        <div class="space-y-2">
+          <div class="flex items-center gap-2">
+            <div class="w-2 h-2 bg-violet-500 rounded-full animate-pulse"></div>
+            <span class="text-sm font-medium text-white">Sync in progress</span>
+          </div>
+          {#if statusMessage}
+            <p class="text-sm text-neutral-300 pl-4">{statusMessage}</p>
+          {/if}
+        </div>
 
-    <!-- Phase Options -->
-    <div class="space-y-2">
-      <div class="flex items-center justify-between">
-        <h3 class="text-sm font-medium text-white">Sync Phases</h3>
-        {#if !isFullSync}
-          <span class="text-xs text-neutral-400">
-            {selectedPhases.size} of {phaseOptions.length} selected
-          </span>
-        {/if}
-      </div>
-      <div class="space-y-2 max-h-96 overflow-y-auto">
-        {#each phaseOptions as option}
-          {@const isRequired = option.phase === REQUIRED_PHASE}
-          <div
-            class="flex items-start gap-3 p-3 rounded-lg border border-neutral-700 bg-neutral-800/30 {isRequired
-              ? 'opacity-75 cursor-not-allowed'
-              : isFullSync
-                ? ''
-                : 'hover:bg-neutral-800/50 cursor-pointer'} transition-colors"
-            onclick={() => {
-              if (!isFullSync && !isRequired) {
-                handlePhaseToggle(option.phase);
-              }
-            }}
-            role={isFullSync || isRequired ? undefined : "button"}
-            tabindex={isFullSync || isRequired ? undefined : 0}
-            onkeydown={(e) => {
-              if (
-                !isFullSync &&
-                !isRequired &&
-                (e.key === "Enter" || e.key === " ")
-              ) {
-                e.preventDefault();
-                handlePhaseToggle(option.phase);
-              }
-            }}
-          >
-            <input
-              type="checkbox"
-              id="phase-{option.phase}"
-              checked={selectedPhases.has(option.phase)}
-              onchange={() => handlePhaseToggle(option.phase)}
-              disabled={isFullSync || isRequired}
-              class="mt-0.5 w-4 h-4 rounded border-neutral-600 bg-neutral-700 text-blue-600 focus:ring-2 focus:ring-blue-500 focus:ring-offset-0 focus:ring-offset-neutral-900 disabled:opacity-50 disabled:cursor-not-allowed pointer-events-none"
-            />
-            <div class="flex-1 min-w-0">
-              <label
-                for="phase-{option.phase}"
-                class="block text-sm font-medium text-white {isFullSync ||
-                isRequired
-                  ? 'opacity-50 cursor-not-allowed'
-                  : 'cursor-pointer'}"
+        <!-- Progress Bar -->
+        {#if syncProgressPercent !== null}
+          <div class="space-y-1.5">
+            <div class="flex justify-between text-xs text-neutral-400">
+              <span>Progress</span>
+              <span class="tabular-nums"
+                >{syncProgressPercent !== null
+                  ? syncProgressPercent.toFixed(2)
+                  : "0.00"}%</span
               >
-                {option.label}
-              </label>
-              <p class="mt-1 text-xs text-neutral-400">{option.description}</p>
+            </div>
+            <div class="overflow-hidden h-2 rounded-full bg-neutral-800">
+              <div
+                class="h-full bg-violet-500 transition-all duration-300 ease-out"
+                style="width: {syncProgressPercent}%"
+              ></div>
             </div>
           </div>
-        {/each}
+        {/if}
+
+        <!-- Phase Indicators -->
+        {#if phases.length > 0}
+          <div class="space-y-2 pt-2">
+            <h4 class="text-xs font-medium text-neutral-400">Phases</h4>
+            <div class="grid grid-cols-2 gap-2">
+              {#each phases as phase (phase.phase)}
+                <div class="flex items-center gap-2 text-xs">
+                  {#if phase.status === "complete"}
+                    <div
+                      class="w-1.5 h-1.5 bg-green-500 rounded-full shrink-0"
+                    ></div>
+                    <span class="text-neutral-400">{phase.label}</span>
+                  {:else if phase.status === "in_progress"}
+                    <div
+                      class="w-1.5 h-1.5 bg-violet-500 rounded-full animate-pulse shrink-0"
+                    ></div>
+                    <span class="font-medium text-violet-400"
+                      >{phase.label}</span
+                    >
+                  {:else}
+                    <div
+                      class="w-1.5 h-1.5 rounded-full bg-neutral-600 shrink-0"
+                    ></div>
+                    <span class="text-neutral-500">{phase.label}</span>
+                  {/if}
+                </div>
+              {/each}
+            </div>
+          </div>
+        {/if}
+
+        <!-- API Query Count -->
+        {#if apiQueryCount !== null}
+          <div class="pt-2 border-t border-neutral-800">
+            <p class="text-xs text-neutral-500">
+              API Queries: <span class="tabular-nums text-neutral-300"
+                >{apiQueryCount}</span
+              >
+            </p>
+          </div>
+        {/if}
       </div>
-    </div>
+    {:else}
+      <!-- Sync Configuration Form -->
 
-    <!-- Admin Password -->
-    <div class="space-y-2">
-      <label for="adminPassword" class="block text-sm font-medium text-white">
-        Admin Password <span class="text-red-400">*</span>
-      </label>
-      <input
-        type="password"
-        id="adminPassword"
-        bind:value={adminPassword}
-        placeholder="Enter admin password"
-        class="w-full px-3 py-2 text-sm rounded-md border border-neutral-600 bg-neutral-800 text-white placeholder-neutral-500 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-        disabled={isSubmitting}
-        autocomplete="current-password"
-      />
-    </div>
+      <!-- Last Sync Info -->
+      {#if serverLastSyncTime}
+        <div class="text-xs text-neutral-500">
+          Last synced {formatLastSync(serverLastSyncTime)}
+        </div>
+      {/if}
 
-    <!-- Error Message -->
-    {#if error}
-      <div class="p-3 rounded-md bg-red-900/20 border border-red-800/50">
-        <p class="text-sm text-red-400">{error}</p>
+      <!-- Error from previous sync -->
+      {#if syncErrorMessage && syncStatus === "error"}
+        <div class="p-3 rounded-md bg-red-900/20 border border-red-800/50">
+          <p class="text-sm text-red-400">{syncErrorMessage}</p>
+        </div>
+      {/if}
+
+      <!-- Full Sync Toggle -->
+      <div
+        class="flex items-start gap-3 p-4 rounded-lg border border-neutral-700 bg-neutral-800/50 cursor-pointer hover:bg-neutral-800/70 transition-colors"
+        onclick={toggleFullSync}
+        role="button"
+        tabindex="0"
+        onkeydown={(e) => {
+          if (e.key === "Enter" || e.key === " ") {
+            e.preventDefault();
+            toggleFullSync();
+          }
+        }}
+      >
+        <input
+          type="checkbox"
+          id="fullSync"
+          checked={isFullSync}
+          onchange={toggleFullSync}
+          class="mt-1 w-4 h-4 rounded border-neutral-600 bg-neutral-700 text-blue-600 focus:ring-2 focus:ring-blue-500 focus:ring-offset-0 focus:ring-offset-neutral-900 pointer-events-none"
+        />
+        <div class="flex-1">
+          <label
+            for="fullSync"
+            class="block text-sm font-medium text-white cursor-pointer"
+          >
+            Full Sync
+          </label>
+          <p class="mt-1 text-xs text-neutral-400">
+            Run all sync phases ({phaseOptions.length} phases). Uncheck to select
+            specific phases.
+          </p>
+        </div>
+      </div>
+
+      <!-- Phase Options -->
+      <div class="space-y-2">
+        <div class="flex items-center justify-between">
+          <h3 class="text-sm font-medium text-white">Sync Phases</h3>
+          {#if !isFullSync}
+            <span class="text-xs text-neutral-400">
+              {selectedPhases.size} of {phaseOptions.length} selected
+            </span>
+          {/if}
+        </div>
+        <div class="space-y-2 max-h-64 overflow-y-auto">
+          {#each phaseOptions as option}
+            {@const isRequired = option.phase === REQUIRED_PHASE}
+            <div
+              class="flex items-start gap-3 p-3 rounded-lg border border-neutral-700 bg-neutral-800/30 {isRequired
+                ? 'opacity-75 cursor-not-allowed'
+                : isFullSync
+                  ? ''
+                  : 'hover:bg-neutral-800/50 cursor-pointer'} transition-colors"
+              onclick={() => {
+                if (!isFullSync && !isRequired) {
+                  handlePhaseToggle(option.phase);
+                }
+              }}
+              role={isFullSync || isRequired ? undefined : "button"}
+              tabindex={isFullSync || isRequired ? undefined : 0}
+              onkeydown={(e) => {
+                if (
+                  !isFullSync &&
+                  !isRequired &&
+                  (e.key === "Enter" || e.key === " ")
+                ) {
+                  e.preventDefault();
+                  handlePhaseToggle(option.phase);
+                }
+              }}
+            >
+              <input
+                type="checkbox"
+                id="phase-{option.phase}"
+                checked={selectedPhases.has(option.phase)}
+                onchange={() => handlePhaseToggle(option.phase)}
+                disabled={isFullSync || isRequired}
+                class="mt-0.5 w-4 h-4 rounded border-neutral-600 bg-neutral-700 text-blue-600 focus:ring-2 focus:ring-blue-500 focus:ring-offset-0 focus:ring-offset-neutral-900 disabled:opacity-50 disabled:cursor-not-allowed pointer-events-none"
+              />
+              <div class="flex-1 min-w-0">
+                <label
+                  for="phase-{option.phase}"
+                  class="block text-sm font-medium text-white {isFullSync ||
+                  isRequired
+                    ? 'opacity-50 cursor-not-allowed'
+                    : 'cursor-pointer'}"
+                >
+                  {option.label}
+                </label>
+                <p class="mt-1 text-xs text-neutral-400">
+                  {option.description}
+                </p>
+              </div>
+            </div>
+          {/each}
+        </div>
+      </div>
+
+      <!-- Admin Password -->
+      <div class="space-y-2">
+        <label for="adminPassword" class="block text-sm font-medium text-white">
+          Admin Password <span class="text-red-400">*</span>
+        </label>
+        <input
+          type="password"
+          id="adminPassword"
+          bind:value={adminPassword}
+          placeholder="Enter admin password"
+          class="w-full px-3 py-2 text-sm rounded-md border border-neutral-600 bg-neutral-800 text-white placeholder-neutral-500 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+          disabled={isSubmitting}
+          autocomplete="current-password"
+        />
+      </div>
+
+      <!-- Form Error Message -->
+      {#if error}
+        <div class="p-3 rounded-md bg-red-900/20 border border-red-800/50">
+          <p class="text-sm text-red-400">{error}</p>
+        </div>
+      {/if}
+
+      <!-- Actions -->
+      <div class="flex justify-end gap-3 pt-2">
+        <Button variant="outline" onclick={onclose} disabled={isSubmitting}>
+          Cancel
+        </Button>
+        <Button
+          onclick={handleSubmit}
+          disabled={isSubmitting ||
+            !adminPassword ||
+            (!isFullSync && selectedPhases.size === 0)}
+        >
+          {isSubmitting
+            ? "Starting..."
+            : isFullSync
+              ? `Start Full Sync (${phaseOptions.length} phases)`
+              : `Start Sync (${selectedPhases.size} phase${selectedPhases.size === 1 ? "" : "s"})`}
+        </Button>
       </div>
     {/if}
 
-    <!-- Actions -->
-    <div class="flex justify-end gap-3 pt-2">
-      <Button variant="outline" onclick={onclose} disabled={isSubmitting}>
-        Cancel
-      </Button>
-      <Button
-        onclick={handleSubmit}
-        disabled={isSubmitting ||
-          !adminPassword ||
-          (!isFullSync && selectedPhases.size === 0)}
-      >
-        {isSubmitting
-          ? "Starting..."
-          : isFullSync
-            ? `Start Full Sync (${phaseOptions.length} phases)`
-            : `Start Sync (${selectedPhases.size} phase${selectedPhases.size === 1 ? "" : "s"})`}
-      </Button>
+    <!-- Footer hint -->
+    <div class="pt-4 border-t border-neutral-800">
+      <p class="text-xs text-center text-neutral-500">
+        <kbd
+          class="px-1.5 py-0.5 rounded border bg-neutral-800 border-neutral-700 text-neutral-300"
+          >Esc</kbd
+        >
+        to close
+        {#if !isSyncing}
+          <span class="mx-1.5">·</span>
+          <kbd
+            class="px-1.5 py-0.5 rounded border bg-neutral-800 border-neutral-700 text-neutral-300"
+            >Cmd+Enter</kbd
+          >
+          to start
+        {/if}
+      </p>
     </div>
   </div>
 </Modal>

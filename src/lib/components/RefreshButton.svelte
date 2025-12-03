@@ -184,7 +184,7 @@
   </Button>
   {#if syncStatus === "syncing" && progressPercent !== null}
     <div class="text-xs text-neutral-500 dark:text-neutral-500">
-      {progressPercent}%
+      {progressPercent.toFixed(2)}%
     </div>
   {:else if syncStatus === "error" && errorMessage}
     <div class="text-xs text-red-600 dark:text-red-400">

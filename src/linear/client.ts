@@ -473,6 +473,7 @@ export class LinearAPIClient {
     while (hasMore) {
       let response: any;
       try {
+        this.incrementQueryCount();
         response = await this.client.client.rawRequest(query, {
           first: PAGINATION.GRAPHQL_PAGE_SIZE,
           after: cursor,

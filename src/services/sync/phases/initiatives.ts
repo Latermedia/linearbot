@@ -4,6 +4,7 @@ import {
   savePartialSyncState,
   setSyncProgress,
   setSyncStatus,
+  setSyncStatusMessage,
   updateSyncMetadata,
 } from "../../../db/queries.js";
 import type { Initiative } from "../../../db/schema.js";
@@ -40,9 +41,10 @@ export async function syncInitiatives(context: PhaseContext): Promise<void> {
   }
 
   try {
+    setSyncStatusMessage("Fetching initiatives...");
     console.log("[SYNC] Fetching initiatives...");
-    callbacks?.onProgressPercent?.(97);
-    setSyncProgress(97);
+    callbacks?.onProgressPercent?.(65);
+    setSyncProgress(65);
     const allInitiatives = await linearClient.fetchInitiatives();
 
     const initiativeLimit = getProjectSyncLimit();
@@ -60,7 +62,11 @@ export async function syncInitiatives(context: PhaseContext): Promise<void> {
       );
       const activeInitiativeIds = new Set<string>();
 
-      for (const initiativeData of initiatives) {
+      for (let i = 0; i < initiatives.length; i++) {
+        const initiativeData = initiatives[i];
+        setSyncStatusMessage(
+          `Syncing initiative ${i + 1} of ${initiatives.length}: ${initiativeData.name || "Untitled"}`
+        );
         activeInitiativeIds.add(initiativeData.id);
 
         // Fetch health updates for this initiative
@@ -128,6 +134,10 @@ export async function syncInitiatives(context: PhaseContext): Promise<void> {
     };
     savePartialSyncState(partialState);
     console.log(`[SYNC] Synced ${initiatives.length} initiative(s)`);
+
+    // Phase complete - set to 80%
+    callbacks?.onProgressPercent?.(80);
+    setSyncProgress(80);
   } catch (error) {
     if (error instanceof RateLimitError) {
       const partialState: PartialSyncState = {

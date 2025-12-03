@@ -1,6 +1,6 @@
 import type { LinearIssueData } from "../../../linear/client.js";
 import type { PhaseContext } from "../types.js";
-import { setSyncProgress } from "../../../db/queries.js";
+import { setSyncProgress, setSyncStatusMessage } from "../../../db/queries.js";
 import { computeAndStoreProjects } from "../compute-projects.js";
 import { computeAndStoreEngineers } from "../compute-engineers.js";
 
@@ -21,6 +21,7 @@ export async function syncComputingMetrics(
   updatePhase("computing_metrics");
   callbacks?.onProgressPercent?.(95);
   setSyncProgress(95);
+  setSyncStatusMessage("Computing project metrics...");
   console.log(`[SYNC] Computing metrics from database...`);
 
   // Collect project IDs that were synced incrementally (if any)
@@ -50,13 +51,16 @@ export async function syncComputingMetrics(
   console.log(`[SYNC] Computed metrics for ${computedProjectCount} project(s)`);
 
   // computeAndStoreEngineers reads started issues from database via getStartedIssues()
+  setSyncStatusMessage("Computing engineer metrics...");
   console.log(`[SYNC] Computing engineer WIP metrics...`);
-  callbacks?.onProgressPercent?.(95);
-  setSyncProgress(95);
   const computedEngineerCount = computeAndStoreEngineers();
   console.log(
     `[SYNC] Computed metrics for ${computedEngineerCount} engineer(s)`
   );
+
+  // Phase complete - set to 100%
+  callbacks?.onProgressPercent?.(100);
+  setSyncProgress(100);
 
   return {
     projectCount: computedProjectCount,

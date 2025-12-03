@@ -89,5 +89,7 @@ export const GET: RequestHandler = async () => {
     syncingProjectId: syncState.syncingProjectId ?? null,
     // Include API query count
     apiQueryCount: dbMetadata?.api_query_count ?? null,
+    // Include human-readable status message
+    statusMessage: dbMetadata?.sync_status_message ?? null,
   });
 };

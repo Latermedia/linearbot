@@ -6,6 +6,7 @@ import {
   savePartialSyncState,
   setSyncProgress,
   setSyncStatus,
+  setSyncStatusMessage,
   updateSyncMetadata,
 } from "../../../db/queries.js";
 import { convertDbIssueToLinearFormat } from "../utils.js";
@@ -47,8 +48,9 @@ export async function syncInitialIssues(
   }
 
   updatePhase("initial_issues");
-  callbacks?.onProgressPercent?.(5);
-  setSyncProgress(5);
+  callbacks?.onProgressPercent?.(0);
+  setSyncProgress(0);
+  setSyncStatusMessage("Fetching started issues...");
 
   if (
     !isResuming ||
@@ -59,6 +61,7 @@ export async function syncInitialIssues(
     try {
       allIssues = await linearClient.fetchStartedIssues((count) => {
         callbacks?.onIssueCountUpdate?.(count);
+        setSyncStatusMessage(`Fetching started issues... (${count} found)`);
       });
       console.log(
         `[SYNC] Fetched ${allIssues.length} started issues from Linear`
@@ -127,6 +130,10 @@ export async function syncInitialIssues(
       `[SYNC] Skipping write of started issues (already in database from previous sync)`
     );
   }
+
+  // Phase complete - set to 10%
+  callbacks?.onProgressPercent?.(10);
+  setSyncProgress(10);
 
   return { allIssues: startedIssues, newCount, updatedCount };
 }

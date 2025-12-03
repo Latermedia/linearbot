@@ -8,6 +8,7 @@ import {
   getAllInitiatives,
   setSyncProgress,
   setSyncStatus,
+  setSyncStatusMessage,
   updateSyncMetadata,
 } from "../../../db/queries.js";
 import { RateLimitError } from "../../../linear/client.js";
@@ -39,8 +40,9 @@ export async function syncInitiativeProjects(
   }
 
   updatePhase("initiative_projects");
-  callbacks?.onProgressPercent?.(96);
-  setSyncProgress(96);
+  callbacks?.onProgressPercent?.(80);
+  setSyncProgress(80);
+  setSyncStatusMessage("Syncing initiative projects...");
 
   try {
     // Use initiatives from database (which were synced in the previous phase)
@@ -180,6 +182,10 @@ export async function syncInitiativeProjects(
         `[SYNC] Computed metrics for ${projectsToSync.length} initiative project(s)`
       );
     }
+
+    // Phase complete - set to 95%
+    callbacks?.onProgressPercent?.(95);
+    setSyncProgress(95);
   } catch (error) {
     if (error instanceof RateLimitError) {
       const errorMsg = "Rate limit exceeded during initiative projects sync";

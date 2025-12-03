@@ -228,6 +228,14 @@ export function resetDatabase(db: Database): void {
   db.run("DROP TABLE IF EXISTS projects");
   db.run("DROP TABLE IF EXISTS issues");
   db.run("DROP TABLE IF EXISTS initiatives");
+  db.run("DROP TABLE IF EXISTS sync_metadata");
+  // Drop indices as they will be recreated
+  db.run("DROP INDEX IF EXISTS idx_issues_team_id");
+  db.run("DROP INDEX IF EXISTS idx_issues_state_type");
+  db.run("DROP INDEX IF EXISTS idx_issues_assignee_id");
+  db.run("DROP INDEX IF EXISTS idx_issues_project_id");
+  db.run("DROP INDEX IF EXISTS idx_projects_project_id");
+  db.run("DROP INDEX IF EXISTS idx_engineers_assignee_id");
   initializeDatabase(db);
   console.log("[DB] Database reset complete");
 }
@@ -570,7 +578,8 @@ export function initializeDatabase(db: Database): void {
       sync_error TEXT,
       sync_progress_percent INTEGER,
       partial_sync_state TEXT,
-      api_query_count INTEGER
+      api_query_count INTEGER,
+      sync_status_message TEXT
     )
   `);
 
@@ -584,6 +593,21 @@ export function initializeDatabase(db: Database): void {
   // Add api_query_count column if it doesn't exist (migration)
   try {
     db.run(`ALTER TABLE sync_metadata ADD COLUMN api_query_count INTEGER`);
+  } catch (_e) {
+    // Column already exists, ignore
+  }
+
+  // Add sync_status_message column if it doesn't exist (migration)
+  try {
+    db.run(`ALTER TABLE sync_metadata ADD COLUMN sync_status_message TEXT`);
+  } catch (_e) {
+    // Column already exists, ignore
+  }
+
+  // Add phase_query_counts column if it doesn't exist (migration)
+  // Stores JSON object mapping phase names to query counts: {"initial_issues": 50, "active_projects": 1200, ...}
+  try {
+    db.run(`ALTER TABLE sync_metadata ADD COLUMN phase_query_counts TEXT`);
   } catch (_e) {
     // Column already exists, ignore
   }

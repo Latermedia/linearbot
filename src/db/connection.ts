@@ -60,8 +60,22 @@ export function closeDatabase(): void {
 }
 
 export function resetDatabaseConnection(): void {
+  // Close existing connection if open to ensure all changes are flushed
+  // This is important for persisted databases
   if (dbInstance) {
-    resetDatabase(dbInstance);
-    dbInstance = null; // Force reconnection on next getDatabase() call
+    dbInstance.close();
+    dbInstance = null;
   }
+
+  // Create a temporary database instance to perform the reset
+  // We don't use getDatabase() here to avoid initialization before reset
+  const isProduction = process.env.NODE_ENV === "production";
+  const dbPath = isProduction ? "/data/linear-bot.db" : "linear-bot.db";
+
+  const tempDb = new Database(dbPath);
+  resetDatabase(tempDb);
+  tempDb.close();
+
+  // Ensure dbInstance is null so next getDatabase() call creates a fresh instance
+  dbInstance = null;
 }
