@@ -58,10 +58,17 @@ export async function syncCompletedProjects(
   try {
     setSyncStatusMessage("Fetching completed projects...");
     console.log("[SYNC] Fetching completed projects (last 6 months)...");
-    const completedProjectIds = await linearClient.fetchCompletedProjects();
+    const completedProjects = await linearClient.fetchCompletedProjects();
+    const completedProjectIds = completedProjects.map((p) => p.id);
     console.log(
       `[SYNC] Found ${completedProjectIds.length} completed project(s) from last 6 months`
     );
+
+    // Build a map of project IDs to project names
+    const projectNameMap = new Map<string, string>();
+    for (const project of completedProjects) {
+      projectNameMap.set(project.id, project.name);
+    }
 
     let completedProjectsToSync: string[] = completedProjectIds;
     let completedProjectSyncStatuses: Array<{
@@ -108,6 +115,7 @@ export async function syncCompletedProjects(
       const config: ProjectProcessingConfig = {
         phaseName: "completed_projects",
         statusMessagePrefix: "Syncing completed project",
+        projectNameMap,
         updatePartialSyncState: (
           projectId,
           projectSyncStatuses,

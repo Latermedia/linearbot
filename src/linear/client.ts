@@ -1131,10 +1131,10 @@ export class LinearAPIClient {
 
   /**
    * Fetch all planned projects (project_state_category contains "planned")
-   * Returns array of project IDs
+   * Returns array of project IDs and names
    */
-  async fetchPlannedProjects(): Promise<string[]> {
-    const projectIds: string[] = [];
+  async fetchPlannedProjects(): Promise<{ id: string; name: string }[]> {
+    const projects: { id: string; name: string }[] = [];
     let hasMore = true;
     let cursor: string | undefined;
     let pageCount = 0;
@@ -1147,6 +1147,7 @@ export class LinearAPIClient {
         ) {
           nodes {
             id
+            name
             state
           }
           pageInfo {
@@ -1178,7 +1179,7 @@ export class LinearAPIClient {
         // Check if project state contains "planned" (case-insensitive)
         const state = (project.state || "").toLowerCase();
         if (state.includes("planned")) {
-          projectIds.push(project.id);
+          projects.push({ id: project.id, name: project.name });
         }
       }
 
@@ -1195,15 +1196,15 @@ export class LinearAPIClient {
       }
     }
 
-    return projectIds;
+    return projects;
   }
 
   /**
    * Fetch projects completed in the last 6 months
-   * Returns array of project IDs
+   * Returns array of project IDs and names
    */
-  async fetchCompletedProjects(): Promise<string[]> {
-    const projectIds: string[] = [];
+  async fetchCompletedProjects(): Promise<{ id: string; name: string }[]> {
+    const projects: { id: string; name: string }[] = [];
     let hasMore = true;
     let cursor: string | undefined;
     let pageCount = 0;
@@ -1221,6 +1222,7 @@ export class LinearAPIClient {
         ) {
           nodes {
             id
+            name
             state
             completedAt
             updatedAt
@@ -1269,7 +1271,7 @@ export class LinearAPIClient {
 
           const relevantDate = completedAt || updatedAt;
           if (relevantDate && relevantDate >= sixMonthsAgo) {
-            projectIds.push(project.id);
+            projects.push({ id: project.id, name: project.name });
           }
         }
       }
@@ -1287,7 +1289,7 @@ export class LinearAPIClient {
       }
     }
 
-    return projectIds;
+    return projects;
   }
 
   /**

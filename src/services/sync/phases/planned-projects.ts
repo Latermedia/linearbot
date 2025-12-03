@@ -58,8 +58,15 @@ export async function syncPlannedProjects(
   try {
     setSyncStatusMessage("Fetching planned projects...");
     console.log("[SYNC] Fetching planned projects...");
-    const plannedProjectIds = await linearClient.fetchPlannedProjects();
+    const plannedProjects = await linearClient.fetchPlannedProjects();
+    const plannedProjectIds = plannedProjects.map((p) => p.id);
     console.log(`[SYNC] Found ${plannedProjectIds.length} planned project(s)`);
+
+    // Build a map of project IDs to project names
+    const projectNameMap = new Map<string, string>();
+    for (const project of plannedProjects) {
+      projectNameMap.set(project.id, project.name);
+    }
 
     let plannedProjectsToSync: string[] = plannedProjectIds;
     let plannedProjectSyncStatuses: Array<{
@@ -106,6 +113,7 @@ export async function syncPlannedProjects(
       const config: ProjectProcessingConfig = {
         phaseName: "planned_projects",
         statusMessagePrefix: "Syncing planned project",
+        projectNameMap,
         updatePartialSyncState: (
           projectId,
           projectSyncStatuses,

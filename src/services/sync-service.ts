@@ -1022,7 +1022,8 @@ export async function performSync(
       if (shouldSyncPlanned) {
         try {
           console.log("[SYNC] Fetching planned projects...");
-          plannedProjectIds = await linearClient.fetchPlannedProjects();
+          const plannedProjects = await linearClient.fetchPlannedProjects();
+          plannedProjectIds = plannedProjects.map((p) => p.id);
           console.log(
             `[SYNC] Found ${plannedProjectIds.length} planned project(s)`
           );
@@ -1288,7 +1289,8 @@ export async function performSync(
       if (shouldSyncCompleted) {
         try {
           console.log("[SYNC] Fetching completed projects (last 6 months)...");
-          completedProjectIds = await linearClient.fetchCompletedProjects();
+          const completedProjects = await linearClient.fetchCompletedProjects();
+          completedProjectIds = completedProjects.map((p) => p.id);
           console.log(
             `[SYNC] Found ${completedProjectIds.length} completed project(s) from last 6 months`
           );
