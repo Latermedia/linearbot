@@ -105,25 +105,61 @@ export async function syncPlannedProjects(
 
     if (plannedProjectsToSync.length > 0) {
       const limit = pLimit(PROJECT_SYNC_CONCURRENCY);
+      // Shared cancellation flag - when rate limit is hit, set this to stop all concurrent operations
+      const cancelled = { value: false };
 
       const processPlannedProject = async (
         projectId: string,
         projectIndex: number
       ) => {
+        // Check cancellation flag before starting
+        if (cancelled.value) {
+          return {
+            issueCounts: { newCount: 0, updatedCount: 0 },
+            projectIndex,
+          };
+        }
+
         setSyncStatusMessage(
           `Syncing planned project ${projectIndex} of ${plannedProjectsToSync.length}`
         );
 
-        const singleProjectIssues = await linearClient.fetchIssuesByProjects(
-          [projectId],
-          undefined,
-          projectDescriptionsMap,
-          projectUpdatesMap
-        );
+        let singleProjectIssues;
+        try {
+          singleProjectIssues = await linearClient.fetchIssuesByProjects(
+            [projectId],
+            undefined,
+            projectDescriptionsMap,
+            projectUpdatesMap
+          );
+        } catch (error) {
+          // If rate limit error, cancel all other operations and rethrow
+          if (error instanceof RateLimitError) {
+            cancelled.value = true;
+            throw error;
+          }
+          throw error;
+        }
+
+        // Check cancellation after API call
+        if (cancelled.value) {
+          return {
+            issueCounts: { newCount: 0, updatedCount: 0 },
+            projectIndex,
+          };
+        }
 
         let issueCounts = { newCount: 0, updatedCount: 0 };
         if (singleProjectIssues.length > 0) {
           issueCounts = writeIssuesToDatabase(singleProjectIssues);
+        }
+
+        // Check cancellation before additional API calls
+        if (cancelled.value) {
+          return {
+            issueCounts: { newCount: 0, updatedCount: 0 },
+            projectIndex,
+          };
         }
 
         // Fetch project labels and content directly from Linear API
@@ -134,6 +170,11 @@ export async function syncPlannedProjects(
           projectLabelsMap.set(projectId, projectData.labels);
           projectContentMap.set(projectId, projectData.content);
         } catch (error) {
+          // If rate limit error, cancel all other operations and rethrow
+          if (error instanceof RateLimitError) {
+            cancelled.value = true;
+            throw error;
+          }
           console.error(
             `[SYNC] Failed to fetch project data for ${projectId}:`,
             error instanceof Error ? error.message : error
@@ -174,21 +215,50 @@ export async function syncPlannedProjects(
         return { issueCounts, projectIndex };
       };
 
-      const results = await Promise.all(
+      const results = await Promise.allSettled(
         plannedProjectsToSync.map((projectId, index) =>
           limit(() => processPlannedProject(projectId, index + 1))
         )
       );
 
+      // Check if any promise was rejected due to rate limit
+      const rateLimitError = results.find(
+        (r) =>
+          r.status === "rejected" &&
+          (r.reason instanceof RateLimitError ||
+            (r.reason instanceof Error &&
+              r.reason.message.includes("rate limit")))
+      );
+
+      if (rateLimitError) {
+        // Extract the actual error
+        const error =
+          rateLimitError.status === "rejected" ? rateLimitError.reason : null;
+        if (error instanceof RateLimitError) {
+          throw error;
+        }
+        throw new RateLimitError(
+          error instanceof Error ? error.message : "Rate limit exceeded"
+        );
+      }
+
+      // Filter out rejected promises (non-rate-limit errors are logged but don't stop sync)
+      const successfulResults = results
+        .filter((r) => r.status === "fulfilled")
+        .map((r) => (r.status === "fulfilled" ? r.value : null))
+        .filter((v) => v !== null);
+
       // Collect counts safely after all promises complete
-      for (const result of results) {
-        newCount += result.issueCounts.newCount;
-        updatedCount += result.issueCounts.updatedCount;
+      for (const result of successfulResults) {
+        if (result) {
+          newCount += result.issueCounts.newCount;
+          updatedCount += result.issueCounts.updatedCount;
+        }
       }
 
       // Update progress sequentially based on sorted results to avoid race conditions
-      const sortedResults = [...results].sort(
-        (a, b) => a.projectIndex - b.projectIndex
+      const sortedResults = [...successfulResults].sort(
+        (a, b) => (a?.projectIndex || 0) - (b?.projectIndex || 0)
       );
       for (let i = 0; i < sortedResults.length; i++) {
         const completedCount = i + 1;

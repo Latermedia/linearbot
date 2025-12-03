@@ -117,24 +117,67 @@ export async function syncInitiativeProjects(
       }
 
       const limit = pLimit(PROJECT_SYNC_CONCURRENCY);
+      // Shared cancellation flag - when rate limit is hit, set this to stop all concurrent operations
+      const cancelled = { value: false };
       const initiativeProjectIssues: import("../../../linear/client.js").LinearIssueData[] =
         [];
 
       const processInitiativeProject = async (projectId: string) => {
-        const projectIssues = await linearClient.fetchIssuesByProjects(
-          [projectId],
-          () => {},
-          projectDescriptionsMap,
-          projectUpdatesMap
-        );
-        return projectIssues;
+        // Check cancellation flag before starting
+        if (cancelled.value) {
+          return [];
+        }
+
+        try {
+          const projectIssues = await linearClient.fetchIssuesByProjects(
+            [projectId],
+            () => {},
+            projectDescriptionsMap,
+            projectUpdatesMap
+          );
+          return projectIssues;
+        } catch (error) {
+          // If rate limit error, cancel all other operations and rethrow
+          if (error instanceof RateLimitError) {
+            cancelled.value = true;
+            throw error;
+          }
+          throw error;
+        }
       };
 
-      const allInitiativeProjectIssues = await Promise.all(
+      const allInitiativeProjectIssuesResults = await Promise.allSettled(
         projectsToSync.map((projectId) =>
           limit(() => processInitiativeProject(projectId))
         )
       );
+
+      // Check if any promise was rejected due to rate limit
+      const rateLimitError = allInitiativeProjectIssuesResults.find(
+        (r) =>
+          r.status === "rejected" &&
+          (r.reason instanceof RateLimitError ||
+            (r.reason instanceof Error &&
+              r.reason.message.includes("rate limit")))
+      );
+
+      if (rateLimitError) {
+        // Extract the actual error
+        const error =
+          rateLimitError.status === "rejected" ? rateLimitError.reason : null;
+        if (error instanceof RateLimitError) {
+          throw error;
+        }
+        throw new RateLimitError(
+          error instanceof Error ? error.message : "Rate limit exceeded"
+        );
+      }
+
+      // Collect successful results
+      const allInitiativeProjectIssues = allInitiativeProjectIssuesResults
+        .filter((r) => r.status === "fulfilled")
+        .map((r) => (r.status === "fulfilled" ? r.value : []))
+        .flat();
 
       for (const issues of allInitiativeProjectIssues) {
         initiativeProjectIssues.push(...issues);
@@ -153,13 +196,28 @@ export async function syncInitiativeProjects(
       const initiativeProjectLabelsMap = new Map<string, string[]>();
       const initiativeProjectContentMap = new Map<string, string | null>();
 
+      // Check cancellation before fetching project data
+      if (cancelled.value) {
+        throw new RateLimitError("Rate limit exceeded");
+      }
+
       // Fetch labels and content for each project in parallel
       const projectDataPromises = projectsToSync.map(async (projectId) => {
+        // Check cancellation before each API call
+        if (cancelled.value) {
+          return;
+        }
+
         try {
           const projectData = await linearClient.fetchProjectData(projectId);
           initiativeProjectLabelsMap.set(projectId, projectData.labels);
           initiativeProjectContentMap.set(projectId, projectData.content);
         } catch (error) {
+          // If rate limit error, cancel all other operations and rethrow
+          if (error instanceof RateLimitError) {
+            cancelled.value = true;
+            throw error;
+          }
           console.error(
             `[SYNC] Failed to fetch project data for ${projectId}:`,
             error instanceof Error ? error.message : error
@@ -168,7 +226,30 @@ export async function syncInitiativeProjects(
         }
       });
 
-      await Promise.all(projectDataPromises);
+      const projectDataResults = await Promise.allSettled(projectDataPromises);
+
+      // Check if any promise was rejected due to rate limit
+      const projectDataRateLimitError = projectDataResults.find(
+        (r) =>
+          r.status === "rejected" &&
+          (r.reason instanceof RateLimitError ||
+            (r.reason instanceof Error &&
+              r.reason.message.includes("rate limit")))
+      );
+
+      if (projectDataRateLimitError) {
+        // Extract the actual error
+        const error =
+          projectDataRateLimitError.status === "rejected"
+            ? projectDataRateLimitError.reason
+            : null;
+        if (error instanceof RateLimitError) {
+          throw error;
+        }
+        throw new RateLimitError(
+          error instanceof Error ? error.message : "Rate limit exceeded"
+        );
+      }
 
       await computeAndStoreProjects(
         initiativeProjectLabelsMap,

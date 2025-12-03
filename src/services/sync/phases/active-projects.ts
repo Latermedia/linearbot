@@ -140,11 +140,27 @@ export async function syncActiveProjects(
       const limit = pLimit(PROJECT_SYNC_CONCURRENCY);
       // Use atomic counter to prevent race conditions when updating progress
       const completedCountLock = { value: 0 };
+      // Shared cancellation flag - when rate limit is hit, set this to stop all concurrent operations
+      const cancelled = { value: false };
 
       const processProject = async (
         projectId: string,
         projectIndex: number
       ) => {
+        // Check cancellation flag before starting
+        if (cancelled.value) {
+          console.log(
+            `[SYNC] Skipping project ${projectIndex}/${projectsToSync.length}: ${projectId} (sync cancelled due to rate limit)`
+          );
+          return {
+            projectId,
+            issueCounts: { newCount: 0, updatedCount: 0 },
+            projectIndex,
+            projectIssueCount: 0,
+            projectName: null,
+          };
+        }
+
         const projectName = projectNameMap.get(projectId) || null;
         const displayName = projectName || projectId.slice(0, 8);
 
@@ -166,26 +182,60 @@ export async function syncActiveProjects(
         const projectProgressRange =
           activeProjectsProgressRange / projectsToSync.length;
 
+        // Check cancellation before API call
+        if (cancelled.value) {
+          return {
+            projectId,
+            issueCounts: { newCount: 0, updatedCount: 0 },
+            projectIndex,
+            projectIssueCount: 0,
+            projectName,
+          };
+        }
+
         let maxIssueCount = 0;
-        const singleProjectIssues = await linearClient.fetchIssuesByProjects(
-          [projectId],
-          (count) => {
-            callbacks?.onProjectIssueCountUpdate?.(count);
-            // Update progress during fetch: base + incremental based on issues fetched
-            maxIssueCount = Math.max(maxIssueCount, count);
-            // Estimate: assume up to 100 issues per project, scale progress accordingly
-            const fetchProgress =
-              projectBaseProgress +
-              Math.min(
-                Math.round((count / 100) * projectProgressRange),
-                Math.round(projectProgressRange * 0.8)
-              );
-            callbacks?.onProgressPercent?.(fetchProgress);
-            setSyncProgress(fetchProgress);
-          },
-          projectDescriptionsMap,
-          projectUpdatesMap
-        );
+        let singleProjectIssues;
+        try {
+          singleProjectIssues = await linearClient.fetchIssuesByProjects(
+            [projectId],
+            (count) => {
+              // Check cancellation during progress callback
+              if (cancelled.value) return;
+              callbacks?.onProjectIssueCountUpdate?.(count);
+              // Update progress during fetch: base + incremental based on issues fetched
+              maxIssueCount = Math.max(maxIssueCount, count);
+              // Estimate: assume up to 100 issues per project, scale progress accordingly
+              const fetchProgress =
+                projectBaseProgress +
+                Math.min(
+                  Math.round((count / 100) * projectProgressRange),
+                  Math.round(projectProgressRange * 0.8)
+                );
+              callbacks?.onProgressPercent?.(fetchProgress);
+              setSyncProgress(fetchProgress);
+            },
+            projectDescriptionsMap,
+            projectUpdatesMap
+          );
+        } catch (error) {
+          // If rate limit error, cancel all other operations and rethrow
+          if (error instanceof RateLimitError) {
+            cancelled.value = true;
+            throw error;
+          }
+          throw error;
+        }
+
+        // Check cancellation after API call
+        if (cancelled.value) {
+          return {
+            projectId,
+            issueCounts: { newCount: 0, updatedCount: 0 },
+            projectIndex,
+            projectIssueCount: 0,
+            projectName,
+          };
+        }
 
         let issueCounts = { newCount: 0, updatedCount: 0 };
         let projectIssueCount = 0;
@@ -197,6 +247,17 @@ export async function syncActiveProjects(
           projectIssueCount = singleProjectIssues.length;
         }
 
+        // Check cancellation before additional API calls
+        if (cancelled.value) {
+          return {
+            projectId,
+            issueCounts: { newCount: 0, updatedCount: 0 },
+            projectIndex,
+            projectIssueCount: 0,
+            projectName,
+          };
+        }
+
         // Fetch project labels and content directly from Linear API
         const projectLabelsMap = new Map<string, string[]>();
         const projectContentMap = new Map<string, string | null>();
@@ -205,6 +266,11 @@ export async function syncActiveProjects(
           projectLabelsMap.set(projectId, projectData.labels);
           projectContentMap.set(projectId, projectData.content);
         } catch (error) {
+          // If rate limit error, cancel all other operations and rethrow
+          if (error instanceof RateLimitError) {
+            cancelled.value = true;
+            throw error;
+          }
           console.error(
             `[SYNC] Failed to fetch project data for ${projectId}:`,
             error instanceof Error ? error.message : error
@@ -264,18 +330,47 @@ export async function syncActiveProjects(
         };
       };
 
-      const results = await Promise.all(
+      const results = await Promise.allSettled(
         projectsToSync.map((projectId, index) =>
           limit(() => processProject(projectId, index + 1))
         )
       );
 
+      // Check if any promise was rejected due to rate limit
+      const rateLimitError = results.find(
+        (r) =>
+          r.status === "rejected" &&
+          (r.reason instanceof RateLimitError ||
+            (r.reason instanceof Error &&
+              r.reason.message.includes("rate limit")))
+      );
+
+      if (rateLimitError) {
+        // Extract the actual error
+        const error =
+          rateLimitError.status === "rejected" ? rateLimitError.reason : null;
+        if (error instanceof RateLimitError) {
+          throw error;
+        }
+        throw new RateLimitError(
+          error instanceof Error ? error.message : "Rate limit exceeded"
+        );
+      }
+
+      // Filter out rejected promises (non-rate-limit errors are logged but don't stop sync)
+      const successfulResults = results
+        .filter((r) => r.status === "fulfilled")
+        .map((r) => (r.status === "fulfilled" ? r.value : null))
+        .filter((v) => v !== null);
+
       // Collect counts safely after all promises complete
       let totalProjectIssues = 0;
-      for (const result of results) {
-        newCount += result.issueCounts.newCount;
-        updatedCount += result.issueCounts.updatedCount;
-        totalProjectIssues += result.projectIssueCount;
+      for (const result of successfulResults) {
+        if (result) {
+          newCount += result.issueCounts.newCount;
+          updatedCount += result.issueCounts.updatedCount;
+          totalProjectIssues += result.projectIssueCount;
+        }
       }
 
       // Progress is already updated incrementally inside processProject
