@@ -104,6 +104,7 @@
   >([]);
   let serverLastSyncTime: number | null = $state(null);
   let previousLastSyncTime: number | null = $state(null);
+  let hasInitialStatus = $state(false); // Track if initial status check completed
 
   let pollIntervalId: number | undefined;
 
@@ -167,6 +168,7 @@
         statusMessage = data.statusMessage ?? null;
         apiQueryCount = data.apiQueryCount ?? null;
         phases = data.phases ?? [];
+        hasInitialStatus = true; // Mark initial status check as complete
 
         // Detect if sync just completed
         const syncTimeChanged =
@@ -192,9 +194,14 @@
         if (serverLastSyncTime !== previousSyncTime) {
           previousLastSyncTime = serverLastSyncTime;
         }
+      } else {
+        // Response not ok, but still mark as checked to avoid hanging
+        hasInitialStatus = true;
       }
     } catch (err) {
       console.debug("Status poll error:", err);
+      // Even on error, mark as checked so we don't hang on loading state
+      hasInitialStatus = true;
     }
   }
 
@@ -333,17 +340,25 @@
 
 <Modal title="Sync" {onclose} size="lg">
   <div class="space-y-6">
-    {#if isSyncing}
+    {#if !hasInitialStatus}
+      <!-- Loading state while checking initial sync status -->
+      <div class="flex justify-center items-center py-8">
+        <div class="flex gap-2 items-center text-sm text-neutral-400">
+          <div class="w-2 h-2 bg-violet-500 rounded-full animate-pulse"></div>
+          <span>Checking sync status...</span>
+        </div>
+      </div>
+    {:else if isSyncing}
       <!-- Sync In Progress View -->
       <div class="space-y-4">
         <!-- Status Message -->
         <div class="space-y-2">
-          <div class="flex items-center gap-2">
+          <div class="flex gap-2 items-center">
             <div class="w-2 h-2 bg-violet-500 rounded-full animate-pulse"></div>
             <span class="text-sm font-medium text-white">Sync in progress</span>
           </div>
           {#if statusMessage}
-            <p class="text-sm text-neutral-300 pl-4">{statusMessage}</p>
+            <p class="pl-4 text-sm text-neutral-300">{statusMessage}</p>
           {/if}
         </div>
 
@@ -369,11 +384,11 @@
 
         <!-- Phase Indicators -->
         {#if phases.length > 0}
-          <div class="space-y-2 pt-2">
+          <div class="pt-2 space-y-2">
             <h4 class="text-xs font-medium text-neutral-400">Phases</h4>
             <div class="grid grid-cols-2 gap-2">
               {#each phases as phase (phase.phase)}
-                <div class="flex items-center gap-2 text-xs">
+                <div class="flex gap-2 items-center text-xs">
                   {#if phase.status === "complete"}
                     <div
                       class="w-1.5 h-1.5 bg-green-500 rounded-full shrink-0"
@@ -421,14 +436,14 @@
 
       <!-- Error from previous sync -->
       {#if syncErrorMessage && syncStatus === "error"}
-        <div class="p-3 rounded-md bg-red-900/20 border border-red-800/50">
+        <div class="p-3 rounded-md border bg-red-900/20 border-red-800/50">
           <p class="text-sm text-red-400">{syncErrorMessage}</p>
         </div>
       {/if}
 
       <!-- Full Sync Toggle -->
       <div
-        class="flex items-start gap-3 p-4 rounded-lg border border-neutral-700 bg-neutral-800/50 cursor-pointer hover:bg-neutral-800/70 transition-colors"
+        class="flex gap-3 items-start p-4 rounded-lg border transition-colors cursor-pointer border-neutral-700 bg-neutral-800/50 hover:bg-neutral-800/70"
         onclick={toggleFullSync}
         role="button"
         tabindex="0"
@@ -444,7 +459,7 @@
           id="fullSync"
           checked={isFullSync}
           onchange={toggleFullSync}
-          class="mt-1 w-4 h-4 rounded border-neutral-600 bg-neutral-700 text-blue-600 focus:ring-2 focus:ring-blue-500 focus:ring-offset-0 focus:ring-offset-neutral-900 pointer-events-none"
+          class="mt-1 w-4 h-4 text-blue-600 rounded pointer-events-none border-neutral-600 bg-neutral-700 focus:ring-2 focus:ring-blue-500 focus:ring-offset-0 focus:ring-offset-neutral-900"
         />
         <div class="flex-1">
           <label
@@ -462,7 +477,7 @@
 
       <!-- Phase Options -->
       <div class="space-y-2">
-        <div class="flex items-center justify-between">
+        <div class="flex justify-between items-center">
           <h3 class="text-sm font-medium text-white">Sync Phases</h3>
           {#if !isFullSync}
             <span class="text-xs text-neutral-400">
@@ -470,7 +485,7 @@
             </span>
           {/if}
         </div>
-        <div class="space-y-2 max-h-64 overflow-y-auto">
+        <div class="overflow-y-auto space-y-2 max-h-64">
           {#each phaseOptions as option}
             {@const isRequired = option.phase === REQUIRED_PHASE}
             <div
@@ -504,7 +519,7 @@
                 checked={selectedPhases.has(option.phase)}
                 onchange={() => handlePhaseToggle(option.phase)}
                 disabled={isFullSync || isRequired}
-                class="mt-0.5 w-4 h-4 rounded border-neutral-600 bg-neutral-700 text-blue-600 focus:ring-2 focus:ring-blue-500 focus:ring-offset-0 focus:ring-offset-neutral-900 disabled:opacity-50 disabled:cursor-not-allowed pointer-events-none"
+                class="mt-0.5 w-4 h-4 text-blue-600 rounded pointer-events-none border-neutral-600 bg-neutral-700 focus:ring-2 focus:ring-blue-500 focus:ring-offset-0 focus:ring-offset-neutral-900 disabled:opacity-50 disabled:cursor-not-allowed"
               />
               <div class="flex-1 min-w-0">
                 <label
@@ -535,7 +550,7 @@
           id="adminPassword"
           bind:value={adminPassword}
           placeholder="Enter admin password"
-          class="w-full px-3 py-2 text-sm rounded-md border border-neutral-600 bg-neutral-800 text-white placeholder-neutral-500 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+          class="px-3 py-2 w-full text-sm text-white rounded-md border border-neutral-600 bg-neutral-800 placeholder-neutral-500 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
           disabled={isSubmitting}
           autocomplete="current-password"
         />
@@ -543,13 +558,13 @@
 
       <!-- Form Error Message -->
       {#if error}
-        <div class="p-3 rounded-md bg-red-900/20 border border-red-800/50">
+        <div class="p-3 rounded-md border bg-red-900/20 border-red-800/50">
           <p class="text-sm text-red-400">{error}</p>
         </div>
       {/if}
 
       <!-- Actions -->
-      <div class="flex justify-end gap-3 pt-2">
+      <div class="flex gap-3 justify-end pt-2">
         <Button variant="outline" onclick={onclose} disabled={isSubmitting}>
           Cancel
         </Button>
