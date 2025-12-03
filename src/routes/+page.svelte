@@ -19,7 +19,9 @@
   let groupBy = $state<"team" | "domain">("team");
   let viewType = $state<"table" | "gantt">("table");
   let endDateMode = $state<"predicted" | "target">("predicted");
-  let projectFilter = $state<"planning" | "wip" | "all">("wip");
+  let projectFilter = $state<"planning" | "wip" | "planning-wip" | "all">(
+    "wip"
+  );
   let ganttViewMode = $state<"quarter" | "quarters">("quarters");
 
   // Load data on mount
@@ -233,14 +235,34 @@
         bind:value={projectFilter}
         variant="outline"
         type="single"
+        class="min-w-fit"
       >
-        <ToggleGroupItem value="planning" aria-label="Show planned projects">
-          Plan
-        </ToggleGroupItem>
-        <ToggleGroupItem value="wip" aria-label="Show WIP projects">
+        <ToggleGroupItem
+          value="wip"
+          aria-label="Show WIP projects"
+          class="!flex-none"
+        >
           WIP
         </ToggleGroupItem>
-        <ToggleGroupItem value="all" aria-label="Show all projects">
+        <ToggleGroupItem
+          value="planning"
+          aria-label="Show planned projects"
+          class="!flex-none"
+        >
+          Plan
+        </ToggleGroupItem>
+        <ToggleGroupItem
+          value="planning-wip"
+          aria-label="Show planned and WIP projects"
+          class="!flex-none"
+        >
+          Plan & WIP
+        </ToggleGroupItem>
+        <ToggleGroupItem
+          value="all"
+          aria-label="Show all projects"
+          class="!flex-none"
+        >
           All
         </ToggleGroupItem>
       </ToggleGroupRoot>

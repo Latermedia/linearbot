@@ -354,12 +354,12 @@ export function groupProjectsByDomains(teams: TeamSummary[]): DomainSummary[] {
 }
 
 /**
- * Filter projects by mode: planning, wip, or all
+ * Filter projects by mode: planning, wip, planning-wip, or all
  */
 export function filterProjectsByMode(
   projects: Map<string, ProjectSummary>,
   issues: Issue[],
-  mode: "planning" | "wip" | "all"
+  mode: "planning" | "wip" | "planning-wip" | "all"
 ): Map<string, ProjectSummary> {
   if (mode === "all") {
     return projects;
@@ -378,6 +378,14 @@ export function filterProjectsByMode(
       // Use inProgressIssues from project data instead of filtering issues
       // This ensures we check all issues in the project, not just those in the current filter
       if (project.inProgressIssues > 0) {
+        filtered.set(projectId, project);
+      }
+    } else if (mode === "planning-wip") {
+      // Show projects that are either planned OR have WIP issues
+      if (
+        isPlannedProject(project.projectStateCategory) ||
+        project.inProgressIssues > 0
+      ) {
         filtered.set(projectId, project);
       }
     }
