@@ -1,5 +1,9 @@
 import { getDatabase } from "../db/connection.js";
-import { getTotalIssueCount } from "../db/queries.js";
+import {
+  getTotalIssueCount,
+  getSyncMetadata,
+  updateSyncMetadata,
+} from "../db/queries.js";
 import { initializeSyncScheduler } from "./sync-scheduler.js";
 
 let startupInitialized = false;
@@ -22,6 +26,22 @@ export function initializeStartup(): void {
   try {
     getDatabase();
     console.log("[STARTUP] Database initialized");
+
+    // Reset sync status if it's stuck in "syncing" state (e.g., from a deployment during sync)
+    // This ensures users can trigger a new sync after deployment
+    const syncMetadata = getSyncMetadata();
+    if (syncMetadata?.sync_status === "syncing") {
+      console.log(
+        "[STARTUP] Resetting sync status from 'syncing' to 'idle' (sync was interrupted by deployment)"
+      );
+      updateSyncMetadata({
+        sync_status: "idle",
+        sync_error: null,
+        sync_progress_percent: null,
+        partial_sync_state: null,
+        sync_status_message: null,
+      });
+    }
 
     // Check for empty database in development and show helpful message
     const isProduction = process.env.NODE_ENV === "production";
