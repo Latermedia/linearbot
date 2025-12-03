@@ -135,11 +135,11 @@ export async function syncInitiativeProjects(
         }
 
         try {
+          // Fetch issues only - not passing description/updates maps
+          // All project metadata will be fetched in one consolidated call below
           const projectIssues = await linearClient.fetchIssuesByProjects(
             [projectId],
-            () => {},
-            projectDescriptionsMap,
-            projectUpdatesMap
+            () => {}
           );
           return projectIssues;
         } catch (error) {
@@ -179,7 +179,7 @@ export async function syncInitiativeProjects(
         updatedCount = counts.updatedCount;
       }
 
-      // Fetch project labels and content (using cache)
+      // Fetch all project metadata in consolidated API calls (using cache)
       const initiativeProjectLabelsMap = new Map<string, string[]>();
       const initiativeProjectContentMap = new Map<string, string | null>();
 
@@ -188,7 +188,8 @@ export async function syncInitiativeProjects(
         throw new RateLimitError("Rate limit exceeded");
       }
 
-      // Fetch labels and content for each project in parallel (using cache)
+      // Fetch all project metadata for each project in parallel (using cache)
+      // Uses fetchProjectFullData which consolidates description, content, labels, updates into one call
       const projectDataPromises = projectsToSync.map(async (projectId) => {
         // Check cancellation before each API call
         if (cancelled.value) {
@@ -200,17 +201,38 @@ export async function syncInitiativeProjects(
           const cachedData = projectDataCache.get(projectId)!;
           initiativeProjectLabelsMap.set(projectId, cachedData.labels);
           initiativeProjectContentMap.set(projectId, cachedData.content);
+          // Also populate description/updates maps from cache
+          if (!projectDescriptionsMap.has(projectId)) {
+            projectDescriptionsMap.set(
+              projectId,
+              cachedData.description ?? null
+            );
+          }
+          if (!projectUpdatesMap.has(projectId)) {
+            projectUpdatesMap.set(projectId, cachedData.updates ?? []);
+          }
           return;
         }
 
         try {
-          const projectData = await linearClient.fetchProjectData(projectId);
+          // Fetch all project metadata in a single consolidated API call
+          const fullData = await linearClient.fetchProjectFullData(projectId);
+          // Cache all project metadata
           projectDataCache.set(projectId, {
-            labels: projectData.labels,
-            content: projectData.content,
+            labels: fullData.labels,
+            content: fullData.content,
+            description: fullData.description,
+            updates: fullData.updates,
           });
-          initiativeProjectLabelsMap.set(projectId, projectData.labels);
-          initiativeProjectContentMap.set(projectId, projectData.content);
+          initiativeProjectLabelsMap.set(projectId, fullData.labels);
+          initiativeProjectContentMap.set(projectId, fullData.content);
+          projectDescriptionsMap.set(projectId, fullData.description);
+          projectUpdatesMap.set(projectId, fullData.updates);
+          if (fullData.updates.length > 0) {
+            console.log(
+              `[SYNC] Fetched ${fullData.updates.length} project update(s) for initiative project: ${projectId}`
+            );
+          }
         } catch (error: unknown) {
           if (error instanceof RateLimitError) {
             cancelled.value = true;
@@ -220,7 +242,9 @@ export async function syncInitiativeProjects(
             `[SYNC] Failed to fetch project data for ${projectId}:`,
             error instanceof Error ? error.message : String(error)
           );
-          // Continue without labels/content - they're optional
+          // Continue without metadata - it's optional
+          projectDescriptionsMap.set(projectId, null);
+          projectUpdatesMap.set(projectId, []);
         }
       });
 

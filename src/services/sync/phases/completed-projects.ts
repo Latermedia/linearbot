@@ -58,7 +58,23 @@ export async function syncCompletedProjects(
   try {
     setSyncStatusMessage("Fetching completed projects...");
     console.log("[SYNC] Fetching completed projects (last 6 months)...");
-    const completedProjects = await linearClient.fetchCompletedProjects();
+
+    // Use cached project discovery if available, otherwise fetch all projects at once
+    // This single query returns both planned and completed projects
+    let completedProjects: { id: string; name: string }[];
+    if (context.projectDiscoveryCache) {
+      console.log("[SYNC] Using cached project discovery results");
+      completedProjects = context.projectDiscoveryCache.completed;
+    } else {
+      console.log(
+        "[SYNC] Fetching all projects (planned projects phase was skipped)..."
+      );
+      const discoveryResult = await linearClient.fetchAllProjectsByState();
+      // Cache the results in case any other phase needs them
+      context.projectDiscoveryCache = discoveryResult;
+      completedProjects = discoveryResult.completed;
+    }
+
     const completedProjectIds = completedProjects.map((p) => p.id);
     console.log(
       `[SYNC] Found ${completedProjectIds.length} completed project(s) from last 6 months`

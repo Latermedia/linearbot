@@ -159,30 +159,31 @@ export async function syncProject(
       throw error;
     }
 
-    // Fetch project labels and content directly from Linear API
+    // Fetch all project metadata in a single consolidated API call
+    // This replaces separate calls for data (labels/content) and updates
     const projectLabelsMap = new Map<string, string[]>();
     const projectContentMap = new Map<string, string | null>();
+    const projectDescriptionsMap = new Map<string, string | null>();
+    const projectUpdatesMap = new Map<string, ProjectUpdate[]>();
+
     try {
-      const projectData = await linearClient.fetchProjectData(projectId);
-      projectLabelsMap.set(projectId, projectData.labels);
-      projectContentMap.set(projectId, projectData.content);
+      const fullData = await linearClient.fetchProjectFullData(projectId);
+      projectLabelsMap.set(projectId, fullData.labels);
+      projectContentMap.set(projectId, fullData.content);
+      projectDescriptionsMap.set(projectId, fullData.description);
+      projectUpdatesMap.set(projectId, fullData.updates);
+      if (fullData.updates.length > 0) {
+        console.log(
+          `[SYNC] Fetched ${fullData.updates.length} project update(s) for project: ${projectId}`
+        );
+      }
     } catch (error) {
       console.error(
         `[SYNC] Failed to fetch project data for ${projectId}:`,
         error instanceof Error ? error.message : error
       );
-      // Continue without labels/content - they're optional
-    }
-
-    const projectUpdatesMap = new Map<string, ProjectUpdate[]>();
-    try {
-      const updates = await linearClient.fetchProjectUpdates(projectId);
-      projectUpdatesMap.set(projectId, updates);
-    } catch (error) {
-      console.error(
-        `[SYNC] Failed to fetch project updates for ${projectId}:`,
-        error instanceof Error ? error.message : error
-      );
+      // Continue without metadata - it's optional
+      projectDescriptionsMap.set(projectId, null);
       projectUpdatesMap.set(projectId, []);
     }
 
@@ -192,7 +193,7 @@ export async function syncProject(
 
     const computedProjectCount = await computeAndStoreProjects(
       projectLabelsMap,
-      undefined,
+      projectDescriptionsMap,
       projectUpdatesMap,
       new Set([projectId]),
       false,

@@ -1,10 +1,15 @@
+import type { ProjectUpdate } from "../../../linear/client.js";
+
 /**
- * Cache for project data (labels and content) within a sync session
+ * Cache for project data within a sync session
  * Prevents duplicate API calls for the same project across different phases
+ * Stores all metadata from fetchProjectFullData: description, content, labels, updates
  */
 export interface ProjectData {
   labels: string[];
   content: string | null;
+  description?: string | null;
+  updates?: ProjectUpdate[];
 }
 
 export class ProjectDataCache {

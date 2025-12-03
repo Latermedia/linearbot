@@ -34,6 +34,15 @@ import type { LinearIssueData, ProjectUpdate } from "../../linear/client.js";
 import type { PartialSyncState } from "../../db/queries.js";
 import type { ProjectDataCache } from "./utils/project-cache.js";
 
+/**
+ * Cached result of project discovery (planned and completed projects)
+ * Used to avoid fetching all projects twice when both phases run
+ */
+export interface ProjectDiscoveryCache {
+  planned: { id: string; name: string }[];
+  completed: { id: string; name: string }[];
+}
+
 export interface PhaseContext {
   linearClient: LinearAPIClient;
   callbacks?: SyncCallbacks;
@@ -53,4 +62,6 @@ export interface PhaseContext {
   updatePhase: (phase: SyncPhase) => void;
   shouldRunPhase: (phase: SyncPhase) => boolean;
   getProjectSyncLimit: () => number | null;
+  /** Cached project discovery results (planned and completed projects) */
+  projectDiscoveryCache?: ProjectDiscoveryCache;
 }

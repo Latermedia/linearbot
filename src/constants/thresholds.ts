@@ -75,6 +75,8 @@ export const TIMEOUTS = {
 export const PAGINATION = {
   /** GraphQL query page size */
   GRAPHQL_PAGE_SIZE: 100,
+  /** Smaller page size for queries with nested data (to stay under complexity limits) */
+  GRAPHQL_PAGE_SIZE_WITH_NESTED: 25,
   /** Safety limit to prevent infinite loops */
   MAX_PAGES: 100,
 } as const;

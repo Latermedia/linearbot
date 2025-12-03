@@ -110,6 +110,17 @@ export interface ProjectUpdate {
   userAvatarUrl: string | null;
 }
 
+/**
+ * Combined project metadata - consolidates description, updates, labels, and content
+ * into a single API response to reduce API calls
+ */
+export interface ProjectFullData {
+  description: string | null;
+  content: string | null;
+  labels: string[];
+  updates: ProjectUpdate[];
+}
+
 export interface LinearInitiativeData {
   id: string;
   name: string;
@@ -129,6 +140,8 @@ export interface LinearInitiativeData {
   projectIds: string[];
   createdAt: string;
   updatedAt: string;
+  /** Initiative updates (health updates) - included in the main fetch to reduce API calls */
+  updates: ProjectUpdate[];
 }
 
 export class LinearAPIClient {
@@ -1068,6 +1081,87 @@ export class LinearAPIClient {
   }
 
   /**
+   * Fetch all project metadata in a single API call.
+   * Consolidates description, content, labels, and project updates
+   * to reduce API calls from 4 to 1 per project.
+   */
+  async fetchProjectFullData(projectId: string): Promise<ProjectFullData> {
+    const query = `
+      query GetProjectFullData($projectId: String!) {
+        project(id: $projectId) {
+          id
+          description
+          content
+          labels {
+            nodes {
+              name
+            }
+          }
+          projectUpdates {
+            nodes {
+              id
+              createdAt
+              updatedAt
+              body
+              health
+              user {
+                id
+                name
+                avatarUrl
+              }
+            }
+          }
+        }
+      }
+    `;
+
+    let response: any;
+    try {
+      this.incrementQueryCount();
+      response = await this.client.client.rawRequest(query, {
+        projectId,
+      });
+    } catch (error: any) {
+      // Check for rate limit using comprehensive detection
+      if (isRateLimitError(error)) {
+        throw new RateLimitError("Linear API rate limit exceeded");
+      }
+      // For other errors, log but don't fail the sync - project metadata is optional
+      console.error(
+        `Failed to fetch project full data for ${projectId}:`,
+        error instanceof Error ? error.message : error
+      );
+      return { description: null, content: null, labels: [], updates: [] };
+    }
+
+    const project = response.data?.project;
+    if (!project) {
+      return { description: null, content: null, labels: [], updates: [] };
+    }
+
+    const labels =
+      project.labels?.nodes?.map((l: { name: string }) => l.name) || [];
+
+    const updates = (project.projectUpdates?.nodes || []).map((node: any) => ({
+      id: node.id,
+      createdAt: node.createdAt,
+      updatedAt: node.updatedAt,
+      body: node.body,
+      health: node.health,
+      userId: node.user?.id || null,
+      userName: node.user?.name || null,
+      userAvatarUrl: node.user?.avatarUrl || null,
+    }));
+
+    return {
+      description: project.description || null,
+      content: project.content || null,
+      labels,
+      updates,
+    };
+  }
+
+  /**
    * Fetch initiative updates (health updates) from Linear API
    */
   async fetchInitiativeUpdates(initiativeId: string): Promise<ProjectUpdate[]> {
@@ -1130,92 +1224,26 @@ export class LinearAPIClient {
   }
 
   /**
-   * Fetch all planned projects (project_state_category contains "planned")
-   * Returns array of project IDs and names
+   * Fetch all projects and categorize them by state in a single API query
+   * Returns both planned and recently completed projects
+   * This replaces separate fetchPlannedProjects and fetchCompletedProjects calls
    */
-  async fetchPlannedProjects(): Promise<{ id: string; name: string }[]> {
-    const projects: { id: string; name: string }[] = [];
+  async fetchAllProjectsByState(): Promise<{
+    planned: { id: string; name: string }[];
+    completed: { id: string; name: string }[];
+  }> {
+    const planned: { id: string; name: string }[] = [];
+    const completed: { id: string; name: string }[] = [];
     let hasMore = true;
     let cursor: string | undefined;
     let pageCount = 0;
 
-    const query = `
-      query GetPlannedProjects($first: Int!, $after: String) {
-        projects(
-          first: $first
-          after: $after
-        ) {
-          nodes {
-            id
-            name
-            state
-          }
-          pageInfo {
-            hasNextPage
-            endCursor
-          }
-        }
-      }
-    `;
-
-    while (hasMore) {
-      let response: any;
-      try {
-        this.incrementQueryCount();
-        response = await this.client.client.rawRequest(query, {
-          first: PAGINATION.GRAPHQL_PAGE_SIZE,
-          after: cursor,
-        });
-      } catch (error: any) {
-        if (isRateLimitError(error)) {
-          throw new RateLimitError("Linear API rate limit exceeded");
-        }
-        throw error;
-      }
-
-      const data = response.data.projects;
-
-      for (const project of data.nodes) {
-        // Check if project state contains "planned" (case-insensitive)
-        const state = (project.state || "").toLowerCase();
-        if (state.includes("planned")) {
-          projects.push({ id: project.id, name: project.name });
-        }
-      }
-
-      hasMore = data.pageInfo.hasNextPage;
-      cursor = data.pageInfo.endCursor ?? undefined;
-      pageCount++;
-
-      // Safety break to avoid infinite loops
-      if (pageCount > PAGINATION.MAX_PAGES) {
-        console.warn(
-          `Warning: Fetched ${PAGINATION.MAX_PAGES}+ pages of projects, stopping to avoid infinite loop`
-        );
-        break;
-      }
-    }
-
-    return projects;
-  }
-
-  /**
-   * Fetch projects completed in the last 6 months
-   * Returns array of project IDs and names
-   */
-  async fetchCompletedProjects(): Promise<{ id: string; name: string }[]> {
-    const projects: { id: string; name: string }[] = [];
-    let hasMore = true;
-    let cursor: string | undefined;
-    let pageCount = 0;
-
-    // Calculate date 6 months ago
+    // Calculate date 6 months ago for completed projects filter
     const sixMonthsAgo = new Date();
     sixMonthsAgo.setMonth(sixMonthsAgo.getMonth() - 6);
-    const _sixMonthsAgoISO = sixMonthsAgo.toISOString();
 
     const query = `
-      query GetCompletedProjects($first: Int!, $after: String) {
+      query GetAllProjects($first: Int!, $after: String) {
         projects(
           first: $first
           after: $after
@@ -1253,8 +1281,14 @@ export class LinearAPIClient {
       const data = response.data.projects;
 
       for (const project of data.nodes) {
-        // Check if project is completed and was completed/updated in last 6 months
         const state = (project.state || "").toLowerCase();
+
+        // Check if project is planned
+        if (state.includes("planned")) {
+          planned.push({ id: project.id, name: project.name });
+        }
+
+        // Check if project is completed
         const isCompleted =
           state.includes("completed") ||
           state.includes("done") ||
@@ -1271,7 +1305,7 @@ export class LinearAPIClient {
 
           const relevantDate = completedAt || updatedAt;
           if (relevantDate && relevantDate >= sixMonthsAgo) {
-            projects.push({ id: project.id, name: project.name });
+            completed.push({ id: project.id, name: project.name });
           }
         }
       }
@@ -1289,7 +1323,27 @@ export class LinearAPIClient {
       }
     }
 
-    return projects;
+    return { planned, completed };
+  }
+
+  /**
+   * Fetch all planned projects (project_state_category contains "planned")
+   * Returns array of project IDs and names
+   * @deprecated Use fetchAllProjectsByState for efficiency when you also need completed projects
+   */
+  async fetchPlannedProjects(): Promise<{ id: string; name: string }[]> {
+    const result = await this.fetchAllProjectsByState();
+    return result.planned;
+  }
+
+  /**
+   * Fetch projects completed in the last 6 months
+   * Returns array of project IDs and names
+   * @deprecated Use fetchAllProjectsByState for efficiency when you also need planned projects
+   */
+  async fetchCompletedProjects(): Promise<{ id: string; name: string }[]> {
+    const result = await this.fetchAllProjectsByState();
+    return result.completed;
   }
 
   /**
@@ -1478,6 +1532,7 @@ export class LinearAPIClient {
 
   /**
    * Fetch all initiatives from Linear API
+   * Includes initiative updates (health updates) to reduce separate API calls
    */
   async fetchInitiatives(
     onProgress?: (current: number, pageSize: number) => void
@@ -1515,6 +1570,20 @@ export class LinearAPIClient {
                 id
               }
             }
+            initiativeUpdates {
+              nodes {
+                id
+                createdAt
+                updatedAt
+                body
+                health
+                user {
+                  id
+                  name
+                  avatarUrl
+                }
+              }
+            }
             createdAt
             updatedAt
           }
@@ -1530,8 +1599,9 @@ export class LinearAPIClient {
       let response: any;
       try {
         this.incrementQueryCount();
+        // Use smaller page size due to nested initiativeUpdates increasing query complexity
         response = await this.client.client.rawRequest(query, {
-          first: PAGINATION.GRAPHQL_PAGE_SIZE,
+          first: PAGINATION.GRAPHQL_PAGE_SIZE_WITH_NESTED,
           after: cursor,
         });
       } catch (error: any) {
@@ -1544,6 +1614,20 @@ export class LinearAPIClient {
       const data = response.data.initiatives;
 
       for (const initiative of data.nodes) {
+        // Parse initiative updates from the nested data
+        const updates = (initiative.initiativeUpdates?.nodes || []).map(
+          (node: any) => ({
+            id: node.id,
+            createdAt: node.createdAt,
+            updatedAt: node.updatedAt,
+            body: node.body,
+            health: node.health,
+            userId: node.user?.id || null,
+            userName: node.user?.name || null,
+            userAvatarUrl: node.user?.avatarUrl || null,
+          })
+        );
+
         initiatives.push({
           id: initiative.id,
           name: initiative.name,
@@ -1564,6 +1648,7 @@ export class LinearAPIClient {
             initiative.projects?.nodes?.map((p: { id: string }) => p.id) || [],
           createdAt: initiative.createdAt,
           updatedAt: initiative.updatedAt,
+          updates,
         });
       }
 

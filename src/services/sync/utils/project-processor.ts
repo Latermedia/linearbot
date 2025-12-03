@@ -131,6 +131,8 @@ export async function processProjectsInParallel(
     let maxIssueCount = 0;
     let singleProjectIssues: LinearIssueData[];
     try {
+      // Fetch issues only - don't pass description/updates maps
+      // We'll fetch all project metadata in a single consolidated call below
       singleProjectIssues = await linearClient.fetchIssuesByProjects(
         [projectId],
         config.onProgress
@@ -142,9 +144,9 @@ export async function processProjectsInParallel(
               // Progress updates are handled by incrementApiQuery() based on query count
               maxIssueCount = Math.max(maxIssueCount, count);
             }
-          : undefined,
-        projectDescriptionsMap,
-        projectUpdatesMap
+          : undefined
+        // Note: Not passing projectDescriptionsMap and projectUpdatesMap
+        // to avoid separate API calls - we consolidate below
       );
     } catch (error) {
       handleRateLimitError(error, cancelled);
@@ -183,17 +185,29 @@ export async function processProjectsInParallel(
       };
     }
 
-    // Fetch project labels and content (using cache)
+    // Fetch all project metadata in a single consolidated API call
+    // This replaces 3 separate calls: fetchProjectDescription, fetchProjectUpdates, fetchProjectData
     const projectLabelsMap = new Map<string, string[]>();
     const projectContentMap = new Map<string, string | null>();
 
     if (!projectDataCache.has(projectId)) {
       try {
-        const projectData = await linearClient.fetchProjectData(projectId);
+        const fullData = await linearClient.fetchProjectFullData(projectId);
+        // Cache all project metadata
         projectDataCache.set(projectId, {
-          labels: projectData.labels,
-          content: projectData.content,
+          labels: fullData.labels,
+          content: fullData.content,
+          description: fullData.description,
+          updates: fullData.updates,
         });
+        // Populate the description and updates maps
+        projectDescriptionsMap.set(projectId, fullData.description);
+        projectUpdatesMap.set(projectId, fullData.updates);
+        if (fullData.updates.length > 0) {
+          console.log(
+            `[SYNC] Fetched ${fullData.updates.length} project update(s) for project: ${projectName || projectId}`
+          );
+        }
       } catch (error: unknown) {
         if (error instanceof RateLimitError) {
           cancelled.value = true;
@@ -203,11 +217,22 @@ export async function processProjectsInParallel(
           `[SYNC] Failed to fetch project data for ${projectId}:`,
           error instanceof Error ? error.message : String(error)
         );
-        // Continue without labels/content - they're optional
+        // Continue without metadata - it's optional
+        projectDescriptionsMap.set(projectId, null);
+        projectUpdatesMap.set(projectId, []);
+      }
+    } else {
+      // Data is cached - use cached description/updates
+      const cachedData = projectDataCache.get(projectId)!;
+      if (!projectDescriptionsMap.has(projectId)) {
+        projectDescriptionsMap.set(projectId, cachedData.description ?? null);
+      }
+      if (!projectUpdatesMap.has(projectId)) {
+        projectUpdatesMap.set(projectId, cachedData.updates ?? []);
       }
     }
 
-    // Use cached data if available
+    // Use cached data for labels/content
     const cachedData = projectDataCache.get(projectId);
     if (cachedData) {
       projectLabelsMap.set(projectId, cachedData.labels);

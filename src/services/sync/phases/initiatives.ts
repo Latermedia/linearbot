@@ -22,6 +22,7 @@ export async function syncInitiatives(context: PhaseContext): Promise<void> {
     shouldRunPhase,
     getProjectSyncLimit,
   } = context;
+  // Note: linearClient is still used via fetchInitiatives (which now includes updates)
 
   if (!shouldRunPhase("initiatives")) {
     console.log("[SYNC] Skipping initiatives phase (not selected)");
@@ -69,24 +70,12 @@ export async function syncInitiatives(context: PhaseContext): Promise<void> {
         );
         activeInitiativeIds.add(initiativeData.id);
 
-        // Fetch health updates for this initiative
-        let healthUpdates: any[] = [];
-        try {
-          const updates = await linearClient.fetchInitiativeUpdates(
-            initiativeData.id
+        // Use updates already fetched with the initiative (no separate API call needed)
+        const healthUpdates = initiativeData.updates;
+        if (healthUpdates.length > 0) {
+          console.log(
+            `[SYNC] Initiative ${initiativeData.name || initiativeData.id} has ${healthUpdates.length} health update(s)`
           );
-          healthUpdates = updates;
-          if (updates.length > 0) {
-            console.log(
-              `[SYNC] Fetched ${updates.length} health update(s) for initiative: ${initiativeData.name || initiativeData.id}`
-            );
-          }
-        } catch (error) {
-          console.warn(
-            `[SYNC] Failed to fetch health updates for initiative ${initiativeData.id}:`,
-            error instanceof Error ? error.message : error
-          );
-          // Continue without updates - they're optional
         }
 
         const initiative: Initiative = {
