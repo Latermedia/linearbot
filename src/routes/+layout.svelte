@@ -15,6 +15,7 @@
 
   let { children }: { children: Snippet } = $props();
   let showDevMenu = $state(false);
+  let previousPathname = $state<string | null>(null);
 
   // Initialize theme and check auth
   onMount(() => {
@@ -31,6 +32,9 @@
           }
         });
       }
+
+      // Set initial pathname after mount to detect subsequent navigation
+      previousPathname = $page.url.pathname;
     }
   });
 
@@ -78,20 +82,38 @@
     }
   });
 
-  // Client-side route protection (for SPA navigation)
+  // Client-side route protection (for SPA navigation only, not initial load)
+  // Server-side redirect handles initial load authentication, so we skip client redirect
+  // on initial load to prevent Firefox from canceling the request (NS_BINDING_CANCELED)
   $effect(() => {
     if (!browser) return;
 
+    const currentPathname = $page.url.pathname;
+
     // Skip auth check on login page
-    if ($page.url.pathname === "/login") {
+    if (currentPathname === "/login") {
+      previousPathname = currentPathname;
       return;
     }
 
-    // Check auth status and redirect if not authenticated
+    // Only check auth if pathname actually changed (SPA navigation)
+    // Skip on initial load when previousPathname is null or same as current
+    const isNavigation =
+      previousPathname !== null && previousPathname !== currentPathname;
+
+    if (!isNavigation) {
+      // Update previousPathname for next check
+      previousPathname = currentPathname;
+      return;
+    }
+
+    // Check auth status and redirect if not authenticated (SPA navigation only)
     checkAuth().then((authenticated) => {
-      if (!authenticated && $page.url.pathname !== "/login") {
+      if (!authenticated && currentPathname !== "/login") {
         goto("/login");
       }
+      // Update previousPathname after auth check
+      previousPathname = currentPathname;
     });
   });
 </script>
