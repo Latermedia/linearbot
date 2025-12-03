@@ -4,6 +4,8 @@
   import { tweened } from "svelte/motion";
   import { cubicOut } from "svelte/easing";
   import SyncModal from "./SyncModal.svelte";
+  import { isAuthenticated } from "$lib/stores/auth";
+  import { ExponentialBackoff } from "$lib/utils/backoff";
 
   let {
     projectId,
@@ -23,6 +25,8 @@
   );
   let syncingProjectId = $state<string | null>(null);
   let pollIntervalId: number | undefined;
+  let backoff = new ExponentialBackoff();
+  let nextPollTimeoutId: number | undefined;
 
   // Keyboard shortcut: Cmd+Shift+S (Mac) or Ctrl+Shift+S (Windows/Linux)
   $effect(() => {
@@ -62,12 +66,48 @@
   // Animated progress value for smooth transitions
   const animatedProgress = tweened(0, { duration: 300, easing: cubicOut });
 
+  function scheduleNextPoll(delay: number) {
+    if (nextPollTimeoutId) {
+      clearTimeout(nextPollTimeoutId);
+    }
+    nextPollTimeoutId = setTimeout(() => {
+      checkSyncStatus();
+    }, delay) as unknown as number;
+  }
+
+  function stopPolling() {
+    if (pollIntervalId) {
+      clearInterval(pollIntervalId);
+      pollIntervalId = undefined;
+    }
+    if (nextPollTimeoutId) {
+      clearTimeout(nextPollTimeoutId);
+      nextPollTimeoutId = undefined;
+    }
+  }
+
   async function checkSyncStatus() {
     if (!browser) return;
 
+    // Check authentication before making request
+    if (!$isAuthenticated) {
+      stopPolling();
+      return;
+    }
+
     try {
       const response = await fetch("/api/sync/status");
+
+      // Handle 401 Unauthorized - stop polling if not authenticated
+      if (response.status === 401) {
+        stopPolling();
+        isAuthenticated.set(false);
+        return;
+      }
+
       if (response.ok) {
+        // Success - reset backoff and schedule next poll
+        backoff.recordSuccess();
         const data = await response.json();
         syncingProjectId = data.syncingProjectId || null;
 
@@ -80,6 +120,7 @@
         if (!shouldShow) {
           syncStatus = "idle";
           isRunning = false;
+          scheduleNextPoll(2000); // Use normal polling interval when idle
           return;
         }
 
@@ -93,9 +134,22 @@
           progressPercent = newProgress;
           animatedProgress.set(newProgress);
         }
+
+        // Use normal polling interval (2s) when successful
+        scheduleNextPoll(2000);
+      } else {
+        // Request failed - record failure and use backoff
+        const delay = backoff.recordFailure();
+        console.debug(
+          `Sync status poll failed (${response.status}), retrying in ${delay}ms`
+        );
+        scheduleNextPoll(delay);
       }
     } catch (error) {
-      console.debug("Sync status poll error:", error);
+      // Network error - record failure and use backoff
+      const delay = backoff.recordFailure();
+      console.debug("Sync status poll error:", error, `retrying in ${delay}ms`);
+      scheduleNextPoll(delay);
     }
   }
 
@@ -104,15 +158,10 @@
 
     // Initial check
     checkSyncStatus();
-
-    // Poll every 2 seconds
-    pollIntervalId = setInterval(checkSyncStatus, 2000) as unknown as number;
   });
 
   onDestroy(() => {
-    if (pollIntervalId) {
-      clearInterval(pollIntervalId);
-    }
+    stopPolling();
   });
 
   const isSyncing = $derived(syncStatus === "syncing" || isRunning);

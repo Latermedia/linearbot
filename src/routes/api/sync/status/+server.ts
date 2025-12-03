@@ -3,8 +3,8 @@ import type { RequestHandler } from "./$types";
 import { getSyncState } from "../state.js";
 import {
   getSyncMetadata,
-  getPartialSyncState,
   type SyncPhase,
+  type PartialSyncState,
 } from "../../../../db/queries.js";
 
 /**
@@ -23,7 +23,7 @@ function getAllSyncPhases(): Array<{ phase: SyncPhase; label: string }> {
 }
 
 export const GET: RequestHandler = async () => {
-  // Read from database (primary source)
+  // Read from database (primary source) - single query for both metadata and partial state
   const dbMetadata = getSyncMetadata();
 
   // Also check in-memory state for isRunning flag (for immediate updates during sync)
@@ -34,8 +34,19 @@ export const GET: RequestHandler = async () => {
     ? new Date(dbMetadata.last_sync_time).getTime()
     : null;
 
-  // Get partial sync state
-  const partialSyncState = getPartialSyncState();
+  // Parse partial sync state from metadata (already fetched above)
+  // This avoids a second database query - we already have partial_sync_state from getSyncMetadata()
+  let partialSyncState: PartialSyncState | null = null;
+  if (dbMetadata?.partial_sync_state) {
+    try {
+      partialSyncState = JSON.parse(
+        dbMetadata.partial_sync_state
+      ) as PartialSyncState;
+    } catch (error) {
+      console.error("[API] Failed to parse partial sync state:", error);
+      partialSyncState = null;
+    }
+  }
 
   // Calculate partial sync progress if available
   let partialSyncProgress: { completed: number; total: number } | null = null;

@@ -5,6 +5,8 @@
   import { databaseStore } from "../stores/database";
   import { RefreshCw } from "lucide-svelte";
   import { csrfPost } from "$lib/utils/csrf";
+  import { isAuthenticated } from "$lib/stores/auth";
+  import { ExponentialBackoff } from "$lib/utils/backoff";
 
   const POLL_INTERVAL = 1000; // Poll every 1 second when syncing
   const STATUS_POLL_INTERVAL = 5000; // Poll status every 5 seconds when idle
@@ -16,19 +18,80 @@
   let pollIntervalId: number | undefined;
   let statusPollIntervalId: number | undefined;
   let errorMessage = $state<string | null>(null);
+  let backoff = new ExponentialBackoff();
+  let nextPollTimeoutId: number | undefined;
+
+  function stopPolling() {
+    if (pollIntervalId) {
+      clearInterval(pollIntervalId);
+      pollIntervalId = undefined;
+    }
+    if (statusPollIntervalId) {
+      clearInterval(statusPollIntervalId);
+      statusPollIntervalId = undefined;
+    }
+    if (nextPollTimeoutId) {
+      clearTimeout(nextPollTimeoutId);
+      nextPollTimeoutId = undefined;
+    }
+  }
+
+  function scheduleNextPoll(delay: number) {
+    if (nextPollTimeoutId) {
+      clearTimeout(nextPollTimeoutId);
+    }
+    nextPollTimeoutId = setTimeout(() => {
+      checkSyncStatus();
+    }, delay) as unknown as number;
+  }
 
   async function checkSyncStatus() {
     if (!browser) return;
 
+    // Check authentication before making request
+    if (!$isAuthenticated) {
+      stopPolling();
+      return;
+    }
+
     try {
       const response = await fetch("/api/sync/status");
+
+      // Handle 401 Unauthorized - stop polling if not authenticated
+      if (response.status === 401) {
+        stopPolling();
+        isAuthenticated.set(false);
+        return;
+      }
+
       if (response.ok) {
+        // Success - reset backoff
+        const wasInBackoff = backoff.getFailureCount() > 0;
+        backoff.recordSuccess();
         const data = await response.json();
         const wasSyncing = syncStatus === "syncing" || isRefreshing;
         syncStatus = data.status;
         serverLastSyncTime = data.lastSyncTime;
         progressPercent = data.progressPercent ?? null;
         errorMessage = data.error || null;
+
+        // If we were in backoff mode, restart normal polling intervals
+        // The $effect will handle setting up the correct intervals based on syncStatus
+        if (wasInBackoff && !pollIntervalId && !statusPollIntervalId) {
+          // Trigger reactivity by accessing syncStatus in a way that causes $effect to re-run
+          // Actually, syncStatus change above should trigger $effect, but ensure intervals restart
+          if (syncStatus === "syncing" && !pollIntervalId) {
+            pollIntervalId = setInterval(
+              checkSyncStatus,
+              POLL_INTERVAL
+            ) as unknown as number;
+          } else if (syncStatus !== "syncing" && !statusPollIntervalId) {
+            statusPollIntervalId = setInterval(
+              checkSyncStatus,
+              STATUS_POLL_INTERVAL
+            ) as unknown as number;
+          }
+        }
 
         // If sync completed (was syncing, now idle), reload data
         if (wasSyncing && syncStatus === "idle" && serverLastSyncTime) {
@@ -46,9 +109,21 @@
           // Make sure isRefreshing is false when server says idle
           isRefreshing = false;
         }
+      } else {
+        // Request failed - record failure and use backoff
+        const delay = backoff.recordFailure();
+        console.debug(
+          `Sync status poll failed (${response.status}), retrying in ${delay}ms`
+        );
+        stopPolling();
+        scheduleNextPoll(delay);
       }
     } catch (error) {
-      console.debug("Status poll error:", error);
+      // Network error - record failure and use backoff
+      const delay = backoff.recordFailure();
+      console.debug("Status poll error:", error, `retrying in ${delay}ms`);
+      stopPolling();
+      scheduleNextPoll(delay);
     }
   }
 
@@ -142,7 +217,17 @@
   $effect(() => {
     if (!browser) return;
 
+    // Only set up intervals if authenticated and no backoff is active
+    if (!$isAuthenticated || backoff.getFailureCount() > 0) {
+      return;
+    }
+
     if (syncStatus === "syncing" && !pollIntervalId) {
+      // Clear status poll interval when syncing
+      if (statusPollIntervalId) {
+        clearInterval(statusPollIntervalId);
+        statusPollIntervalId = undefined;
+      }
       pollIntervalId = setInterval(
         checkSyncStatus,
         POLL_INTERVAL
@@ -150,6 +235,13 @@
     } else if (syncStatus !== "syncing" && pollIntervalId) {
       clearInterval(pollIntervalId);
       pollIntervalId = undefined;
+      // Restart status poll interval when not syncing
+      if (!statusPollIntervalId) {
+        statusPollIntervalId = setInterval(
+          checkSyncStatus,
+          STATUS_POLL_INTERVAL
+        ) as unknown as number;
+      }
     }
 
     return () => {
@@ -161,8 +253,7 @@
   });
 
   onDestroy(() => {
-    if (pollIntervalId) clearInterval(pollIntervalId);
-    if (statusPollIntervalId) clearInterval(statusPollIntervalId);
+    stopPolling();
   });
 </script>
 

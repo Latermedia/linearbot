@@ -5,6 +5,8 @@
   import Button from "$lib/components/Button.svelte";
   import { csrfPost } from "$lib/utils/csrf";
   import { databaseStore } from "../stores/database";
+  import { isAuthenticated } from "$lib/stores/auth";
+  import { ExponentialBackoff } from "$lib/utils/backoff";
 
   let {
     onclose,
@@ -107,6 +109,8 @@
   let hasInitialStatus = $state(false); // Track if initial status check completed
 
   let pollIntervalId: number | undefined;
+  let backoff = new ExponentialBackoff();
+  let nextPollTimeoutId: number | undefined;
 
   const isSyncing = $derived(syncStatus === "syncing");
 
@@ -151,12 +155,51 @@
     }
   }
 
+  function stopPolling() {
+    if (pollIntervalId) {
+      clearInterval(pollIntervalId);
+      pollIntervalId = undefined;
+    }
+    if (nextPollTimeoutId) {
+      clearTimeout(nextPollTimeoutId);
+      nextPollTimeoutId = undefined;
+    }
+  }
+
+  function scheduleNextPoll(delay: number) {
+    if (nextPollTimeoutId) {
+      clearTimeout(nextPollTimeoutId);
+    }
+    nextPollTimeoutId = setTimeout(() => {
+      checkSyncStatus();
+    }, delay) as unknown as number;
+  }
+
   async function checkSyncStatus() {
     if (!browser) return;
 
+    // Check authentication before making request
+    if (!$isAuthenticated) {
+      stopPolling();
+      hasInitialStatus = true; // Mark as checked to avoid hanging
+      return;
+    }
+
     try {
       const response = await fetch("/api/sync/status");
+
+      // Handle 401 Unauthorized - stop polling if not authenticated
+      if (response.status === 401) {
+        stopPolling();
+        isAuthenticated.set(false);
+        hasInitialStatus = true; // Mark as checked to avoid hanging
+        return;
+      }
+
       if (response.ok) {
+        // Success - reset backoff
+        const wasInBackoff = backoff.getFailureCount() > 0;
+        backoff.recordSuccess();
         const data = await response.json();
         const wasSyncing = syncStatus === "syncing";
         const previousSyncTime = serverLastSyncTime;
@@ -169,6 +212,18 @@
         apiQueryCount = data.apiQueryCount ?? null;
         phases = data.phases ?? [];
         hasInitialStatus = true; // Mark initial status check as complete
+
+        // If we were in backoff mode, ensure intervals restart
+        // The $effect will handle setting up the correct intervals based on syncStatus
+        if (wasInBackoff && !pollIntervalId) {
+          const interval = isSyncing
+            ? POLL_INTERVAL_SYNCING
+            : POLL_INTERVAL_IDLE;
+          pollIntervalId = setInterval(
+            checkSyncStatus,
+            interval
+          ) as unknown as number;
+        }
 
         // Detect if sync just completed
         const syncTimeChanged =
@@ -195,11 +250,21 @@
           previousLastSyncTime = serverLastSyncTime;
         }
       } else {
-        // Response not ok, but still mark as checked to avoid hanging
-        hasInitialStatus = true;
+        // Request failed - record failure and use backoff
+        const delay = backoff.recordFailure();
+        console.debug(
+          `Sync status poll failed (${response.status}), retrying in ${delay}ms`
+        );
+        stopPolling();
+        scheduleNextPoll(delay);
+        hasInitialStatus = true; // Mark as checked to avoid hanging
       }
     } catch (err) {
-      console.debug("Status poll error:", err);
+      // Network error - record failure and use backoff
+      const delay = backoff.recordFailure();
+      console.debug("Status poll error:", err, `retrying in ${delay}ms`);
+      stopPolling();
+      scheduleNextPoll(delay);
       // Even on error, mark as checked so we don't hang on loading state
       hasInitialStatus = true;
     }
@@ -312,10 +377,17 @@
 
   // Adjust polling frequency based on sync status
   $effect(() => {
-    if (!browser || !pollIntervalId) return;
+    if (!browser) return;
+
+    // Only set up intervals if authenticated and no backoff is active
+    if (!$isAuthenticated || backoff.getFailureCount() > 0) {
+      return;
+    }
 
     // Clear existing interval and set new one with appropriate frequency
-    clearInterval(pollIntervalId);
+    if (pollIntervalId) {
+      clearInterval(pollIntervalId);
+    }
     const interval = isSyncing ? POLL_INTERVAL_SYNCING : POLL_INTERVAL_IDLE;
     pollIntervalId = setInterval(
       checkSyncStatus,
@@ -325,14 +397,13 @@
     return () => {
       if (pollIntervalId) {
         clearInterval(pollIntervalId);
+        pollIntervalId = undefined;
       }
     };
   });
 
   onDestroy(() => {
-    if (pollIntervalId) {
-      clearInterval(pollIntervalId);
-    }
+    stopPolling();
   });
 </script>
 
