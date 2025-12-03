@@ -31,6 +31,8 @@ Linear API → Sync Service → SQLite → SvelteKit API → Frontend
 ## Patterns
 
 - **Database**: Use `src/db/queries.ts` for all DB operations
+  - Production: Persistent SQLite at `/data/linear-bot.db` (Fly.io volume)
+  - Development: SQLite file at `linear-bot.db` in project root
 - **API routes**: Return JSON, handle errors consistently
 - **Sync**: `src/services/sync-service.ts` manages Linear data fetch
 - **Stores**: Svelte stores in `src/lib/stores/` for shared state

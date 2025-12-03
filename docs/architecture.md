@@ -64,6 +64,40 @@ docs/               # Documentation
 - Rate limit handling
 - Pagination support
 
+## Deployment & Storage
+
+### Database Persistence
+
+The application uses SQLite for data storage:
+
+- **Development**: Database file stored as `linear-bot.db` in the project root
+- **Production**: Database file stored at `/data/linear-bot.db` on a Fly.io persistent volume
+
+The database connection (`src/db/connection.ts`) automatically selects the appropriate path based on the `NODE_ENV` environment variable.
+
+### Fly.io Volume Configuration
+
+In production, the SQLite database is persisted using a Fly.io volume:
+
+- **Volume mount**: `/data`
+- **Database path**: `/data/linear-bot.db`
+- **Volume name**: `linear_bot_data`
+- **Volume size**: 1GB (configurable)
+
+The volume persists across deployments and machine restarts, ensuring data durability. To create the volume:
+
+```bash
+fly volumes create linear_bot_data --region iad --size 1
+```
+
+The volume mount is configured in `fly.toml`:
+
+```toml
+[[mounts]]
+  source = "linear_bot_data"
+  destination = "/data"
+```
+
 ## Derived Data Pattern
 
 Aggregate stats are computed during sync and stored in dedicated tables, not calculated at read time.

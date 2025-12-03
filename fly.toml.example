@@ -1,7 +1,9 @@
 # Fly.io configuration for linear-bot
-# Single-node, stateless deployment with in-memory database
+# Single-node deployment with persistent database volume
 #
 # Copy this file to fly.toml and update with your app name and region
+# Before deploying, create the volume:
+#   fly volumes create linear_bot_data --region iad --size 1
 
 app = "your-app-name"
 primary_region = "iad"
@@ -29,4 +31,8 @@ primary_region = "iad"
   cpu_kind = "shared"
   cpus = 1
   memory_mb = 512
+
+[[mounts]]
+  source = "linear_bot_data"
+  destination = "/data"
 
