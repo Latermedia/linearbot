@@ -176,7 +176,9 @@
           {/if}
         </div>
         <div class="flex gap-4 items-center">
-          <SyncIndicator />
+          {#if $isAuthenticated}
+            <SyncIndicator />
+          {/if}
           <ThemeToggle />
           {#if $isAuthenticated}
             <Button
