@@ -210,8 +210,11 @@
     <!-- Group by selector (hidden when groupByState is true) -->
     {#if !groupByState}
       <div class="flex justify-end items-center gap-2">
-        <label class="text-xs text-neutral-400">Group by:</label>
+        <label for="group-by-select" class="text-xs text-neutral-400"
+          >Group by:</label
+        >
         <select
+          id="group-by-select"
           bind:value={groupBy}
           class="px-2 py-1 text-xs text-white rounded border transition-colors duration-150 bg-neutral-900 border-white/10 focus:border-violet-500 focus:ring-1 focus:ring-violet-500/50 focus:outline-none"
         >

@@ -484,8 +484,9 @@
                   handlePhaseToggle(option.phase);
                 }
               }}
-              role={isFullSync || isRequired ? undefined : "button"}
-              tabindex={isFullSync || isRequired ? undefined : 0}
+              {...isFullSync || isRequired
+                ? {}
+                : { role: "button", tabindex: 0 }}
               onkeydown={(e) => {
                 if (
                   !isFullSync &&
