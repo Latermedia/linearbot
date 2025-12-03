@@ -38,6 +38,7 @@ import { syncInitiativeProjects } from "./phases/initiative-projects.js";
 import { syncInitiatives } from "./phases/initiatives.js";
 import { syncComputingMetrics } from "./phases/computing-metrics.js";
 import type { PhaseContext } from "./types.js";
+import { ProjectDataCache } from "./utils/project-cache.js";
 
 /**
  * Performs sync of Linear issues to local database
@@ -88,6 +89,7 @@ export async function performSync(
   );
 
   // Helper function to increment API query count and update progress based on query count
+  // This provides smooth, consistent progress based on average queries per phase
   const incrementApiQuery = () => {
     apiQueryCount++;
     const currentPhase = currentPhaseRef.current;
@@ -110,6 +112,7 @@ export async function performSync(
     progress = Math.round(progress * 100) / 100;
 
     // Update progress via callbacks and database
+    // This is the primary progress indicator - smooth and consistent
     callbacks?.onProgressPercent?.(progress);
     setSyncProgress(progress);
   };
@@ -117,6 +120,9 @@ export async function performSync(
   // Determine includeProjectSync from syncOptions if provided
   const effectiveIncludeProjectSync =
     syncOptions?.phases.includes("active_projects") ?? includeProjectSync;
+
+  // Declare projectDataCache at function scope for cleanup in catch block
+  let projectDataCache: ProjectDataCache | undefined;
 
   // Wrap entire function in try-catch to ensure we never crash the app
   try {
@@ -283,6 +289,7 @@ export async function performSync(
     const activeProjectIds = new Set<string>();
     const projectDescriptionsMap = new Map<string, string | null>();
     const projectUpdatesMap = new Map<string, ProjectUpdate[]>();
+    const projectDataCache = new ProjectDataCache();
 
     const phaseContext: PhaseContext = {
       linearClient,
@@ -296,6 +303,7 @@ export async function performSync(
       activeProjectIds,
       projectDescriptionsMap,
       projectUpdatesMap,
+      projectDataCache,
       cumulativeNewCount,
       cumulativeUpdatedCount,
       apiQueryCount,
@@ -430,6 +438,9 @@ export async function performSync(
     clearPartialSyncState();
     setSyncStatus("idle");
 
+    // Clear project data cache
+    projectDataCache.clear();
+
     // Save phase query counts for use in next sync
     savePhaseQueryCounts(phaseQueryCounts);
 
@@ -451,6 +462,11 @@ export async function performSync(
       projectIssueCount: 0,
     };
   } catch (error) {
+    // Clear project data cache on error
+    if (typeof projectDataCache !== "undefined") {
+      projectDataCache.clear();
+    }
+
     const errorMessage =
       error instanceof Error ? error.message : "An unknown error occurred";
     console.error(`[SYNC] Sync error: ${errorMessage}`, error);

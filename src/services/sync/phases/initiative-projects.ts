@@ -12,6 +12,11 @@ import {
   updateSyncMetadata,
 } from "../../../db/queries.js";
 import { RateLimitError } from "../../../linear/client.js";
+import {
+  checkForRateLimitError,
+  handleRateLimitError,
+  type CancellationFlag,
+} from "../utils/error-handling.js";
 
 export interface InitiativeProjectsResult {
   newCount: number;
@@ -26,6 +31,7 @@ export async function syncInitiativeProjects(
     callbacks,
     projectDescriptionsMap,
     projectUpdatesMap,
+    projectDataCache,
     apiQueryCount,
     updatePhase,
     shouldRunPhase,
@@ -118,7 +124,7 @@ export async function syncInitiativeProjects(
 
       const limit = pLimit(PROJECT_SYNC_CONCURRENCY);
       // Shared cancellation flag - when rate limit is hit, set this to stop all concurrent operations
-      const cancelled = { value: false };
+      const cancelled: CancellationFlag = { value: false };
       const initiativeProjectIssues: import("../../../linear/client.js").LinearIssueData[] =
         [];
 
@@ -137,11 +143,7 @@ export async function syncInitiativeProjects(
           );
           return projectIssues;
         } catch (error) {
-          // If rate limit error, cancel all other operations and rethrow
-          if (error instanceof RateLimitError) {
-            cancelled.value = true;
-            throw error;
-          }
+          handleRateLimitError(error, cancelled);
           throw error;
         }
       };
@@ -153,24 +155,11 @@ export async function syncInitiativeProjects(
       );
 
       // Check if any promise was rejected due to rate limit
-      const rateLimitError = allInitiativeProjectIssuesResults.find(
-        (r) =>
-          r.status === "rejected" &&
-          (r.reason instanceof RateLimitError ||
-            (r.reason instanceof Error &&
-              r.reason.message.includes("rate limit")))
+      const rateLimitError = checkForRateLimitError(
+        allInitiativeProjectIssuesResults
       );
-
       if (rateLimitError) {
-        // Extract the actual error
-        const error =
-          rateLimitError.status === "rejected" ? rateLimitError.reason : null;
-        if (error instanceof RateLimitError) {
-          throw error;
-        }
-        throw new RateLimitError(
-          error instanceof Error ? error.message : "Rate limit exceeded"
-        );
+        throw rateLimitError;
       }
 
       // Collect successful results
@@ -190,7 +179,7 @@ export async function syncInitiativeProjects(
         updatedCount = counts.updatedCount;
       }
 
-      // Fetch project labels and content directly from Linear API for each project
+      // Fetch project labels and content (using cache)
       const initiativeProjectLabelsMap = new Map<string, string[]>();
       const initiativeProjectContentMap = new Map<string, string | null>();
 
@@ -199,26 +188,37 @@ export async function syncInitiativeProjects(
         throw new RateLimitError("Rate limit exceeded");
       }
 
-      // Fetch labels and content for each project in parallel
+      // Fetch labels and content for each project in parallel (using cache)
       const projectDataPromises = projectsToSync.map(async (projectId) => {
         // Check cancellation before each API call
         if (cancelled.value) {
           return;
         }
 
+        // Use cache if available
+        if (projectDataCache.has(projectId)) {
+          const cachedData = projectDataCache.get(projectId)!;
+          initiativeProjectLabelsMap.set(projectId, cachedData.labels);
+          initiativeProjectContentMap.set(projectId, cachedData.content);
+          return;
+        }
+
         try {
           const projectData = await linearClient.fetchProjectData(projectId);
+          projectDataCache.set(projectId, {
+            labels: projectData.labels,
+            content: projectData.content,
+          });
           initiativeProjectLabelsMap.set(projectId, projectData.labels);
           initiativeProjectContentMap.set(projectId, projectData.content);
-        } catch (error) {
-          // If rate limit error, cancel all other operations and rethrow
+        } catch (error: unknown) {
           if (error instanceof RateLimitError) {
             cancelled.value = true;
             throw error;
           }
           console.error(
             `[SYNC] Failed to fetch project data for ${projectId}:`,
-            error instanceof Error ? error.message : error
+            error instanceof Error ? error.message : String(error)
           );
           // Continue without labels/content - they're optional
         }
@@ -227,26 +227,10 @@ export async function syncInitiativeProjects(
       const projectDataResults = await Promise.allSettled(projectDataPromises);
 
       // Check if any promise was rejected due to rate limit
-      const projectDataRateLimitError = projectDataResults.find(
-        (r) =>
-          r.status === "rejected" &&
-          (r.reason instanceof RateLimitError ||
-            (r.reason instanceof Error &&
-              r.reason.message.includes("rate limit")))
-      );
-
+      const projectDataRateLimitError =
+        checkForRateLimitError(projectDataResults);
       if (projectDataRateLimitError) {
-        // Extract the actual error
-        const error =
-          projectDataRateLimitError.status === "rejected"
-            ? projectDataRateLimitError.reason
-            : null;
-        if (error instanceof RateLimitError) {
-          throw error;
-        }
-        throw new RateLimitError(
-          error instanceof Error ? error.message : "Rate limit exceeded"
-        );
+        throw projectDataRateLimitError;
       }
 
       await computeAndStoreProjects(
@@ -279,7 +263,7 @@ export async function syncInitiativeProjects(
     }
     console.error(
       `[SYNC] Error syncing initiative projects (continuing anyway):`,
-      error instanceof Error ? error.message : error
+      error instanceof Error ? error.message : String(error)
     );
   }
 

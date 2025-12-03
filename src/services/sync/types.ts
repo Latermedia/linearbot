@@ -32,6 +32,7 @@ export interface SyncOptions {
 import type { LinearAPIClient } from "../../linear/client.js";
 import type { LinearIssueData, ProjectUpdate } from "../../linear/client.js";
 import type { PartialSyncState } from "../../db/queries.js";
+import type { ProjectDataCache } from "./utils/project-cache.js";
 
 export interface PhaseContext {
   linearClient: LinearAPIClient;
@@ -45,6 +46,7 @@ export interface PhaseContext {
   activeProjectIds: Set<string>;
   projectDescriptionsMap: Map<string, string | null>;
   projectUpdatesMap: Map<string, ProjectUpdate[]>;
+  projectDataCache: ProjectDataCache;
   cumulativeNewCount: number;
   cumulativeUpdatedCount: number;
   apiQueryCount: number;

@@ -591,6 +591,7 @@ export class LinearAPIClient {
     if (projectIds.length === 0) return [];
 
     const issues: LinearIssueData[] = [];
+    const issueIds = new Set<string>(); // Track issue IDs for O(1) duplicate detection
     const totalProjects = projectIds.length;
 
     // Fetch issues for each project (Linear doesn't support OR in project filters)
@@ -731,8 +732,8 @@ export class LinearAPIClient {
           // Skip issues without team or state
           if (!issue.team || !issue.state) continue;
 
-          // Skip duplicates (issue might already be in started issues)
-          if (issues.some((i) => i.id === issue.id)) continue;
+          // Skip duplicates (issue might already be in started issues) - O(1) lookup
+          if (issueIds.has(issue.id)) continue;
 
           // Capture project name from first issue
           if (!projectName && issue.project?.name) {
@@ -804,6 +805,7 @@ export class LinearAPIClient {
 
           issues.push(issueData);
           projectIssues.push(issueData);
+          issueIds.add(issue.id);
         }
 
         hasMore = data.pageInfo.hasNextPage;
@@ -814,8 +816,12 @@ export class LinearAPIClient {
         const projectDisplayName = projectName || projectId;
         const currentCount = projectIssues.length;
         const pageSize = data.nodes.length;
+        // Only show project count if processing multiple projects
+        const projectCountText =
+          totalProjects > 1 ? `${projectIndex + 1}/${totalProjects} ` : "";
+        const projectIdText = projectName ? ` (ID: ${projectId})` : "";
         console.log(
-          `[SYNC] Project ${projectIndex + 1}/${totalProjects} (${projectDisplayName}, ID: ${projectId}): ${currentCount} issues (${pageSize} in this page)`
+          `[SYNC] Project${projectCountText ? projectCountText : " "}(${projectDisplayName}${projectIdText}): ${currentCount} issues (${pageSize} in this page)`
         );
 
         if (onProgress) {
@@ -839,8 +845,11 @@ export class LinearAPIClient {
       // Log summary for this project
       const projectDisplayName = projectName || projectId;
       const finalCount = projectIssues.length;
+      // Only show project count if processing multiple projects
+      const projectCountText =
+        totalProjects > 1 ? `${projectIndex + 1}/${totalProjects}` : "";
       console.log(
-        `[SYNC] Project ${projectIndex + 1}/${totalProjects} summary: ${projectDisplayName} (ID: ${projectId}) - ${finalCount} issues`
+        `[SYNC] Project${projectCountText ? ` ${projectCountText}` : ""} summary: ${projectDisplayName}${projectName ? ` (ID: ${projectId})` : ""} - ${finalCount} issues`
       );
 
       // Fetch project description along the way

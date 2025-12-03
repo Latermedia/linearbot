@@ -502,6 +502,11 @@
       {#if serverLastSyncTime}
         <div class="text-xs text-neutral-500">
           Last synced {formatLastSync(serverLastSyncTime)}
+          {#if apiQueryCount !== null}
+            <span class="text-neutral-400">
+              · {apiQueryCount.toLocaleString()} queries</span
+            >
+          {/if}
         </div>
       {/if}
 
@@ -557,7 +562,7 @@
           {/if}
         </div>
         <div class="overflow-y-auto space-y-2 max-h-64">
-          {#each phaseOptions as option}
+          {#each phaseOptions as option (option.phase)}
             {@const isRequired = option.phase === REQUIRED_PHASE}
             <div
               class="flex items-start gap-3 p-3 rounded-lg border border-neutral-700 bg-neutral-800/30 {isRequired
