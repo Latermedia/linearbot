@@ -268,6 +268,9 @@ export function initializeDatabase(db: Database): void {
       comment_count INTEGER,
       created_at TEXT NOT NULL,
       updated_at TEXT NOT NULL,
+      started_at TEXT,
+      completed_at TEXT,
+      canceled_at TEXT,
       url TEXT NOT NULL,
       project_id TEXT,
       project_name TEXT,
@@ -276,170 +279,19 @@ export function initializeDatabase(db: Database): void {
       project_health TEXT,
       project_updated_at TEXT,
       project_lead_id TEXT,
-      project_lead_name TEXT
+      project_lead_name TEXT,
+      project_target_date TEXT,
+      project_start_date TEXT,
+      project_completed_at TEXT,
+      parent_id TEXT,
+      labels TEXT
     )
   `);
 
-  // Add project lead columns if they don't exist (migration)
-  try {
-    db.run(`ALTER TABLE issues ADD COLUMN project_lead_id TEXT`);
-  } catch (_e) {
-    // Column already exists, ignore
-  }
-  try {
-    db.run(`ALTER TABLE issues ADD COLUMN project_lead_name TEXT`);
-  } catch (_e) {
-    // Column already exists, ignore
-  }
-  try {
-    db.run(`ALTER TABLE issues ADD COLUMN project_health TEXT`);
-  } catch (_e) {
-    // Column already exists, ignore
-  }
-  try {
-    db.run(`ALTER TABLE issues ADD COLUMN project_status TEXT`);
-  } catch (_e) {
-    // Column already exists, ignore
-  }
   // Rename project_state to project_state_category in issues table (migration)
   try {
     db.run(
       `ALTER TABLE issues RENAME COLUMN project_state TO project_state_category`
-    );
-  } catch (_e) {
-    // Column might not exist or already renamed, ignore
-  }
-
-  // Add creator columns if they don't exist (migration)
-  try {
-    db.run(`ALTER TABLE issues ADD COLUMN creator_id TEXT`);
-  } catch (_e) {
-    // Column already exists, ignore
-  }
-  try {
-    db.run(`ALTER TABLE issues ADD COLUMN creator_name TEXT`);
-  } catch (_e) {
-    // Column already exists, ignore
-  }
-
-  // Add assignee avatar column if it doesn't exist (migration)
-  try {
-    db.run(`ALTER TABLE issues ADD COLUMN assignee_avatar_url TEXT`);
-  } catch (_e) {
-    // Column already exists, ignore
-  }
-
-  // Add estimate and last_comment_at columns if they don't exist (migration)
-  try {
-    db.run(`ALTER TABLE issues ADD COLUMN estimate REAL`);
-  } catch (_e) {
-    // Column already exists, ignore
-  }
-  try {
-    db.run(`ALTER TABLE issues ADD COLUMN last_comment_at TEXT`);
-  } catch (_e) {
-    // Column already exists, ignore
-  }
-  try {
-    db.run(`ALTER TABLE issues ADD COLUMN comment_count INTEGER`);
-  } catch (_e) {
-    // Column already exists, ignore
-  }
-  try {
-    db.run(`ALTER TABLE issues ADD COLUMN started_at TEXT`);
-  } catch (_e) {
-    // Column already exists, ignore
-  }
-  try {
-    db.run(`ALTER TABLE issues ADD COLUMN completed_at TEXT`);
-  } catch (_e) {
-    // Column already exists, ignore
-  }
-  try {
-    db.run(`ALTER TABLE issues ADD COLUMN canceled_at TEXT`);
-  } catch (_e) {
-    // Column already exists, ignore
-  }
-  try {
-    db.run(`ALTER TABLE issues ADD COLUMN parent_id TEXT`);
-  } catch (_e) {
-    // Column already exists, ignore
-  }
-  try {
-    db.run(`ALTER TABLE issues ADD COLUMN project_target_date TEXT`);
-  } catch (_e) {
-    // Column already exists, ignore
-  }
-  try {
-    db.run(`ALTER TABLE issues ADD COLUMN project_start_date TEXT`);
-  } catch (_e) {
-    // Column already exists, ignore
-  }
-  try {
-    db.run(`ALTER TABLE issues ADD COLUMN project_completed_at TEXT`);
-  } catch (_e) {
-    // Column already exists, ignore
-  }
-  try {
-    db.run(`ALTER TABLE issues ADD COLUMN labels TEXT`);
-  } catch (_e) {
-    // Column already exists, ignore
-  }
-
-  // Add labels column to projects table if it doesn't exist (migration)
-  try {
-    db.run(`ALTER TABLE projects ADD COLUMN labels TEXT`);
-  } catch (_e) {
-    // Column already exists, ignore
-  }
-  // Add project_description column to projects table if it doesn't exist (migration)
-  try {
-    db.run(`ALTER TABLE projects ADD COLUMN project_description TEXT`);
-  } catch (_e) {
-    // Column already exists, ignore
-  }
-  // Add project_content column to projects table if it doesn't exist (migration)
-  try {
-    db.run(`ALTER TABLE projects ADD COLUMN project_content TEXT`);
-  } catch (_e) {
-    // Column already exists, ignore
-  }
-  // Add project_updates column to projects table if it doesn't exist (migration)
-  try {
-    db.run(`ALTER TABLE projects ADD COLUMN project_updates TEXT`);
-  } catch (_e) {
-    // Column already exists, ignore
-  }
-  // Add target_date column to projects table if it doesn't exist (migration)
-  try {
-    db.run(`ALTER TABLE projects ADD COLUMN target_date TEXT`);
-  } catch (_e) {
-    // Column already exists, ignore
-  }
-  // Add has_date_discrepancy column to projects table if it doesn't exist (migration)
-  try {
-    db.run(
-      `ALTER TABLE projects ADD COLUMN has_date_discrepancy INTEGER NOT NULL DEFAULT 0`
-    );
-  } catch (_e) {
-    // Column already exists, ignore
-  }
-  // Add project_status column to projects table if it doesn't exist (migration)
-  try {
-    db.run(`ALTER TABLE projects ADD COLUMN project_status TEXT`);
-  } catch (_e) {
-    // Column already exists, ignore
-  }
-  // Add completed_at column to projects table if it doesn't exist (migration)
-  try {
-    db.run(`ALTER TABLE projects ADD COLUMN completed_at TEXT`);
-  } catch (_e) {
-    // Column already exists, ignore
-  }
-  // Rename project_state to project_state_category in projects table (migration)
-  try {
-    db.run(
-      `ALTER TABLE projects RENAME COLUMN project_state TO project_state_category`
     );
   } catch (_e) {
     // Column might not exist or already renamed, ignore
@@ -496,6 +348,15 @@ export function initializeDatabase(db: Database): void {
     )
   `);
 
+  // Rename project_state to project_state_category in projects table (migration)
+  try {
+    db.run(
+      `ALTER TABLE projects RENAME COLUMN project_state TO project_state_category`
+    );
+  } catch (_e) {
+    // Column might not exist or already renamed, ignore
+  }
+
   // Create engineers table with computed WIP metrics
   db.run(`
     CREATE TABLE IF NOT EXISTS engineers (
@@ -542,33 +403,6 @@ export function initializeDatabase(db: Database): void {
     )
   `);
 
-  // Add health_updates column to initiatives table if it doesn't exist (migration)
-  try {
-    db.run(`ALTER TABLE initiatives ADD COLUMN health_updates TEXT`);
-  } catch (_e) {
-    // Column already exists, ignore
-  }
-  // Add content column to initiatives table if it doesn't exist (migration)
-  try {
-    db.run(`ALTER TABLE initiatives ADD COLUMN content TEXT`);
-  } catch (_e) {
-    // Column already exists, ignore
-  }
-
-  // Add avatar_url column to engineers table if it doesn't exist (migration)
-  try {
-    db.run(`ALTER TABLE engineers ADD COLUMN avatar_url TEXT`);
-  } catch (_e) {
-    // Column already exists, ignore
-  }
-
-  // Add last_synced_at column to projects table if it doesn't exist (migration)
-  try {
-    db.run(`ALTER TABLE projects ADD COLUMN last_synced_at TEXT`);
-  } catch (_e) {
-    // Column already exists, ignore
-  }
-
   // Create sync metadata table to track sync status and timing
   db.run(`
     CREATE TABLE IF NOT EXISTS sync_metadata (
@@ -582,27 +416,6 @@ export function initializeDatabase(db: Database): void {
       sync_status_message TEXT
     )
   `);
-
-  // Add partial_sync_state column if it doesn't exist (migration)
-  try {
-    db.run(`ALTER TABLE sync_metadata ADD COLUMN partial_sync_state TEXT`);
-  } catch (_e) {
-    // Column already exists, ignore
-  }
-
-  // Add api_query_count column if it doesn't exist (migration)
-  try {
-    db.run(`ALTER TABLE sync_metadata ADD COLUMN api_query_count INTEGER`);
-  } catch (_e) {
-    // Column already exists, ignore
-  }
-
-  // Add sync_status_message column if it doesn't exist (migration)
-  try {
-    db.run(`ALTER TABLE sync_metadata ADD COLUMN sync_status_message TEXT`);
-  } catch (_e) {
-    // Column already exists, ignore
-  }
 
   // Add phase_query_counts column if it doesn't exist (migration)
   // Stores JSON object mapping phase names to query counts: {"initial_issues": 50, "active_projects": 1200, ...}
