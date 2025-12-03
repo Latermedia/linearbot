@@ -1,5 +1,33 @@
 # Release Notes
 
+## v0.4.0
+
+### Added
+
+- Initiatives view with content field and markdown rendering
+- Sync modal with phase selection for granular control
+- Incremental project sync with improved progress tracking
+- Project content syncing from Linear API
+- Database persistence to Fly.io volume
+- Exponential backoff for sync status polling
+- Gantt chart visual styling improvements and current date indicator
+- Authentication system with session management
+
+### Changed
+
+- Refactored sync service into phase-based architecture
+- Consolidated Linear API calls to reduce request count
+- Improved sync progress tracking and state management
+- Enhanced error handling and input validation
+
+### Fixed
+
+- Race conditions in sync progress tracking
+- Sync status display for planned and completed projects
+- Client redirect issues on initial load
+- Empty request body handling in sync API
+- Various sync and UI stability improvements
+
 ## v0.3.0
 
 ### Added
