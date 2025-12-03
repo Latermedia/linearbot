@@ -179,9 +179,7 @@ export async function syncInitiativeProjects(
         .map((r) => (r.status === "fulfilled" ? r.value : []))
         .flat();
 
-      for (const issues of allInitiativeProjectIssues) {
-        initiativeProjectIssues.push(...issues);
-      }
+      initiativeProjectIssues.push(...allInitiativeProjectIssues);
 
       if (initiativeProjectIssues.length > 0) {
         console.log(
