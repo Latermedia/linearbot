@@ -10,6 +10,7 @@
     id: string;
     name: string;
     description: string | null;
+    content: string | null;
     status: string | null;
     target_date: string | null;
     completed_at: string | null;
@@ -196,9 +197,5 @@
 
 <!-- Initiative Detail Modal -->
 {#if selectedInitiative}
-  <InitiativeDetailModal
-    initiative={selectedInitiative}
-    onclose={closeModal}
-  />
+  <InitiativeDetailModal initiative={selectedInitiative} onclose={closeModal} />
 {/if}
-

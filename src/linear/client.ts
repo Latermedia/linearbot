@@ -114,6 +114,7 @@ export interface LinearInitiativeData {
   id: string;
   name: string;
   description: string | null;
+  content: string | null;
   status: string | null;
   targetDate: string | null;
   completedAt: string | null;
@@ -1481,6 +1482,7 @@ export class LinearAPIClient {
             id
             name
             description
+            content
             status
             targetDate
             completedAt
@@ -1534,6 +1536,7 @@ export class LinearAPIClient {
           id: initiative.id,
           name: initiative.name,
           description: initiative.description || null,
+          content: initiative.content || null,
           status: initiative.status || null,
           targetDate: initiative.targetDate || null,
           completedAt: initiative.completedAt || null,

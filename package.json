@@ -31,6 +31,7 @@
     "@linear/sdk": "^35.0.0",
     "html2canvas": "^1.4.1",
     "lucide-svelte": "^0.554.0",
+    "marked": "^17.0.1",
     "p-limit": "^7.2.0"
   },
   "lint-staged": {
@@ -54,6 +55,7 @@
     "@tailwindcss/postcss": "^4.1.17",
     "@testing-library/svelte": "^5.2.9",
     "@types/bun": "latest",
+    "@types/marked": "^6.0.0",
     "autoprefixer": "^10.4.22",
     "clsx": "^2.1.1",
     "eslint": "^9.39.1",

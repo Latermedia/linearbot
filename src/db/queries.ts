@@ -756,13 +756,14 @@ export function upsertInitiative(initiative: Initiative): void {
   const db = getDatabase();
   const query = db.prepare(`
     INSERT INTO initiatives (
-      id, name, description, status, target_date, completed_at, started_at, archived_at,
+      id, name, description, content, status, target_date, completed_at, started_at, archived_at,
       health, health_updated_at, health_updates, owner_id, owner_name, creator_id, creator_name,
       project_ids, created_at, updated_at
-    ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+    ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
     ON CONFLICT(id) DO UPDATE SET
       name = excluded.name,
       description = excluded.description,
+      content = excluded.content,
       status = excluded.status,
       target_date = excluded.target_date,
       completed_at = excluded.completed_at,
@@ -783,6 +784,7 @@ export function upsertInitiative(initiative: Initiative): void {
     initiative.id,
     initiative.name,
     initiative.description,
+    initiative.content,
     initiative.status,
     initiative.target_date,
     initiative.completed_at,

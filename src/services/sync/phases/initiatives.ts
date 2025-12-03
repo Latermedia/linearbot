@@ -87,6 +87,7 @@ export async function syncInitiatives(context: PhaseContext): Promise<void> {
           id: initiativeData.id,
           name: initiativeData.name,
           description: initiativeData.description,
+          content: initiativeData.content,
           status: initiativeData.status,
           target_date: initiativeData.targetDate,
           completed_at: initiativeData.completedAt,

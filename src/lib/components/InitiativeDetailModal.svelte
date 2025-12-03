@@ -1,11 +1,16 @@
 <script lang="ts">
   import { onMount } from "svelte";
   import { browser } from "$app/environment";
+  import { marked } from "marked";
   import Badge from "./Badge.svelte";
   import UserProfile from "./UserProfile.svelte";
   import Modal from "./Modal.svelte";
   import ProjectsListTable from "./ProjectsListTable.svelte";
-  import { formatDateFull, formatRelativeDate, getHealthDisplay } from "$lib/utils/project-helpers";
+  import {
+    formatDateFull,
+    formatRelativeDate,
+    getHealthDisplay,
+  } from "$lib/utils/project-helpers";
   import type { ProjectSummary } from "$lib/project-data";
   import type { ProjectUpdate } from "../../linear/client";
 
@@ -13,6 +18,7 @@
     id: string;
     name: string;
     description: string | null;
+    content: string | null;
     status: string | null;
     target_date: string | null;
     completed_at: string | null;
@@ -80,7 +86,9 @@
         const data = await response.json();
         const firstIssue = data.issues?.[0];
         if (firstIssue?.url) {
-          const workspaceMatch = firstIssue.url.match(/https:\/\/linear\.app\/([^/]+)/);
+          const workspaceMatch = firstIssue.url.match(
+            /https:\/\/linear\.app\/([^/]+)/
+          );
           if (workspaceMatch) {
             const workspace = workspaceMatch[1];
             initiativeUrl = `https://linear.app/${workspace}/initiative/${initiative.id}`;
@@ -110,7 +118,9 @@
       if (response.ok) {
         const data = await response.json();
         const allProjects = data.projects || [];
-        const projectMap = new Map(allProjects.map((p: any) => [p.project_id, p]));
+        const projectMap = new Map(
+          allProjects.map((p: any) => [p.project_id, p])
+        );
 
         for (const projectId of projectIds) {
           const projectData = projectMap.get(projectId);
@@ -123,7 +133,9 @@
               inProgressIssues: projectData.in_progress_issues || 0,
               totalIssues: projectData.total_issues || 0,
               engineerCount: projectData.engineer_count || 0,
-              teams: new Set(projectData.teams ? JSON.parse(projectData.teams) : []),
+              teams: new Set(
+                projectData.teams ? JSON.parse(projectData.teams) : []
+              ),
               startDate: projectData.start_date,
               targetDate: projectData.target_date,
               lastActivityDate: projectData.last_activity_date,
@@ -153,8 +165,10 @@
 
   const healthDisplay = $derived(getHealthBadgeDisplay(initiative.health));
   const projectIds = $derived(parseProjectIds(initiative.project_ids));
-  
-  function parseHealthUpdates(healthUpdatesJson: string | null): ProjectUpdate[] {
+
+  function parseHealthUpdates(
+    healthUpdatesJson: string | null
+  ): ProjectUpdate[] {
     if (!healthUpdatesJson) return [];
     try {
       const updates = JSON.parse(healthUpdatesJson);
@@ -163,8 +177,21 @@
       return [];
     }
   }
-  
+
   const healthUpdates = $derived(parseHealthUpdates(initiative.health_updates));
+
+  // Render markdown content
+  function renderMarkdown(markdown: string | null): string {
+    if (!markdown) return "";
+    try {
+      return marked.parse(markdown, { breaks: true, gfm: true });
+    } catch (error) {
+      console.error("Failed to parse markdown:", error);
+      return markdown; // Return raw text if parsing fails
+    }
+  }
+
+  const renderedContent = $derived(renderMarkdown(initiative.content));
 
   onMount(() => {
     fetchInitiativeUrl();
@@ -223,7 +250,10 @@
                   : initiative.status || "—"}
             </Badge>
           {/if}
-          <Badge variant={healthDisplay.variant} class={healthDisplay.colorClass}>
+          <Badge
+            variant={healthDisplay.variant}
+            class={healthDisplay.colorClass}
+          >
             {healthDisplay.text}
           </Badge>
         </div>
@@ -293,30 +323,40 @@
         {#if initiative.target_date}
           <div>
             <div class="mb-1 text-xs text-neutral-500">Target Date</div>
-            <div class="text-sm text-white">{formatDateFull(initiative.target_date)}</div>
+            <div class="text-sm text-white">
+              {formatDateFull(initiative.target_date)}
+            </div>
           </div>
         {/if}
         {#if initiative.completed_at}
           <div>
             <div class="mb-1 text-xs text-neutral-500">Completed</div>
-            <div class="text-sm text-white">{formatDateFull(initiative.completed_at)}</div>
+            <div class="text-sm text-white">
+              {formatDateFull(initiative.completed_at)}
+            </div>
           </div>
         {/if}
         {#if initiative.started_at}
           <div>
             <div class="mb-1 text-xs text-neutral-500">Started</div>
-            <div class="text-sm text-white">{formatDateFull(initiative.started_at)}</div>
+            <div class="text-sm text-white">
+              {formatDateFull(initiative.started_at)}
+            </div>
           </div>
         {/if}
         {#if initiative.archived_at}
           <div>
             <div class="mb-1 text-xs text-neutral-500">Archived</div>
-            <div class="text-sm text-white">{formatDateFull(initiative.archived_at)}</div>
+            <div class="text-sm text-white">
+              {formatDateFull(initiative.archived_at)}
+            </div>
           </div>
         {/if}
         <div>
           <div class="mb-1 text-xs text-neutral-500">Created</div>
-          <div class="text-sm text-white">{formatDateFull(initiative.created_at)}</div>
+          <div class="text-sm text-white">
+            {formatDateFull(initiative.created_at)}
+          </div>
         </div>
         <div>
           <div class="mb-1 text-xs text-neutral-500">Updated</div>
@@ -350,7 +390,7 @@
 
         {#if showAllHealthUpdates}
           <div class="space-y-3">
-            {#each healthUpdates as update}
+            {#each healthUpdates as update (update.id)}
               {@const currentUpdateHealthDisplay = update.health
                 ? getHealthDisplay(update.health)
                 : null}
@@ -437,7 +477,10 @@
       {:else if initiative.health_updated_at}
         <div class="p-3 rounded-md border bg-neutral-800/50 border-white/5">
           <div class="flex gap-2 items-center">
-            <Badge variant={healthDisplay.variant} class={healthDisplay.colorClass}>
+            <Badge
+              variant={healthDisplay.variant}
+              class={healthDisplay.colorClass}
+            >
               {healthDisplay.text}
             </Badge>
             <span class="text-xs text-neutral-500">
@@ -448,6 +491,21 @@
       {:else}
         <div class="p-3 rounded-md border bg-neutral-800/50 border-white/5">
           <p class="text-sm text-neutral-400">No health updates available</p>
+        </div>
+      {/if}
+    </div>
+
+    <!-- Content -->
+    <div class="mb-6">
+      <div class="mb-3 text-sm font-medium text-neutral-300">Content</div>
+      {#if initiative.content}
+        <div class="markdown-content text-sm leading-relaxed text-neutral-200">
+          <!-- eslint-disable-next-line svelte/no-at-html-tags -->
+          {@html renderedContent}
+        </div>
+      {:else}
+        <div class="p-3 rounded-md border bg-neutral-800/50 border-white/5">
+          <p class="text-sm text-neutral-400">No content available</p>
         </div>
       {/if}
     </div>
@@ -464,3 +522,132 @@
   {/snippet}
 </Modal>
 
+<style>
+  :global(.markdown-content h1),
+  :global(.markdown-content h2),
+  :global(.markdown-content h3),
+  :global(.markdown-content h4),
+  :global(.markdown-content h5),
+  :global(.markdown-content h6) {
+    font-weight: 600;
+    color: rgb(255 255 255);
+    margin-top: 1rem;
+    margin-bottom: 0.5rem;
+  }
+
+  :global(.markdown-content h1) {
+    font-size: 1.25rem;
+    line-height: 1.75rem;
+  }
+
+  :global(.markdown-content h2) {
+    font-size: 1.125rem;
+    line-height: 1.75rem;
+  }
+
+  :global(.markdown-content h3) {
+    font-size: 1rem;
+    line-height: 1.5rem;
+  }
+
+  :global(.markdown-content p) {
+    margin-bottom: 0.75rem;
+  }
+
+  :global(.markdown-content ul),
+  :global(.markdown-content ol) {
+    margin-bottom: 0.75rem;
+    margin-left: 1.5rem;
+  }
+
+  :global(.markdown-content ul) {
+    list-style-type: disc;
+  }
+
+  :global(.markdown-content ol) {
+    list-style-type: decimal;
+  }
+
+  :global(.markdown-content li) {
+    margin-bottom: 0.25rem;
+  }
+
+  :global(.markdown-content strong) {
+    font-weight: 600;
+    color: rgb(255 255 255);
+  }
+
+  :global(.markdown-content em) {
+    font-style: italic;
+  }
+
+  :global(.markdown-content code) {
+    padding: 0.125rem 0.375rem;
+    border-radius: 0.25rem;
+    font-size: 0.75rem;
+    font-family:
+      ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono",
+      "Courier New", monospace;
+    background-color: rgb(38 38 38);
+    color: rgb(196 181 253);
+  }
+
+  :global(.markdown-content pre) {
+    padding: 0.75rem;
+    border-radius: 0.375rem;
+    background-color: rgb(23 23 23);
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    overflow-x: auto;
+    margin-bottom: 0.75rem;
+  }
+
+  :global(.markdown-content pre code) {
+    background-color: transparent;
+    padding: 0;
+    color: rgb(229 229 229);
+  }
+
+  :global(.markdown-content a) {
+    color: rgb(196 181 253);
+    text-decoration: underline;
+    transition: color 150ms;
+  }
+
+  :global(.markdown-content a:hover) {
+    color: rgb(167 139 250);
+  }
+
+  :global(.markdown-content blockquote) {
+    padding-left: 1rem;
+    border-left: 2px solid rgb(64 64 64);
+    font-style: italic;
+    color: rgb(212 212 212);
+    margin-top: 0.75rem;
+    margin-bottom: 0.75rem;
+  }
+
+  :global(.markdown-content hr) {
+    border-color: rgb(64 64 64);
+    margin-top: 1rem;
+    margin-bottom: 1rem;
+  }
+
+  :global(.markdown-content table) {
+    width: 100%;
+    border-collapse: collapse;
+    margin-bottom: 0.75rem;
+  }
+
+  :global(.markdown-content th),
+  :global(.markdown-content td) {
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    padding: 0.5rem 0.75rem;
+    text-align: left;
+  }
+
+  :global(.markdown-content th) {
+    background-color: rgba(38, 38, 38, 0.5);
+    font-weight: 600;
+    color: rgb(255 255 255);
+  }
+</style>

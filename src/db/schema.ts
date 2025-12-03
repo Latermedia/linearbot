@@ -111,6 +111,7 @@ export interface Initiative {
   id: string;
   name: string;
   description: string | null;
+  content: string | null;
   status: string | null;
   target_date: string | null; // ISO timestamp
   completed_at: string | null; // ISO timestamp
@@ -514,6 +515,7 @@ export function initializeDatabase(db: Database): void {
       id TEXT PRIMARY KEY,
       name TEXT NOT NULL,
       description TEXT,
+      content TEXT,
       status TEXT,
       target_date TEXT,
       completed_at TEXT,
@@ -535,6 +537,12 @@ export function initializeDatabase(db: Database): void {
   // Add health_updates column to initiatives table if it doesn't exist (migration)
   try {
     db.run(`ALTER TABLE initiatives ADD COLUMN health_updates TEXT`);
+  } catch (_e) {
+    // Column already exists, ignore
+  }
+  // Add content column to initiatives table if it doesn't exist (migration)
+  try {
+    db.run(`ALTER TABLE initiatives ADD COLUMN content TEXT`);
   } catch (_e) {
     // Column already exists, ignore
   }
