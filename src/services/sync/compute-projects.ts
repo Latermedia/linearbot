@@ -1,4 +1,4 @@
-import type { ProjectUpdate } from "../../linear/client.js";
+import type { ProjectUpdate, ProjectFullData } from "../../linear/client.js";
 import type { Issue, Project } from "../../db/schema.js";
 import {
   getAllIssues,
@@ -9,6 +9,7 @@ import {
   hasStatusMismatch,
   isStaleUpdate,
   isMissingLead,
+  isPlannedProject,
 } from "../../utils/status-helpers.js";
 import {
   hasViolations,
@@ -30,8 +31,17 @@ import {
 } from "../../lib/utils/project-helpers.js";
 
 /**
+ * Data for projects with zero issues (from fetchProjectFullData)
+ */
+export interface EmptyProjectData {
+  projectId: string;
+  fullData: ProjectFullData;
+}
+
+/**
  * Compute project metrics from issues and store in projects table
  * @param skipDeletion - If true, skip deletion of inactive projects (used during incremental sync)
+ * @param emptyProjects - Projects with zero issues that should still be stored
  */
 export async function computeAndStoreProjects(
   projectLabelsMap?: Map<string, string[]>,
@@ -39,7 +49,8 @@ export async function computeAndStoreProjects(
   projectUpdatesMap?: Map<string, ProjectUpdate[]>,
   syncedProjectIds?: Set<string>,
   _skipDeletion: boolean = false,
-  projectContentMap?: Map<string, string | null>
+  projectContentMap?: Map<string, string | null>,
+  emptyProjects?: EmptyProjectData[]
 ): Promise<number> {
   const syncTimestamp = syncedProjectIds ? new Date().toISOString() : null;
   const allIssues = getAllIssues();
@@ -391,6 +402,107 @@ export async function computeAndStoreProjects(
     };
 
     upsertProject(project);
+  }
+
+  // Handle empty projects (projects with zero issues)
+  // These are typically planned projects that haven't had any issues created yet
+  if (emptyProjects && emptyProjects.length > 0) {
+    console.log(
+      `[SYNC] Processing ${emptyProjects.length} project(s) with zero issues...`
+    );
+
+    for (const { projectId, fullData } of emptyProjects) {
+      // Skip if this project was already processed via issues
+      if (activeProjectIds.has(projectId)) {
+        continue;
+      }
+
+      activeProjectIds.add(projectId);
+
+      // Get project labels from fullData or map
+      let projectLabels: string[] = fullData.labels || [];
+      if (projectLabelsMap?.has(projectId)) {
+        projectLabels = projectLabelsMap.get(projectId) || [];
+      }
+
+      // Get teams from fullData
+      const teams = new Set<string>(fullData.teams?.map((t) => t.key) || []);
+
+      // Get project updates from map
+      const projectUpdates =
+        projectUpdatesMap?.get(projectId) || fullData.updates || [];
+      const sortedUpdates = projectUpdates.sort(
+        (a, b) =>
+          new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()
+      );
+      const projectUpdatesJson =
+        sortedUpdates.length > 0 ? JSON.stringify(sortedUpdates) : null;
+
+      // Calculate flags for empty projects
+      const projectStateCategory = fullData.state || null;
+      const isPlanningPhase = isPlannedProject(projectStateCategory);
+      // For empty projects in planning phase, don't require health
+      const missingHealthFlag = !fullData.health && !isPlanningPhase;
+      // Missing lead if project is in planning phase but has no lead
+      const missingLeadFlag = isPlanningPhase && !fullData.leadName;
+      // Check stale update based on project's updatedAt
+      const isStaleUpdateFlag = fullData.updatedAt
+        ? isStaleUpdate(fullData.updatedAt)
+        : true;
+
+      const emptyProject: Project = {
+        project_id: projectId,
+        project_name: fullData.name || "Unknown Project",
+        project_state_category: projectStateCategory,
+        project_status: fullData.statusName || null,
+        project_health: fullData.health || null,
+        project_updated_at: fullData.updatedAt || null,
+        project_lead_id: fullData.leadId || null,
+        project_lead_name: fullData.leadName || null,
+        project_description: fullData.description || null,
+        project_content: fullData.content || null,
+        total_issues: 0,
+        completed_issues: 0,
+        in_progress_issues: 0,
+        engineer_count: 0,
+        missing_estimate_count: 0,
+        missing_priority_count: 0,
+        no_recent_comment_count: 0,
+        wip_age_violation_count: 0,
+        missing_description_count: 0,
+        total_points: 0,
+        missing_points: 0,
+        average_cycle_time: null,
+        average_lead_time: null,
+        linear_progress: 0,
+        velocity: 0,
+        estimate_accuracy: null,
+        days_per_story_point: null,
+        has_status_mismatch: 0, // No issues, so no mismatch possible
+        is_stale_update: isStaleUpdateFlag ? 1 : 0,
+        missing_lead: missingLeadFlag ? 1 : 0,
+        has_violations: 0, // No issues, so no violations
+        missing_health: missingHealthFlag ? 1 : 0,
+        has_date_discrepancy: 0, // No velocity data, so can't calculate discrepancy
+        start_date: fullData.startDate || null,
+        last_activity_date: fullData.updatedAt || new Date().toISOString(),
+        estimated_end_date: null, // No velocity data to estimate
+        target_date: fullData.targetDate || null,
+        completed_at: fullData.completedAt || null,
+        issues_by_state: JSON.stringify({}),
+        engineers: JSON.stringify([]),
+        teams: JSON.stringify(Array.from(teams)),
+        velocity_by_team: JSON.stringify({}),
+        labels: projectLabels.length > 0 ? JSON.stringify(projectLabels) : null,
+        project_updates: projectUpdatesJson,
+        last_synced_at: syncedProjectIds?.has(projectId) ? syncTimestamp : null,
+      };
+
+      upsertProject(emptyProject);
+      console.log(
+        `[SYNC] Stored empty project: ${emptyProject.project_name} (${projectId})`
+      );
+    }
   }
 
   // Note: We no longer delete projects - all data is preserved for historical tracking

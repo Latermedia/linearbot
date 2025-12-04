@@ -1,11 +1,18 @@
 import type { LinearAPIClient } from "../../../linear/client.js";
-import type { LinearIssueData, ProjectUpdate } from "../../../linear/client.js";
+import type {
+  LinearIssueData,
+  ProjectUpdate,
+  ProjectFullData,
+} from "../../../linear/client.js";
 import type { PartialSyncState } from "../../../db/queries.js";
 import { RateLimitError } from "../../../linear/client.js";
 import pLimit from "p-limit";
 import { PROJECT_SYNC_CONCURRENCY } from "../helpers.js";
 import { writeIssuesToDatabase } from "../utils.js";
-import { computeAndStoreProjects } from "../compute-projects.js";
+import {
+  computeAndStoreProjects,
+  type EmptyProjectData,
+} from "../compute-projects.js";
 import {
   setSyncStatusMessage,
   savePartialSyncState,
@@ -25,6 +32,8 @@ export interface ProjectProcessingResult {
   projectIndex: number;
   projectIssueCount: number;
   projectName: string | null;
+  /** Full project data if project has zero issues (for empty project handling) */
+  emptyProjectData?: ProjectFullData;
 }
 
 export interface ProjectProcessingConfig {
@@ -190,15 +199,19 @@ export async function processProjectsInParallel(
     const projectLabelsMap = new Map<string, string[]>();
     const projectContentMap = new Map<string, string | null>();
 
+    let fullProjectData: ProjectFullData | undefined;
+
     if (!projectDataCache.has(projectId)) {
       try {
         const fullData = await linearClient.fetchProjectFullData(projectId);
-        // Cache all project metadata
+        fullProjectData = fullData;
+        // Cache all project metadata including full data for empty projects
         projectDataCache.set(projectId, {
           labels: fullData.labels,
           content: fullData.content,
           description: fullData.description,
           updates: fullData.updates,
+          fullData: fullData, // Store full data for empty project handling
         });
         // Populate the description and updates maps
         projectDescriptionsMap.set(projectId, fullData.description);
@@ -224,6 +237,7 @@ export async function processProjectsInParallel(
     } else {
       // Data is cached - use cached description/updates
       const cachedData = projectDataCache.get(projectId)!;
+      fullProjectData = cachedData.fullData;
       if (!projectDescriptionsMap.has(projectId)) {
         projectDescriptionsMap.set(projectId, cachedData.description ?? null);
       }
@@ -239,13 +253,26 @@ export async function processProjectsInParallel(
       projectContentMap.set(projectId, cachedData.content);
     }
 
+    // Build empty project data for projects with zero issues
+    const emptyProjectsList: EmptyProjectData[] = [];
+    if (projectIssueCount === 0 && fullProjectData) {
+      emptyProjectsList.push({
+        projectId,
+        fullData: fullProjectData,
+      });
+      console.log(
+        `[SYNC] Project "${projectName || projectId}" has zero issues - will be stored as empty project`
+      );
+    }
+
     await computeAndStoreProjects(
       projectLabelsMap,
       projectDescriptionsMap,
       projectUpdatesMap,
       new Set([projectId]),
       true,
-      projectContentMap
+      projectContentMap,
+      emptyProjectsList // Pass empty projects
     );
 
     // Update project sync status
@@ -290,6 +317,7 @@ export async function processProjectsInParallel(
       projectIndex,
       projectIssueCount,
       projectName,
+      emptyProjectData: projectIssueCount === 0 ? fullProjectData : undefined,
     };
   };
 

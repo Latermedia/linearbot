@@ -119,6 +119,18 @@ export interface ProjectFullData {
   content: string | null;
   labels: string[];
   updates: ProjectUpdate[];
+  // Core project fields (for syncing projects with zero issues)
+  name?: string;
+  state?: string;
+  statusName?: string;
+  health?: string;
+  leadId?: string | null;
+  leadName?: string | null;
+  targetDate?: string | null;
+  startDate?: string | null;
+  completedAt?: string | null;
+  updatedAt?: string | null;
+  teams?: { id: string; key: string; name: string }[];
 }
 
 export interface LinearInitiativeData {
@@ -1082,16 +1094,38 @@ export class LinearAPIClient {
 
   /**
    * Fetch all project metadata in a single API call.
-   * Consolidates description, content, labels, and project updates
+   * Consolidates description, content, labels, project updates, and core project fields
    * to reduce API calls from 4 to 1 per project.
+   * Includes all fields needed to sync projects with zero issues.
    */
   async fetchProjectFullData(projectId: string): Promise<ProjectFullData> {
     const query = `
       query GetProjectFullData($projectId: String!) {
         project(id: $projectId) {
           id
+          name
           description
           content
+          state
+          status {
+            name
+          }
+          health
+          targetDate
+          startDate
+          completedAt
+          updatedAt
+          lead {
+            id
+            name
+          }
+          teams {
+            nodes {
+              id
+              key
+              name
+            }
+          }
           labels {
             nodes {
               name
@@ -1153,11 +1187,29 @@ export class LinearAPIClient {
       userAvatarUrl: node.user?.avatarUrl || null,
     }));
 
+    const teams = (project.teams?.nodes || []).map((t: any) => ({
+      id: t.id,
+      key: t.key,
+      name: t.name,
+    }));
+
     return {
       description: project.description || null,
       content: project.content || null,
       labels,
       updates,
+      // Core project fields for empty projects
+      name: project.name,
+      state: project.state,
+      statusName: project.status?.name || null,
+      health: project.health || null,
+      leadId: project.lead?.id || null,
+      leadName: project.lead?.name || null,
+      targetDate: project.targetDate || null,
+      startDate: project.startDate || null,
+      completedAt: project.completedAt || null,
+      updatedAt: project.updatedAt || null,
+      teams,
     };
   }
 

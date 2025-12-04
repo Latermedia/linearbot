@@ -1,15 +1,17 @@
-import type { ProjectUpdate } from "../../../linear/client.js";
+import type { ProjectUpdate, ProjectFullData } from "../../../linear/client.js";
 
 /**
  * Cache for project data within a sync session
  * Prevents duplicate API calls for the same project across different phases
- * Stores all metadata from fetchProjectFullData: description, content, labels, updates
+ * Stores all metadata from fetchProjectFullData: description, content, labels, updates, and core project fields
  */
 export interface ProjectData {
   labels: string[];
   content: string | null;
   description?: string | null;
   updates?: ProjectUpdate[];
+  // Full data from fetchProjectFullData (for projects with zero issues)
+  fullData?: ProjectFullData;
 }
 
 export class ProjectDataCache {
