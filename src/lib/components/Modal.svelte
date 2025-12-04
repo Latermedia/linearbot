@@ -12,6 +12,7 @@
     size = "md",
     maxHeight,
     scrollable = false,
+    topAligned = false,
     header,
     children,
     background = "bg-neutral-900",
@@ -21,6 +22,7 @@
     size?: "sm" | "md" | "lg" | "xl" | "2xl" | "3xl" | "full";
     maxHeight?: string;
     scrollable?: boolean;
+    topAligned?: boolean;
     header?: Snippet;
     children?: Snippet;
     background?: string;
@@ -75,7 +77,9 @@
 
 <div
   use:portal={document.body}
-  class="flex fixed inset-0 z-9999 justify-center items-center modal-backdrop bg-black/70"
+  class="flex fixed inset-0 z-9999 justify-center modal-backdrop bg-black/70 {topAligned
+    ? 'items-start pt-8 overflow-y-auto'
+    : 'items-center'}"
   style="position: fixed; top: 0; left: 0; right: 0; bottom: 0;"
   onclick={handleBackdropClick}
   onkeydown={handleBackdropKeydown}
@@ -89,9 +93,9 @@
   <div
     class="w-full {sizeClasses[
       size
-    ]} rounded-md border shadow-2xl {background} border-white/10 shadow-black/50 m-4 {scrollable
-      ? 'flex flex-col'
-      : ''}"
+    ]} rounded-md border shadow-2xl {background} border-white/10 shadow-black/50 m-4 {topAligned
+      ? 'mb-8'
+      : ''} {scrollable ? 'flex flex-col' : ''}"
     style={maxHeight ? `max-height: ${maxHeight}` : ""}
     role="document"
     in:scale={{ duration: 400, opacity: 0, start: 3, easing: quintOut }}

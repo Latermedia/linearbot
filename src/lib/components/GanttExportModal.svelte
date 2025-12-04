@@ -418,10 +418,10 @@
 </script>
 
 {#snippet headerSnippet()}
-  <!-- svelte-ignore a11y_click_events_have_key_events a11y_no_static_element_interactions -->
   <div
     class="flex justify-between items-center p-6 bg-white border-b border-neutral-200 dark:border-white/10 dark:bg-neutral-900"
     onclick={handleClickOutside}
+    role="presentation"
   >
     <div class="flex-1">
       <h2
@@ -464,7 +464,7 @@
 
         {#if projectDropdownOpen}
           <div
-            class="absolute top-full left-0 z-50 mt-1 w-72 max-h-80 overflow-hidden rounded-md border shadow-xl bg-white dark:bg-neutral-800 border-neutral-200 dark:border-white/10"
+            class="overflow-hidden absolute left-0 top-full z-50 mt-1 w-72 max-h-80 bg-white rounded-md border shadow-xl dark:bg-neutral-800 border-neutral-200 dark:border-white/10"
           >
             <!-- Quick actions -->
             <div
@@ -476,7 +476,7 @@
                   e.stopPropagation();
                   selectAllProjects();
                 }}
-                class="flex-1 px-2 py-1 text-xs font-medium rounded bg-neutral-100 dark:bg-white/10 text-neutral-700 dark:text-neutral-300 hover:bg-neutral-200 dark:hover:bg-white/20 transition-colors"
+                class="flex-1 px-2 py-1 text-xs font-medium rounded transition-colors bg-neutral-100 dark:bg-white/10 text-neutral-700 dark:text-neutral-300 hover:bg-neutral-200 dark:hover:bg-white/20"
               >
                 Select All
               </button>
@@ -486,17 +486,17 @@
                   e.stopPropagation();
                   deselectAllProjects();
                 }}
-                class="flex-1 px-2 py-1 text-xs font-medium rounded bg-neutral-100 dark:bg-white/10 text-neutral-700 dark:text-neutral-300 hover:bg-neutral-200 dark:hover:bg-white/20 transition-colors"
+                class="flex-1 px-2 py-1 text-xs font-medium rounded transition-colors bg-neutral-100 dark:bg-white/10 text-neutral-700 dark:text-neutral-300 hover:bg-neutral-200 dark:hover:bg-white/20"
               >
                 Deselect All
               </button>
             </div>
 
             <!-- Project list -->
-            <div class="overflow-y-auto max-h-60 p-1">
+            <div class="overflow-y-auto p-1 max-h-60">
               {#each allProjects as project (project.projectId)}
                 <label
-                  class="flex gap-2 items-center px-2 py-1.5 rounded cursor-pointer hover:bg-neutral-100 dark:hover:bg-white/5 transition-colors"
+                  class="flex gap-2 items-center px-2 py-1.5 rounded transition-colors cursor-pointer hover:bg-neutral-100 dark:hover:bg-white/5"
                 >
                   <input
                     type="checkbox"
@@ -506,7 +506,7 @@
                     class="w-4 h-4 text-violet-600 rounded border-neutral-300 dark:border-white/20 focus:ring-violet-500 focus:ring-2 dark:bg-neutral-700 dark:checked:bg-violet-600"
                   />
                   <span
-                    class="text-sm text-neutral-700 dark:text-neutral-300 truncate"
+                    class="text-sm truncate text-neutral-700 dark:text-neutral-300"
                     title={project.projectName}
                   >
                     {project.projectName}
@@ -560,7 +560,7 @@
       <button
         type="button"
         onclick={resetDisplayOptions}
-        class="flex gap-1.5 items-center px-2 py-1.5 text-sm rounded border transition-colors cursor-pointer bg-transparent hover:bg-neutral-100 dark:hover:bg-white/10 text-neutral-600 dark:text-neutral-400 hover:text-neutral-900 dark:hover:text-white border-neutral-300 dark:border-white/20"
+        class="flex gap-1.5 items-center px-2 py-1.5 text-sm bg-transparent rounded border transition-colors cursor-pointer hover:bg-neutral-100 dark:hover:bg-white/10 text-neutral-600 dark:text-neutral-400 hover:text-neutral-900 dark:hover:text-white border-neutral-300 dark:border-white/20"
         title="Reset display options"
       >
         <RotateCcw class="w-4 h-4" />
@@ -734,8 +734,9 @@
 <Modal
   {onclose}
   size="full"
-  maxHeight="100vh"
+  maxHeight="90vh"
   scrollable={true}
+  topAligned={true}
   background="bg-white dark:bg-neutral-900"
   header={headerSnippet}
   children={childrenSnippet}
