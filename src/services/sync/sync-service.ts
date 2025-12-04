@@ -17,6 +17,7 @@ import {
   getSyncMetadata,
   getPhaseQueryCounts,
   savePhaseQueryCounts,
+  deleteIssuesByTeams,
 } from "../../db/queries.js";
 import type { SyncPhase } from "../../db/queries.js";
 import type { SyncResult, SyncCallbacks, SyncOptions } from "./types.js";
@@ -259,6 +260,14 @@ export async function performSync(
       ? process.env.IGNORED_TEAM_KEYS.split(",").map((key) => key.trim())
       : [];
 
+    // Delete existing issues from ignored teams at the start of each sync
+    if (ignoredTeamKeys.length > 0) {
+      console.log(
+        `[SYNC] Removing issues from ${ignoredTeamKeys.length} ignored team(s): ${ignoredTeamKeys.join(", ")}`
+      );
+      deleteIssuesByTeams(ignoredTeamKeys);
+    }
+
     // Connect to Linear with query counter
     const linearClient = createLinearClient(undefined, incrementApiQuery);
     callbacks?.onProgressPercent?.(0);
@@ -371,10 +380,10 @@ export async function performSync(
       console.log("[SYNC] Skipping completed projects phase (not selected)");
     }
 
-    // Note: We no longer delete issues from ignored teams - all data is preserved for historical tracking
+    // Ignored team issues are deleted at the start of sync
     if (ignoredTeamKeys.length > 0) {
       console.log(
-        `[SYNC] Note: ${ignoredTeamKeys.length} team(s) are ignored but their data is preserved`
+        `[SYNC] Sync complete. ${ignoredTeamKeys.length} team(s) remain ignored: ${ignoredTeamKeys.join(", ")}`
       );
     }
 

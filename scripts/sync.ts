@@ -1,6 +1,6 @@
 #!/usr/bin/env bun
 
-import { performSync } from "../src/services/sync-service.js";
+import { performSync } from "../src/services/sync/index.js";
 
 console.log("🔄 Syncing Linear data...\n");
 

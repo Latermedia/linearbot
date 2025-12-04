@@ -45,7 +45,7 @@ docs/               # Documentation
 
 ## Key Services
 
-### Sync Service (`src/services/sync-service.ts`)
+### Sync Service (`src/services/sync/`)
 
 - Fetches started issues and project data from Linear
 - Computes metrics (velocity, cycle time, violations)
@@ -125,7 +125,7 @@ To add a new entity with derived stats:
 ```
 1. src/db/schema.ts       → Add table definition + interface
 2. src/db/queries.ts      → Add upsert/get/delete functions
-3. src/services/sync-service.ts → Add computeAndStore<Entity>()
+3. src/services/sync/         → Add computeAndStore<Entity>()
 4. src/services/mock-data.ts    → Add mock data generation
 5. Call computeAndStore<Entity>() after issues are written
 ```
