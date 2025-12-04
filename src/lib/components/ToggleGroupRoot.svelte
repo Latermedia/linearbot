@@ -62,6 +62,7 @@
     }
 
     await tick();
+
     const selectedButton = containerRef.querySelector(
       '[data-selected="true"]'
     ) as HTMLElement;
@@ -71,11 +72,10 @@
       return;
     }
 
-    const containerRect = containerRef.getBoundingClientRect();
-    const buttonRect = selectedButton.getBoundingClientRect();
-
-    const newLeft = buttonRect.left - containerRect.left;
-    const newWidth = buttonRect.width;
+    // Use offsetLeft/offsetWidth instead of getBoundingClientRect
+    // These are not affected by CSS transforms (like modal scale animations)
+    const newLeft = selectedButton.offsetLeft;
+    const newWidth = selectedButton.offsetWidth;
 
     // Animate all properties simultaneously (skip animation on initial load)
     if (isInitialLoad) {
