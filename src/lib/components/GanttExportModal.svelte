@@ -4,6 +4,8 @@
   import Modal from "./Modal.svelte";
   import Button from "./Button.svelte";
   import Badge from "./Badge.svelte";
+  import ToggleGroupRoot from "./ToggleGroupRoot.svelte";
+  import ToggleGroupItem from "./ToggleGroupItem.svelte";
   import { cn as _cn } from "$lib/utils";
   import type {
     ProjectSummary,
@@ -20,7 +22,7 @@
     team,
     domain,
     groupBy,
-    viewMode = "quarters" as "quarter" | "quarters",
+    viewMode: initialViewMode = "quarters" as "quarter" | "quarters",
     onclose,
   }: {
     team?: TeamSummary;
@@ -37,6 +39,7 @@
   let showTodayIndicator = $state(false);
   let showWarnings = $state(false);
   let endDateMode = $state<"predicted" | "target">("target");
+  let timeRangeMode = $state<"quarter" | "quarters">(initialViewMode);
   let projectDropdownOpen = $state(false);
 
   // Get all projects from team or domain
@@ -77,6 +80,7 @@
   // Reset all display options to defaults
   function resetDisplayOptions() {
     endDateMode = "target";
+    timeRangeMode = initialViewMode;
     showTodayIndicator = false;
     showWarnings = false;
     selectedProjectIds = new Set(allProjects.map((p) => p.projectId));
@@ -91,12 +95,12 @@
   }
 
   // Calculate quarter start date based on view mode (same as GanttChart)
-  function getQuarterStart(): Date {
+  function getQuarterStart(mode: "quarter" | "quarters"): Date {
     const now = new Date();
     const currentMonth = now.getMonth();
     const currentQuarterStartMonth = Math.floor(currentMonth / 3) * 3;
 
-    if (viewMode === "quarter") {
+    if (mode === "quarter") {
       // Current quarter only
       const quarterStart = new Date(
         now.getFullYear(),
@@ -123,30 +127,25 @@
   }
 
   // Generate days based on view mode
-  function generateDays() {
+  function generateDays(mode: "quarter" | "quarters", qStart: Date) {
     const days: Date[] = [];
-    const quarterStart = getQuarterStart();
-    const totalDays = viewMode === "quarter" ? 90 : 450; // 1 quarter or 5 quarters
+    const totalDays = mode === "quarter" ? 90 : 450; // 1 quarter or 5 quarters
 
     for (let i = 0; i < totalDays; i++) {
-      const day = new Date(quarterStart);
-      day.setDate(quarterStart.getDate() + i);
+      const day = new Date(qStart);
+      day.setDate(qStart.getDate() + i);
       days.push(day);
     }
 
     return days;
   }
 
-  const days = generateDays();
-  const quarterStart = getQuarterStart();
+  // Make these reactive to timeRangeMode changes
+  const quarterStart = $derived.by(() => getQuarterStart(timeRangeMode));
+  const days = $derived.by(() => generateDays(timeRangeMode, quarterStart));
 
   // Get month labels with positions (same as GanttChart)
-  function getMonthLabels(): {
-    month: string;
-    startDate: Date;
-    startPercent: number;
-    endPercent: number;
-  }[] {
+  const monthLabels = $derived.by(() => {
     const months: {
       month: string;
       startDate: Date;
@@ -199,7 +198,7 @@
       const monthStart = monthStarts[i];
       const nextMonthStart = monthStarts[i + 1];
 
-      const totalDays = viewMode === "quarter" ? 90 : 450;
+      const totalDays = timeRangeMode === "quarter" ? 90 : 450;
       const startPercent = (monthStart.index / totalDays) * 100;
       const endPercent = nextMonthStart
         ? (nextMonthStart.index / totalDays) * 100
@@ -207,7 +206,7 @@
 
       // Format month label with year for 5-quarter view
       let monthLabel: string;
-      if (viewMode === "quarters") {
+      if (timeRangeMode === "quarters") {
         // For 5-quarter view, include year: "Nov 25"
         const monthName = monthStart.date.toLocaleDateString("en-US", {
           month: "short",
@@ -231,9 +230,7 @@
     }
 
     return months;
-  }
-
-  const monthLabels = getMonthLabels();
+  });
 
   function getProjectPosition(project: ProjectSummary): {
     startCol: number;
@@ -254,7 +251,7 @@
         ? project.targetDate
         : project.estimatedEndDate;
 
-    const totalDays = viewMode === "quarter" ? 90 : 450;
+    const totalDays = timeRangeMode === "quarter" ? 90 : 450;
     const endDate = selectedEndDate
       ? new Date(selectedEndDate)
       : new Date(quarterStart.getTime() + totalDays * 24 * 60 * 60 * 1000);
@@ -303,7 +300,7 @@
       (targetDate.getTime() - quarterStart.getTime()) / (1000 * 60 * 60 * 24)
     );
 
-    const totalDays = viewMode === "quarter" ? 90 : 450;
+    const totalDays = timeRangeMode === "quarter" ? 90 : 450;
     const maxDay = totalDays - 1;
     const clampedTarget = Math.max(0, Math.min(targetDays, maxDay));
     return (clampedTarget / totalDays) * 100;
@@ -332,7 +329,8 @@
     return Math.max(0, Math.min(100, relativePercent));
   }
 
-  function getCurrentDayPosition(): number | null {
+  // Make current day position reactive
+  const currentDayPercent = $derived.by(() => {
     const now = new Date();
     now.setHours(0, 0, 0, 0);
 
@@ -340,15 +338,13 @@
       return null;
     }
 
-    const totalDays = viewMode === "quarter" ? 90 : 450;
+    const totalDays = timeRangeMode === "quarter" ? 90 : 450;
     const dayIndex = days.findIndex((d) => d.getTime() === now.getTime());
 
     if (dayIndex === -1) return null;
 
     return (dayIndex / totalDays) * 100;
-  }
-
-  const currentDayPercent = getCurrentDayPosition();
+  });
   const displayName = groupBy === "team" ? team?.teamName : domain?.domainName;
 
   async function copyToPNG() {
@@ -456,7 +452,7 @@
                 : `${selectedProjectIds.size} projects`}
           </span>
           <ChevronDown
-            class="w-4 h-4 flex-shrink-0 transition-transform {projectDropdownOpen
+            class="w-4 h-4 shrink-0 transition-transform {projectDropdownOpen
               ? 'rotate-180'
               : ''}"
           />
@@ -517,6 +513,20 @@
           </div>
         {/if}
       </div>
+
+      <!-- Time range mode toggle -->
+      <ToggleGroupRoot
+        bind:value={timeRangeMode}
+        variant="outline"
+        type="single"
+      >
+        <ToggleGroupItem value="quarter" aria-label="Show current quarter view">
+          Quarter
+        </ToggleGroupItem>
+        <ToggleGroupItem value="quarters" aria-label="Show 5 quarter view">
+          5 Quarters
+        </ToggleGroupItem>
+      </ToggleGroupRoot>
 
       <!-- End date mode -->
       <div class="flex gap-2 items-center">
