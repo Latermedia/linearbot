@@ -5,6 +5,9 @@
   import Skeleton from "$lib/components/Skeleton.svelte";
   import InitiativesTable from "$lib/components/InitiativesTable.svelte";
   import InitiativeDetailModal from "$lib/components/InitiativeDetailModal.svelte";
+  import TeamFilter from "$lib/components/TeamFilter.svelte";
+  import { projectsStore } from "$lib/stores/database";
+  import { teamFilterStore, teamsMatchFilter } from "$lib/stores/team-filter";
 
   interface InitiativeData {
     id: string;
@@ -62,16 +65,50 @@
     selectedInitiative = null;
   }
 
-  // Computed stats
-  const totalInitiatives = $derived(initiatives.length);
+  // Get projects store for team filtering
+  const projects = $derived($projectsStore);
+
+  // Get current team filter
+  const selectedTeamKey = $derived($teamFilterStore);
+
+  // Filter initiatives by team (check if any linked project belongs to selected team)
+  const filteredInitiatives = $derived.by(() => {
+    if (!selectedTeamKey) return initiatives;
+
+    return initiatives.filter((initiative) => {
+      // Parse project IDs from initiative
+      let projectIds: string[] = [];
+      try {
+        projectIds = initiative.project_ids
+          ? JSON.parse(initiative.project_ids)
+          : [];
+      } catch {
+        return false;
+      }
+
+      // Check if any linked project belongs to the selected team
+      for (const projectId of projectIds) {
+        const project = projects.get(projectId);
+        if (project && teamsMatchFilter(project.teams, selectedTeamKey)) {
+          return true;
+        }
+      }
+
+      // No linked projects match the team filter
+      return false;
+    });
+  });
+
+  // Computed stats (based on filtered initiatives)
+  const totalInitiatives = $derived(filteredInitiatives.length);
   const activeInitiatives = $derived(
-    initiatives.filter((i) => !i.archived_at && !i.completed_at).length
+    filteredInitiatives.filter((i) => !i.archived_at && !i.completed_at).length
   );
   const completedInitiatives = $derived(
-    initiatives.filter((i) => i.completed_at !== null).length
+    filteredInitiatives.filter((i) => i.completed_at !== null).length
   );
   const initiativesWithProjects = $derived(
-    initiatives.filter((i) => {
+    filteredInitiatives.filter((i) => {
       try {
         const projectIds = i.project_ids ? JSON.parse(i.project_ids) : [];
         return Array.isArray(projectIds) && projectIds.length > 0;
@@ -83,7 +120,7 @@
 
   // Sort initiatives: active first, then by updated_at descending
   const sortedInitiatives = $derived.by(() => {
-    return [...initiatives].sort((a, b) => {
+    return [...filteredInitiatives].sort((a, b) => {
       // Active initiatives first (not archived, not completed)
       const aActive = !a.archived_at && !a.completed_at;
       const bActive = !b.archived_at && !b.completed_at;
@@ -100,17 +137,22 @@
 
 <div class="space-y-6">
   <!-- Header -->
-  <div>
-    <h1 class="text-3xl font-bold text-neutral-900 dark:text-white">
-      Initiatives
-    </h1>
-    <p class="mt-2 text-sm text-neutral-600 dark:text-neutral-400">
-      Strategic initiatives and their linked projects
-    </p>
+  <div
+    class="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between"
+  >
+    <div>
+      <h1 class="text-3xl font-bold text-neutral-900 dark:text-white">
+        Initiatives
+      </h1>
+      <p class="mt-2 text-sm text-neutral-600 dark:text-neutral-400">
+        Strategic initiatives and their linked projects
+      </p>
+    </div>
+    <TeamFilter />
   </div>
 
   <!-- Stats summary -->
-  {#if !loading && !error && initiatives.length > 0}
+  {#if !loading && !error && filteredInitiatives.length > 0}
     <div class="flex flex-wrap gap-4">
       <Card class="max-w-[180px]">
         <div class="mb-1 text-xs text-neutral-500 dark:text-neutral-300">
@@ -175,14 +217,17 @@
         >
       </p>
     </Card>
-  {:else if initiatives.length === 0}
+  {:else if filteredInitiatives.length === 0}
     <Card>
       <div class="mb-3 text-sm font-medium text-neutral-900 dark:text-white">
-        No Initiatives Found
+        {selectedTeamKey
+          ? "No Initiatives for Selected Team"
+          : "No Initiatives Found"}
       </div>
       <p class="text-neutral-700 dark:text-neutral-400">
-        No initiatives found in the database. Sync the database to load data
-        from Linear.
+        {selectedTeamKey
+          ? "No initiatives have projects linked to the selected team."
+          : "No initiatives found in the database. Sync the database to load data from Linear."}
       </p>
     </Card>
   {:else}

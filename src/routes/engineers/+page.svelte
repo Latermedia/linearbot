@@ -6,6 +6,12 @@
   import EngineersTable from "$lib/components/EngineersTable.svelte";
   import EngineerDetailModal from "$lib/components/EngineerDetailModal.svelte";
   import { WIP_THRESHOLDS } from "../../constants/thresholds";
+  import TeamFilter from "$lib/components/TeamFilter.svelte";
+  import { teamsStore } from "$lib/stores/database";
+  import {
+    teamFilterStore,
+    teamNamesMatchFilter,
+  } from "$lib/stores/team-filter";
 
   interface EngineerData {
     assignee_id: string;
@@ -60,16 +66,33 @@
     selectedEngineer = null;
   }
 
-  // Computed stats
-  const totalEngineers = $derived(engineers.length);
+  // Get current team filter and convert teamKey to teamName
+  const selectedTeamKey = $derived($teamFilterStore);
+  const selectedTeamName = $derived.by(() => {
+    if (!selectedTeamKey) return null;
+    const teams = $teamsStore;
+    const team = teams.find((t) => t.teamKey === selectedTeamKey);
+    return team?.teamName ?? null;
+  });
+
+  // Filter engineers by team
+  const filteredEngineers = $derived.by(() => {
+    if (!selectedTeamName) return engineers;
+    return engineers.filter((e) =>
+      teamNamesMatchFilter(e.team_names, selectedTeamName)
+    );
+  });
+
+  // Computed stats (based on filtered engineers)
+  const totalEngineers = $derived(filteredEngineers.length);
   const totalWIPIssues = $derived(
-    engineers.reduce((sum, e) => sum + e.wip_issue_count, 0)
+    filteredEngineers.reduce((sum, e) => sum + e.wip_issue_count, 0)
   );
   const engineersOverLimit = $derived(
-    engineers.filter((e) => e.wip_limit_violation).length
+    filteredEngineers.filter((e) => e.wip_limit_violation).length
   );
   const totalViolations = $derived(
-    engineers.reduce(
+    filteredEngineers.reduce(
       (sum, e) =>
         sum +
         e.missing_estimate_count +
@@ -85,7 +108,7 @@
 
   // Sort engineers: violations first, then by WIP count descending
   const sortedEngineers = $derived.by(() => {
-    return [...engineers].sort((a, b) => {
+    return [...filteredEngineers].sort((a, b) => {
       // First by WIP limit violation
       if (a.wip_limit_violation !== b.wip_limit_violation) {
         return b.wip_limit_violation - a.wip_limit_violation;
@@ -98,13 +121,18 @@
 
 <div class="space-y-6">
   <!-- Header -->
-  <div>
-    <h1 class="text-3xl font-bold text-neutral-900 dark:text-white">
-      Engineer WIP
-    </h1>
-    <p class="mt-2 text-sm text-neutral-600 dark:text-neutral-400">
-      Work-in-progress tracking and constraint violations by engineer
-    </p>
+  <div
+    class="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between"
+  >
+    <div>
+      <h1 class="text-3xl font-bold text-neutral-900 dark:text-white">
+        Engineer WIP
+      </h1>
+      <p class="mt-2 text-sm text-neutral-600 dark:text-neutral-400">
+        Work-in-progress tracking and constraint violations by engineer
+      </p>
+    </div>
+    <TeamFilter />
   </div>
 
   <!-- Stats summary -->

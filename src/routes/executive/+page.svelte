@@ -29,6 +29,8 @@
     getRecentVelocity,
     getTotalActiveEngineers,
   } from "$lib/utils/executive-stats";
+  import TeamFilter from "$lib/components/TeamFilter.svelte";
+  import { teamFilterStore, teamsMatchFilter } from "$lib/stores/team-filter";
 
   let viewType = $state<"card" | "table" | "gantt">("card");
   let endDateMode = $state<"predicted" | "target">("predicted");
@@ -80,7 +82,10 @@
   const _allTeams = $derived($teamsStore);
   const _allDomains = $derived($domainsStore);
 
-  // Filter projects: Executive Visibility label + in progress
+  // Get current team filter
+  const selectedTeamKey = $derived($teamFilterStore);
+
+  // Filter projects: Executive Visibility label + in progress + team filter
   const executiveProjects = $derived.by(() => {
     if (!browser || projects.size === 0) return [];
 
@@ -96,7 +101,10 @@
         projectStateCategory.includes("started") ||
         projectStateCategory === "started";
 
-      return hasExecutiveLabel && isInProgress;
+      // Apply team filter
+      const matchesTeam = teamsMatchFilter(project.teams, selectedTeamKey);
+
+      return hasExecutiveLabel && isInProgress && matchesTeam;
     });
   });
 
@@ -274,6 +282,9 @@
         </ToggleGroupItem>
       </ToggleGroupRoot>
 
+      <!-- Team filter dropdown -->
+      <TeamFilter />
+
       <!-- End date mode toggle (only for Gantt view) -->
       {#if viewType === "gantt"}
         <ToggleGroupRoot
@@ -335,7 +346,7 @@
     </Card>
   {:else if viewType === "card"}
     <div class="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
-      {#each projectsWithProgress as { project, recentProgress }}
+      {#each projectsWithProgress as { project, recentProgress } (project.projectId)}
         {@const healthDisplay = getHealthDisplay(project.projectHealth)}
         {@const teamsArray = Array.from(project.teams)}
         {@const engineersArray = Array.from(project.engineers)}

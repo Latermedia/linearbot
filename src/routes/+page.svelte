@@ -15,6 +15,8 @@
     groupProjectsByTeams,
     groupProjectsByDomains,
   } from "$lib/project-data";
+  import TeamFilter from "$lib/components/TeamFilter.svelte";
+  import { teamFilterStore, teamsMatchFilter } from "$lib/stores/team-filter";
 
   let groupBy = $state<"team" | "domain">("team");
   let viewType = $state<"table" | "gantt">("table");
@@ -78,11 +80,28 @@
     return p;
   });
 
-  // Filter projects based on selected mode
+  // Get current team filter
+  const selectedTeamKey = $derived($teamFilterStore);
+
+  // Filter projects based on selected mode and team filter
   const filteredProjects = $derived.by(() => {
     const issues = $databaseStore.issues;
     const filter = projectFilter; // Explicitly track projectFilter
-    return filterProjectsByMode(projects, issues, filter);
+    const teamFilter = selectedTeamKey; // Explicitly track team filter
+    const filtered = filterProjectsByMode(projects, issues, filter);
+
+    // Apply team filter if a team is selected
+    if (teamFilter !== null) {
+      // Filter to only projects matching the team
+
+      return new Map(
+        Array.from(filtered).filter(([_, project]) =>
+          teamsMatchFilter(project.teams, teamFilter)
+        )
+      );
+    }
+
+    return filtered;
   });
 
   // Group filtered projects by teams
@@ -91,13 +110,22 @@
   const teams = $derived.by(() => {
     const issues = $databaseStore.issues;
     const filter = projectFilter; // Explicitly track projectFilter
+    const teamFilter = selectedTeamKey; // Explicitly track team filter
     const filtered = filteredProjects;
-    const grouped = groupProjectsByTeams(filtered, issues);
+    let grouped = groupProjectsByTeams(filtered, issues);
+
+    // When a team filter is selected, only show that team's section
+    if (teamFilter !== null) {
+      grouped = grouped.filter((team) => team.teamKey === teamFilter);
+    }
+
     console.log(
       "[+page.svelte] teams derived - length:",
       grouped.length,
       "filter:",
       filter,
+      "teamFilter:",
+      teamFilter,
       "filteredProjects.size:",
       filtered.size,
       "teams:",
@@ -230,6 +258,9 @@
         </ToggleGroupItem>
       </ToggleGroupRoot>
 
+      <!-- Team filter dropdown -->
+      <TeamFilter />
+
       <!-- Project filter toggle -->
       <ToggleGroupRoot
         bind:value={projectFilter}
@@ -334,11 +365,11 @@
       </p>
     </Card>
   {:else if viewType === "table"}
-    {#key `${projectFilter}-${groupBy}`}
+    {#key `${projectFilter}-${groupBy}-${selectedTeamKey}`}
       <ProjectsTable {teams} {domains} {groupBy} />
     {/key}
   {:else}
-    {#key `${projectFilter}-${groupBy}-${endDateMode}-${ganttViewMode}`}
+    {#key `${projectFilter}-${groupBy}-${endDateMode}-${ganttViewMode}-${selectedTeamKey}`}
       <GanttChart
         {teams}
         {domains}
