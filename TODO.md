@@ -35,7 +35,35 @@ Planned features and known issues for LinearBot.
 
 ### Real-time Updates
 
-- **Webhook listeners** — implement Linear webhook listeners to receive real-time updates for issues and projects, eliminating the need for periodic syncing and ensuring immediate updates when issues are completed or projects change state
+- **Linear webhooks** — implement webhook listeners for real-time sync, replacing periodic polling
+
+  **Endpoint & Security**
+  - [ ] Create `/api/webhooks/linear` endpoint to receive POST requests
+  - [ ] Implement HMAC-SHA256 signature verification using webhook secret
+  - [ ] Add idempotency handling to prevent duplicate event processing
+  - [ ] Return 200 quickly, process events asynchronously
+
+  **Event Handlers**
+  - [ ] `Issue` events — handle create/update/remove for issue sync
+  - [ ] `Project` events — handle project state changes, progress updates
+  - [ ] `ProjectUpdate` events — capture status updates and health changes
+  - [ ] `Comment` events — update "last commented" timestamps
+  - [ ] `Label` events — sync label changes for filtering
+
+  **Database Updates**
+  - [ ] Upsert individual records on webhook events (vs. full table sync)
+  - [ ] Track webhook processing timestamps for debugging
+  - [ ] Handle cascading updates (e.g., project progress on issue completion)
+
+  **Configuration**
+  - [ ] Add `LINEAR_WEBHOOK_SECRET` env variable
+  - [ ] Document webhook setup in Linear admin (URL, events to subscribe)
+  - [ ] Add health check endpoint for webhook status
+
+  **Hybrid Sync Strategy**
+  - [ ] Keep periodic sync as fallback for missed webhooks
+  - [ ] Reduce sync frequency once webhooks are reliable (e.g., hourly → daily)
+  - [ ] Add manual "force sync" option in UI for immediate full refresh
 
 ### filter engineers by manager
 
