@@ -10,7 +10,7 @@
     TeamSummary,
     DomainSummary,
   } from "../project-data";
-  import { X, Copy, Loader2 } from "lucide-svelte";
+  import { X, Copy, Loader2, ChevronDown, RotateCcw } from "lucide-svelte";
   import {
     getProgressPercent,
     hasDiscrepancies,
@@ -36,7 +36,59 @@
   let copyMessage = $state("");
   let showTodayIndicator = $state(false);
   let showWarnings = $state(false);
-  let endDateMode = $state<"predicted" | "target">("predicted");
+  let endDateMode = $state<"predicted" | "target">("target");
+  let projectDropdownOpen = $state(false);
+
+  // Get all projects from team or domain
+  const allProjects =
+    groupBy === "team" ? team?.projects || [] : domain?.projects || [];
+
+  // Initialize selected project IDs with all projects selected
+  let selectedProjectIds = $state<Set<string>>(
+    new Set(allProjects.map((p) => p.projectId))
+  );
+
+  // Filtered projects based on selection
+  const filteredProjects = $derived(
+    allProjects.filter((p) => selectedProjectIds.has(p.projectId))
+  );
+
+  // Toggle individual project selection
+  function toggleProject(projectId: string) {
+    const newSet = new Set(selectedProjectIds);
+    if (newSet.has(projectId)) {
+      newSet.delete(projectId);
+    } else {
+      newSet.add(projectId);
+    }
+    selectedProjectIds = newSet;
+  }
+
+  // Select all projects
+  function selectAllProjects() {
+    selectedProjectIds = new Set(allProjects.map((p) => p.projectId));
+  }
+
+  // Deselect all projects
+  function deselectAllProjects() {
+    selectedProjectIds = new Set();
+  }
+
+  // Reset all display options to defaults
+  function resetDisplayOptions() {
+    endDateMode = "target";
+    showTodayIndicator = false;
+    showWarnings = false;
+    selectedProjectIds = new Set(allProjects.map((p) => p.projectId));
+  }
+
+  // Close dropdown when clicking outside
+  function handleClickOutside(event: MouseEvent) {
+    const target = event.target as HTMLElement;
+    if (!target.closest("[data-project-dropdown]")) {
+      projectDropdownOpen = false;
+    }
+  }
 
   // Calculate quarter start date based on view mode (same as GanttChart)
   function getQuarterStart(): Date {
@@ -298,8 +350,6 @@
 
   const currentDayPercent = getCurrentDayPosition();
   const displayName = groupBy === "team" ? team?.teamName : domain?.domainName;
-  const projects =
-    groupBy === "team" ? team?.projects || [] : domain?.projects || [];
 
   async function copyToPNG() {
     if (!browser || !previewContainer || isCopying) return;
@@ -368,8 +418,10 @@
 </script>
 
 {#snippet headerSnippet()}
+  <!-- svelte-ignore a11y_click_events_have_key_events a11y_no_static_element_interactions -->
   <div
     class="flex justify-between items-center p-6 bg-white border-b border-neutral-200 dark:border-white/10 dark:bg-neutral-900"
+    onclick={handleClickOutside}
   >
     <div class="flex-1">
       <h2
@@ -379,13 +431,94 @@
         Export: {displayName}
       </h2>
       <div class="text-sm text-neutral-600 dark:text-neutral-400">
-        {projects.length}
-        {projects.length === 1 ? "project" : "projects"}
+        {filteredProjects.length} of {allProjects.length}
+        {allProjects.length === 1 ? "project" : "projects"} selected
       </div>
     </div>
 
     <!-- Export Controls -->
-    <div class="flex gap-4 items-center mr-4">
+    <div class="flex gap-3 items-center mr-4">
+      <!-- Project Selection Dropdown -->
+      <div class="relative" data-project-dropdown>
+        <button
+          type="button"
+          onclick={(e) => {
+            e.stopPropagation();
+            projectDropdownOpen = !projectDropdownOpen;
+          }}
+          class="flex gap-2 items-center px-3 py-1.5 text-sm bg-white rounded border dark:bg-neutral-800 border-neutral-300 dark:border-white/20 text-neutral-700 dark:text-neutral-300 hover:bg-neutral-50 dark:hover:bg-neutral-700 transition-colors cursor-pointer min-w-[140px]"
+        >
+          <span class="flex-1 text-left truncate">
+            {selectedProjectIds.size === allProjects.length
+              ? "All projects"
+              : selectedProjectIds.size === 0
+                ? "No projects"
+                : `${selectedProjectIds.size} projects`}
+          </span>
+          <ChevronDown
+            class="w-4 h-4 flex-shrink-0 transition-transform {projectDropdownOpen
+              ? 'rotate-180'
+              : ''}"
+          />
+        </button>
+
+        {#if projectDropdownOpen}
+          <div
+            class="absolute top-full left-0 z-50 mt-1 w-72 max-h-80 overflow-hidden rounded-md border shadow-xl bg-white dark:bg-neutral-800 border-neutral-200 dark:border-white/10"
+          >
+            <!-- Quick actions -->
+            <div
+              class="flex gap-2 p-2 border-b border-neutral-200 dark:border-white/10"
+            >
+              <button
+                type="button"
+                onclick={(e) => {
+                  e.stopPropagation();
+                  selectAllProjects();
+                }}
+                class="flex-1 px-2 py-1 text-xs font-medium rounded bg-neutral-100 dark:bg-white/10 text-neutral-700 dark:text-neutral-300 hover:bg-neutral-200 dark:hover:bg-white/20 transition-colors"
+              >
+                Select All
+              </button>
+              <button
+                type="button"
+                onclick={(e) => {
+                  e.stopPropagation();
+                  deselectAllProjects();
+                }}
+                class="flex-1 px-2 py-1 text-xs font-medium rounded bg-neutral-100 dark:bg-white/10 text-neutral-700 dark:text-neutral-300 hover:bg-neutral-200 dark:hover:bg-white/20 transition-colors"
+              >
+                Deselect All
+              </button>
+            </div>
+
+            <!-- Project list -->
+            <div class="overflow-y-auto max-h-60 p-1">
+              {#each allProjects as project (project.projectId)}
+                <label
+                  class="flex gap-2 items-center px-2 py-1.5 rounded cursor-pointer hover:bg-neutral-100 dark:hover:bg-white/5 transition-colors"
+                >
+                  <input
+                    type="checkbox"
+                    checked={selectedProjectIds.has(project.projectId)}
+                    onchange={() => toggleProject(project.projectId)}
+                    onclick={(e) => e.stopPropagation()}
+                    class="w-4 h-4 text-violet-600 rounded border-neutral-300 dark:border-white/20 focus:ring-violet-500 focus:ring-2 dark:bg-neutral-700 dark:checked:bg-violet-600"
+                  />
+                  <span
+                    class="text-sm text-neutral-700 dark:text-neutral-300 truncate"
+                    title={project.projectName}
+                  >
+                    {project.projectName}
+                  </span>
+                </label>
+              {/each}
+            </div>
+          </div>
+        {/if}
+      </div>
+
+      <!-- End date mode -->
       <div class="flex gap-2 items-center">
         <span class="text-sm text-neutral-600 dark:text-neutral-400">
           End date:
@@ -394,10 +527,12 @@
           bind:value={endDateMode}
           class="px-2 py-1 text-sm bg-white rounded border dark:bg-neutral-800 border-neutral-300 dark:border-white/20 text-neutral-700 dark:text-neutral-300 focus:ring-violet-500 focus:ring-2 focus:outline-none"
         >
-          <option value="predicted">Predicted</option>
           <option value="target">Target</option>
+          <option value="predicted">Predicted</option>
         </select>
       </div>
+
+      <!-- Show today checkbox -->
       <label class="flex gap-2 items-center cursor-pointer">
         <input
           type="checkbox"
@@ -408,6 +543,8 @@
           Show today
         </span>
       </label>
+
+      <!-- Show warnings checkbox -->
       <label class="flex gap-2 items-center cursor-pointer">
         <input
           type="checkbox"
@@ -418,6 +555,17 @@
           Show warnings
         </span>
       </label>
+
+      <!-- Reset button -->
+      <button
+        type="button"
+        onclick={resetDisplayOptions}
+        class="flex gap-1.5 items-center px-2 py-1.5 text-sm rounded border transition-colors cursor-pointer bg-transparent hover:bg-neutral-100 dark:hover:bg-white/10 text-neutral-600 dark:text-neutral-400 hover:text-neutral-900 dark:hover:text-white border-neutral-300 dark:border-white/20"
+        title="Reset display options"
+      >
+        <RotateCcw class="w-4 h-4" />
+        <span>Reset</span>
+      </button>
     </div>
 
     <button
@@ -486,11 +634,11 @@
             style="display: flex; gap: 0.5rem; align-items: center; margin-bottom: 0.75rem; font-size: 1.125rem; font-weight: 500; color: #171717;"
           >
             {domain.domainName}
-            <Badge variant="outline">{domain.projects.length} projects</Badge>
+            <Badge variant="outline">{filteredProjects.length} projects</Badge>
           </h3>
         {/if}
 
-        {#each projects as project}
+        {#each filteredProjects as project}
           {@const position = getProjectPosition(project)}
           {@const progress = getProgressPercent(project)}
           {@const hasWarnings =
