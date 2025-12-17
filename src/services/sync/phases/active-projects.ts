@@ -30,6 +30,7 @@ export async function syncActiveProjects(
     updatePhase,
     shouldRunPhase,
     getProjectSyncLimit,
+    projectIssueTracker,
   } = context;
 
   let newCount = 0;
@@ -161,6 +162,7 @@ export async function syncActiveProjects(
         callbacks,
         existingPartialSync,
         config,
+        projectIssueTracker,
       });
 
       newCount = result.newCount;

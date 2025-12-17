@@ -7,6 +7,7 @@ import {
   setSyncStatus,
   setSyncStatusMessage,
   updateSyncMetadata,
+  getSyncMetadata,
 } from "../../../db/queries.js";
 import { PROJECT_THRESHOLDS } from "../../../constants/thresholds.js";
 import { writeIssuesToDatabase } from "../utils.js";
@@ -54,19 +55,86 @@ export async function syncRecentlyUpdatedIssues(
     existingPartialSync.initialIssuesSync === "incomplete"
   ) {
     try {
-      // In LIMIT_SYNC mode, use 12 hours (0.5 days) instead of 14 days
+      // Determine days to fetch based on sync options:
+      // Priority order:
+      // 1. LIMIT_SYNC mode: 0.5 days (12 hours) - ALWAYS takes priority for local testing
+      // 2. Incremental sync: use time since last successful sync
+      // 3. Deep history sync: 365 days (1 year)
+      // 4. Default: 14 days
       const limitSync = getProjectSyncLimit() !== null;
-      const daysToFetch = limitSync
-        ? 0.5
-        : PROJECT_THRESHOLDS.RECENT_ACTIVITY_DAYS;
+      const deepHistorySync = context.syncOptions?.deepHistorySync ?? false;
+      const incrementalSync = context.syncOptions?.incrementalSync ?? false;
+
+      let daysToFetch: number;
+      let syncModeLabel: string;
+      let maxIssues: number | undefined;
+
+      if (limitSync) {
+        // LIMIT_SYNC always takes priority - for local testing to avoid API rate limits
+        // Use a generous time window but limit to 10 issues
+        daysToFetch = PROJECT_THRESHOLDS.RECENT_ACTIVITY_DAYS;
+        maxIssues = 10;
+        syncModeLabel = "limited (max 10 issues)";
+        if (incrementalSync || deepHistorySync) {
+          console.log(
+            `[SYNC] LIMIT_SYNC=true overrides ${incrementalSync ? "incremental" : "deep history"} mode`
+          );
+        }
+      } else if (incrementalSync) {
+        // Calculate days since last successful sync
+        const syncMetadata = getSyncMetadata();
+        const lastSyncTime = syncMetadata?.last_sync_time
+          ? new Date(syncMetadata.last_sync_time)
+          : null;
+
+        if (lastSyncTime) {
+          const now = new Date();
+          const msSinceLastSync = now.getTime() - lastSyncTime.getTime();
+          // Convert to days, add a small buffer (1 hour = 1/24 day)
+          daysToFetch = Math.max(
+            msSinceLastSync / (1000 * 60 * 60 * 24) + 1 / 24,
+            0.1
+          );
+          const hoursAgo = Math.round(msSinceLastSync / (1000 * 60 * 60));
+          syncModeLabel = `incremental (since ${hoursAgo}h ago)`;
+          console.log(
+            `[SYNC] Incremental sync: fetching issues updated since ${lastSyncTime.toISOString()} (${daysToFetch.toFixed(2)} days)`
+          );
+        } else {
+          // No last sync time, fall back to default
+          daysToFetch = PROJECT_THRESHOLDS.RECENT_ACTIVITY_DAYS;
+          syncModeLabel = `incremental fallback (${PROJECT_THRESHOLDS.RECENT_ACTIVITY_DAYS} days - no previous sync found)`;
+          console.log(
+            `[SYNC] Incremental sync requested but no previous sync found, using default ${PROJECT_THRESHOLDS.RECENT_ACTIVITY_DAYS} days`
+          );
+        }
+      } else if (deepHistorySync) {
+        daysToFetch = PROJECT_THRESHOLDS.DEEP_HISTORY_DAYS;
+        syncModeLabel = "deep history (1 year)";
+      } else {
+        daysToFetch = PROJECT_THRESHOLDS.RECENT_ACTIVITY_DAYS;
+        syncModeLabel = `default (${PROJECT_THRESHOLDS.RECENT_ACTIVITY_DAYS} days)`;
+      }
+
+      console.log(
+        `[SYNC] Fetching recently updated issues (${syncModeLabel})...`
+      );
 
       recentlyUpdatedIssues = await linearClient.fetchRecentlyUpdatedIssues(
         daysToFetch,
         (count) => {
+          const modeIndicator = limitSync
+            ? " (limited)"
+            : incrementalSync
+              ? " (incremental)"
+              : deepHistorySync
+                ? " (deep history)"
+                : "";
           setSyncStatusMessage(
-            `Fetching recently updated issues... (${count} found)`
+            `Fetching recently updated issues${modeIndicator}... (${count} found)`
           );
-        }
+        },
+        maxIssues
       );
       console.log(
         `[SYNC] Fetched ${recentlyUpdatedIssues.length} recently updated issues from Linear`

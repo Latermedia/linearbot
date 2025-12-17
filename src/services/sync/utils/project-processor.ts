@@ -67,7 +67,15 @@ export interface ProcessProjectsOptions {
   callbacks?: SyncCallbacks;
   existingPartialSync: PartialSyncState | null;
   config: ProjectProcessingConfig;
+  /** Optional tracker for issues already fetched in Phase 1+2 to skip redundant fetches */
+  projectIssueTracker?: {
+    issueIdsByProject: Map<string, Set<string>>;
+    issueCountByProject: Map<string, number>;
+  };
 }
+
+/** Batch size for project metadata fetches */
+const METADATA_BATCH_SIZE = 10;
 
 /**
  * Process multiple projects in parallel with shared logic
@@ -90,6 +98,7 @@ export async function processProjectsInParallel(
     callbacks,
     existingPartialSync,
     config,
+    projectIssueTracker,
   } = options;
 
   const limit = pLimit(PROJECT_SYNC_CONCURRENCY);
@@ -97,6 +106,64 @@ export async function processProjectsInParallel(
   const completedCountLock = config.useAtomicProgress
     ? { value: 0 }
     : undefined;
+
+  // Batch pre-fetch project metadata for projects not in cache
+  // This reduces API calls from N to N/METADATA_BATCH_SIZE
+  const projectsNeedingMetadata = projectsToSync.filter(
+    (id) => !projectDataCache.has(id)
+  );
+
+  if (projectsNeedingMetadata.length > 0) {
+    console.log(
+      `[SYNC] Batch pre-fetching metadata for ${projectsNeedingMetadata.length} projects...`
+    );
+    setSyncStatusMessage(
+      `Pre-fetching metadata for ${projectsNeedingMetadata.length} projects...`
+    );
+
+    // Fetch in batches
+    for (
+      let i = 0;
+      i < projectsNeedingMetadata.length;
+      i += METADATA_BATCH_SIZE
+    ) {
+      if (cancelled.value) break;
+
+      const batch = projectsNeedingMetadata.slice(i, i + METADATA_BATCH_SIZE);
+      try {
+        const batchData =
+          await linearClient.fetchMultipleProjectsFullData(batch);
+
+        // Cache the results
+        for (const [projectId, fullData] of batchData) {
+          projectDataCache.set(projectId, {
+            labels: fullData.labels,
+            content: fullData.content,
+            description: fullData.description,
+            updates: fullData.updates,
+            fullData: fullData,
+          });
+          // Also populate the maps
+          projectDescriptionsMap.set(projectId, fullData.description);
+          projectUpdatesMap.set(projectId, fullData.updates);
+        }
+      } catch (error) {
+        if (error instanceof RateLimitError) {
+          cancelled.value = true;
+          throw error;
+        }
+        // Log but continue - individual project processing will handle missing data
+        console.error(
+          `[SYNC] Batch metadata fetch failed for batch ${i / METADATA_BATCH_SIZE + 1}:`,
+          error instanceof Error ? error.message : error
+        );
+      }
+    }
+
+    console.log(
+      `[SYNC] Batch metadata pre-fetch complete. Cache now has ${projectDataCache.size()} projects.`
+    );
+  }
 
   const processProject = async (
     projectId: string,
@@ -138,28 +205,45 @@ export async function processProjectsInParallel(
     }
 
     let maxIssueCount = 0;
-    let singleProjectIssues: LinearIssueData[];
-    try {
-      // Fetch issues only - don't pass description/updates maps
-      // We'll fetch all project metadata in a single consolidated call below
-      singleProjectIssues = await linearClient.fetchIssuesByProjects(
-        [projectId],
-        config.onProgress
-          ? (count) => {
-              // Check cancellation during progress callback
-              if (cancelled.value) return;
-              config.onProgress!(count);
-              // Don't update progress here - query-based progress handles it smoothly
-              // Progress updates are handled by incrementApiQuery() based on query count
-              maxIssueCount = Math.max(maxIssueCount, count);
-            }
-          : undefined
-        // Note: Not passing projectDescriptionsMap and projectUpdatesMap
-        // to avoid separate API calls - we consolidate below
+    let singleProjectIssues: LinearIssueData[] = [];
+    let skippedIssueFetch = false;
+
+    // Check if we already have issues for this project from Phase 1+2
+    // If so, we can skip the redundant API call - issues are already in the database
+    const existingIssueCount =
+      projectIssueTracker?.issueCountByProject.get(projectId) ?? 0;
+
+    if (existingIssueCount > 0) {
+      // We have issues from Phase 1+2, skip the fetch
+      skippedIssueFetch = true;
+      console.log(
+        `[SYNC] Skipping issue fetch for project ${projectName || projectId} - already have ${existingIssueCount} issues from Phase 1+2`
       );
-    } catch (error) {
-      handleRateLimitError(error, cancelled);
-      throw error;
+      // No need to fetch or write issues - they're already in the database
+    } else {
+      // No issues from Phase 1+2, need to fetch all issues for this project
+      try {
+        // Fetch issues only - don't pass description/updates maps
+        // We'll fetch all project metadata in a single consolidated call below
+        singleProjectIssues = await linearClient.fetchIssuesByProjects(
+          [projectId],
+          config.onProgress
+            ? (count) => {
+                // Check cancellation during progress callback
+                if (cancelled.value) return;
+                config.onProgress!(count);
+                // Don't update progress here - query-based progress handles it smoothly
+                // Progress updates are handled by incrementApiQuery() based on query count
+                maxIssueCount = Math.max(maxIssueCount, count);
+              }
+            : undefined
+          // Note: Not passing projectDescriptionsMap and projectUpdatesMap
+          // to avoid separate API calls - we consolidate below
+        );
+      } catch (error) {
+        handleRateLimitError(error, cancelled);
+        throw error;
+      }
     }
 
     // Check cancellation after API call
@@ -175,7 +259,11 @@ export async function processProjectsInParallel(
 
     let issueCounts = { newCount: 0, updatedCount: 0 };
     let projectIssueCount = 0;
-    if (singleProjectIssues.length > 0) {
+
+    if (skippedIssueFetch) {
+      // Issues were already written to database in Phase 1+2, just track the count
+      projectIssueCount = existingIssueCount;
+    } else if (singleProjectIssues.length > 0) {
       console.log(
         `[SYNC] Writing ${singleProjectIssues.length} issues for project ${projectName || projectId}...`
       );

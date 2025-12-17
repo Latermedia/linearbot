@@ -136,13 +136,24 @@ export const POST: RequestHandler = async (event) => {
     ? {
         phases: syncOptions.phases || [],
         isFullSync: syncOptions.isFullSync ?? true,
+        deepHistorySync: syncOptions.deepHistorySync ?? false,
+        incrementalSync: syncOptions.incrementalSync ?? false,
       }
     : undefined;
 
   // Log sync options for debugging
   if (parsedSyncOptions) {
+    const syncType = parsedSyncOptions.isFullSync
+      ? "Full Sync"
+      : `Partial Sync (${parsedSyncOptions.phases.length} phases)`;
+    const modeLabels: string[] = [];
+    if (parsedSyncOptions.incrementalSync) modeLabels.push("Incremental");
+    if (parsedSyncOptions.deepHistorySync)
+      modeLabels.push("Deep History (1 year)");
+    const modeLabel =
+      modeLabels.length > 0 ? ` + ${modeLabels.join(" + ")}` : "";
     console.log(
-      `[SYNC API] Sync options received: ${parsedSyncOptions.isFullSync ? "Full Sync" : `Partial Sync (${parsedSyncOptions.phases.length} phases)`}`,
+      `[SYNC API] Sync options received: ${syncType}${modeLabel}`,
       parsedSyncOptions.phases
     );
   } else {

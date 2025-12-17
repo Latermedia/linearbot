@@ -27,6 +27,10 @@ export interface SyncCallbacks {
 export interface SyncOptions {
   phases: SyncPhase[];
   isFullSync: boolean;
+  /** Enable deep history sync - fetches issues updated in the last year instead of 14 days */
+  deepHistorySync?: boolean;
+  /** Enable incremental sync - only fetches issues updated since last successful sync */
+  incrementalSync?: boolean;
 }
 
 import type { LinearAPIClient } from "../../linear/client.js";
@@ -41,6 +45,17 @@ import type { ProjectDataCache } from "./utils/project-cache.js";
 export interface ProjectDiscoveryCache {
   planned: { id: string; name: string }[];
   completed: { id: string; name: string }[];
+}
+
+/**
+ * Tracks issue counts per project from bulk fetches (Phase 1+2)
+ * Used to determine if we can skip per-project issue fetches in Phase 3+
+ */
+export interface ProjectIssueTracker {
+  /** Map of projectId -> Set of issue IDs we've already fetched */
+  issueIdsByProject: Map<string, Set<string>>;
+  /** Map of projectId -> count of issues from bulk fetches */
+  issueCountByProject: Map<string, number>;
 }
 
 export interface PhaseContext {
@@ -64,4 +79,6 @@ export interface PhaseContext {
   getProjectSyncLimit: () => number | null;
   /** Cached project discovery results (planned and completed projects) */
   projectDiscoveryCache?: ProjectDiscoveryCache;
+  /** Tracks issues already fetched per project from Phase 1+2 to avoid redundant fetches */
+  projectIssueTracker: ProjectIssueTracker;
 }

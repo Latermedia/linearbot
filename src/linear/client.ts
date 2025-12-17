@@ -385,7 +385,8 @@ export class LinearAPIClient {
 
   async fetchRecentlyUpdatedIssues(
     days: number,
-    onProgress?: (current: number, pageSize: number) => void
+    onProgress?: (current: number, pageSize: number) => void,
+    maxIssues?: number
   ): Promise<LinearIssueData[]> {
     const issues: LinearIssueData[] = [];
     let hasMore = true;
@@ -396,6 +397,11 @@ export class LinearAPIClient {
     const cutoffDate = new Date();
     cutoffDate.setDate(cutoffDate.getDate() - days);
     const cutoffDateISO = cutoffDate.toISOString();
+
+    // Log if we're limiting issues
+    if (maxIssues !== undefined) {
+      console.log(`[LINEAR] Limiting recently updated issues to ${maxIssues}`);
+    }
 
     // Use raw GraphQL to fetch everything in ONE query per page
     const query = `
@@ -590,6 +596,14 @@ export class LinearAPIClient {
         onProgress(issues.length, data.nodes.length);
       }
 
+      // Stop if we've reached the max issues limit
+      if (maxIssues !== undefined && issues.length >= maxIssues) {
+        console.log(
+          `[LINEAR] Reached max issues limit (${maxIssues}), stopping pagination`
+        );
+        break;
+      }
+
       // Safety break to avoid infinite loops
       if (pageCount > PAGINATION.MAX_PAGES) {
         console.warn(
@@ -597,6 +611,11 @@ export class LinearAPIClient {
         );
         break;
       }
+    }
+
+    // Trim to maxIssues if we fetched more than needed
+    if (maxIssues !== undefined && issues.length > maxIssues) {
+      return issues.slice(0, maxIssues);
     }
 
     return issues;
@@ -1211,6 +1230,155 @@ export class LinearAPIClient {
       updatedAt: project.updatedAt || null,
       teams,
     };
+  }
+
+  /**
+   * Fetch metadata for multiple projects in a single API call using GraphQL aliases.
+   * This batches N individual project queries into 1 query, reducing API calls.
+   * @param projectIds Array of project IDs to fetch (max recommended: 10-15 per batch)
+   * @returns Map of projectId -> ProjectFullData
+   */
+  async fetchMultipleProjectsFullData(
+    projectIds: string[]
+  ): Promise<Map<string, ProjectFullData>> {
+    if (projectIds.length === 0) {
+      return new Map();
+    }
+
+    // Build a dynamic query with aliases for each project
+    // Each project gets an alias like p0, p1, p2, etc.
+    const projectQueries = projectIds
+      .map(
+        (projectId, index) => `
+        p${index}: project(id: "${projectId}") {
+          id
+          name
+          description
+          content
+          state
+          status {
+            name
+          }
+          health
+          targetDate
+          startDate
+          completedAt
+          updatedAt
+          lead {
+            id
+            name
+          }
+          teams {
+            nodes {
+              id
+              key
+              name
+            }
+          }
+          labels {
+            nodes {
+              name
+            }
+          }
+          projectUpdates {
+            nodes {
+              id
+              createdAt
+              updatedAt
+              body
+              health
+              user {
+                id
+                name
+                avatarUrl
+              }
+            }
+          }
+        }
+      `
+      )
+      .join("\n");
+
+    const query = `
+      query GetMultipleProjects {
+        ${projectQueries}
+      }
+    `;
+
+    let response: any;
+    try {
+      this.incrementQueryCount();
+      response = await this.client.client.rawRequest(query, {});
+    } catch (error: any) {
+      if (isRateLimitError(error)) {
+        throw new RateLimitError("Linear API rate limit exceeded");
+      }
+      console.error(
+        `Failed to fetch batch project data for ${projectIds.length} projects:`,
+        error instanceof Error ? error.message : error
+      );
+      // Return empty map - caller will handle missing data
+      return new Map();
+    }
+
+    const result = new Map<string, ProjectFullData>();
+
+    // Parse response - each project is at data.p0, data.p1, etc.
+    for (let index = 0; index < projectIds.length; index++) {
+      const projectId = projectIds[index];
+      const project = response.data?.[`p${index}`];
+
+      if (!project) {
+        // Project not found, skip
+        continue;
+      }
+
+      const labels =
+        project.labels?.nodes?.map((l: { name: string }) => l.name) || [];
+
+      const updates = (project.projectUpdates?.nodes || []).map(
+        (node: any) => ({
+          id: node.id,
+          createdAt: node.createdAt,
+          updatedAt: node.updatedAt,
+          body: node.body,
+          health: node.health,
+          userId: node.user?.id || null,
+          userName: node.user?.name || null,
+          userAvatarUrl: node.user?.avatarUrl || null,
+        })
+      );
+
+      const teams = (project.teams?.nodes || []).map((t: any) => ({
+        id: t.id,
+        key: t.key,
+        name: t.name,
+      }));
+
+      result.set(projectId, {
+        description: project.description || null,
+        content: project.content || null,
+        labels,
+        updates,
+        name: project.name,
+        state: project.state,
+        statusName: project.status?.name || null,
+        health: project.health || null,
+        leadId: project.lead?.id || null,
+        leadName: project.lead?.name || null,
+        targetDate: project.targetDate || null,
+        startDate: project.startDate || null,
+        completedAt: project.completedAt || null,
+        updatedAt: project.updatedAt || null,
+        teams,
+      });
+    }
+
+    console.log(
+      `[LINEAR] Batch fetched metadata for ${result.size}/${projectIds.length} projects in 1 API call`
+    );
+
+    return result;
   }
 
   /**

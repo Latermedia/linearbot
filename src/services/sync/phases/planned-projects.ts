@@ -33,6 +33,7 @@ export async function syncPlannedProjects(
     apiQueryCount,
     updatePhase,
     shouldRunPhase,
+    projectIssueTracker,
   } = context;
 
   let newCount = 0;
@@ -161,6 +162,7 @@ export async function syncPlannedProjects(
         callbacks,
         existingPartialSync,
         config,
+        projectIssueTracker,
       });
 
       newCount = result.newCount;

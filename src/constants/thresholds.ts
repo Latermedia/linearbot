@@ -25,6 +25,8 @@ export const PROJECT_THRESHOLDS = {
   STALE_DAYS: 7,
   /** Days for determining recent activity */
   RECENT_ACTIVITY_DAYS: 14,
+  /** Days for deep history sync (1 year) */
+  DEEP_HISTORY_DAYS: 365,
 } as const;
 
 /**

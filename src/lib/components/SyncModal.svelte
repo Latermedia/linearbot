@@ -84,6 +84,8 @@
 
   // Form state
   let isFullSync = $state(true);
+  let deepHistorySync = $state(false);
+  let incrementalSync = $state(false);
   let selectedPhases = $state<Set<SyncPhase>>(
     new Set(phaseOptions.map((p) => p.phase))
   );
@@ -304,6 +306,8 @@
         syncOptions: {
           phases: phasesToRun,
           isFullSync,
+          deepHistorySync,
+          incrementalSync,
         },
       });
 
@@ -551,6 +555,98 @@
         </div>
       </div>
 
+      <!-- Sync Mode Options -->
+      <div class="space-y-2">
+        <h3 class="text-sm font-medium text-white">Sync Mode</h3>
+
+        <!-- Incremental Sync Toggle -->
+        <div
+          class="flex gap-3 items-start p-4 rounded-lg border transition-colors cursor-pointer border-green-800/50 bg-green-900/20 hover:bg-green-900/30"
+          onclick={() => {
+            incrementalSync = !incrementalSync;
+            if (incrementalSync) deepHistorySync = false;
+          }}
+          role="button"
+          tabindex="0"
+          onkeydown={(e) => {
+            if (e.key === "Enter" || e.key === " ") {
+              e.preventDefault();
+              incrementalSync = !incrementalSync;
+              if (incrementalSync) deepHistorySync = false;
+            }
+          }}
+        >
+          <input
+            type="checkbox"
+            id="incrementalSync"
+            checked={incrementalSync}
+            onchange={() => {
+              incrementalSync = !incrementalSync;
+              if (incrementalSync) deepHistorySync = false;
+            }}
+            class="mt-1 w-4 h-4 text-green-600 rounded pointer-events-none border-neutral-600 bg-neutral-700 focus:ring-2 focus:ring-green-500 focus:ring-offset-0 focus:ring-offset-neutral-900"
+          />
+          <div class="flex-1">
+            <label
+              for="incrementalSync"
+              class="block text-sm font-medium text-green-300 cursor-pointer"
+            >
+              Incremental Sync
+            </label>
+            <p class="mt-1 text-xs text-green-200/70">
+              Only fetch issues updated since the last successful sync.
+              <span class="text-green-400 font-medium"
+                >Fastest option - uses fewest API calls.</span
+              >
+            </p>
+          </div>
+        </div>
+
+        <!-- Deep History Sync Toggle -->
+        <div
+          class="flex gap-3 items-start p-4 rounded-lg border transition-colors cursor-pointer border-amber-800/50 bg-amber-900/20 hover:bg-amber-900/30"
+          onclick={() => {
+            deepHistorySync = !deepHistorySync;
+            if (deepHistorySync) incrementalSync = false;
+          }}
+          role="button"
+          tabindex="0"
+          onkeydown={(e) => {
+            if (e.key === "Enter" || e.key === " ") {
+              e.preventDefault();
+              deepHistorySync = !deepHistorySync;
+              if (deepHistorySync) incrementalSync = false;
+            }
+          }}
+        >
+          <input
+            type="checkbox"
+            id="deepHistorySync"
+            checked={deepHistorySync}
+            onchange={() => {
+              deepHistorySync = !deepHistorySync;
+              if (deepHistorySync) incrementalSync = false;
+            }}
+            class="mt-1 w-4 h-4 text-amber-600 rounded pointer-events-none border-neutral-600 bg-neutral-700 focus:ring-2 focus:ring-amber-500 focus:ring-offset-0 focus:ring-offset-neutral-900"
+          />
+          <div class="flex-1">
+            <label
+              for="deepHistorySync"
+              class="block text-sm font-medium text-amber-300 cursor-pointer"
+            >
+              Deep History Sync
+            </label>
+            <p class="mt-1 text-xs text-amber-200/70">
+              Fetch issues updated in the last year (365 days) instead of 14
+              days.
+              <span class="text-amber-400 font-medium"
+                >Slowest option - uses most API calls.</span
+              >
+            </p>
+          </div>
+        </div>
+      </div>
+
       <!-- Phase Options -->
       <div class="space-y-2">
         <div class="flex justify-between items-center">
@@ -650,11 +746,21 @@
             !adminPassword ||
             (!isFullSync && selectedPhases.size === 0)}
         >
-          {isSubmitting
-            ? "Starting..."
-            : isFullSync
+          {#if isSubmitting}
+            Starting...
+          {:else if incrementalSync}
+            {isFullSync
+              ? `Start Incremental Sync (${phaseOptions.length} phases)`
+              : `Start Incremental Sync (${selectedPhases.size} phase${selectedPhases.size === 1 ? "" : "s"})`}
+          {:else if deepHistorySync}
+            {isFullSync
+              ? `Start Deep History Sync (${phaseOptions.length} phases, 1 year)`
+              : `Start Deep History Sync (${selectedPhases.size} phase${selectedPhases.size === 1 ? "" : "s"}, 1 year)`}
+          {:else}
+            {isFullSync
               ? `Start Full Sync (${phaseOptions.length} phases)`
               : `Start Sync (${selectedPhases.size} phase${selectedPhases.size === 1 ? "" : "s"})`}
+          {/if}
         </Button>
       </div>
     {/if}

@@ -35,6 +35,7 @@ export async function syncInitiativeProjects(
     apiQueryCount,
     updatePhase,
     shouldRunPhase,
+    projectIssueTracker,
   } = context;
 
   let newCount = 0;
@@ -134,6 +135,18 @@ export async function syncInitiativeProjects(
           return [];
         }
 
+        // Check if we already have issues for this project from Phase 1+2
+        const existingIssueCount =
+          projectIssueTracker?.issueCountByProject.get(projectId) ?? 0;
+
+        if (existingIssueCount > 0) {
+          // We have issues from Phase 1+2, skip the fetch
+          console.log(
+            `[SYNC] Skipping issue fetch for initiative project ${projectId} - already have ${existingIssueCount} issues from Phase 1+2`
+          );
+          return [];
+        }
+
         try {
           // Fetch issues only - not passing description/updates maps
           // All project metadata will be fetched in one consolidated call below
@@ -179,7 +192,7 @@ export async function syncInitiativeProjects(
         updatedCount = counts.updatedCount;
       }
 
-      // Fetch all project metadata in consolidated API calls (using cache)
+      // Fetch all project metadata in consolidated API calls (using cache and batching)
       const initiativeProjectLabelsMap = new Map<string, string[]>();
       const initiativeProjectContentMap = new Map<string, string | null>();
 
@@ -188,20 +201,79 @@ export async function syncInitiativeProjects(
         throw new RateLimitError("Rate limit exceeded");
       }
 
-      // Fetch all project metadata for each project in parallel (using cache)
-      // Uses fetchProjectFullData which consolidates description, content, labels, updates into one call
-      const projectDataPromises = projectsToSync.map(async (projectId) => {
-        // Check cancellation before each API call
-        if (cancelled.value) {
-          return;
-        }
+      // Find projects not in cache for batch fetching
+      const projectsNeedingMetadata = projectsToSync.filter(
+        (id) => !projectDataCache.has(id)
+      );
 
-        // Use cache if available
+      // Batch fetch metadata for uncached projects (10 per batch)
+      const METADATA_BATCH_SIZE = 10;
+      if (projectsNeedingMetadata.length > 0) {
+        console.log(
+          `[SYNC] Batch fetching metadata for ${projectsNeedingMetadata.length} initiative projects...`
+        );
+        setSyncStatusMessage(
+          `Fetching metadata for ${projectsNeedingMetadata.length} initiative projects...`
+        );
+
+        for (
+          let i = 0;
+          i < projectsNeedingMetadata.length;
+          i += METADATA_BATCH_SIZE
+        ) {
+          if (cancelled.value) break;
+
+          const batch = projectsNeedingMetadata.slice(
+            i,
+            i + METADATA_BATCH_SIZE
+          );
+          try {
+            const batchData =
+              await linearClient.fetchMultipleProjectsFullData(batch);
+
+            // Cache and populate maps
+            for (const [projectId, fullData] of batchData) {
+              projectDataCache.set(projectId, {
+                labels: fullData.labels,
+                content: fullData.content,
+                description: fullData.description,
+                updates: fullData.updates,
+                fullData: fullData,
+              });
+              initiativeProjectLabelsMap.set(projectId, fullData.labels);
+              initiativeProjectContentMap.set(projectId, fullData.content);
+              projectDescriptionsMap.set(projectId, fullData.description);
+              projectUpdatesMap.set(projectId, fullData.updates);
+              if (fullData.updates.length > 0) {
+                console.log(
+                  `[SYNC] Fetched ${fullData.updates.length} project update(s) for initiative project: ${projectId}`
+                );
+              }
+            }
+          } catch (error: unknown) {
+            if (error instanceof RateLimitError) {
+              cancelled.value = true;
+              throw error;
+            }
+            console.error(
+              `[SYNC] Batch metadata fetch failed for initiative projects:`,
+              error instanceof Error ? error.message : String(error)
+            );
+            // Continue - individual projects may still work
+          }
+        }
+      }
+
+      // Populate maps from cache for projects that were already cached
+      for (const projectId of projectsToSync) {
         if (projectDataCache.has(projectId)) {
           const cachedData = projectDataCache.get(projectId)!;
-          initiativeProjectLabelsMap.set(projectId, cachedData.labels);
-          initiativeProjectContentMap.set(projectId, cachedData.content);
-          // Also populate description/updates maps from cache
+          if (!initiativeProjectLabelsMap.has(projectId)) {
+            initiativeProjectLabelsMap.set(projectId, cachedData.labels);
+          }
+          if (!initiativeProjectContentMap.has(projectId)) {
+            initiativeProjectContentMap.set(projectId, cachedData.content);
+          }
           if (!projectDescriptionsMap.has(projectId)) {
             projectDescriptionsMap.set(
               projectId,
@@ -211,50 +283,15 @@ export async function syncInitiativeProjects(
           if (!projectUpdatesMap.has(projectId)) {
             projectUpdatesMap.set(projectId, cachedData.updates ?? []);
           }
-          return;
-        }
-
-        try {
-          // Fetch all project metadata in a single consolidated API call
-          const fullData = await linearClient.fetchProjectFullData(projectId);
-          // Cache all project metadata
-          projectDataCache.set(projectId, {
-            labels: fullData.labels,
-            content: fullData.content,
-            description: fullData.description,
-            updates: fullData.updates,
-          });
-          initiativeProjectLabelsMap.set(projectId, fullData.labels);
-          initiativeProjectContentMap.set(projectId, fullData.content);
-          projectDescriptionsMap.set(projectId, fullData.description);
-          projectUpdatesMap.set(projectId, fullData.updates);
-          if (fullData.updates.length > 0) {
-            console.log(
-              `[SYNC] Fetched ${fullData.updates.length} project update(s) for initiative project: ${projectId}`
-            );
+        } else {
+          // Project wasn't in cache and batch fetch failed - set defaults
+          if (!projectDescriptionsMap.has(projectId)) {
+            projectDescriptionsMap.set(projectId, null);
           }
-        } catch (error: unknown) {
-          if (error instanceof RateLimitError) {
-            cancelled.value = true;
-            throw error;
+          if (!projectUpdatesMap.has(projectId)) {
+            projectUpdatesMap.set(projectId, []);
           }
-          console.error(
-            `[SYNC] Failed to fetch project data for ${projectId}:`,
-            error instanceof Error ? error.message : String(error)
-          );
-          // Continue without metadata - it's optional
-          projectDescriptionsMap.set(projectId, null);
-          projectUpdatesMap.set(projectId, []);
         }
-      });
-
-      const projectDataResults = await Promise.allSettled(projectDataPromises);
-
-      // Check if any promise was rejected due to rate limit
-      const projectDataRateLimitError =
-        checkForRateLimitError(projectDataResults);
-      if (projectDataRateLimitError) {
-        throw projectDataRateLimitError;
       }
 
       await computeAndStoreProjects(

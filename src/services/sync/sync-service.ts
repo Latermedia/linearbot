@@ -300,6 +300,14 @@ export async function performSync(
     const projectUpdatesMap = new Map<string, ProjectUpdate[]>();
     const projectDataCache = new ProjectDataCache();
 
+    // Initialize project issue tracker for optimization
+    // This tracks which issues we've already fetched per project from Phase 1+2
+    // to avoid redundant API calls in Phase 3+
+    const projectIssueTracker = {
+      issueIdsByProject: new Map<string, Set<string>>(),
+      issueCountByProject: new Map<string, number>(),
+    };
+
     const phaseContext: PhaseContext = {
       linearClient,
       callbacks,
@@ -319,6 +327,7 @@ export async function performSync(
       updatePhase,
       shouldRunPhase,
       getProjectSyncLimit,
+      projectIssueTracker,
     };
 
     // Phase 1: Initial Issues
@@ -342,6 +351,30 @@ export async function performSync(
     phaseContext.recentlyUpdatedIssues = recentlyUpdatedIssues;
     phaseContext.cumulativeNewCount = cumulativeNewCount;
     phaseContext.cumulativeUpdatedCount = cumulativeUpdatedCount;
+
+    // Populate project issue tracker from Phase 1+2 results
+    // This enables skipping redundant issue fetches in Phase 3+
+    const allBulkIssues = [...startedIssues, ...recentlyUpdatedIssues];
+    for (const issue of allBulkIssues) {
+      if (issue.projectId) {
+        if (!projectIssueTracker.issueIdsByProject.has(issue.projectId)) {
+          projectIssueTracker.issueIdsByProject.set(
+            issue.projectId,
+            new Set<string>()
+          );
+        }
+        projectIssueTracker.issueIdsByProject
+          .get(issue.projectId)!
+          .add(issue.id);
+      }
+    }
+    // Update counts
+    for (const [projectId, issueIds] of projectIssueTracker.issueIdsByProject) {
+      projectIssueTracker.issueCountByProject.set(projectId, issueIds.size);
+    }
+    console.log(
+      `[SYNC] Project issue tracker populated: ${projectIssueTracker.issueCountByProject.size} projects with ${allBulkIssues.length} total issues from Phase 1+2`
+    );
 
     // Phase 3: Active Projects
     if (shouldRunPhase("active_projects") && effectiveIncludeProjectSync) {
