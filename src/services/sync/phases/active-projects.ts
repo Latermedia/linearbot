@@ -163,6 +163,7 @@ export async function syncActiveProjects(
         existingPartialSync,
         config,
         projectIssueTracker,
+        ignoredTeamKeys: context.ignoredTeamKeys,
       });
 
       newCount = result.newCount;

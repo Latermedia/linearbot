@@ -72,6 +72,8 @@ export interface ProcessProjectsOptions {
     issueIdsByProject: Map<string, Set<string>>;
     issueCountByProject: Map<string, number>;
   };
+  /** Team keys to ignore (issues from these teams will not be written to database) */
+  ignoredTeamKeys?: string[];
 }
 
 /** Batch size for project metadata fetches */
@@ -99,6 +101,7 @@ export async function processProjectsInParallel(
     existingPartialSync,
     config,
     projectIssueTracker,
+    ignoredTeamKeys = [],
   } = options;
 
   const limit = pLimit(PROJECT_SYNC_CONCURRENCY);
@@ -264,11 +267,27 @@ export async function processProjectsInParallel(
       // Issues were already written to database in Phase 1+2, just track the count
       projectIssueCount = existingIssueCount;
     } else if (singleProjectIssues.length > 0) {
-      console.log(
-        `[SYNC] Writing ${singleProjectIssues.length} issues for project ${projectName || projectId}...`
-      );
-      issueCounts = writeIssuesToDatabase(singleProjectIssues);
-      projectIssueCount = singleProjectIssues.length;
+      // Filter out ignored teams before writing to database
+      const filteredIssues =
+        ignoredTeamKeys.length > 0
+          ? singleProjectIssues.filter(
+              (issue) => !ignoredTeamKeys.includes(issue.teamKey)
+            )
+          : singleProjectIssues;
+
+      if (filteredIssues.length !== singleProjectIssues.length) {
+        console.log(
+          `[SYNC] Filtered out ${singleProjectIssues.length - filteredIssues.length} issues from ignored teams for project ${projectName || projectId}`
+        );
+      }
+
+      if (filteredIssues.length > 0) {
+        console.log(
+          `[SYNC] Writing ${filteredIssues.length} issues for project ${projectName || projectId}...`
+        );
+        issueCounts = writeIssuesToDatabase(filteredIssues);
+      }
+      projectIssueCount = filteredIssues.length;
     }
 
     // Check cancellation before additional API calls

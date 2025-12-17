@@ -184,12 +184,28 @@ export async function syncInitiativeProjects(
       initiativeProjectIssues.push(...allInitiativeProjectIssues);
 
       if (initiativeProjectIssues.length > 0) {
-        console.log(
-          `[SYNC] Writing ${initiativeProjectIssues.length} issues from ${projectsToSync.length} initiative project(s)...`
-        );
-        const counts = writeIssuesToDatabase(initiativeProjectIssues);
-        newCount = counts.newCount;
-        updatedCount = counts.updatedCount;
+        // Filter out ignored teams before writing to database
+        const filteredIssues =
+          context.ignoredTeamKeys.length > 0
+            ? initiativeProjectIssues.filter(
+                (issue) => !context.ignoredTeamKeys.includes(issue.teamKey)
+              )
+            : initiativeProjectIssues;
+
+        if (filteredIssues.length !== initiativeProjectIssues.length) {
+          console.log(
+            `[SYNC] Filtered out ${initiativeProjectIssues.length - filteredIssues.length} issues from ignored teams in initiative projects`
+          );
+        }
+
+        if (filteredIssues.length > 0) {
+          console.log(
+            `[SYNC] Writing ${filteredIssues.length} issues from ${projectsToSync.length} initiative project(s)...`
+          );
+          const counts = writeIssuesToDatabase(filteredIssues);
+          newCount = counts.newCount;
+          updatedCount = counts.updatedCount;
+        }
       }
 
       // Fetch all project metadata in consolidated API calls (using cache and batching)

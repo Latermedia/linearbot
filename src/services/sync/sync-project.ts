@@ -35,8 +35,12 @@ export async function syncProject(
     if (isMockMode()) {
       console.log("[SYNC] Mock mode: skipping project sync");
       const mockData = generateMockData();
+      const ignoredTeamKeys = process.env.IGNORED_TEAM_KEYS
+        ? process.env.IGNORED_TEAM_KEYS.split(",").map((key) => key.trim())
+        : [];
       const projectMockIssues = mockData.issues.filter(
-        (i: LinearIssueData) => i.projectId === projectId
+        (i: LinearIssueData) =>
+          i.projectId === projectId && !ignoredTeamKeys.includes(i.teamKey)
       );
       const counts = writeIssuesToDatabase(projectMockIssues);
       cumulativeNewCount += counts.newCount;
@@ -116,17 +120,38 @@ export async function syncProject(
       }
 
       if (projectIssues.length > 0) {
-        console.log(
-          `[SYNC] Writing ${projectIssues.length} project issues to database...`
-        );
-        const counts = writeIssuesToDatabase(projectIssues);
-        cumulativeNewCount += counts.newCount;
-        cumulativeUpdatedCount += counts.updatedCount;
-        // Update stats incrementally after writing issues
-        callbacks?.onIssueCountsUpdate?.(
-          cumulativeNewCount,
-          cumulativeUpdatedCount
-        );
+        // Get ignored team keys from environment
+        const ignoredTeamKeys = process.env.IGNORED_TEAM_KEYS
+          ? process.env.IGNORED_TEAM_KEYS.split(",").map((key) => key.trim())
+          : [];
+
+        // Filter out ignored teams before writing to database
+        const filteredIssues =
+          ignoredTeamKeys.length > 0
+            ? projectIssues.filter(
+                (issue) => !ignoredTeamKeys.includes(issue.teamKey)
+              )
+            : projectIssues;
+
+        if (filteredIssues.length !== projectIssues.length) {
+          console.log(
+            `[SYNC] Filtered out ${projectIssues.length - filteredIssues.length} issues from ignored teams`
+          );
+        }
+
+        if (filteredIssues.length > 0) {
+          console.log(
+            `[SYNC] Writing ${filteredIssues.length} project issues to database...`
+          );
+          const counts = writeIssuesToDatabase(filteredIssues);
+          cumulativeNewCount += counts.newCount;
+          cumulativeUpdatedCount += counts.updatedCount;
+          // Update stats incrementally after writing issues
+          callbacks?.onIssueCountsUpdate?.(
+            cumulativeNewCount,
+            cumulativeUpdatedCount
+          );
+        }
       }
 
       callbacks?.onProgressPercent?.(80);

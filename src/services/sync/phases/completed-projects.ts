@@ -166,6 +166,7 @@ export async function syncCompletedProjects(
         existingPartialSync,
         config,
         projectIssueTracker,
+        ignoredTeamKeys: context.ignoredTeamKeys,
       });
 
       newCount = result.newCount;
