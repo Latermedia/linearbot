@@ -23,3 +23,6 @@ team-domain-mappings.json
 .vercel
 .env.vercel
 fly.toml
+
+# Year in review reports (generated)
+year-in-review/
