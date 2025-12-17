@@ -1,5 +1,27 @@
 # Release Notes
 
+## v0.5.0
+
+### Added
+
+- Year-in-review script for analyzing annual project data
+- Deep history sync with optimized Linear API usage
+- Time range toggle in Gantt export modal
+- Project filter and reset controls in Gantt export modal
+- Global team filter across all pages
+- Plan & WIP filter option for issue views
+
+### Changed
+
+- Consolidated sync service with auto-deletion of ignored team issues
+
+### Fixed
+
+- Ignored teams now filtered from project sync phases
+- Toggle indicator positioning using offset properties
+- Projects with zero issues now sync correctly
+- Login credentials properly persist authentication session
+
 ## v0.4.0
 
 ### Added
