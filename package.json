@@ -7,6 +7,7 @@
     "prepare": "husky",
     "setup": "bun run scripts/setup.ts",
     "sync": "bun run scripts/sync.ts",
+    "year-in-review": "bun run scripts/year-in-review.ts",
     "explore": "bun run scripts/explore-linear-data.ts",
     "reset-db": "bun run scripts/reset-db.ts",
     "release-prepare": "bun run scripts/release-prepare.ts",
