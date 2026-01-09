@@ -46,7 +46,7 @@ export async function syncProject(
       cumulativeNewCount += counts.newCount;
       cumulativeUpdatedCount += counts.updatedCount;
 
-      callbacks?.onProgressPercent?.(100);
+      callbacks?.onProgressPercent?.(100, 0);
       setSyncProgress(100);
 
       const syncTime = new Date().toISOString();
@@ -70,7 +70,7 @@ export async function syncProject(
     }
 
     const linearClient = createLinearClient();
-    callbacks?.onProgressPercent?.(10);
+    callbacks?.onProgressPercent?.(10, 0);
     setSyncProgress(10);
 
     console.log(`[SYNC] Testing Linear API connection...`);
@@ -94,7 +94,7 @@ export async function syncProject(
     }
     console.log("[SYNC] Linear API connection successful");
 
-    callbacks?.onProgressPercent?.(30);
+    callbacks?.onProgressPercent?.(30, 0);
     setSyncProgress(30);
 
     console.log(`[SYNC] Fetching issues for project: ${projectId}`);
@@ -108,7 +108,7 @@ export async function syncProject(
           callbacks?.onProjectIssueCountUpdate?.(count);
           if (projectIndex !== undefined && totalProjects !== undefined) {
             const percent = Math.min(30 + Math.round((count / 100) * 50), 80);
-            callbacks?.onProgressPercent?.(percent);
+            callbacks?.onProgressPercent?.(percent, 0);
             setSyncProgress(percent);
           }
         }
@@ -154,7 +154,7 @@ export async function syncProject(
         }
       }
 
-      callbacks?.onProgressPercent?.(80);
+      callbacks?.onProgressPercent?.(80, 0);
       setSyncProgress(80);
     } catch (error) {
       const errorMessage =
@@ -213,7 +213,7 @@ export async function syncProject(
     }
 
     console.log(`[SYNC] Computing project metrics...`);
-    callbacks?.onProgressPercent?.(90);
+    callbacks?.onProgressPercent?.(90, 0);
     setSyncProgress(90);
 
     const computedProjectCount = await computeAndStoreProjects(
@@ -228,7 +228,7 @@ export async function syncProject(
     console.log(`[SYNC] Computing engineer WIP metrics...`);
     computeAndStoreEngineers();
 
-    callbacks?.onProgressPercent?.(100);
+    callbacks?.onProgressPercent?.(100, 0);
     setSyncProgress(100);
 
     const syncTime = new Date().toISOString();

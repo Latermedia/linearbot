@@ -17,6 +17,8 @@ function getAllSyncPhases(): Array<{ phase: SyncPhase; label: string }> {
     { phase: "active_projects", label: "Active Projects" },
     { phase: "planned_projects", label: "Planned Projects" },
     { phase: "completed_projects", label: "Completed Projects" },
+    { phase: "initiatives", label: "Initiatives" },
+    { phase: "initiative_projects", label: "Initiative Projects" },
     { phase: "computing_metrics", label: "Computing Metrics" },
     { phase: "complete", label: "Complete" },
   ];

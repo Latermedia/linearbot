@@ -15,7 +15,7 @@ export interface SyncCallbacks {
   onIssueCountUpdate?: (count: number) => void;
   onProjectCountUpdate?: (count: number) => void;
   onProjectIssueCountUpdate?: (count: number) => void;
-  onProgressPercent?: (percent: number) => void;
+  onProgressPercent?: (percent: number, apiQueryCount: number) => void;
   onProjectProgress?: (
     currentIndex: number,
     total: number,

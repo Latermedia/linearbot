@@ -41,7 +41,10 @@ function ensureHandle(): WorkerHandle {
       if (!msg || typeof msg !== "object") return;
 
       if (msg.type === "progress") {
-        setSyncState({ progressPercent: msg.progressPercent ?? undefined });
+        setSyncState({
+          progressPercent: msg.progressPercent ?? undefined,
+          apiQueryCount: msg.apiQueryCount,
+        });
         return;
       }
 

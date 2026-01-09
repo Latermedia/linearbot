@@ -136,7 +136,7 @@ export async function performSync(
 
     // Update progress via callbacks and database
     // This is the primary progress indicator - smooth and consistent
-    callbacks?.onProgressPercent?.(progress);
+    callbacks?.onProgressPercent?.(progress, apiQueryCount);
     // Avoid hammering SQLite with a write per API query.
     queueMetadataUpdate({ sync_progress_percent: progress });
   };
@@ -198,7 +198,7 @@ export async function performSync(
     // Check for mock mode
     if (isMockMode()) {
       console.log("[SYNC] Running in mock mode - using generated data");
-      callbacks?.onProgressPercent?.(10);
+      callbacks?.onProgressPercent?.(10, 0);
       setSyncProgress(10);
 
       const { issues, projectDescriptions, projectUpdates } =
@@ -206,20 +206,20 @@ export async function performSync(
 
       const startedMockIssues = issues.filter((i) => i.stateType === "started");
       callbacks?.onIssueCountUpdate?.(startedMockIssues.length);
-      callbacks?.onProgressPercent?.(30);
+      callbacks?.onProgressPercent?.(30, 0);
       setSyncProgress(30);
 
       const projectIds = new Set(
         issues.filter((i) => i.projectId).map((i) => i.projectId as string)
       );
       callbacks?.onProjectCountUpdate?.(projectIds.size);
-      callbacks?.onProgressPercent?.(50);
+      callbacks?.onProgressPercent?.(50, 0);
       setSyncProgress(50);
 
       console.log(`[SYNC] Writing ${issues.length} mock issues to database...`);
       const counts = writeIssuesToDatabase(issues);
       callbacks?.onProjectIssueCountUpdate?.(issues.length);
-      callbacks?.onProgressPercent?.(70);
+      callbacks?.onProgressPercent?.(70, 0);
       setSyncProgress(70);
 
       const projectLabelsMap = new Map<string, string[]>();
@@ -245,7 +245,7 @@ export async function performSync(
         `[SYNC] Computed metrics for ${computedEngineerCount} engineer(s)`
       );
 
-      callbacks?.onProgressPercent?.(100);
+      callbacks?.onProgressPercent?.(100, 0);
       setSyncProgress(100);
       setSyncStatusMessage("Sync complete");
 
@@ -293,7 +293,7 @@ export async function performSync(
 
     // Connect to Linear with query counter
     const linearClient = createLinearClient(undefined, incrementApiQuery);
-    callbacks?.onProgressPercent?.(0);
+    callbacks?.onProgressPercent?.(0, 0);
     setSyncProgress(0);
     console.log("[SYNC] Testing Linear API connection...");
     const connected = await linearClient.testConnection();
@@ -488,7 +488,7 @@ export async function performSync(
     updatePhase("complete");
 
     // Set progress to 100% and save phase query counts for next sync
-    callbacks?.onProgressPercent?.(100);
+    callbacks?.onProgressPercent?.(100, apiQueryCount);
     setSyncProgress(100);
     setSyncStatusMessage("Sync complete");
 

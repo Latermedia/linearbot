@@ -92,8 +92,8 @@ async function runJob(job: SyncJob): Promise<void> {
 
   try {
     const callbacks = {
-      onProgressPercent: (progressPercent: number) => {
-        post({ type: "progress", progressPercent });
+      onProgressPercent: (progressPercent: number, apiQueryCount: number) => {
+        post({ type: "progress", progressPercent, apiQueryCount });
       },
       onIssueCountUpdate: (startedIssuesCount: number) => {
         post({ type: "stats", stats: { startedIssuesCount } });
