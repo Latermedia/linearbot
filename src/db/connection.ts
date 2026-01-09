@@ -3,10 +3,20 @@ import { initializeDatabase, validateSchema, resetDatabase } from "./schema.js";
 
 let dbInstance: Database | null = null;
 
+const getDbPath = (): string => {
+  const overridePath = process.env.DB_PATH || process.env.DATABASE_PATH;
+  if (overridePath && overridePath.trim().length > 0) {
+    return overridePath.trim();
+  }
+
+  const isProduction = process.env.NODE_ENV === "production";
+  return isProduction ? "/data/linear-bot.db" : "linear-bot.db";
+};
+
 export function getDatabase(): Database {
   if (!dbInstance) {
     const isProduction = process.env.NODE_ENV === "production";
-    const dbPath = isProduction ? "/data/linear-bot.db" : "linear-bot.db";
+    const dbPath = getDbPath();
 
     console.log(
       `[DB] Creating ${
@@ -69,8 +79,7 @@ export function resetDatabaseConnection(): void {
 
   // Create a temporary database instance to perform the reset
   // We don't use getDatabase() here to avoid initialization before reset
-  const isProduction = process.env.NODE_ENV === "production";
-  const dbPath = isProduction ? "/data/linear-bot.db" : "linear-bot.db";
+  const dbPath = getDbPath();
 
   const tempDb = new Database(dbPath);
   resetDatabase(tempDb);

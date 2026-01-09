@@ -14,6 +14,7 @@ primary_region = "iad"
 [env]
   NODE_ENV = "production"
   PORT = "3000"
+  DB_PATH = "/data/linear-bot.db"
 
 [deploy]
   strategy = "immediate"

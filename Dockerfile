@@ -18,6 +18,8 @@ RUN bun --bun run build
 FROM base AS runtime
 WORKDIR /app
 
+RUN mkdir -p /data
+
 # Copy built application and package files
 COPY --from=build /app/.svelte-kit/adapter-bun ./.svelte-kit/adapter-bun
 COPY --from=build /app/.svelte-kit/output ./.svelte-kit/output

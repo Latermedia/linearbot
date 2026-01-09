@@ -94,9 +94,24 @@ For Fly.io:
 
 ```bash
 cp fly.toml.example fly.toml
+fly volumes create linear_bot_data --region iad --size 1
 fly secrets set LINEAR_API_KEY=... APP_PASSWORD=...
 fly deploy
 ```
+
+This deployment uses a Fly.io volume mounted at `/data` to persist the SQLite database (default: `/data/linear-bot.db`) across deploys and restarts.
+
+Recommended `fly.toml` settings:
+
+- Mount the volume to `/data`
+- Set `DB_PATH=/data/linear-bot.db` in `[env]` (explicitly pins the DB file onto the mounted volume)
+- Keep `max_machines_running = 1` (SQLite file is not safe to share across multiple machines)
+
+After you deploy, verify persistence:
+
+- Check logs for `"[DB] Database file: /data/linear-bot.db"`
+- Trigger a write (e.g. run a sync)
+- Redeploy and confirm the data is still present
 
 ## License
 
