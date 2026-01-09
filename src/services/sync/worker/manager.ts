@@ -44,6 +44,7 @@ function ensureHandle(): WorkerHandle {
         setSyncState({
           progressPercent: msg.progressPercent ?? undefined,
           apiQueryCount: msg.apiQueryCount,
+          currentPhase: msg.currentPhase,
         });
         return;
       }

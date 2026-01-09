@@ -26,6 +26,7 @@ export type WorkerResponseMessage =
       type: "progress";
       progressPercent: number | null;
       apiQueryCount: number;
+      currentPhase: string | null;
     }
   | {
       type: "stats";
