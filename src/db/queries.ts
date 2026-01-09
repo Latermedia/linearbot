@@ -1,6 +1,10 @@
 import { getDatabase } from "./connection.js";
 import type { Issue, Project, Engineer, Initiative } from "./schema.js";
 
+// Cached prepared statements for hot paths
+let upsertIssueStatement: any | null = null;
+let upsertIssueStatementDb: any | null = null;
+
 /**
  * Centralized database queries for the Linear bot.
  * All SQL queries should be defined here to maintain consistency
@@ -156,7 +160,11 @@ export function upsertIssue(issue: {
   labels: string | null;
 }): void {
   const db = getDatabase();
-  const query = db.prepare(`
+  // Cache the prepared statement to avoid re-preparing for every row.
+  // This is a hot path during sync.
+  if (!upsertIssueStatement || upsertIssueStatementDb !== db) {
+    upsertIssueStatementDb = db;
+    upsertIssueStatement = db.prepare(`
     INSERT INTO issues (
       id, identifier, title, description, team_id, team_name, team_key,
       state_id, state_name, state_type,
@@ -212,8 +220,9 @@ export function upsertIssue(issue: {
       parent_id = excluded.parent_id,
       labels = excluded.labels
   `);
+  }
 
-  query.run(
+  upsertIssueStatement.run(
     issue.id,
     issue.identifier,
     issue.title,

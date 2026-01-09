@@ -1,7 +1,8 @@
 import { json } from "@sveltejs/kit";
 import type { RequestHandler } from "./$types";
-import { performSync, type SyncOptions } from "../../../services/sync/index.js";
-import { getSyncState, setSyncState, updateSyncStats } from "./state.js";
+import type { SyncOptions } from "../../../services/sync/index.js";
+import { startFullSync } from "../../../services/sync/worker/manager.js";
+import { getSyncState, setSyncState } from "./state.js";
 import { updateSyncMetadata, setSyncStatus } from "../../../db/queries.js";
 import { validateCsrfTokenFromHeader } from "$lib/csrf.js";
 import { verifyAdminPassword } from "$lib/auth.js";
@@ -115,21 +116,6 @@ export const POST: RequestHandler = async (event) => {
   // Start sync (non-blocking)
   const syncStartTime = Date.now();
   console.log("[SYNC] Starting sync...");
-  setSyncState({
-    isRunning: true,
-    status: "syncing",
-    error: undefined,
-    progressPercent: 0,
-    stats: {
-      startedIssuesCount: 0,
-      totalProjectsCount: 0,
-      currentProjectIndex: 0,
-      currentProjectName: null,
-      projectIssuesCount: 0,
-      newCount: 0,
-      updatedCount: 0,
-    },
-  });
 
   // Parse sync options if provided
   const parsedSyncOptions: SyncOptions | undefined = syncOptions
@@ -169,62 +155,18 @@ export const POST: RequestHandler = async (event) => {
     ? parsedSyncOptions.phases.includes("active_projects")
     : true;
 
-  // Run sync asynchronously
-  performSync(
-    includeProjectSync,
-    {
-      onProgressPercent: (percent) => {
-        setSyncState({ progressPercent: percent });
-      },
-      onIssueCountUpdate: (count) => {
-        updateSyncStats({ startedIssuesCount: count });
-      },
-      onProjectCountUpdate: (count) => {
-        updateSyncStats({ totalProjectsCount: count });
-      },
-      onProjectIssueCountUpdate: (count) => {
-        updateSyncStats({ projectIssuesCount: count });
-      },
-      onProjectProgress: (index, total, projectName) => {
-        updateSyncStats({
-          currentProjectIndex: index,
-          totalProjectsCount: total,
-          currentProjectName: projectName,
-        });
-      },
-      onIssueCountsUpdate: (newCount, updatedCount) => {
-        updateSyncStats({
-          newCount,
-          updatedCount,
-        });
-      },
-    },
-    parsedSyncOptions
-  )
+  // Run sync asynchronously (worker thread)
+  startFullSync({ includeProjectSync, syncOptions: parsedSyncOptions })
     .then((result) => {
       const duration = Date.now() - syncStartTime;
       if (result.success) {
         console.log(
           `[SYNC] Completed successfully in ${duration}ms - New: ${result.newCount}, Updated: ${result.updatedCount}, Total: ${result.totalCount}, Issues: ${result.issueCount}, Projects: ${result.projectCount}`
         );
-        setSyncState({
-          isRunning: false,
-          status: "idle",
-          lastSyncTime: Date.now(),
-          progressPercent: undefined,
-          stats: undefined,
-        });
       } else {
         console.error(
           `[SYNC] Failed after ${duration}ms: ${result.error || "Sync failed"}`
         );
-        setSyncState({
-          isRunning: false,
-          status: "error",
-          error: result.error || "Sync failed",
-          progressPercent: undefined,
-          stats: undefined,
-        });
       }
     })
     .catch((error) => {
@@ -232,13 +174,16 @@ export const POST: RequestHandler = async (event) => {
       const errorMessage =
         error instanceof Error ? error.message : "Unknown error";
       console.error(`[SYNC] Error after ${duration}ms:`, errorMessage);
-      setSyncState({
-        isRunning: false,
-        status: "error",
-        error: errorMessage,
-        progressPercent: undefined,
-        stats: undefined,
-      });
+      // Don't corrupt state if error is because another sync is already running
+      if (errorMessage !== "Sync already in progress") {
+        setSyncState({
+          isRunning: false,
+          status: "error",
+          error: errorMessage,
+          progressPercent: undefined,
+          stats: undefined,
+        });
+      }
     });
 
   return json({

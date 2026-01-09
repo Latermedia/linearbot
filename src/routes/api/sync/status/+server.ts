@@ -23,11 +23,50 @@ function getAllSyncPhases(): Array<{ phase: SyncPhase; label: string }> {
 }
 
 export const GET: RequestHandler = async () => {
-  // Read from database (primary source) - single query for both metadata and partial state
-  const dbMetadata = getSyncMetadata();
-
-  // Also check in-memory state for isRunning flag (for immediate updates during sync)
   const syncState = getSyncState();
+
+  // If sync is running, serve purely from in-memory state to avoid blocking on SQLite.
+  // The worker streams DB metadata snapshots into syncState while syncing.
+  if (syncState.isRunning || syncState.status === "syncing") {
+    const lastSyncTime = syncState.lastSyncTime ?? null;
+    const currentPhase = syncState.currentPhase ?? null;
+
+    const allPhases = getAllSyncPhases();
+    const phases = allPhases.map(({ phase, label }) => {
+      let status: "pending" | "in_progress" | "complete" = "pending";
+      if (currentPhase) {
+        const currentIndex = allPhases.findIndex(
+          (p) => p.phase === currentPhase
+        );
+        const phaseIndex = allPhases.findIndex((p) => p.phase === phase);
+        if (phaseIndex < currentIndex) {
+          status = "complete";
+        } else if (phaseIndex === currentIndex) {
+          status = "in_progress";
+        }
+      }
+      return { phase, label, status };
+    });
+
+    return json({
+      status: syncState.status || "syncing",
+      isRunning: true,
+      lastSyncTime,
+      error: syncState.error ?? null,
+      progressPercent: syncState.progressPercent ?? null,
+      hasPartialSync: syncState.hasPartialSync ?? false,
+      partialSyncProgress: syncState.partialSyncProgress ?? null,
+      currentPhase,
+      phases,
+      stats: syncState.stats ?? null,
+      syncingProjectId: syncState.syncingProjectId ?? null,
+      apiQueryCount: syncState.apiQueryCount ?? null,
+      statusMessage: syncState.statusMessage ?? null,
+    });
+  }
+
+  // Otherwise (idle), read from database (primary source) - single query for both metadata and partial state
+  const dbMetadata = getSyncMetadata();
 
   // Convert last_sync_time from ISO string to timestamp if present
   const lastSyncTime = dbMetadata?.last_sync_time

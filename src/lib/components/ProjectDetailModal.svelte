@@ -34,7 +34,7 @@
   import { RefreshCw } from "lucide-svelte";
   import { projectsStore, databaseStore } from "../stores/database";
   import { isAuthenticated } from "$lib/stores/auth";
-  import { ExponentialBackoff } from "$lib/utils/backoff";
+  import { syncStatusStore } from "$lib/stores/sync-status";
 
   let {
     project: initialProject,
@@ -57,9 +57,7 @@
   let issuesLoading = $state(true);
   let showAllHealthUpdates = $state(false);
   let isSyncingProject = $state(false);
-  let pollTimeoutId: number | undefined;
   let maxPollTimeoutId: number | undefined;
-  let backoff = new ExponentialBackoff();
 
   async function fetchProjectUrl() {
     if (!browser) return;
@@ -112,89 +110,40 @@
     return String(count);
   }
 
-  function stopPolling() {
-    if (pollTimeoutId) {
-      clearTimeout(pollTimeoutId);
-      pollTimeoutId = undefined;
-    }
+  function clearMaxTimeout() {
     if (maxPollTimeoutId) {
       clearTimeout(maxPollTimeoutId);
       maxPollTimeoutId = undefined;
     }
-    backoff.reset();
   }
 
-  async function checkProjectSyncStatus() {
-    if (!browser || !isSyncingProject) {
-      stopPolling();
-      return;
-    }
-
-    // Check authentication before making request
+  // Centralize polling in `syncStatusStore` to avoid duplicate `/api/sync/status` requests.
+  // When a project sync finishes, refresh only this project.
+  $effect(() => {
+    if (!browser) return;
+    if (!isSyncingProject) return;
     if (!$isAuthenticated) {
-      stopPolling();
       isSyncingProject = false;
+      clearMaxTimeout();
       return;
     }
 
-    try {
-      const statusResponse = await fetch("/api/sync/status");
+    const status = $syncStatusStore;
+    const isRelevant = status.syncingProjectId === project.projectId;
+    if (!isRelevant) return;
 
-      // Handle 401 Unauthorized - stop polling if not authenticated
-      if (statusResponse.status === 401) {
-        stopPolling();
-        isAuthenticated.set(false);
-        isSyncingProject = false;
-        return;
-      }
-
-      if (statusResponse.ok) {
-        // Success - reset backoff
-        backoff.recordSuccess();
-        const statusData = await statusResponse.json();
-        if (statusData.status === "idle" && !statusData.isRunning) {
-          stopPolling();
-          // Refresh only this project without reloading all data
-          await databaseStore.refreshProject(project.projectId);
-          // Refresh project issues
-          fetchProjectIssues();
-          isSyncingProject = false;
-        } else if (statusData.status === "error") {
-          stopPolling();
-          isSyncingProject = false;
-          console.error("Sync failed:", statusData.error);
-        } else {
-          // Still syncing - schedule next check with normal interval
-          pollTimeoutId = setTimeout(
-            checkProjectSyncStatus,
-            1000
-          ) as unknown as number;
-        }
-      } else {
-        // Request failed - record failure and use backoff
-        const delay = backoff.recordFailure();
-        console.debug(
-          `Project sync status poll failed (${statusResponse.status}), retrying in ${delay}ms`
-        );
-        pollTimeoutId = setTimeout(
-          checkProjectSyncStatus,
-          delay
-        ) as unknown as number;
-      }
-    } catch (error) {
-      // Network error - record failure and use backoff
-      const delay = backoff.recordFailure();
-      console.error(
-        "Failed to check sync status:",
-        error,
-        `retrying in ${delay}ms`
-      );
-      pollTimeoutId = setTimeout(
-        checkProjectSyncStatus,
-        delay
-      ) as unknown as number;
+    if (status.status === "idle" && !status.isRunning) {
+      clearMaxTimeout();
+      void databaseStore.refreshProject(project.projectId).then(() => {
+        fetchProjectIssues();
+      });
+      isSyncingProject = false;
+    } else if (status.status === "error") {
+      clearMaxTimeout();
+      console.error("Sync failed:", status.error);
+      isSyncingProject = false;
     }
-  }
+  });
 
   async function syncProject() {
     if (!browser || isSyncingProject) return;
@@ -207,16 +156,14 @@
 
     try {
       isSyncingProject = true;
-      backoff.reset(); // Reset backoff for new sync
+      // Optimistically update UI immediately
+      syncStatusStore.setOptimisticSyncing(project.projectId);
+
       const { csrfPost } = await import("$lib/utils/csrf");
       const response = await csrfPost(`/api/sync/project/${project.projectId}`);
       if (response.ok) {
-        // Start polling for sync completion
-        checkProjectSyncStatus();
-
         // Clear polling after 60 seconds max
         maxPollTimeoutId = setTimeout(() => {
-          stopPolling();
           if (isSyncingProject) {
             isSyncingProject = false;
           }

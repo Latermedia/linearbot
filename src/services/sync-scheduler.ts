@@ -1,5 +1,5 @@
-import { performSync } from "./sync/index.js";
 import { getSyncMetadata, getPartialSyncState } from "../db/queries.js";
+import { startFullSync } from "./sync/worker/manager.js";
 
 const SYNC_INTERVAL_MS = 60 * 60 * 1000; // 1 hour
 
@@ -43,7 +43,7 @@ async function runScheduledSync(): Promise<void> {
     }
 
     console.log("[SCHEDULER] Triggering scheduled sync...");
-    const result = await performSync(true);
+    const result = await startFullSync({ includeProjectSync: true });
 
     if (result.success) {
       console.log(

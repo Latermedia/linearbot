@@ -19,6 +19,11 @@ export interface SyncState {
   progressPercent?: number;
   syncingProjectId?: string; // Track which project is being synced (undefined = full sync)
   stats?: SyncStats;
+  apiQueryCount?: number;
+  statusMessage?: string | null;
+  currentPhase?: string | null;
+  hasPartialSync?: boolean;
+  partialSyncProgress?: { completed: number; total: number } | null;
 }
 
 let syncState: SyncState = {

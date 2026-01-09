@@ -5,7 +5,7 @@
   import { cubicOut } from "svelte/easing";
   import SyncModal from "./SyncModal.svelte";
   import { isAuthenticated } from "$lib/stores/auth";
-  import { ExponentialBackoff } from "$lib/utils/backoff";
+  import { syncStatusStore } from "$lib/stores/sync-status";
 
   let {
     projectId,
@@ -24,9 +24,6 @@
     null
   );
   let syncingProjectId = $state<string | null>(null);
-  let pollIntervalId: number | undefined;
-  let backoff = new ExponentialBackoff();
-  let nextPollTimeoutId: number | undefined;
 
   // Keyboard shortcut: Cmd+Shift+S (Mac) or Ctrl+Shift+S (Windows/Linux)
   $effect(() => {
@@ -66,102 +63,49 @@
   // Animated progress value for smooth transitions
   const animatedProgress = tweened(0, { duration: 300, easing: cubicOut });
 
-  function scheduleNextPoll(delay: number) {
-    if (nextPollTimeoutId) {
-      clearTimeout(nextPollTimeoutId);
-    }
-    nextPollTimeoutId = setTimeout(() => {
-      checkSyncStatus();
-    }, delay) as unknown as number;
-  }
-
-  function stopPolling() {
-    if (pollIntervalId) {
-      clearInterval(pollIntervalId);
-      pollIntervalId = undefined;
-    }
-    if (nextPollTimeoutId) {
-      clearTimeout(nextPollTimeoutId);
-      nextPollTimeoutId = undefined;
-    }
-  }
-
-  async function checkSyncStatus() {
+  // Centralize polling in `syncStatusStore` to avoid duplicate `/api/sync/status` requests.
+  $effect(() => {
     if (!browser) return;
+    if (!$isAuthenticated) return;
 
-    // Check authentication before making request
-    if (!$isAuthenticated) {
-      stopPolling();
+    const data = $syncStatusStore;
+    syncingProjectId = data.syncingProjectId || null;
+
+    const shouldShow = projectId
+      ? syncingProjectId === projectId || syncingProjectId === null
+      : true;
+
+    if (!shouldShow) {
+      syncStatus = "idle";
+      isRunning = false;
+      error = null;
+      hasPartialSync = false;
+      partialSyncProgress = null;
+      progressPercent = null;
+      animatedProgress.set(0);
       return;
     }
 
-    try {
-      const response = await fetch("/api/sync/status");
+    syncStatus = data.status || "idle";
+    isRunning = data.isRunning || false;
+    error = data.error || null;
+    hasPartialSync = data.hasPartialSync || false;
+    partialSyncProgress = data.partialSyncProgress || null;
 
-      // Handle 401 Unauthorized - stop polling if not authenticated
-      if (response.status === 401) {
-        stopPolling();
-        isAuthenticated.set(false);
-        return;
-      }
-
-      if (response.ok) {
-        // Success - reset backoff and schedule next poll
-        backoff.recordSuccess();
-        const data = await response.json();
-        syncingProjectId = data.syncingProjectId || null;
-
-        // If this is a project-specific indicator, only show if syncing this project or full sync
-        // If no projectId prop, show for any sync
-        const shouldShow = projectId
-          ? syncingProjectId === projectId || syncingProjectId === null
-          : true;
-
-        if (!shouldShow) {
-          syncStatus = "idle";
-          isRunning = false;
-          scheduleNextPoll(2000); // Use normal polling interval when idle
-          return;
-        }
-
-        syncStatus = data.status || "idle";
-        isRunning = data.isRunning || false;
-        error = data.error || null;
-        hasPartialSync = data.hasPartialSync || false;
-        partialSyncProgress = data.partialSyncProgress || null;
-        const newProgress = data.progressPercent ?? 0;
-        if (newProgress !== progressPercent) {
-          progressPercent = newProgress;
-          animatedProgress.set(newProgress);
-        }
-
-        // Use normal polling interval (2s) when successful
-        scheduleNextPoll(2000);
-      } else {
-        // Request failed - record failure and use backoff
-        const delay = backoff.recordFailure();
-        console.debug(
-          `Sync status poll failed (${response.status}), retrying in ${delay}ms`
-        );
-        scheduleNextPoll(delay);
-      }
-    } catch (error) {
-      // Network error - record failure and use backoff
-      const delay = backoff.recordFailure();
-      console.debug("Sync status poll error:", error, `retrying in ${delay}ms`);
-      scheduleNextPoll(delay);
+    const newProgress = data.progressPercent ?? 0;
+    if (newProgress !== progressPercent) {
+      progressPercent = newProgress;
+      animatedProgress.set(newProgress);
     }
-  }
+  });
 
   onMount(() => {
     if (!browser) return;
-
-    // Initial check
-    checkSyncStatus();
+    // Polling handled elsewhere (store)
   });
 
   onDestroy(() => {
-    stopPolling();
+    // No-op: store manages polling lifecycle
   });
 
   const isSyncing = $derived(syncStatus === "syncing" || isRunning);
@@ -196,7 +140,7 @@
 {#if $isAuthenticated}
   <!-- Always show sync indicator, but with different styles based on state -->
   <div
-    class="flex relative items-center text-sm text-neutral-600 dark:text-neutral-400 m-0"
+    class="flex relative items-center m-0 text-sm text-neutral-600 dark:text-neutral-400"
   >
     <!-- Container with progress bar background -->
     <div

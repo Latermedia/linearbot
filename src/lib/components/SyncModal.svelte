@@ -1,12 +1,12 @@
 <script lang="ts">
-  import { onMount, onDestroy } from "svelte";
+  import { onMount } from "svelte";
   import { browser } from "$app/environment";
   import Modal from "$lib/components/Modal.svelte";
   import Button from "$lib/components/Button.svelte";
   import { csrfPost } from "$lib/utils/csrf";
   import { databaseStore } from "../stores/database";
   import { isAuthenticated } from "$lib/stores/auth";
-  import { ExponentialBackoff } from "$lib/utils/backoff";
+  import { syncStatusStore } from "$lib/stores/sync-status";
 
   let {
     onclose,
@@ -78,10 +78,6 @@
   // Computing metrics is always required
   const REQUIRED_PHASE: SyncPhase = "computing_metrics";
 
-  // Polling intervals
-  const POLL_INTERVAL_SYNCING = 1000; // Poll every 1 second when syncing
-  const POLL_INTERVAL_IDLE = 5000; // Poll every 5 seconds when idle
-
   // Form state
   let isFullSync = $state(true);
   let deepHistorySync = $state(false);
@@ -107,14 +103,48 @@
     }>
   >([]);
   let serverLastSyncTime: number | null = $state(null);
-  let previousLastSyncTime: number | null = $state(null);
   let hasInitialStatus = $state(false); // Track if initial status check completed
 
-  let pollIntervalId: number | undefined;
-  let backoff = new ExponentialBackoff();
-  let nextPollTimeoutId: number | undefined;
-
   const isSyncing = $derived(syncStatus === "syncing");
+
+  // Centralize polling in `syncStatusStore` to avoid multiple components hammering
+  // `/api/sync/status`. This modal reacts to store updates instead.
+  $effect(() => {
+    if (!browser) return;
+
+    if (!$isAuthenticated) {
+      hasInitialStatus = true;
+      return;
+    }
+
+    const data = $syncStatusStore;
+    const prevStatus = syncStatus;
+    const prevLastSyncTime = serverLastSyncTime;
+
+    syncStatus = data.status;
+    serverLastSyncTime = data.lastSyncTime;
+    syncErrorMessage = data.error || null;
+    syncProgressPercent = data.progressPercent ?? null;
+    statusMessage = data.statusMessage ?? null;
+    apiQueryCount = data.apiQueryCount ?? null;
+    phases = data.phases ?? [];
+    hasInitialStatus = true;
+
+    const wasSyncing = prevStatus === "syncing";
+    const isNowIdle = data.status === "idle" && !data.isRunning;
+
+    // Detect if sync just completed and reload data.
+    if (wasSyncing && isNowIdle && serverLastSyncTime) {
+      void databaseStore.load();
+    } else if (
+      isNowIdle &&
+      serverLastSyncTime !== null &&
+      prevLastSyncTime !== null &&
+      serverLastSyncTime !== prevLastSyncTime
+    ) {
+      void databaseStore.load();
+    }
+  });
 
   function togglePhase(phase: SyncPhase) {
     // Don't allow deselecting the required phase
@@ -157,121 +187,6 @@
     }
   }
 
-  function stopPolling() {
-    if (pollIntervalId) {
-      clearInterval(pollIntervalId);
-      pollIntervalId = undefined;
-    }
-    if (nextPollTimeoutId) {
-      clearTimeout(nextPollTimeoutId);
-      nextPollTimeoutId = undefined;
-    }
-  }
-
-  function scheduleNextPoll(delay: number) {
-    if (nextPollTimeoutId) {
-      clearTimeout(nextPollTimeoutId);
-    }
-    nextPollTimeoutId = setTimeout(() => {
-      checkSyncStatus();
-    }, delay) as unknown as number;
-  }
-
-  async function checkSyncStatus() {
-    if (!browser) return;
-
-    // Check authentication before making request
-    if (!$isAuthenticated) {
-      stopPolling();
-      hasInitialStatus = true; // Mark as checked to avoid hanging
-      return;
-    }
-
-    try {
-      const response = await fetch("/api/sync/status");
-
-      // Handle 401 Unauthorized - stop polling if not authenticated
-      if (response.status === 401) {
-        stopPolling();
-        isAuthenticated.set(false);
-        hasInitialStatus = true; // Mark as checked to avoid hanging
-        return;
-      }
-
-      if (response.ok) {
-        // Success - reset backoff
-        const wasInBackoff = backoff.getFailureCount() > 0;
-        backoff.recordSuccess();
-        const data = await response.json();
-        const wasSyncing = syncStatus === "syncing";
-        const previousSyncTime = serverLastSyncTime;
-
-        syncStatus = data.status;
-        serverLastSyncTime = data.lastSyncTime;
-        syncErrorMessage = data.error || null;
-        syncProgressPercent = data.progressPercent ?? null;
-        statusMessage = data.statusMessage ?? null;
-        apiQueryCount = data.apiQueryCount ?? null;
-        phases = data.phases ?? [];
-        hasInitialStatus = true; // Mark initial status check as complete
-
-        // If we were in backoff mode, ensure intervals restart
-        // The $effect will handle setting up the correct intervals based on syncStatus
-        if (wasInBackoff && !pollIntervalId) {
-          const interval = isSyncing
-            ? POLL_INTERVAL_SYNCING
-            : POLL_INTERVAL_IDLE;
-          pollIntervalId = setInterval(
-            checkSyncStatus,
-            interval
-          ) as unknown as number;
-        }
-
-        // Detect if sync just completed
-        const syncTimeChanged =
-          serverLastSyncTime !== null &&
-          previousSyncTime !== null &&
-          serverLastSyncTime !== previousSyncTime;
-
-        if (wasSyncing && syncStatus === "idle" && serverLastSyncTime) {
-          // Sync just completed - reload data
-          previousLastSyncTime = serverLastSyncTime;
-          await databaseStore.load();
-        } else if (
-          syncStatus === "idle" &&
-          syncTimeChanged &&
-          previousSyncTime !== null
-        ) {
-          // Automatic sync completed - reload data
-          previousLastSyncTime = serverLastSyncTime;
-          await databaseStore.load();
-        }
-
-        // Update previous sync time
-        if (serverLastSyncTime !== previousSyncTime) {
-          previousLastSyncTime = serverLastSyncTime;
-        }
-      } else {
-        // Request failed - record failure and use backoff
-        const delay = backoff.recordFailure();
-        console.debug(
-          `Sync status poll failed (${response.status}), retrying in ${delay}ms`
-        );
-        stopPolling();
-        scheduleNextPoll(delay);
-        hasInitialStatus = true; // Mark as checked to avoid hanging
-      }
-    } catch (err) {
-      // Network error - record failure and use backoff
-      const delay = backoff.recordFailure();
-      console.debug("Status poll error:", err, `retrying in ${delay}ms`);
-      stopPolling();
-      scheduleNextPoll(delay);
-      // Even on error, mark as checked so we don't hang on loading state
-      hasInitialStatus = true;
-    }
-  }
-
   async function handleSubmit() {
     if (!adminPassword) {
       error = "Admin password is required";
@@ -301,6 +216,9 @@
         phasesToRun.push(REQUIRED_PHASE);
       }
 
+      // Optimistically update UI immediately before making the request
+      syncStatusStore.setOptimisticSyncing();
+
       const response = await csrfPost("/api/sync", {
         adminPassword,
         syncOptions: {
@@ -316,8 +234,6 @@
         throw new Error(data.error || data.message || "Failed to start sync");
       }
 
-      // Sync started - status polling will handle the rest
-      syncStatus = "syncing";
       adminPassword = ""; // Clear password
     } catch (err) {
       error = err instanceof Error ? err.message : "Failed to start sync";
@@ -361,53 +277,7 @@
 
   onMount(() => {
     if (!browser) return;
-
-    // Initial status check
-    checkSyncStatus().then(() => {
-      // Initialize previousLastSyncTime to prevent false reload on modal open
-      if (serverLastSyncTime !== null && previousLastSyncTime === null) {
-        previousLastSyncTime = serverLastSyncTime;
-      }
-    });
-
-    // Start polling
-    pollIntervalId = setInterval(
-      () => {
-        checkSyncStatus();
-      },
-      isSyncing ? POLL_INTERVAL_SYNCING : POLL_INTERVAL_IDLE
-    ) as unknown as number;
-  });
-
-  // Adjust polling frequency based on sync status
-  $effect(() => {
-    if (!browser) return;
-
-    // Only set up intervals if authenticated and no backoff is active
-    if (!$isAuthenticated || backoff.getFailureCount() > 0) {
-      return;
-    }
-
-    // Clear existing interval and set new one with appropriate frequency
-    if (pollIntervalId) {
-      clearInterval(pollIntervalId);
-    }
-    const interval = isSyncing ? POLL_INTERVAL_SYNCING : POLL_INTERVAL_IDLE;
-    pollIntervalId = setInterval(
-      checkSyncStatus,
-      interval
-    ) as unknown as number;
-
-    return () => {
-      if (pollIntervalId) {
-        clearInterval(pollIntervalId);
-        pollIntervalId = undefined;
-      }
-    };
-  });
-
-  onDestroy(() => {
-    stopPolling();
+    // Store drives status updates.
   });
 </script>
 
@@ -595,7 +465,7 @@
             </label>
             <p class="mt-1 text-xs text-green-200/70">
               Only fetch issues updated since the last successful sync.
-              <span class="text-green-400 font-medium"
+              <span class="font-medium text-green-400"
                 >Fastest option - uses fewest API calls.</span
               >
             </p>
@@ -639,7 +509,7 @@
             <p class="mt-1 text-xs text-amber-200/70">
               Fetch issues updated in the last year (365 days) instead of 14
               days.
-              <span class="text-amber-400 font-medium"
+              <span class="font-medium text-amber-400"
                 >Slowest option - uses most API calls.</span
               >
             </p>

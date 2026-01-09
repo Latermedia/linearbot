@@ -36,6 +36,21 @@ export function getDatabase(): Database {
         } database instance created successfully`
       );
 
+      // SQLite performance/concurrency pragmas:
+      // - WAL improves read concurrency while a writer is active
+      // - busy_timeout makes SQLite wait briefly for locks instead of failing
+      // - synchronous NORMAL is a reasonable tradeoff on a persistent volume
+      try {
+        dbInstance.run("PRAGMA journal_mode = WAL");
+        dbInstance.run("PRAGMA busy_timeout = 5000");
+        dbInstance.run("PRAGMA synchronous = NORMAL");
+      } catch (e) {
+        console.warn(
+          "[DB] Failed to apply SQLite pragmas:",
+          e instanceof Error ? e.message : String(e)
+        );
+      }
+
       console.log(`[DB] Initializing database schema...`);
       initializeDatabase(dbInstance);
 

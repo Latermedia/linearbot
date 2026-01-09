@@ -239,6 +239,41 @@ function createSyncStatusStore() {
     });
   }
 
+  /**
+   * Optimistically update the store to show syncing state immediately.
+   * Call this when initiating a sync to provide instant UI feedback.
+   */
+  function setOptimisticSyncing(projectId?: string) {
+    update((state) => {
+      currentState = {
+        ...state,
+        status: "syncing",
+        isRunning: true,
+        error: null,
+        progressPercent: 0,
+        syncingProjectId: projectId ?? null,
+        currentPhase: null,
+        hasPartialSync: false,
+        partialSyncProgress: null,
+        stats: {
+          startedIssuesCount: 0,
+          totalProjectsCount: 0,
+          currentProjectIndex: 0,
+          currentProjectName: null,
+          projectIssuesCount: 0,
+          newCount: 0,
+          updatedCount: 0,
+        },
+        statusMessage: "Starting sync...",
+        apiQueryCount: 0,
+      };
+      return currentState;
+    });
+
+    // Switch to faster polling interval immediately
+    adjustPollingInterval();
+  }
+
   return {
     subscribe: (run: (value: SyncStatusData) => void) => {
       subscriberCount++;
@@ -259,6 +294,7 @@ function createSyncStatusStore() {
     checkSyncStatus, // Expose for manual checks
     startPolling, // Expose for manual start
     stopPolling, // Expose for manual stop
+    setOptimisticSyncing, // Expose for optimistic UI updates
   };
 }
 

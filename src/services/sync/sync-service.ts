@@ -64,6 +64,28 @@ export async function performSync(
   // Track API queries per phase
   const phaseQueryCounts: Record<string, number> = {};
 
+  // Batch metadata writes to reduce SQLite write-lock churn.
+  // (Worker thread streams DB snapshots to main thread for status.)
+  const METADATA_FLUSH_MS = 500;
+  let metadataBuffer: Parameters<typeof updateSyncMetadata>[0] = {};
+  let flushScheduled = false;
+  const flushMetadata = () => {
+    flushScheduled = false;
+    const updates = metadataBuffer;
+    metadataBuffer = {};
+    if (Object.keys(updates).length === 0) return;
+    updateSyncMetadata(updates);
+  };
+  const queueMetadataUpdate = (
+    updates: Parameters<typeof updateSyncMetadata>[0]
+  ) => {
+    metadataBuffer = { ...metadataBuffer, ...updates };
+    if (!flushScheduled) {
+      flushScheduled = true;
+      setTimeout(flushMetadata, METADATA_FLUSH_MS);
+    }
+  };
+
   // Create helper functions
   const { updatePhase, currentPhaseRef } = createUpdatePhase();
   const shouldRunPhase = createShouldRunPhase(syncOptions);
@@ -98,8 +120,8 @@ export async function performSync(
     // Track queries per phase
     phaseQueryCounts[currentPhase] = (phaseQueryCounts[currentPhase] || 0) + 1;
 
-    // Update total API query count in database
-    updateSyncMetadata({ api_query_count: apiQueryCount });
+    // Update total API query count in database (batched)
+    queueMetadataUpdate({ api_query_count: apiQueryCount });
 
     // Calculate progress based on executed queries vs expected queries
     // Progress = (executed queries / expected queries) * 100
@@ -115,7 +137,8 @@ export async function performSync(
     // Update progress via callbacks and database
     // This is the primary progress indicator - smooth and consistent
     callbacks?.onProgressPercent?.(progress);
-    setSyncProgress(progress);
+    // Avoid hammering SQLite with a write per API query.
+    queueMetadataUpdate({ sync_progress_percent: progress });
   };
 
   // Determine includeProjectSync from syncOptions if provided
@@ -494,6 +517,7 @@ export async function performSync(
       api_query_count: apiQueryCount,
     });
 
+    flushMetadata();
     return {
       success: true,
       newCount: cumulativeNewCount,
@@ -542,6 +566,7 @@ export async function performSync(
         sync_status_message: null,
         api_query_count: apiQueryCount,
       });
+      flushMetadata();
       const total = getTotalIssueCount();
       const startedCount =
         startedIssues.length > 0
@@ -576,6 +601,7 @@ export async function performSync(
       sync_progress_percent: null,
       sync_status_message: null,
     });
+    flushMetadata();
 
     return {
       success: false,

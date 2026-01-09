@@ -1,6 +1,7 @@
 import type { Issue } from "../../db/schema.js";
 import type { LinearIssueData } from "../../linear/client.js";
 import { getExistingIssueIds, upsertIssue } from "../../db/queries.js";
+import { getDatabase } from "../../db/connection.js";
 
 /**
  * Convert database Issue format to LinearIssueData format
@@ -109,57 +110,75 @@ export function writeIssuesToDatabase(
   let newCount = 0;
   let updatedCount = 0;
 
-  for (const issue of issues) {
-    if (existingIds.has(issue.id)) {
-      updatedCount++;
-    } else {
-      newCount++;
-    }
+  const db = getDatabase();
+  db.run("BEGIN");
+  try {
+    for (const issue of issues) {
+      if (existingIds.has(issue.id)) {
+        updatedCount++;
+      } else {
+        newCount++;
+      }
 
-    upsertIssue({
-      id: issue.id,
-      identifier: issue.identifier,
-      title: issue.title,
-      description: issue.description,
-      team_id: issue.teamId,
-      team_name: issue.teamName,
-      team_key: issue.teamKey,
-      state_id: issue.stateId,
-      state_name: issue.stateName,
-      state_type: issue.stateType,
-      assignee_id: issue.assigneeId,
-      assignee_name: issue.assigneeName,
-      assignee_avatar_url: issue.assigneeAvatarUrl,
-      creator_id: issue.creatorId,
-      creator_name: issue.creatorName,
-      priority: issue.priority,
-      estimate: issue.estimate,
-      last_comment_at: issue.lastCommentAt
-        ? issue.lastCommentAt.toISOString()
-        : null,
-      comment_count: issue.commentCount ?? null,
-      created_at: issue.createdAt.toISOString(),
-      updated_at: issue.updatedAt.toISOString(),
-      started_at: issue.startedAt ? issue.startedAt.toISOString() : null,
-      completed_at: issue.completedAt ? issue.completedAt.toISOString() : null,
-      canceled_at: issue.canceledAt ? issue.canceledAt.toISOString() : null,
-      url: issue.url,
-      project_id: issue.projectId,
-      project_name: issue.projectName,
-      project_state_category: issue.projectStateCategory,
-      project_status: issue.projectStatus,
-      project_health: issue.projectHealth,
-      project_updated_at: issue.projectUpdatedAt
-        ? issue.projectUpdatedAt.toISOString()
-        : null,
-      project_lead_id: issue.projectLeadId,
-      project_lead_name: issue.projectLeadName,
-      project_target_date: issue.projectTargetDate,
-      project_start_date: issue.projectStartDate,
-      project_completed_at: issue.projectCompletedAt,
-      parent_id: issue.parentId,
-      labels: issue.labels ? JSON.stringify(issue.labels) : null,
-    });
+      upsertIssue({
+        id: issue.id,
+        identifier: issue.identifier,
+        title: issue.title,
+        description: issue.description,
+        team_id: issue.teamId,
+        team_name: issue.teamName,
+        team_key: issue.teamKey,
+        state_id: issue.stateId,
+        state_name: issue.stateName,
+        state_type: issue.stateType,
+        assignee_id: issue.assigneeId,
+        assignee_name: issue.assigneeName,
+        assignee_avatar_url: issue.assigneeAvatarUrl,
+        creator_id: issue.creatorId,
+        creator_name: issue.creatorName,
+        priority: issue.priority,
+        estimate: issue.estimate,
+        last_comment_at: issue.lastCommentAt
+          ? issue.lastCommentAt.toISOString()
+          : null,
+        comment_count: issue.commentCount ?? null,
+        created_at: issue.createdAt.toISOString(),
+        updated_at: issue.updatedAt.toISOString(),
+        started_at: issue.startedAt ? issue.startedAt.toISOString() : null,
+        completed_at: issue.completedAt
+          ? issue.completedAt.toISOString()
+          : null,
+        canceled_at: issue.canceledAt ? issue.canceledAt.toISOString() : null,
+        url: issue.url,
+        project_id: issue.projectId,
+        project_name: issue.projectName,
+        project_state_category: issue.projectStateCategory,
+        project_status: issue.projectStatus,
+        project_health: issue.projectHealth,
+        project_updated_at: issue.projectUpdatedAt
+          ? issue.projectUpdatedAt.toISOString()
+          : null,
+        project_lead_id: issue.projectLeadId,
+        project_lead_name: issue.projectLeadName,
+        project_target_date: issue.projectTargetDate,
+        project_start_date: issue.projectStartDate,
+        project_completed_at: issue.projectCompletedAt,
+        parent_id: issue.parentId,
+        labels: issue.labels ? JSON.stringify(issue.labels) : null,
+      });
+    }
+    db.run("COMMIT");
+  } catch (e) {
+    console.error("[SYNC] Failed writing issues to database; rolling back", e);
+    try {
+      db.run("ROLLBACK");
+    } catch (rollbackError) {
+      console.error(
+        "[SYNC] Failed to rollback issue write transaction",
+        rollbackError
+      );
+    }
+    throw e;
   }
 
   return { newCount, updatedCount };

@@ -1,7 +1,7 @@
 import { json } from "@sveltejs/kit";
 import type { RequestHandler } from "./$types";
-import { syncProject } from "../../../../../services/sync/index.js";
-import { getSyncState, setSyncState, updateSyncStats } from "../../state.js";
+import { startProjectSync } from "../../../../../services/sync/worker/manager.js";
+import { getSyncState, setSyncState } from "../../state.js";
 import {
   updateSyncMetadata,
   setSyncStatus,
@@ -109,54 +109,18 @@ export const POST: RequestHandler = async (event) => {
     },
   });
 
-  // Run sync asynchronously
-  syncProject(projectId, {
-    onProgressPercent: (percent) => {
-      setSyncState({ progressPercent: percent });
-    },
-    onProjectIssueCountUpdate: (count) => {
-      updateSyncStats({ projectIssuesCount: count });
-    },
-    onProjectProgress: (index, total, projectName) => {
-      updateSyncStats({
-        currentProjectIndex: index,
-        totalProjectsCount: total,
-        currentProjectName: projectName,
-      });
-    },
-    onIssueCountsUpdate: (newCount, updatedCount) => {
-      updateSyncStats({
-        newCount,
-        updatedCount,
-      });
-    },
-  })
+  // Run sync asynchronously (worker thread)
+  startProjectSync(projectId)
     .then((result) => {
       const duration = Date.now() - syncStartTime;
       if (result.success) {
         console.log(
           `[SYNC] Project sync completed successfully in ${duration}ms - New: ${result.newCount}, Updated: ${result.updatedCount}, Total: ${result.totalCount}`
         );
-        setSyncState({
-          isRunning: false,
-          status: "idle",
-          lastSyncTime: Date.now(),
-          progressPercent: undefined,
-          syncingProjectId: undefined,
-          stats: undefined,
-        });
       } else {
         console.error(
           `[SYNC] Project sync failed after ${duration}ms: ${result.error || "Sync failed"}`
         );
-        setSyncState({
-          isRunning: false,
-          status: "error",
-          error: result.error || "Sync failed",
-          progressPercent: undefined,
-          syncingProjectId: undefined,
-          stats: undefined,
-        });
       }
     })
     .catch((error) => {
