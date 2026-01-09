@@ -9,13 +9,14 @@ export {};
  *   new Worker(new URL("./worker.js", import.meta.url))
  *
  * This script uses Bun's bundler to compile worker.ts with all its
- * dependencies and outputs it to build/server/chunks/worker.js where
- * the manager expects to find it.
+ * dependencies and outputs it to .svelte-kit/adapter-bun/chunks/worker.js
+ * which the Dockerfile copies to the production image.
  */
 
+// Output to .svelte-kit/adapter-bun/chunks/ which is what the Dockerfile copies
 const result = await Bun.build({
   entrypoints: ["src/services/sync/worker/worker.ts"],
-  outdir: "build/server/chunks",
+  outdir: ".svelte-kit/adapter-bun/chunks",
   target: "bun",
   format: "esm",
   naming: "worker.js",
@@ -31,5 +32,5 @@ if (!result.success) {
 }
 
 console.log(
-  "[BUNDLE-WORKER] Successfully bundled worker.js to build/server/chunks/"
+  "[BUNDLE-WORKER] Successfully bundled worker.js to .svelte-kit/adapter-bun/chunks/"
 );
