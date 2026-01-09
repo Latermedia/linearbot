@@ -47,4 +47,17 @@ if (exitCode !== 0) {
   process.exit(exitCode);
 }
 
+// Bundle the worker separately (SvelteKit doesn't handle dynamic Worker imports)
+console.log("\nBundling worker...");
+const workerProcess = spawn(["bun", "run", "scripts/bundle-worker.ts"], {
+  stdout: "inherit",
+  stderr: "inherit",
+});
+
+const workerExitCode = await workerProcess.exited;
+if (workerExitCode !== 0) {
+  console.error("\n❌ Worker bundling failed.");
+  process.exit(workerExitCode);
+}
+
 process.exit(0);

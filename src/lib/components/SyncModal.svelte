@@ -594,7 +594,7 @@
           placeholder="Enter admin password"
           class="px-3 py-2 w-full text-sm text-white rounded-md border border-neutral-600 bg-neutral-800 placeholder-neutral-500 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
           disabled={isSubmitting}
-          autocomplete="current-password"
+          autocomplete="off"
         />
       </div>
 

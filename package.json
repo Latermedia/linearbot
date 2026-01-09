@@ -16,7 +16,7 @@
     "release-prepare-major": "bun run scripts/release-prepare.ts major",
     "release-commit": "bun run scripts/release-commit.ts",
     "dev": "bun --bun vite dev",
-    "build": "bun --bun vite build",
+    "build": "bun --bun vite build && bun run scripts/bundle-worker.ts",
     "build:check": "bun run scripts/build-check.ts",
     "preview": "bun --bun vite preview",
     "start": "bun --bun run server.js",
