@@ -3,6 +3,7 @@ import type { RequestHandler } from "./$types";
 import {
   getLatestMetricsSnapshot,
   getAllLatestMetricsSnapshots,
+  getTeamNamesByKey,
 } from "../../../../db/queries.js";
 import {
   safeParseMetricsSnapshot,
@@ -18,7 +19,27 @@ export interface LatestMetricsResponse {
     snapshot: MetricsSnapshotV1;
     capturedAt: string;
   }[];
+  /** Mapping of team_key to team_name for display purposes */
+  teamNames?: Record<string, string>;
   error?: string;
+}
+
+/**
+ * Get ignored team keys from environment variable
+ */
+function getIgnoredTeamKeys(): Set<string> {
+  const envValue = process.env.IGNORED_TEAM_KEYS;
+  if (!envValue) return new Set();
+  return new Set(envValue.split(",").map((key) => key.trim().toUpperCase()));
+}
+
+/**
+ * Check if a team should be ignored
+ */
+function isIgnoredTeam(levelId: string | null): boolean {
+  if (!levelId) return false;
+  const ignored = getIgnoredTeamKeys();
+  return ignored.has(levelId.toUpperCase());
 }
 
 /**
@@ -43,6 +64,11 @@ export const GET: RequestHandler = async ({ url }) => {
 
       const results = allSnapshots
         .map((s) => {
+          // Skip ignored teams
+          if (s.level === "team" && isIgnoredTeam(s.level_id)) {
+            return null;
+          }
+
           const parsed = safeParseMetricsSnapshot(s.metrics_json);
           if (!parsed) return null;
 
@@ -55,9 +81,19 @@ export const GET: RequestHandler = async ({ url }) => {
         })
         .filter((r): r is NonNullable<typeof r> => r !== null);
 
+      // Include team name mapping for display purposes (excluding ignored teams)
+      const allTeamNames = getTeamNamesByKey();
+      const ignoredKeys = getIgnoredTeamKeys();
+      const teamNames = Object.fromEntries(
+        Object.entries(allTeamNames).filter(
+          ([key]) => !ignoredKeys.has(key.toUpperCase())
+        )
+      );
+
       return json({
         success: true,
         snapshots: results,
+        teamNames,
       } satisfies LatestMetricsResponse);
     }
 

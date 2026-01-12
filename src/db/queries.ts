@@ -1039,3 +1039,22 @@ export function getMetricsSnapshotCount(): number {
   const result = query.get() as { count: number };
   return result.count;
 }
+
+/**
+ * Get mapping of team_key to team_name from issues table
+ * Returns a record like { "ENG": "Engineering", "DXP": "Developer Experience" }
+ */
+export function getTeamNamesByKey(): Record<string, string> {
+  const db = getDatabase();
+  const query = db.prepare(`
+    SELECT DISTINCT team_key, team_name 
+    FROM issues 
+    WHERE team_key IS NOT NULL AND team_name IS NOT NULL
+  `);
+  const rows = query.all() as { team_key: string; team_name: string }[];
+  const result: Record<string, string> = {};
+  for (const row of rows) {
+    result[row.team_key] = row.team_name;
+  }
+  return result;
+}

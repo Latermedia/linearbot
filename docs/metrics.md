@@ -1,6 +1,6 @@
 # Four Pillars Metrics System
 
-Engineering health metrics dashboard for bi-weekly leadership reviews.
+Engineering health metrics dashboard.
 
 ## Overview
 
@@ -58,9 +58,21 @@ Metrics snapshots are captured automatically after each successful sync (hourly 
 
 ### Pillar 3: Team Productivity
 
-**Status**: Pending (awaiting GetDX integration)
+**Core Metric**: TrueThroughput from GetDX (weighted PR velocity)
 
-**Planned Metric**: PR True Throughput from GetDX
+**Data Source**: GetDX Data Cloud API via `queries.datafeed` endpoint
+
+**Availability**:
+
+- **Org level**: Aggregates all GetDX teams
+- **Domain level**: Uses GetDX team names which map directly to domains
+
+**Status Thresholds**:
+
+Thresholds are configurable via environment variables. If not configured, status shows as "unknown" to allow baseline data collection.
+
+- `GETDX_THROUGHPUT_HEALTHY`: TrueThroughput value for healthy status
+- `GETDX_THROUGHPUT_WARNING`: TrueThroughput value for warning status (below this = critical)
 
 ### Pillar 4: Quality
 
@@ -123,22 +135,15 @@ CREATE TABLE metrics_snapshots (
 
 ## Future Work
 
-### 1. GetDX TrueThroughput Integration
+### 1. Team-Level GetDX Mapping
 
 **Priority**: High
 
-Integrate with GetDX to pull PR velocity metrics for the Team Productivity pillar:
+Extend GetDX integration to support team-level productivity:
 
-- True Throughput (merged PRs weighted by complexity)
-- PR cycle time
-- Review throughput
-
-**Approach**:
-
-1. Add GetDX API client
-2. Fetch team-level productivity metrics
-3. Map to our schema
-4. Update `teamProductivity` from "pending" to active
+- Map GetDX teams to Linear teams (not just domains)
+- Display TrueThroughput in the team breakdown table
+- Currently teams show "pending" for productivity
 
 ### 2. Write Custom Metrics to GetDX
 
@@ -186,10 +191,59 @@ Add PR-based quality metrics:
 
 ### Environment Variables
 
-- `TEAM_DOMAIN_MAPPINGS`: JSON mapping team keys to domains
+#### Domain Mappings
+
+- `TEAM_DOMAIN_MAPPINGS`: JSON mapping Linear team keys to domains
+
   ```json
   { "TEAM1": "Platform", "TEAM2": "Platform", "TEAM3": "Product" }
   ```
+
+#### GetDX Integration
+
+- `GETDX_API_KEY`: API token with `snapshots:read` scope (required for productivity pillar)
+
+- `GETDX_PR_THROUGHPUT_FEED_TOKEN`: Datafeed token for PR Throughput query from GetDX Data Cloud
+
+  To get this token:
+  1. Go to GetDX Data Cloud
+  2. Create a saved query for PR Throughput metrics by team and day:
+     ```sql
+     SELECT
+       DATE_TRUNC('day', pr.merged) AS day,
+       dt.name AS team_name,
+       COALESCE(SUM(pr.weight), 0) AS throughput,
+       COUNT(*) AS pr_count
+     FROM pull_requests pr
+     JOIN dx_users du ON pr.dx_user_id = du.id
+     JOIN dx_teams dt ON du.team_id = dt.id
+     WHERE pr.merged IS NOT NULL
+       AND pr.merged >= CURRENT_DATE - INTERVAL '1 month'
+       AND dt.name IS NOT NULL
+     GROUP BY DATE_TRUNC('day', pr.merged), dt.name
+     ORDER BY day, team_name;
+     ```
+  3. Save the query and copy the feed token
+
+- `GETDX_DOMAIN_MAPPINGS`: JSON mapping GetDX team names to your domain names
+
+  GetDX team names often differ from your domain names. This mapping connects them:
+
+  ```json
+  {
+    "GetDX Team Alpha": "Product",
+    "GetDX Team Beta": "Product",
+    "Platform Team": "Platform",
+    "Infrastructure": "Platform",
+    "Data Science": "Data"
+  }
+  ```
+
+  **Note:** Multiple GetDX teams can map to the same domain (e.g., "GetDX Team Alpha" and "GetDX Team Beta" both map to "Product").
+
+- `GETDX_THROUGHPUT_PER_IC_HEALTHY`: Per-IC weekly throughput for healthy status (default: 6 = 3/week over 2 weeks)
+
+- `GETDX_THROUGHPUT_PER_IC_WARNING`: Per-IC weekly throughput for warning status (default: 3 = 1.5/week over 2 weeks)
 
 ### Thresholds
 
@@ -206,3 +260,56 @@ Quality thresholds in `src/services/metrics/quality-health.ts`:
 
 - `HEALTHY_SCORE_THRESHOLD`: 70
 - `WARNING_SCORE_THRESHOLD`: 40
+
+## GetDX Setup Guide
+
+### Phase 1: Initial Setup
+
+1. Create a GetDX API key with `snapshots:read` scope
+2. Set `GETDX_API_KEY` environment variable
+
+### Phase 2: Configure PR Throughput Datafeed
+
+1. Go to GetDX Data Cloud query builder
+2. Create a query for PR Throughput grouped by team and day (see SQL example above)
+3. Save the query to generate a feed token
+4. Set `GETDX_PR_THROUGHPUT_FEED_TOKEN` environment variable
+
+The datafeed returns data with columns: `day`, `team_name`, `throughput`, `pr_count`
+
+### Phase 3: Configure Domain Mappings
+
+GetDX team names typically differ from your domain names. Map them:
+
+1. Fetch available GetDX teams from the API or Data Cloud UI
+2. Create a JSON mapping from GetDX team names to your domain names
+3. Set `GETDX_DOMAIN_MAPPINGS` environment variable
+
+**Example mapping:**
+
+| GetDX Team       | Domain   |
+| ---------------- | -------- |
+| GetDX Team Alpha | Product  |
+| GetDX Team Beta  | Product  |
+| Platform Team    | Platform |
+| Infrastructure   | Platform |
+| Data Science     | Data     |
+
+### Phase 4: Set Per-IC Throughput Targets
+
+1. Determine your target TrueThroughput per IC per week (e.g., 3 PRs/week)
+2. Set `GETDX_THROUGHPUT_PER_IC_HEALTHY` to 2x your target (for 2-week window)
+3. Set `GETDX_THROUGHPUT_PER_IC_WARNING` to 1x your target
+
+**Example:** For a target of 3 PRs/week per IC:
+
+- `GETDX_THROUGHPUT_PER_IC_HEALTHY=6` (3/week × 2 weeks)
+- `GETDX_THROUGHPUT_PER_IC_WARNING=3` (1.5/week × 2 weeks)
+
+### Discovering GetDX Teams
+
+To find available teams in your GetDX instance:
+
+1. Query the GetDX Data Cloud for distinct team names
+2. Or use the GetDX API `/teams.list` endpoint
+3. Map each team to your corresponding domain name

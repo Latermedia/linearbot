@@ -1,7 +1,7 @@
 /**
  * Metrics Service
  *
- * Four Pillars metrics capture and analysis for leadership reviews.
+ * Four Pillars metrics capture and analysis.
  */
 
 // Snapshot capture
@@ -40,3 +40,13 @@ export {
   getOldestOpenBugs,
   getBugTrends,
 } from "./quality-health.js";
+
+// Team Productivity pillar (GetDX integration)
+export {
+  calculateProductivityHealthForOrg,
+  calculateProductivityHealthForDomain,
+  calculateProductivityHealthForTeam,
+  type ProductivityStatus,
+  type ProductivityHealthResult,
+  type ProductivityPendingResult,
+} from "./productivity-health.js";

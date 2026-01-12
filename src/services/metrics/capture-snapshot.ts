@@ -21,6 +21,7 @@ import {
 import {
   type MetricsSnapshotV1,
   type MetricsLevel,
+  type TeamProductivityV1,
   CURRENT_SCHEMA_VERSION,
 } from "../../types/metrics-snapshot.js";
 import {
@@ -38,6 +39,15 @@ import {
   calculateQualityHealthForTeam,
   calculateQualityHealthForDomain,
 } from "./quality-health.js";
+import {
+  calculateProductivityHealthForOrg,
+  calculateProductivityHealthForDomain,
+  calculateProductivityHealthForTeam,
+} from "./productivity-health.js";
+import {
+  fetchProductivityMetrics,
+  type ProductivityMetrics,
+} from "../getdx/index.js";
 
 /**
  * Result of a snapshot capture operation
@@ -63,17 +73,37 @@ function buildMetricsSnapshot(
   projects: Project[],
   issues: Issue[],
   capturedAt: string,
-  syncedAt: string | null
+  syncedAt: string | null,
+  getdxMetrics: ProductivityMetrics[] | null
 ): MetricsSnapshotV1 {
   // Calculate each pillar based on level
   let teamHealth;
   let velocityHealth;
   let qualityHealth;
+  let teamProductivity: TeamProductivityV1;
 
   if (level === "org") {
     teamHealth = calculateTeamHealth(engineers, projects);
     velocityHealth = calculateVelocityHealth(projects);
     qualityHealth = calculateQualityHealth(issues);
+
+    // Calculate org-level productivity from GetDX, using IC count from Team Health
+    const productivityResult = getdxMetrics
+      ? calculateProductivityHealthForOrg(getdxMetrics, teamHealth.totalIcCount)
+      : null;
+
+    teamProductivity = productivityResult
+      ? {
+          trueThroughput: productivityResult.trueThroughput,
+          engineerCount: productivityResult.engineerCount,
+          trueThroughputPerEngineer:
+            productivityResult.trueThroughputPerEngineer,
+          status: productivityResult.status,
+        }
+      : {
+          status: "pending",
+          notes: "GetDX not configured or unavailable",
+        };
   } else if (level === "domain" && levelId) {
     const domainTeamKeys = getTeamsForDomain(levelId);
     teamHealth = calculateTeamHealthForDomain(
@@ -84,6 +114,28 @@ function buildMetricsSnapshot(
     );
     velocityHealth = calculateVelocityHealthForDomain(domainTeamKeys, projects);
     qualityHealth = calculateQualityHealthForDomain(domainTeamKeys, issues);
+
+    // Calculate domain-level productivity from GetDX, using IC count from Team Health
+    const productivityResult = getdxMetrics
+      ? calculateProductivityHealthForDomain(
+          levelId,
+          getdxMetrics,
+          teamHealth.totalIcCount
+        )
+      : null;
+
+    teamProductivity = productivityResult
+      ? {
+          trueThroughput: productivityResult.trueThroughput,
+          engineerCount: productivityResult.engineerCount,
+          trueThroughputPerEngineer:
+            productivityResult.trueThroughputPerEngineer,
+          status: productivityResult.status,
+        }
+      : {
+          status: "pending",
+          notes: "Domain not mapped to GetDX teams",
+        };
   } else if (level === "team" && levelId) {
     teamHealth = calculateTeamHealthForTeam(
       levelId,
@@ -93,21 +145,25 @@ function buildMetricsSnapshot(
     );
     velocityHealth = calculateVelocityHealthForTeam(levelId, projects);
     qualityHealth = calculateQualityHealthForTeam(levelId, issues);
+
+    // Team-level productivity is pending (future work)
+    teamProductivity = calculateProductivityHealthForTeam();
   } else {
     // Fallback to org-level if something is wrong
     teamHealth = calculateTeamHealth(engineers, projects);
     velocityHealth = calculateVelocityHealth(projects);
     qualityHealth = calculateQualityHealth(issues);
+    teamProductivity = {
+      status: "pending",
+      notes: "Invalid level configuration",
+    };
   }
 
   return {
     schemaVersion: CURRENT_SCHEMA_VERSION as 1,
     teamHealth,
     velocityHealth,
-    teamProductivity: {
-      status: "pending",
-      notes: "Awaiting GetDX TrueThroughput integration",
-    },
+    teamProductivity,
     quality: qualityHealth,
     metadata: {
       capturedAt,
@@ -160,6 +216,18 @@ export async function captureMetricsSnapshots(): Promise<CaptureResult> {
     const capturedAt = new Date().toISOString();
     const syncedAt = syncMetadata?.last_sync_time || null;
 
+    // Fetch GetDX productivity metrics (if configured)
+    let getdxMetrics: ProductivityMetrics[] | null = null;
+    const getdxResult = await fetchProductivityMetrics();
+    if (getdxResult.success) {
+      getdxMetrics = getdxResult.metrics;
+      console.log(
+        `[METRICS] Fetched ${getdxMetrics.length} team productivity records from GetDX`
+      );
+    } else if (getdxResult.error !== "GetDX not configured") {
+      console.warn(`[METRICS] GetDX fetch failed: ${getdxResult.error}`);
+    }
+
     let snapshotsCreated = 0;
     const capturedDomains: string[] = [];
     const capturedTeams: string[] = [];
@@ -173,7 +241,8 @@ export async function captureMetricsSnapshots(): Promise<CaptureResult> {
       projects,
       issues,
       capturedAt,
-      syncedAt
+      syncedAt,
+      getdxMetrics
     );
 
     insertMetricsSnapshot({
@@ -203,7 +272,8 @@ export async function captureMetricsSnapshots(): Promise<CaptureResult> {
           projects,
           issues,
           capturedAt,
-          syncedAt
+          syncedAt,
+          getdxMetrics
         );
 
         insertMetricsSnapshot({
@@ -236,7 +306,8 @@ export async function captureMetricsSnapshots(): Promise<CaptureResult> {
         projects,
         issues,
         capturedAt,
-        syncedAt
+        syncedAt,
+        getdxMetrics
       );
 
       insertMetricsSnapshot({
@@ -290,6 +361,13 @@ export async function captureOrgSnapshot(): Promise<MetricsSnapshotV1 | null> {
     const capturedAt = new Date().toISOString();
     const syncedAt = syncMetadata?.last_sync_time || null;
 
+    // Fetch GetDX metrics
+    let getdxMetrics: ProductivityMetrics[] | null = null;
+    const getdxResult = await fetchProductivityMetrics();
+    if (getdxResult.success) {
+      getdxMetrics = getdxResult.metrics;
+    }
+
     return buildMetricsSnapshot(
       "org",
       null,
@@ -297,7 +375,8 @@ export async function captureOrgSnapshot(): Promise<MetricsSnapshotV1 | null> {
       projects,
       issues,
       capturedAt,
-      syncedAt
+      syncedAt,
+      getdxMetrics
     );
   } catch (error) {
     console.error("[METRICS] Failed to capture org snapshot:", error);
@@ -309,13 +388,22 @@ export async function captureOrgSnapshot(): Promise<MetricsSnapshotV1 | null> {
  * Get a summary of the latest org-level metrics for logging
  */
 export function getMetricsSummary(snapshot: MetricsSnapshotV1): string {
-  const { teamHealth, velocityHealth, quality } = snapshot;
+  const { teamHealth, velocityHealth, quality, teamProductivity } = snapshot;
+
+  // Format productivity summary based on schema type
+  let productivitySummary: string;
+  if ("trueThroughput" in teamProductivity) {
+    const perEng = teamProductivity.trueThroughputPerEngineer;
+    productivitySummary = `${teamProductivity.status.toUpperCase()} (TrueThroughput: ${teamProductivity.trueThroughput}${perEng !== null ? `, ${perEng.toFixed(2)}/engineer` : ""})`;
+  } else {
+    productivitySummary = `${teamProductivity.status.toUpperCase()} (${teamProductivity.notes})`;
+  }
 
   const lines = [
     `Team Health: ${teamHealth.status.toUpperCase()} (${teamHealth.healthyIcCount}/${teamHealth.totalIcCount} ICs healthy, ${teamHealth.healthyProjectCount}/${teamHealth.totalProjectCount} projects healthy)`,
     `Velocity: ${velocityHealth.status.toUpperCase()} (${velocityHealth.onTrackPercent.toFixed(1)}% on track, ${velocityHealth.atRiskPercent.toFixed(1)}% at risk, ${velocityHealth.offTrackPercent.toFixed(1)}% off track)`,
     `Quality: ${quality.status.toUpperCase()} (Score: ${quality.compositeScore}, ${quality.openBugCount} open bugs, ${quality.netBugChange >= 0 ? "+" : ""}${quality.netBugChange} net)`,
-    `Productivity: ${snapshot.teamProductivity.status.toUpperCase()} (${snapshot.teamProductivity.notes})`,
+    `Productivity: ${productivitySummary}`,
   ];
 
   return lines.join("\n");

@@ -7,6 +7,8 @@
   import type {
     MetricsSnapshotV1,
     PillarStatus,
+    ProductivityStatus,
+    TeamProductivityV1,
   } from "../../types/metrics-snapshot";
   import type { LatestMetricsResponse } from "../api/metrics/latest/+server";
 
@@ -23,6 +25,7 @@
     }>
   >([]);
   let selectedLevel = $state<"org" | "domain" | "team">("org");
+  let teamNames = $state<Record<string, string>>({});
 
   // Fetch metrics data
   async function fetchMetrics() {
@@ -42,6 +45,7 @@
       }
 
       allSnapshots = data.snapshots || [];
+      teamNames = data.teamNames || {};
 
       // Extract org snapshot
       const org = allSnapshots.find((s) => s.level === "org");
@@ -58,8 +62,8 @@
     fetchMetrics();
   });
 
-  // Get status color classes
-  function getStatusClasses(status: PillarStatus): {
+  // Get status color classes (works for both PillarStatus and ProductivityStatus)
+  function getStatusClasses(status: PillarStatus | ProductivityStatus): {
     bg: string;
     text: string;
     border: string;
@@ -83,6 +87,18 @@
           text: "text-red-400",
           border: "border-red-500/30",
         };
+      case "unknown":
+        return {
+          bg: "bg-blue-500/10",
+          text: "text-blue-400",
+          border: "border-blue-500/30",
+        };
+      case "pending":
+        return {
+          bg: "bg-neutral-500/10",
+          text: "text-neutral-400",
+          border: "border-neutral-500/30",
+        };
       default:
         return {
           bg: "bg-neutral-500/10",
@@ -90,6 +106,54 @@
           border: "border-neutral-500/30",
         };
     }
+  }
+
+  // Measurement period in weeks (data is aggregated over 14 days = 2 weeks)
+  const MEASUREMENT_PERIOD_WEEKS = 2;
+
+  // Check if productivity has TrueThroughput data
+  function hasProductivityData(
+    p: TeamProductivityV1
+  ): p is {
+    trueThroughput: number;
+    engineerCount: number | null;
+    trueThroughputPerEngineer: number | null;
+    status: ProductivityStatus;
+  } {
+    return "trueThroughput" in p;
+  }
+
+  // Convert 14-day throughput to weekly rate
+  function toWeeklyRate(value: number): number {
+    return value / MEASUREMENT_PERIOD_WEEKS;
+  }
+
+  // Get productivity display string (as weekly rate)
+  function _getProductivityDisplay(p: TeamProductivityV1): string {
+    if (hasProductivityData(p)) {
+      const weeklyRate = toWeeklyRate(p.trueThroughput);
+      return `${weeklyRate.toFixed(1)}/wk`;
+    }
+    return "—";
+  }
+
+  // Get per-IC weekly rate
+  function _getPerICWeeklyRate(p: TeamProductivityV1): string {
+    if (hasProductivityData(p) && p.trueThroughputPerEngineer !== null) {
+      const weeklyPerIC = toWeeklyRate(p.trueThroughputPerEngineer);
+      return `${weeklyPerIC.toFixed(2)}/wk`;
+    }
+    return "—";
+  }
+
+  // Get team display name: "Full Name (KEY)" or just "KEY" if no full name
+  function getTeamDisplayName(teamKey: string | null): string {
+    if (!teamKey) return "Unknown";
+    const fullName = teamNames[teamKey];
+    if (fullName) {
+      return `${fullName} (${teamKey})`;
+    }
+    return teamKey;
   }
 
   // Get domain snapshots
@@ -119,6 +183,15 @@
   const qualityStatusClasses = $derived(
     orgSnapshot ? getStatusClasses(orgSnapshot.quality.status) : null
   );
+
+  // Productivity derived values
+  const orgProductivity = $derived(orgSnapshot?.teamProductivity ?? null);
+  const orgHasProductivityData = $derived(
+    orgProductivity ? hasProductivityData(orgProductivity) : false
+  );
+  const productivityStatusClasses = $derived(
+    orgProductivity ? getStatusClasses(orgProductivity.status) : null
+  );
 </script>
 
 <div class="space-y-6">
@@ -127,9 +200,7 @@
     <h1 class="text-2xl font-semibold tracking-tight text-white">
       Engineering Metrics
     </h1>
-    <p class="mt-1 text-sm text-neutral-400">
-      Four Pillars health overview for leadership reviews
-    </p>
+    <p class="mt-1 text-sm text-neutral-400">Four Pillars health overview</p>
   </div>
 
   <!-- Loading State -->
@@ -259,9 +330,11 @@
         </div>
       </Card>
 
-      <!-- Pillar 3: Team Productivity (Pending) -->
+      <!-- Pillar 3: Team Productivity -->
       <Card
-        class="border opacity-60 transition-colors duration-150 hover:bg-white/5 border-neutral-700/50"
+        class="border transition-colors duration-150 hover:bg-white/5 {orgHasProductivityData
+          ? productivityStatusClasses?.border
+          : 'border-neutral-700/50 opacity-60'}"
       >
         <div class="flex justify-between items-start mb-3">
           <div
@@ -269,18 +342,74 @@
           >
             Productivity
           </div>
-          <Badge variant="outline">pending</Badge>
+          {#if orgHasProductivityData && orgProductivity && "trueThroughput" in orgProductivity}
+            <Badge
+              variant={orgProductivity.status === "healthy"
+                ? "success"
+                : orgProductivity.status === "warning"
+                  ? "warning"
+                  : orgProductivity.status === "critical"
+                    ? "destructive"
+                    : "outline"}
+            >
+              {orgProductivity.status}
+            </Badge>
+          {:else if orgProductivity}
+            <Badge variant="outline">{orgProductivity.status}</Badge>
+          {/if}
         </div>
 
         <div class="space-y-3">
-          <div>
-            <div class="text-2xl font-semibold text-neutral-500">—</div>
-            <div class="text-xs text-neutral-500">PR throughput</div>
-          </div>
+          {#if orgHasProductivityData && orgProductivity && "trueThroughput" in orgProductivity}
+            <div>
+              <div
+                class="text-2xl font-semibold {productivityStatusClasses?.text ||
+                  ''}"
+              >
+                {toWeeklyRate(orgProductivity.trueThroughput).toFixed(1)}<span
+                  class="text-sm font-normal text-neutral-400">/wk</span
+                >
+              </div>
+              <div class="text-xs text-neutral-500">
+                TrueThroughput (target: 3/wk per IC)
+              </div>
+            </div>
 
-          <div class="text-xs italic text-neutral-500">
-            {orgSnapshot.teamProductivity.notes}
-          </div>
+            <div class="flex gap-4 text-xs">
+              {#if orgProductivity.engineerCount !== null}
+                <div>
+                  <span class="text-neutral-400">ICs:</span>
+                  <span class="ml-1 text-white"
+                    >{orgProductivity.engineerCount}</span
+                  >
+                </div>
+              {/if}
+              {#if orgProductivity.trueThroughputPerEngineer !== null}
+                <div>
+                  <span class="text-neutral-400">Per IC:</span>
+                  <span class="ml-1 text-white">
+                    {toWeeklyRate(
+                      orgProductivity.trueThroughputPerEngineer
+                    ).toFixed(2)}/wk
+                  </span>
+                </div>
+              {/if}
+            </div>
+          {:else if orgProductivity && "notes" in orgProductivity}
+            <div>
+              <div class="text-2xl font-semibold text-neutral-500">—</div>
+              <div class="text-xs text-neutral-500">TrueThroughput</div>
+            </div>
+
+            <div class="text-xs italic text-neutral-500">
+              {orgProductivity.notes}
+            </div>
+          {:else}
+            <div>
+              <div class="text-2xl font-semibold text-neutral-500">—</div>
+              <div class="text-xs text-neutral-500">TrueThroughput</div>
+            </div>
+          {/if}
         </div>
       </Card>
 
@@ -361,6 +490,9 @@
                 <th class="px-4 py-3 font-medium text-center text-neutral-400">
                   Quality
                 </th>
+                <th class="px-4 py-3 font-medium text-center text-neutral-400">
+                  Throughput/IC
+                </th>
                 <th class="px-4 py-3 font-medium text-right text-neutral-400">
                   ICs
                 </th>
@@ -411,6 +543,26 @@
                     >
                       Score: {snapshot.quality.compositeScore}
                     </Badge>
+                  </td>
+                  <td class="px-4 py-3 text-center">
+                    {#if hasProductivityData(snapshot.teamProductivity)}
+                      <Badge
+                        variant={snapshot.teamProductivity.status === "healthy"
+                          ? "success"
+                          : snapshot.teamProductivity.status === "warning"
+                            ? "warning"
+                            : snapshot.teamProductivity.status === "critical"
+                              ? "destructive"
+                              : "outline"}
+                      >
+                        {toWeeklyRate(
+                          snapshot.teamProductivity.trueThroughputPerEngineer ??
+                            0
+                        ).toFixed(1)}/IC/wk
+                      </Badge>
+                    {:else}
+                      <span class="text-neutral-500">—</span>
+                    {/if}
                   </td>
                   <td class="px-4 py-3 text-right text-neutral-400">
                     {snapshot.teamHealth.totalIcCount}
@@ -465,7 +617,9 @@
                 <tr
                   class="border-b transition-colors border-white/5 hover:bg-white/5"
                 >
-                  <td class="px-4 py-3 font-medium text-white">{levelId}</td>
+                  <td class="px-4 py-3 font-medium text-white"
+                    >{getTeamDisplayName(levelId)}</td
+                  >
                   <td class="px-4 py-3 text-center">
                     <Badge
                       variant={snapshot.teamHealth.status === "healthy"

@@ -89,17 +89,50 @@ export const VelocityHealthSchemaV1 = z.object({
 export type VelocityHealthV1 = z.infer<typeof VelocityHealthSchemaV1>;
 
 // ============================================================================
-// Pillar 3: Team Productivity (Placeholder for GetDX integration)
+// Pillar 3: Team Productivity (GetDX TrueThroughput integration)
 // ============================================================================
 
-export const TeamProductivitySchemaV1 = z.object({
-  /** Pending status until GetDX integration */
-  status: PendingStatusSchema,
-  /** Notes about what's needed for this pillar */
+/** Extended status including "unknown" for unconfigured thresholds */
+export const ProductivityStatusSchema = z.enum([
+  "healthy",
+  "warning",
+  "critical",
+  "unknown",
+  "pending",
+]);
+export type ProductivityStatus = z.infer<typeof ProductivityStatusSchema>;
+
+/** Pending state - for teams or when GetDX is not configured */
+export const TeamProductivityPendingSchemaV1 = z.object({
+  status: z.literal("pending"),
   notes: z.string(),
 });
 
+/** Active state - with GetDX TrueThroughput data */
+export const TeamProductivityActiveSchemaV1 = z.object({
+  /** TrueThroughput score from GetDX */
+  trueThroughput: z.number(),
+  /** Number of engineers (if available from GetDX) */
+  engineerCount: z.number().nullable(),
+  /** TrueThroughput per engineer */
+  trueThroughputPerEngineer: z.number().nullable(),
+  /** Status: healthy/warning/critical if thresholds configured, else unknown */
+  status: ProductivityStatusSchema,
+});
+
+/** Union of pending and active productivity schemas */
+export const TeamProductivitySchemaV1 = z.union([
+  TeamProductivityPendingSchemaV1,
+  TeamProductivityActiveSchemaV1,
+]);
+
 export type TeamProductivityV1 = z.infer<typeof TeamProductivitySchemaV1>;
+export type TeamProductivityPendingV1 = z.infer<
+  typeof TeamProductivityPendingSchemaV1
+>;
+export type TeamProductivityActiveV1 = z.infer<
+  typeof TeamProductivityActiveSchemaV1
+>;
 
 // ============================================================================
 // Pillar 4: Quality (Bug Metrics)

@@ -4,6 +4,21 @@
 # Copy this file to fly.toml and update with your app name and region
 # Before deploying, create the volume:
 #   fly volumes create linear_bot_data --region iad --size 1
+#
+# Required secrets (set with `fly secrets set`):
+#   LINEAR_API_KEY          - Linear API key for data sync
+#   AUTH_SECRET             - Random string for session encryption
+#
+# Optional secrets for GetDX integration:
+#   GETDX_API_KEY                     - GetDX API key (requires snapshots:read scope)
+#   GETDX_PR_THROUGHPUT_FEED_TOKEN    - Datafeed token for PR Throughput query
+#
+# Optional env vars:
+#   TEAM_DOMAIN_MAPPINGS              - JSON mapping of Linear team keys to domain names
+#   GETDX_DOMAIN_MAPPINGS             - JSON mapping of GetDX team names to domain names
+#   GETDX_THROUGHPUT_PER_IC_HEALTHY   - Per-IC throughput for healthy status (default: 6)
+#   GETDX_THROUGHPUT_PER_IC_WARNING   - Per-IC throughput for warning status (default: 3)
+#   IGNORED_TEAM_KEYS                 - Comma-separated list of team keys to hide from UI
 
 app = "your-app-name"
 primary_region = "iad"
