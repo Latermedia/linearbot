@@ -44,7 +44,7 @@ export async function syncInitiatives(context: PhaseContext): Promise<void> {
   try {
     setSyncStatusMessage("Fetching initiatives...");
     console.log("[SYNC] Fetching initiatives...");
-    callbacks?.onProgressPercent?.(65);
+    callbacks?.onProgressPercent?.(65, context.apiQueryCount, "initiatives");
     setSyncProgress(65);
     const allInitiatives = await linearClient.fetchInitiatives();
 
@@ -125,7 +125,7 @@ export async function syncInitiatives(context: PhaseContext): Promise<void> {
     console.log(`[SYNC] Synced ${initiatives.length} initiative(s)`);
 
     // Phase complete - set to 80%
-    callbacks?.onProgressPercent?.(80);
+    callbacks?.onProgressPercent?.(80, context.apiQueryCount, "initiatives");
     setSyncProgress(80);
   } catch (error) {
     if (error instanceof RateLimitError) {

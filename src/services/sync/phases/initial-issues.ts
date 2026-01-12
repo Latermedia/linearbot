@@ -48,7 +48,7 @@ export async function syncInitialIssues(
   }
 
   updatePhase("initial_issues");
-  callbacks?.onProgressPercent?.(0);
+  callbacks?.onProgressPercent?.(0, context.apiQueryCount, "initial_issues");
   setSyncProgress(0);
   setSyncStatusMessage("Fetching started issues...");
 
@@ -132,7 +132,7 @@ export async function syncInitialIssues(
   }
 
   // Phase complete - set to 10%
-  callbacks?.onProgressPercent?.(10);
+  callbacks?.onProgressPercent?.(10, context.apiQueryCount, "initial_issues");
   setSyncProgress(10);
 
   return { allIssues: startedIssues, newCount, updatedCount };

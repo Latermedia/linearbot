@@ -47,7 +47,11 @@ export async function syncInitiativeProjects(
   }
 
   updatePhase("initiative_projects");
-  callbacks?.onProgressPercent?.(80);
+  callbacks?.onProgressPercent?.(
+    80,
+    context.apiQueryCount,
+    "initiative_projects"
+  );
   setSyncProgress(80);
   setSyncStatusMessage("Syncing initiative projects...");
 
@@ -324,7 +328,11 @@ export async function syncInitiativeProjects(
     }
 
     // Phase complete - set to 95%
-    callbacks?.onProgressPercent?.(95);
+    callbacks?.onProgressPercent?.(
+      95,
+      context.apiQueryCount,
+      "initiative_projects"
+    );
     setSyncProgress(95);
   } catch (error) {
     if (error instanceof RateLimitError) {

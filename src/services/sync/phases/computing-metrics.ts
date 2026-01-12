@@ -19,7 +19,11 @@ export async function syncComputingMetrics(
     context;
 
   updatePhase("computing_metrics");
-  callbacks?.onProgressPercent?.(95);
+  callbacks?.onProgressPercent?.(
+    95,
+    context.apiQueryCount,
+    "computing_metrics"
+  );
   setSyncProgress(95);
   setSyncStatusMessage("Computing project metrics...");
   console.log(`[SYNC] Computing metrics from database...`);
@@ -59,7 +63,11 @@ export async function syncComputingMetrics(
   );
 
   // Phase complete - set to 100%
-  callbacks?.onProgressPercent?.(100);
+  callbacks?.onProgressPercent?.(
+    100,
+    context.apiQueryCount,
+    "computing_metrics"
+  );
   setSyncProgress(100);
 
   return {

@@ -45,7 +45,11 @@ export async function syncRecentlyUpdatedIssues(
   }
 
   updatePhase("recently_updated_issues");
-  callbacks?.onProgressPercent?.(10);
+  callbacks?.onProgressPercent?.(
+    10,
+    context.apiQueryCount,
+    "recently_updated_issues"
+  );
   setSyncProgress(10);
   setSyncStatusMessage("Fetching recently updated issues...");
 
@@ -192,7 +196,11 @@ export async function syncRecentlyUpdatedIssues(
   }
 
   // Phase complete - set to 20%
-  callbacks?.onProgressPercent?.(20);
+  callbacks?.onProgressPercent?.(
+    20,
+    context.apiQueryCount,
+    "recently_updated_issues"
+  );
   setSyncProgress(20);
 
   return { recentlyUpdatedIssues, newCount, updatedCount };
