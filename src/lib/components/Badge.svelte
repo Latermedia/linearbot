@@ -11,6 +11,10 @@
           "bg-neutral-200 dark:bg-neutral-800 text-neutral-600 dark:text-neutral-400",
         destructive:
           "bg-red-100 dark:bg-red-500/10 text-red-700 dark:text-red-400",
+        success:
+          "bg-emerald-100 dark:bg-emerald-500/10 text-emerald-700 dark:text-emerald-400",
+        warning:
+          "bg-amber-100 dark:bg-amber-500/10 text-amber-700 dark:text-amber-400",
         outline:
           "bg-transparent border border-neutral-300 dark:border-white/10 text-neutral-700 dark:text-neutral-300",
       },

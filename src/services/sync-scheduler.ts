@@ -49,6 +49,7 @@ async function runScheduledSync(): Promise<void> {
       console.log(
         `[SCHEDULER] Scheduled sync completed successfully - New: ${result.newCount}, Updated: ${result.updatedCount}, Total: ${result.totalCount}`
       );
+      // Note: Metrics snapshots are now captured automatically by the sync manager
     } else {
       console.error(`[SCHEDULER] Scheduled sync failed: ${result.error}`);
     }

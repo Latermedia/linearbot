@@ -1,5 +1,12 @@
 import { getDatabase } from "./connection.js";
-import type { Issue, Project, Engineer, Initiative } from "./schema.js";
+import type {
+  Issue,
+  Project,
+  Engineer,
+  Initiative,
+  MetricsSnapshot,
+  MetricsSnapshotLevel,
+} from "./schema.js";
 
 // Cached prepared statements for hot paths
 let upsertIssueStatement: any | null = null;
@@ -866,4 +873,169 @@ export function deleteInitiativesByIds(initiativeIds: string[]): void {
     DELETE FROM initiatives WHERE id IN (${placeholders})
   `);
   query.run(...initiativeIds);
+}
+
+// ============================================================================
+// Metrics Snapshots Queries
+// ============================================================================
+
+/**
+ * Insert a new metrics snapshot
+ */
+export function insertMetricsSnapshot(snapshot: {
+  captured_at: string;
+  schema_version: number;
+  level: MetricsSnapshotLevel;
+  level_id: string | null;
+  metrics_json: string;
+}): number {
+  const db = getDatabase();
+  const query = db.prepare(`
+    INSERT INTO metrics_snapshots (
+      captured_at, schema_version, level, level_id, metrics_json
+    ) VALUES (?, ?, ?, ?, ?)
+  `);
+  const result = query.run(
+    snapshot.captured_at,
+    snapshot.schema_version,
+    snapshot.level,
+    snapshot.level_id,
+    snapshot.metrics_json
+  );
+  return Number(result.lastInsertRowid);
+}
+
+/**
+ * Get the latest metrics snapshot for a specific level
+ */
+export function getLatestMetricsSnapshot(
+  level: MetricsSnapshotLevel,
+  levelId: string | null = null
+): MetricsSnapshot | null {
+  const db = getDatabase();
+  const query =
+    levelId === null
+      ? db.prepare(`
+      SELECT * FROM metrics_snapshots
+      WHERE level = ? AND level_id IS NULL
+      ORDER BY captured_at DESC
+      LIMIT 1
+    `)
+      : db.prepare(`
+      SELECT * FROM metrics_snapshots
+      WHERE level = ? AND level_id = ?
+      ORDER BY captured_at DESC
+      LIMIT 1
+    `);
+
+  const result =
+    levelId === null
+      ? (query.get(level) as MetricsSnapshot | undefined)
+      : (query.get(level, levelId) as MetricsSnapshot | undefined);
+
+  return result || null;
+}
+
+/**
+ * Get all latest metrics snapshots (one per level/level_id combination)
+ */
+export function getAllLatestMetricsSnapshots(): MetricsSnapshot[] {
+  const db = getDatabase();
+  const query = db.prepare(`
+    SELECT m1.* FROM metrics_snapshots m1
+    INNER JOIN (
+      SELECT level, level_id, MAX(captured_at) as max_captured_at
+      FROM metrics_snapshots
+      GROUP BY level, COALESCE(level_id, '')
+    ) m2 ON m1.level = m2.level 
+      AND COALESCE(m1.level_id, '') = COALESCE(m2.level_id, '')
+      AND m1.captured_at = m2.max_captured_at
+    ORDER BY m1.level, m1.level_id
+  `);
+  return query.all() as MetricsSnapshot[];
+}
+
+/**
+ * Get metrics snapshots for trending (last N snapshots for a level)
+ */
+export function getMetricsSnapshotTrend(
+  level: MetricsSnapshotLevel,
+  levelId: string | null = null,
+  limit: number = 168 // 7 days of hourly snapshots
+): MetricsSnapshot[] {
+  const db = getDatabase();
+  const query =
+    levelId === null
+      ? db.prepare(`
+      SELECT * FROM metrics_snapshots
+      WHERE level = ? AND level_id IS NULL
+      ORDER BY captured_at DESC
+      LIMIT ?
+    `)
+      : db.prepare(`
+      SELECT * FROM metrics_snapshots
+      WHERE level = ? AND level_id = ?
+      ORDER BY captured_at DESC
+      LIMIT ?
+    `);
+
+  const results =
+    levelId === null
+      ? (query.all(level, limit) as MetricsSnapshot[])
+      : (query.all(level, levelId, limit) as MetricsSnapshot[]);
+
+  // Return in chronological order (oldest first)
+  return results.reverse();
+}
+
+/**
+ * Get metrics snapshots within a date range
+ */
+export function getMetricsSnapshotsByDateRange(
+  level: MetricsSnapshotLevel,
+  levelId: string | null,
+  startDate: string,
+  endDate: string
+): MetricsSnapshot[] {
+  const db = getDatabase();
+  const query =
+    levelId === null
+      ? db.prepare(`
+      SELECT * FROM metrics_snapshots
+      WHERE level = ? AND level_id IS NULL
+        AND captured_at >= ? AND captured_at <= ?
+      ORDER BY captured_at ASC
+    `)
+      : db.prepare(`
+      SELECT * FROM metrics_snapshots
+      WHERE level = ? AND level_id = ?
+        AND captured_at >= ? AND captured_at <= ?
+      ORDER BY captured_at ASC
+    `);
+
+  return levelId === null
+    ? (query.all(level, startDate, endDate) as MetricsSnapshot[])
+    : (query.all(level, levelId, startDate, endDate) as MetricsSnapshot[]);
+}
+
+/**
+ * Delete old metrics snapshots (for cleanup if ever needed)
+ */
+export function deleteOldMetricsSnapshots(beforeDate: string): number {
+  const db = getDatabase();
+  const query = db.prepare(`
+    DELETE FROM metrics_snapshots WHERE captured_at < ?
+  `);
+  const result = query.run(beforeDate);
+  return result.changes;
+}
+
+/**
+ * Get count of metrics snapshots
+ */
+export function getMetricsSnapshotCount(): number {
+  const db = getDatabase();
+  const query = db.prepare(`SELECT COUNT(*) as count FROM metrics_snapshots`);
+  const result = query.get() as { count: number };
+  return result.count;
 }

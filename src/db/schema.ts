@@ -130,6 +130,24 @@ export interface Initiative {
 }
 
 /**
+ * Metrics snapshot levels
+ */
+export type MetricsSnapshotLevel = "org" | "domain" | "team";
+
+/**
+ * Metrics snapshot record for Four Pillars tracking
+ */
+export interface MetricsSnapshot {
+  id: number;
+  captured_at: string; // ISO timestamp
+  schema_version: number; // For Zod schema versioning
+  level: MetricsSnapshotLevel; // 'org' | 'domain' | 'team'
+  level_id: string | null; // null for org, domain name, or team key
+  metrics_json: string; // JSON blob with pillar metrics
+  created_at: string; // ISO timestamp
+}
+
+/**
  * Expected columns in the issues table (in order)
  */
 const EXPECTED_ISSUES_COLUMNS = [
@@ -229,6 +247,7 @@ export function resetDatabase(db: Database): void {
   db.run("DROP TABLE IF EXISTS issues");
   db.run("DROP TABLE IF EXISTS initiatives");
   db.run("DROP TABLE IF EXISTS sync_metadata");
+  db.run("DROP TABLE IF EXISTS metrics_snapshots");
   // Drop indices as they will be recreated
   db.run("DROP INDEX IF EXISTS idx_issues_team_id");
   db.run("DROP INDEX IF EXISTS idx_issues_state_type");
@@ -236,6 +255,8 @@ export function resetDatabase(db: Database): void {
   db.run("DROP INDEX IF EXISTS idx_issues_project_id");
   db.run("DROP INDEX IF EXISTS idx_projects_project_id");
   db.run("DROP INDEX IF EXISTS idx_engineers_assignee_id");
+  db.run("DROP INDEX IF EXISTS idx_metrics_snapshots_captured_at");
+  db.run("DROP INDEX IF EXISTS idx_metrics_snapshots_level");
   initializeDatabase(db);
   console.log("[DB] Database reset complete");
 }
@@ -417,6 +438,19 @@ export function initializeDatabase(db: Database): void {
     )
   `);
 
+  // Create metrics_snapshots table for Four Pillars tracking
+  db.run(`
+    CREATE TABLE IF NOT EXISTS metrics_snapshots (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      captured_at TEXT NOT NULL,
+      schema_version INTEGER NOT NULL,
+      level TEXT NOT NULL,
+      level_id TEXT,
+      metrics_json TEXT NOT NULL,
+      created_at TEXT DEFAULT CURRENT_TIMESTAMP
+    )
+  `);
+
   // Add phase_query_counts column if it doesn't exist (migration)
   // Stores JSON object mapping phase names to query counts: {"initial_issues": 50, "active_projects": 1200, ...}
   try {
@@ -459,5 +493,16 @@ export function initializeDatabase(db: Database): void {
   db.run(`
     CREATE INDEX IF NOT EXISTS idx_engineers_assignee_id 
     ON engineers(assignee_id)
+  `);
+
+  // Indices for metrics_snapshots queries
+  db.run(`
+    CREATE INDEX IF NOT EXISTS idx_metrics_snapshots_captured_at 
+    ON metrics_snapshots(captured_at)
+  `);
+
+  db.run(`
+    CREATE INDEX IF NOT EXISTS idx_metrics_snapshots_level 
+    ON metrics_snapshots(level, level_id)
   `);
 }

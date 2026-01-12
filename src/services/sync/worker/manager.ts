@@ -5,6 +5,7 @@ import {
   setSyncState,
   updateSyncStats,
 } from "../../../routes/api/sync/state.js";
+import { captureMetricsSnapshots } from "../../metrics/index.js";
 
 type WorkerHandle = {
   worker: Worker;
@@ -87,6 +88,11 @@ function ensureHandle(): WorkerHandle {
             hasPartialSync: false,
             partialSyncProgress: null,
           });
+
+          // Capture metrics after every successful sync
+          captureMetricsAfterSync().finally(() => {
+            resolve?.(msg.result);
+          });
         } else {
           setSyncState({
             isRunning: false,
@@ -96,8 +102,8 @@ function ensureHandle(): WorkerHandle {
             syncingProjectId: undefined,
             stats: undefined,
           });
+          resolve?.(msg.result);
         }
-        resolve?.(msg.result);
         return;
       }
 
@@ -209,4 +215,28 @@ export async function startProjectSync(projectId: string): Promise<SyncResult> {
     h.reject = reject;
     h.worker.postMessage({ type: "run", job });
   });
+}
+
+/**
+ * Capture metrics snapshots after a successful sync.
+ * This runs automatically after every sync (scheduled or manual).
+ */
+async function captureMetricsAfterSync(): Promise<void> {
+  try {
+    console.log("[SYNC] Capturing metrics snapshots...");
+    const result = await captureMetricsSnapshots();
+
+    if (result.success) {
+      console.log(
+        `[SYNC] Metrics capture complete: ${result.snapshotsCreated} snapshots created`
+      );
+    } else {
+      console.error(`[SYNC] Metrics capture failed: ${result.error}`);
+    }
+  } catch (error) {
+    const errorMessage =
+      error instanceof Error ? error.message : "Unknown error";
+    console.error(`[SYNC] Error capturing metrics: ${errorMessage}`);
+    // Don't throw - metrics capture failure shouldn't break the sync flow
+  }
 }
