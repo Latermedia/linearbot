@@ -4,6 +4,9 @@
   import Card from "$lib/components/Card.svelte";
   import Skeleton from "$lib/components/Skeleton.svelte";
   import Badge from "$lib/components/Badge.svelte";
+  import ProjectDetailModal from "$lib/components/ProjectDetailModal.svelte";
+  import { databaseStore, projectsStore } from "$lib/stores/database";
+  import type { ProjectSummary } from "$lib/project-data";
   import type {
     MetricsSnapshotV1,
     PillarStatus,
@@ -57,9 +60,24 @@
     }
   }
 
+  // State for project detail modal
+  let selectedProject = $state<ProjectSummary | null>(null);
+
+  function handleProjectClick(projectId: string): void {
+    const project = $projectsStore.get(projectId);
+    if (project) {
+      selectedProject = project;
+    }
+  }
+
+  function closeModal(): void {
+    selectedProject = null;
+  }
+
   // Load on mount
   onMount(() => {
     fetchMetrics();
+    databaseStore.load();
   });
 
   // Get status color classes (works for both PillarStatus and ProductivityStatus)
@@ -112,9 +130,7 @@
   const MEASUREMENT_PERIOD_WEEKS = 2;
 
   // Check if productivity has TrueThroughput data
-  function hasProductivityData(
-    p: TeamProductivityV1
-  ): p is {
+  function hasProductivityData(p: TeamProductivityV1): p is {
     trueThroughput: number;
     engineerCount: number | null;
     trueThroughputPerEngineer: number | null;
@@ -679,8 +695,9 @@
         <Card>
           <div class="space-y-2">
             {#each orgSnapshot.velocityHealth.projectStatuses.filter((p) => p.effectiveHealth !== "onTrack") as project (project.projectId)}
-              <div
-                class="flex justify-between items-center px-3 py-2 rounded transition-colors hover:bg-white/5"
+              <button
+                class="flex justify-between items-center px-3 py-2 w-full text-left rounded transition-colors cursor-pointer hover:bg-white/5"
+                onclick={() => handleProjectClick(project.projectId)}
               >
                 <div>
                   <div class="font-medium text-white">
@@ -706,7 +723,7 @@
                     ? "At Risk"
                     : "Off Track"}
                 </Badge>
-              </div>
+              </button>
             {/each}
           </div>
         </Card>
@@ -725,3 +742,8 @@
     </Card>
   {/if}
 </div>
+
+<!-- Project Detail Modal -->
+{#if selectedProject}
+  <ProjectDetailModal project={selectedProject} onclose={closeModal} />
+{/if}
