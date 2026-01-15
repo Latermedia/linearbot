@@ -173,19 +173,19 @@ export function countViolations(issues: Issue[]): ViolationCounts {
     missingPriority,
     missingScopedLabel,
     total:
-      missingEstimate +
-      noRecentComment +
-      missingPriority +
-      missingScopedLabel,
+      missingEstimate + noRecentComment + missingPriority + missingScopedLabel,
   };
 }
 
 /**
- * Check if issue has WIP age violation (started >14 days ago)
+ * Check if issue has WIP age violation (in progress for >14 days)
+ * Only applies to issues currently in "started" state, not completed issues.
  */
 export function hasWIPAgeViolation(issue: Issue): boolean {
   // Suppress alerts for cancelled/duplicate issues
   if (shouldSuppressAlerts(issue)) return false;
+  // Only check issues currently in progress (started state)
+  if (issue.state_type !== "started") return false;
   if (!issue.started_at) return false;
   const startedDate = new Date(issue.started_at);
   const now = new Date();
@@ -212,22 +212,22 @@ export function hasMissingDescription(issue: Issue): boolean {
 export function hasMissingScopedLabel(issue: Issue): boolean {
   // Suppress alerts for cancelled/duplicate issues
   if (shouldSuppressAlerts(issue)) return false;
-  
+
   // If no labels, it's missing
   if (!issue.labels) return true;
-  
+
   try {
     const labels = JSON.parse(issue.labels) as Array<{
       name: string;
       parent?: { name: string } | null;
     }>;
-    
+
     // Check if any label has parent.name === "scoped" AND name starts with "type:"
     const hasTypeLabel = labels.some(
       (label) =>
         label.parent?.name === "scoped" && label.name.startsWith("type:")
     );
-    
+
     return !hasTypeLabel;
   } catch (error) {
     // If JSON parsing fails, consider it missing
@@ -286,7 +286,10 @@ export function hasMissingProjectScopedLabels(project: Project): boolean {
       if (label.parent?.name === "scoped") {
         // Check if this label matches any of the required RICE labels
         for (const requiredLabel of REQUIRED_RICE_LABELS) {
-          if (label.name === requiredLabel || label.name.startsWith(requiredLabel)) {
+          if (
+            label.name === requiredLabel ||
+            label.name.startsWith(requiredLabel)
+          ) {
             foundLabels.add(requiredLabel);
             break;
           }
