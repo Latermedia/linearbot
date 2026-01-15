@@ -58,13 +58,21 @@ export function computeAndStoreEngineers(): number {
   for (const [assigneeId, { name, avatarUrl, issues }] of engineerGroups) {
     activeEngineerIds.add(assigneeId);
 
-    // Collect unique teams
+    // Collect unique teams and projects
     const teamIds = new Set<string>();
     const teamNames = new Set<string>();
+    const projectIds = new Set<string>();
     for (const issue of issues) {
       teamIds.add(issue.team_id);
       teamNames.add(issue.team_name);
+      if (issue.project_id) {
+        projectIds.add(issue.project_id);
+      }
     }
+
+    // Calculate active project count (healthy = 1 project)
+    const activeProjectCount = projectIds.size;
+    const multiProjectViolation = activeProjectCount > 1 ? 1 : 0;
 
     // Calculate WIP metrics
     const wipIssueCount = issues.length;
@@ -147,6 +155,8 @@ export function computeAndStoreEngineers(): number {
       missing_priority_count: missingPriorityCount,
       no_recent_comment_count: noRecentCommentCount,
       wip_age_violation_count: wipAgeViolationCount,
+      active_project_count: activeProjectCount,
+      multi_project_violation: multiProjectViolation,
       active_issues: JSON.stringify(activeIssues),
     };
 

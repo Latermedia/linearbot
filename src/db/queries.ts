@@ -593,8 +593,9 @@ export function upsertEngineer(engineer: Engineer): void {
       oldest_wip_age_days, last_activity_at,
       missing_estimate_count, missing_priority_count,
       no_recent_comment_count, wip_age_violation_count,
+      active_project_count, multi_project_violation,
       active_issues
-    ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+    ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
     ON CONFLICT(assignee_id) DO UPDATE SET
       assignee_name = excluded.assignee_name,
       avatar_url = excluded.avatar_url,
@@ -609,6 +610,8 @@ export function upsertEngineer(engineer: Engineer): void {
       missing_priority_count = excluded.missing_priority_count,
       no_recent_comment_count = excluded.no_recent_comment_count,
       wip_age_violation_count = excluded.wip_age_violation_count,
+      active_project_count = excluded.active_project_count,
+      multi_project_violation = excluded.multi_project_violation,
       active_issues = excluded.active_issues
   `);
 
@@ -627,6 +630,8 @@ export function upsertEngineer(engineer: Engineer): void {
     engineer.missing_priority_count,
     engineer.no_recent_comment_count,
     engineer.wip_age_violation_count,
+    engineer.active_project_count,
+    engineer.multi_project_violation,
     engineer.active_issues
   );
 }

@@ -97,13 +97,15 @@ export interface Engineer {
   team_names: string; // JSON array
   wip_issue_count: number;
   wip_total_points: number;
-  wip_limit_violation: number; // 1 if over threshold
+  wip_limit_violation: number; // 1 if over WIP threshold (6+ issues)
   oldest_wip_age_days: number | null;
   last_activity_at: string | null;
   missing_estimate_count: number;
   missing_priority_count: number;
   no_recent_comment_count: number;
   wip_age_violation_count: number;
+  active_project_count: number; // Number of distinct projects engineer is working on
+  multi_project_violation: number; // 1 if working on 2+ projects
   active_issues: string; // JSON array of issue summaries
 }
 
@@ -395,9 +397,27 @@ export function initializeDatabase(db: Database): void {
       missing_priority_count INTEGER NOT NULL,
       no_recent_comment_count INTEGER NOT NULL,
       wip_age_violation_count INTEGER NOT NULL,
+      active_project_count INTEGER NOT NULL DEFAULT 0,
+      multi_project_violation INTEGER NOT NULL DEFAULT 0,
       active_issues TEXT NOT NULL
     )
   `);
+
+  // Migration: Add active_project_count and multi_project_violation columns to engineers table
+  try {
+    db.run(
+      `ALTER TABLE engineers ADD COLUMN active_project_count INTEGER NOT NULL DEFAULT 0`
+    );
+  } catch (_e) {
+    // Column might already exist, ignore
+  }
+  try {
+    db.run(
+      `ALTER TABLE engineers ADD COLUMN multi_project_violation INTEGER NOT NULL DEFAULT 0`
+    );
+  } catch (_e) {
+    // Column might already exist, ignore
+  }
 
   // Create initiatives table
   db.run(`
