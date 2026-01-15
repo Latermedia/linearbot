@@ -283,7 +283,7 @@
 
 <svelte:window onkeydown={handleKeydown} />
 
-<Modal title="Sync" {onclose} size="lg">
+<Modal title="Sync" {onclose} size="lg" maxHeight="90vh" scrollable>
   <div class="space-y-6">
     {#if !hasInitialStatus}
       <!-- Loading state while checking initial sync status -->

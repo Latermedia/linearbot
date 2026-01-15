@@ -124,9 +124,11 @@
       {/if}
     {:else}
       <!-- Default Header -->
-      <div class="p-5">
+      <div
+        class="{scrollable ? 'flex flex-col overflow-hidden h-full' : ''} p-5"
+      >
         {#if hasTitle}
-          <div class="flex justify-between items-center mb-5">
+          <div class="flex justify-between items-center mb-5 shrink-0">
             <h2 id="modal-title" class="text-sm font-medium text-white">
               {title}
             </h2>
@@ -141,7 +143,7 @@
         {/if}
 
         <!-- Content -->
-        <div class="space-y-5">
+        <div class="{scrollable ? 'overflow-y-auto flex-1' : ''} space-y-5">
           {#if children}
             {@render children()}
           {/if}
