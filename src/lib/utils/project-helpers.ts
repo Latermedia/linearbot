@@ -201,6 +201,67 @@ export function getHealthDisplay(health: string | null): {
 }
 
 /**
+ * Check if project health update is overdue
+ * Returns true if:
+ * - No project updates exist at all, OR
+ * - The most recent project update is over 7 days old
+ */
+export function isHealthUpdateOverdue(project: ProjectSummary): boolean {
+  const updates = project.projectUpdates;
+
+  // No updates at all
+  if (!updates || updates.length === 0) {
+    return true;
+  }
+
+  // Find the most recent update
+  const sortedUpdates = [...updates].sort(
+    (a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()
+  );
+  const latestUpdate = sortedUpdates[0];
+
+  if (!latestUpdate?.createdAt) {
+    return true;
+  }
+
+  // Check if it's over 7 days old
+  const updateDate = new Date(latestUpdate.createdAt);
+  const now = new Date();
+  const daysSinceUpdate =
+    (now.getTime() - updateDate.getTime()) / (1000 * 60 * 60 * 24);
+
+  return daysSinceUpdate > 7;
+}
+
+/**
+ * Get days since last health update (or null if no updates)
+ */
+export function getDaysSinceHealthUpdate(
+  project: ProjectSummary
+): number | null {
+  const updates = project.projectUpdates;
+
+  if (!updates || updates.length === 0) {
+    return null;
+  }
+
+  const sortedUpdates = [...updates].sort(
+    (a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()
+  );
+  const latestUpdate = sortedUpdates[0];
+
+  if (!latestUpdate?.createdAt) {
+    return null;
+  }
+
+  const updateDate = new Date(latestUpdate.createdAt);
+  const now = new Date();
+  return Math.floor(
+    (now.getTime() - updateDate.getTime()) / (1000 * 60 * 60 * 24)
+  );
+}
+
+/**
  * Calculate total points (sum of estimates) from issues
  */
 export function calculateTotalPoints(issues: Issue[]): {
@@ -699,6 +760,7 @@ export function groupIssuesByParent(issues: Issue[]): GroupedIssue[] {
 
   // Build result array: parent issues with their subissues, then standalone issues
   const result: GroupedIssue[] = [];
+  const processedSubissueParentIds = new Set<string>();
 
   for (const parent of parentIssues) {
     const subissues = subissuesByParent.get(parent.id) || [];
@@ -710,9 +772,21 @@ export function groupIssuesByParent(issues: Issue[]): GroupedIssue[] {
         return aState.localeCompare(bState);
       });
       result.push({ parent, subissues });
+      processedSubissueParentIds.add(parent.id);
     } else {
       // Standalone issue (no subissues)
       result.push(parent);
+    }
+  }
+
+  // Handle orphaned subissues whose parents are in a different state group
+  // These subissues should still be displayed as standalone issues
+  for (const [parentId, subissues] of subissuesByParent.entries()) {
+    if (!processedSubissueParentIds.has(parentId)) {
+      // Parent not in this state group, add subissues as standalone issues
+      for (const subissue of subissues) {
+        result.push(subissue);
+      }
     }
   }
 

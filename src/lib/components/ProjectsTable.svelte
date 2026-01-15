@@ -4,7 +4,6 @@
   import ProjectTableHeader from "./ProjectTableHeader.svelte";
   import ProjectTableHead from "./ProjectTableHead.svelte";
   import ProjectTableRow from "./ProjectTableRow.svelte";
-  import ProjectHoverTooltip from "./ProjectHoverTooltip.svelte";
   import { FolderOpen } from "lucide-svelte";
   import type {
     ProjectSummary,
@@ -16,17 +15,13 @@
     teams = [],
     domains = [],
     groupBy = "team" as "team" | "domain",
-    hideWarnings = false,
   }: {
     teams?: TeamSummary[];
     domains?: DomainSummary[];
     groupBy?: "team" | "domain";
-    hideWarnings?: boolean;
   } = $props();
 
   let selectedProject: ProjectSummary | null = $state(null);
-  let hoveredProject: ProjectSummary | null = $state(null);
-  let tooltipPosition = $state({ x: 0, y: 0 });
 
   const groups = $derived.by(() => {
     // Explicitly reference teams and domains to ensure reactivity
@@ -89,24 +84,6 @@
     }
   });
 
-  function handleRowMouseEnter(
-    event: MouseEvent,
-    project: ProjectSummary
-  ): void {
-    hoveredProject = project;
-    tooltipPosition = { x: event.clientX, y: event.clientY };
-  }
-
-  function handleRowMouseMove(event: MouseEvent): void {
-    if (hoveredProject) {
-      tooltipPosition = { x: event.clientX, y: event.clientY };
-    }
-  }
-
-  function handleRowMouseLeave(): void {
-    hoveredProject = null;
-  }
-
   function handleRowClick(project: ProjectSummary): void {
     selectedProject = project;
   }
@@ -127,8 +104,13 @@
               <td colspan="10" class="p-0">
                 <div class="flex justify-center items-center min-h-[33vh]">
                   <div class="flex flex-col gap-3 items-center text-center">
-                    <FolderOpen class="w-8 h-8 text-neutral-500 dark:text-neutral-600" strokeWidth={1.5} />
-                    <div class="text-sm text-neutral-400 dark:text-neutral-500">No projects found</div>
+                    <FolderOpen
+                      class="w-8 h-8 text-neutral-500 dark:text-neutral-600"
+                      strokeWidth={1.5}
+                    />
+                    <div class="text-sm text-neutral-400 dark:text-neutral-500">
+                      No projects found
+                    </div>
                   </div>
                 </div>
               </td>
@@ -149,10 +131,6 @@
                 {#each group.projects as project}
                   <ProjectTableRow
                     {project}
-                    {hideWarnings}
-                    onmouseenter={(e) => handleRowMouseEnter(e, project)}
-                    onmousemove={handleRowMouseMove}
-                    onmouseleave={handleRowMouseLeave}
                     onclick={() => handleRowClick(project)}
                   />
                 {/each}
@@ -165,20 +143,7 @@
   {/if}
 </div>
 
-<!-- Hover tooltip -->
-{#if hoveredProject}
-  <ProjectHoverTooltip
-    project={hoveredProject}
-    {hideWarnings}
-    position={tooltipPosition}
-  />
-{/if}
-
 <!-- Project Detail Modal -->
 {#if selectedProject}
-  <ProjectDetailModal
-    project={selectedProject}
-    onclose={closeModal}
-    {hideWarnings}
-  />
+  <ProjectDetailModal project={selectedProject} onclose={closeModal} />
 {/if}
