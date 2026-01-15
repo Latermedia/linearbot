@@ -14,6 +14,7 @@ export interface SyncStats {
 export interface SyncState {
   isRunning: boolean;
   lastSyncTime: number | null;
+  syncStartedAt?: number; // Timestamp when current sync started (for stale detection)
   status: "idle" | "syncing" | "error";
   error?: string;
   progressPercent?: number;

@@ -34,25 +34,44 @@ export const POST: RequestHandler = async (event) => {
 
   // Check if sync is already running
   if (syncState.isRunning) {
-    // Allow project sync if it's the same project being synced
-    if (syncState.syncingProjectId === projectId) {
-      return json({
-        success: true,
-        message: "Project sync already in progress",
-        status: syncState.status,
+    // Check for stale sync state (stuck for more than 5 minutes)
+    const STALE_SYNC_TIMEOUT_MS = 5 * 60 * 1000; // 5 minutes
+    const now = Date.now();
+    const syncAge = syncState.syncStartedAt ? now - syncState.syncStartedAt : 0;
+    if (syncAge > STALE_SYNC_TIMEOUT_MS) {
+      console.warn(
+        `[SYNC] Detected stale sync state (running for ${Math.round(syncAge / 1000)}s), resetting...`
+      );
+      setSyncState({
+        isRunning: false,
+        status: "idle",
+        error: undefined,
+        syncingProjectId: undefined,
+        syncStartedAt: undefined,
+        stats: undefined,
       });
+      // Continue with the new sync
+    } else {
+      // Allow project sync if it's the same project being synced
+      if (syncState.syncingProjectId === projectId) {
+        return json({
+          success: true,
+          message: "Project sync already in progress",
+          status: syncState.status,
+        });
+      }
+      console.log(
+        `[SYNC] Request rejected: sync already in progress for ${syncState.syncingProjectId || "all projects"}`
+      );
+      return json(
+        {
+          success: false,
+          message: `Sync already in progress for ${syncState.syncingProjectId || "all projects"}`,
+          status: syncState.status,
+        },
+        { status: 409 }
+      );
     }
-    console.log(
-      `[SYNC] Request rejected: sync already in progress for ${syncState.syncingProjectId || "all projects"}`
-    );
-    return json(
-      {
-        success: false,
-        message: `Sync already in progress for ${syncState.syncingProjectId || "all projects"}`,
-        status: syncState.status,
-      },
-      { status: 409 }
-    );
   }
 
   // Check rate limiting: only sync if last sync was OVER 30 seconds ago
@@ -90,24 +109,9 @@ export const POST: RequestHandler = async (event) => {
   }
 
   // Start sync (non-blocking)
+  // Note: setSyncState is called inside startProjectSync, not here
   const syncStartTime = Date.now();
   console.log(`[SYNC] Starting project sync for project: ${projectId}`);
-  setSyncState({
-    isRunning: true,
-    status: "syncing",
-    error: undefined,
-    progressPercent: 0,
-    syncingProjectId: projectId,
-    stats: {
-      startedIssuesCount: 0,
-      totalProjectsCount: 1,
-      currentProjectIndex: 0,
-      currentProjectName: null,
-      projectIssuesCount: 0,
-      newCount: 0,
-      updatedCount: 0,
-    },
-  });
 
   // Run sync asynchronously (worker thread)
   startProjectSync(projectId)

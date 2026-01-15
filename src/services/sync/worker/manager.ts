@@ -81,6 +81,7 @@ function ensureHandle(): WorkerHandle {
             lastSyncTime: Date.now(),
             progressPercent: undefined,
             syncingProjectId: undefined,
+            syncStartedAt: undefined,
             stats: undefined,
             statusMessage: null,
             apiQueryCount: undefined,
@@ -100,6 +101,7 @@ function ensureHandle(): WorkerHandle {
             error: msg.result.error || "Sync failed",
             progressPercent: undefined,
             syncingProjectId: undefined,
+            syncStartedAt: undefined,
             stats: undefined,
           });
           resolve?.(msg.result);
@@ -119,6 +121,7 @@ function ensureHandle(): WorkerHandle {
           error: msg.error,
           progressPercent: undefined,
           syncingProjectId: undefined,
+          syncStartedAt: undefined,
           stats: undefined,
         });
 
@@ -157,6 +160,7 @@ export async function startFullSync(options: {
     status: "syncing",
     error: undefined,
     syncingProjectId: undefined,
+    syncStartedAt: Date.now(),
     progressPercent: 0,
     statusMessage: "Starting sync...",
     apiQueryCount: 0,
@@ -193,6 +197,7 @@ export async function startProjectSync(projectId: string): Promise<SyncResult> {
     status: "syncing",
     error: undefined,
     syncingProjectId: projectId,
+    syncStartedAt: Date.now(),
     progressPercent: 0,
     statusMessage: "Starting project sync...",
     apiQueryCount: 0,
