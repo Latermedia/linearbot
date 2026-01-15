@@ -28,6 +28,7 @@
     hasMissingEstimate,
     hasNoRecentComment,
     hasSubissueStatusMismatch,
+    hasWIPAgeViolation,
   } from "../../utils/issue-validators";
   import PriorityDisplay from "./PriorityDisplay.svelte";
   import StatusDisplay from "./StatusDisplay.svelte";
@@ -129,16 +130,23 @@
     }
 
     const status = $syncStatusStore;
-    const isRelevant = status.syncingProjectId === project.projectId;
-    if (!isRelevant) return;
 
-    if (status.status === "idle" && !status.isRunning) {
+    // Check if sync completed (status is idle and not running)
+    // This handles both: 1) when syncingProjectId matches, and 2) when it's cleared after completion
+    const isOurProjectSyncing = status.syncingProjectId === project.projectId;
+    const syncCompleted = status.status === "idle" && !status.isRunning;
+    const syncFailed = status.status === "error";
+
+    // If another project is actively syncing, wait
+    if (status.syncingProjectId && !isOurProjectSyncing) return;
+
+    if (syncCompleted) {
       clearMaxTimeout();
       void databaseStore.refreshProject(project.projectId).then(() => {
         fetchProjectIssues();
       });
       isSyncingProject = false;
-    } else if (status.status === "error") {
+    } else if (syncFailed) {
       clearMaxTimeout();
       console.error("Sync failed:", status.error);
       isSyncingProject = false;
@@ -342,11 +350,7 @@
           >
         {/if}
       </div>
-      <div
-        class="text-sm"
-        class:text-amber-400={!hideWarnings && project.hasDateDiscrepancy}
-        class:text-white={hideWarnings || !project.hasDateDiscrepancy}
-      >
+      <div class="text-sm text-white">
         {formatDateFull(project.targetDate)}
       </div>
     </div>
@@ -364,11 +368,7 @@
           >
         {/if}
       </div>
-      <div
-        class="text-sm"
-        class:text-amber-400={!hideWarnings && project.hasDateDiscrepancy}
-        class:text-white={hideWarnings || !project.hasDateDiscrepancy}
-      >
+      <div class="text-sm text-white">
         {formatDateFull(project.estimatedEndDate)}
       </div>
     </div>
@@ -381,6 +381,80 @@
     </div>
     <ProgressBar {project} />
   </div>
+
+  <!-- Violations Summary -->
+  {@const projectViolations = [
+    project.missingLead && "Missing project lead",
+    project.isStaleUpdate && "Missing project update (7+ days)",
+    project.hasStatusMismatch && "Status mismatch",
+    project.missingHealth && "Missing project health",
+    project.hasDateDiscrepancy &&
+      "Target vs predicted dates differ by 30+ days",
+  ].filter(Boolean)}
+  {@const issueViolations = [
+    project.missingEstimateCount > 0 &&
+      `${project.missingEstimateCount} issues missing points`,
+    project.missingPriorityCount > 0 &&
+      `${project.missingPriorityCount} issues missing priority`,
+    project.noRecentCommentCount > 0 &&
+      `${project.noRecentCommentCount} issues with no recent comment`,
+    project.wipAgeViolationCount > 0 &&
+      `${project.wipAgeViolationCount} issues with WIP age violation`,
+  ].filter(Boolean)}
+  {@const totalViolations =
+    projectViolations.length +
+    (project.missingEstimateCount || 0) +
+    (project.missingPriorityCount || 0) +
+    (project.noRecentCommentCount || 0) +
+    (project.wipAgeViolationCount || 0)}
+  {#if totalViolations > 0}
+    <div class="p-4 mb-6 rounded-md border bg-neutral-800/50 border-white/5">
+      <div
+        class="flex gap-2 items-center mb-3 text-sm font-medium text-neutral-300"
+      >
+        Violations
+        <span
+          class={totalViolations > 5
+            ? "text-red-400"
+            : totalViolations > 2
+              ? "text-amber-400"
+              : "text-green-400"}>({totalViolations})</span
+        >
+      </div>
+      <div class="space-y-2 text-sm">
+        {#if projectViolations.length > 0}
+          <div>
+            <div class="mb-1 text-xs text-neutral-500">Project-level</div>
+            <ul class="space-y-1">
+              {#each projectViolations as violation}
+                <li class="flex gap-2 items-center text-neutral-400">
+                  <span>•</span>
+                  <span>{violation}</span>
+                </li>
+              {/each}
+            </ul>
+          </div>
+        {/if}
+        {#if issueViolations.length > 0}
+          <div
+            class={projectViolations.length > 0
+              ? "pt-2 border-t border-white/5"
+              : ""}
+          >
+            <div class="mb-1 text-xs text-neutral-500">Issue-level</div>
+            <ul class="space-y-1">
+              {#each issueViolations as violation}
+                <li class="flex gap-2 items-center text-neutral-400">
+                  <span>•</span>
+                  <span>{violation}</span>
+                </li>
+              {/each}
+            </ul>
+          </div>
+        {/if}
+      </div>
+    </div>
+  {/if}
 
   <!-- Metrics Section -->
   <div class="p-4 mb-6 rounded-md border bg-neutral-800/50 border-white/5">
@@ -847,7 +921,15 @@
                   <td
                     class="px-2 py-1.5 text-right text-neutral-300 w-[70px] min-w-[70px]"
                   >
-                    {formatWIPAge(wipAge)}
+                    <div class="flex gap-1 justify-end items-center">
+                      {#if hasWIPAgeViolation(parent)}
+                        <span
+                          class="text-amber-400"
+                          title="WIP age exceeds 14 days">⚠️</span
+                        >
+                      {/if}
+                      {formatWIPAge(wipAge)}
+                    </div>
                   </td>
                   {#if project.daysPerStoryPoint !== null}
                     <td class="px-2 py-1.5 text-right w-[120px] min-w-[120px]">
@@ -993,7 +1075,15 @@
                     <td
                       class="px-2 py-1.5 text-right text-neutral-300 w-[70px] min-w-[70px]"
                     >
-                      {formatWIPAge(subWipAge)}
+                      <div class="flex gap-1 justify-end items-center">
+                        {#if hasWIPAgeViolation(subissue)}
+                          <span
+                            class="text-amber-400"
+                            title="WIP age exceeds 14 days">⚠️</span
+                          >
+                        {/if}
+                        {formatWIPAge(subWipAge)}
+                      </div>
                     </td>
                     {#if project.daysPerStoryPoint !== null}
                       <td
@@ -1131,7 +1221,15 @@
                   <td
                     class="px-2 py-1.5 text-right text-neutral-300 w-[70px] min-w-[70px]"
                   >
-                    {formatWIPAge(wipAge)}
+                    <div class="flex gap-1 justify-end items-center">
+                      {#if hasWIPAgeViolation(issue)}
+                        <span
+                          class="text-amber-400"
+                          title="WIP age exceeds 14 days">⚠️</span
+                        >
+                      {/if}
+                      {formatWIPAge(wipAge)}
+                    </div>
                   </td>
                   {#if project.daysPerStoryPoint !== null}
                     <td class="px-2 py-1.5 text-right w-[120px] min-w-[120px]">
