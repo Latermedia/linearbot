@@ -61,13 +61,33 @@ TEAM_DOMAIN_MAPPINGS='{"WEB":"Frontend","API":"Backend","INFRA":"Platform"}'
 TEAM_DOMAIN_MAPPINGS='{"CART":"Shopping","SEARCH":"Discovery"}'
 ```
 
-### Ignored Teams
+### Team Filtering
 
-Exclude teams from sync:
+**Whitelist mode** (recommended) — only sync specific teams:
+
+```bash
+WHITELIST_TEAM_KEYS=ENG,PLAT,INFRA
+```
+
+**Blacklist mode** — exclude specific teams:
 
 ```bash
 IGNORED_TEAM_KEYS=CS,SUPPORT,OPS
 ```
+
+Find team keys in issue identifiers (e.g., `ENG-123` → `ENG`).
+
+If `WHITELIST_TEAM_KEYS` is set, it takes precedence and existing data from non-whitelisted teams is cleaned up during sync.
+
+### Ignored Assignees
+
+Exclude specific assignees from metrics (e.g., contractors or external collaborators):
+
+```bash
+IGNORED_ASSIGNEE_NAMES=John Doe,External Contractor
+```
+
+This removes issues and engineer records for the specified assignees during sync.
 
 ## Documentation
 

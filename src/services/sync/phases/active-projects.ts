@@ -164,6 +164,8 @@ export async function syncActiveProjects(
         config,
         projectIssueTracker,
         ignoredTeamKeys: context.ignoredTeamKeys,
+        whitelistTeamKeys: context.whitelistTeamKeys,
+        ignoredAssigneeNames: context.ignoredAssigneeNames,
       });
 
       newCount = result.newCount;

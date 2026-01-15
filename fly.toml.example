@@ -18,7 +18,9 @@
 #   GETDX_DOMAIN_MAPPINGS             - JSON mapping of GetDX team names to domain names
 #   GETDX_THROUGHPUT_PER_IC_HEALTHY   - Per-IC throughput for healthy status (default: 6)
 #   GETDX_THROUGHPUT_PER_IC_WARNING   - Per-IC throughput for warning status (default: 3)
-#   IGNORED_TEAM_KEYS                 - Comma-separated list of team keys to hide from UI
+#   WHITELIST_TEAM_KEYS               - Comma-separated list of team keys to include (whitelist mode)
+#   IGNORED_TEAM_KEYS                 - Comma-separated list of team keys to exclude (blacklist mode)
+#   IGNORED_ASSIGNEE_NAMES            - Comma-separated list of assignee names to exclude (e.g., contractors)
 
 app = "your-app-name"
 primary_region = "iad"

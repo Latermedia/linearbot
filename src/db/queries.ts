@@ -299,6 +299,90 @@ export function deleteIssuesByTeams(teamKeys: string[]): void {
 }
 
 /**
+ * Delete issues NOT in the specified team keys (used for whitelist mode)
+ * Returns the number of deleted issues
+ */
+export function deleteIssuesNotInTeams(whitelistTeamKeys: string[]): number {
+  if (whitelistTeamKeys.length === 0) return 0;
+
+  const db = getDatabase();
+  const placeholders = whitelistTeamKeys.map(() => "?").join(",");
+  const query = db.prepare(`
+    DELETE FROM issues WHERE team_key NOT IN (${placeholders})
+  `);
+  const result = query.run(...whitelistTeamKeys);
+  return result.changes;
+}
+
+/**
+ * Clean up the teams JSON field in projects table to only include whitelisted teams
+ * Returns the number of projects updated
+ */
+export function cleanupProjectTeams(whitelistTeamKeys: string[]): number {
+  if (whitelistTeamKeys.length === 0) return 0;
+
+  const db = getDatabase();
+  const whitelistSet = new Set(whitelistTeamKeys);
+
+  // Get all projects with their teams
+  const projects = db
+    .prepare(`SELECT project_id, teams FROM projects`)
+    .all() as { project_id: string; teams: string }[];
+
+  let updatedCount = 0;
+  const updateStmt = db.prepare(
+    `UPDATE projects SET teams = ? WHERE project_id = ?`
+  );
+
+  for (const project of projects) {
+    try {
+      const teams: string[] = JSON.parse(project.teams || "[]");
+      const filteredTeams = teams.filter((team) => whitelistSet.has(team));
+
+      // Only update if teams were filtered out
+      if (filteredTeams.length !== teams.length) {
+        updateStmt.run(JSON.stringify(filteredTeams), project.project_id);
+        updatedCount++;
+      }
+    } catch {
+      // Skip projects with invalid JSON
+    }
+  }
+
+  return updatedCount;
+}
+
+/**
+ * Delete issues assigned to specific assignees (used for ignored assignees like contractors)
+ */
+export function deleteIssuesByAssigneeNames(assigneeNames: string[]): number {
+  if (assigneeNames.length === 0) return 0;
+
+  const db = getDatabase();
+  const placeholders = assigneeNames.map(() => "?").join(",");
+  const query = db.prepare(`
+    DELETE FROM issues WHERE assignee_name IN (${placeholders})
+  `);
+  const result = query.run(...assigneeNames);
+  return result.changes;
+}
+
+/**
+ * Delete engineers by their names (used for ignored assignees like contractors)
+ */
+export function deleteEngineersByNames(assigneeNames: string[]): number {
+  if (assigneeNames.length === 0) return 0;
+
+  const db = getDatabase();
+  const placeholders = assigneeNames.map(() => "?").join(",");
+  const query = db.prepare(`
+    DELETE FROM engineers WHERE assignee_name IN (${placeholders})
+  `);
+  const result = query.run(...assigneeNames);
+  return result.changes;
+}
+
+/**
  * Get all projects with computed metrics
  */
 export function getAllProjects(): Project[] {

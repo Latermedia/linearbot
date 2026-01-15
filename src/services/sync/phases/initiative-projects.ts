@@ -188,17 +188,29 @@ export async function syncInitiativeProjects(
       initiativeProjectIssues.push(...allInitiativeProjectIssues);
 
       if (initiativeProjectIssues.length > 0) {
-        // Filter out ignored teams before writing to database
-        const filteredIssues =
-          context.ignoredTeamKeys.length > 0
-            ? initiativeProjectIssues.filter(
-                (issue) => !context.ignoredTeamKeys.includes(issue.teamKey)
-              )
-            : initiativeProjectIssues;
+        // Filter by team whitelist/blacklist and ignored assignees
+        const filteredIssues = initiativeProjectIssues.filter((issue) => {
+          // Check team whitelist/blacklist
+          if (context.whitelistTeamKeys.length > 0) {
+            // Whitelist mode: only include teams on the whitelist
+            if (!context.whitelistTeamKeys.includes(issue.teamKey)) {
+              return false;
+            }
+          } else {
+            // Blacklist mode: exclude ignored teams
+            if (context.ignoredTeamKeys.includes(issue.teamKey)) {
+              return false;
+            }
+          }
+          // Check ignored assignees
+          return !context.ignoredAssigneeNames.includes(
+            issue.assigneeName || ""
+          );
+        });
 
         if (filteredIssues.length !== initiativeProjectIssues.length) {
           console.log(
-            `[SYNC] Filtered out ${initiativeProjectIssues.length - filteredIssues.length} issues from ignored teams in initiative projects`
+            `[SYNC] Filtered out ${initiativeProjectIssues.length - filteredIssues.length} issues from ignored teams/assignees in initiative projects`
           );
         }
 

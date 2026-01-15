@@ -69,6 +69,10 @@ export interface PhaseContext {
   existingPartialSync: PartialSyncState | null;
   isResuming: boolean;
   ignoredTeamKeys: string[];
+  /** Team keys to include (whitelist) - if set, only these teams are synced */
+  whitelistTeamKeys: string[];
+  /** Assignee names to exclude from sync (e.g., contractors) */
+  ignoredAssigneeNames: string[];
   startedIssues: LinearIssueData[];
   recentlyUpdatedIssues: LinearIssueData[];
   activeProjectIds: Set<string>;

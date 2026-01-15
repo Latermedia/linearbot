@@ -74,6 +74,10 @@ export interface ProcessProjectsOptions {
   };
   /** Team keys to ignore (issues from these teams will not be written to database) */
   ignoredTeamKeys?: string[];
+  /** Team keys to include (whitelist) - if set, only these teams are synced */
+  whitelistTeamKeys?: string[];
+  /** Assignee names to ignore (issues from these assignees will not be written to database) */
+  ignoredAssigneeNames?: string[];
 }
 
 /** Batch size for project metadata fetches */
@@ -102,6 +106,8 @@ export async function processProjectsInParallel(
     config,
     projectIssueTracker,
     ignoredTeamKeys = [],
+    whitelistTeamKeys = [],
+    ignoredAssigneeNames = [],
   } = options;
 
   const limit = pLimit(PROJECT_SYNC_CONCURRENCY);
@@ -267,17 +273,27 @@ export async function processProjectsInParallel(
       // Issues were already written to database in Phase 1+2, just track the count
       projectIssueCount = existingIssueCount;
     } else if (singleProjectIssues.length > 0) {
-      // Filter out ignored teams before writing to database
-      const filteredIssues =
-        ignoredTeamKeys.length > 0
-          ? singleProjectIssues.filter(
-              (issue) => !ignoredTeamKeys.includes(issue.teamKey)
-            )
-          : singleProjectIssues;
+      // Filter by team whitelist/blacklist and ignored assignees
+      const filteredIssues = singleProjectIssues.filter((issue) => {
+        // Check team whitelist/blacklist
+        if (whitelistTeamKeys.length > 0) {
+          // Whitelist mode: only include teams on the whitelist
+          if (!whitelistTeamKeys.includes(issue.teamKey)) {
+            return false;
+          }
+        } else {
+          // Blacklist mode: exclude ignored teams
+          if (ignoredTeamKeys.includes(issue.teamKey)) {
+            return false;
+          }
+        }
+        // Check ignored assignees
+        return !ignoredAssigneeNames.includes(issue.assigneeName || "");
+      });
 
       if (filteredIssues.length !== singleProjectIssues.length) {
         console.log(
-          `[SYNC] Filtered out ${singleProjectIssues.length - filteredIssues.length} issues from ignored teams for project ${projectName || projectId}`
+          `[SYNC] Filtered out ${singleProjectIssues.length - filteredIssues.length} issues from ignored teams/assignees for project ${projectName || projectId}`
         );
       }
 

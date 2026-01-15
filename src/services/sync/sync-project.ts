@@ -38,10 +38,25 @@ export async function syncProject(
       const ignoredTeamKeys = process.env.IGNORED_TEAM_KEYS
         ? process.env.IGNORED_TEAM_KEYS.split(",").map((key) => key.trim())
         : [];
-      const projectMockIssues = mockData.issues.filter(
-        (i: LinearIssueData) =>
-          i.projectId === projectId && !ignoredTeamKeys.includes(i.teamKey)
-      );
+      const whitelistTeamKeys = process.env.WHITELIST_TEAM_KEYS
+        ? process.env.WHITELIST_TEAM_KEYS.split(",").map((key) => key.trim())
+        : [];
+      const ignoredAssigneeNames = process.env.IGNORED_ASSIGNEE_NAMES
+        ? process.env.IGNORED_ASSIGNEE_NAMES.split(",").map((name) =>
+            name.trim()
+          )
+        : [];
+      const projectMockIssues = mockData.issues.filter((i: LinearIssueData) => {
+        if (i.projectId !== projectId) return false;
+        // Check team whitelist/blacklist
+        if (whitelistTeamKeys.length > 0) {
+          if (!whitelistTeamKeys.includes(i.teamKey)) return false;
+        } else {
+          if (ignoredTeamKeys.includes(i.teamKey)) return false;
+        }
+        // Check ignored assignees
+        return !ignoredAssigneeNames.includes(i.assigneeName || "");
+      });
       const counts = writeIssuesToDatabase(projectMockIssues);
       cumulativeNewCount += counts.newCount;
       cumulativeUpdatedCount += counts.updatedCount;
@@ -120,22 +135,34 @@ export async function syncProject(
       }
 
       if (projectIssues.length > 0) {
-        // Get ignored team keys from environment
+        // Get team filtering config from environment
         const ignoredTeamKeys = process.env.IGNORED_TEAM_KEYS
           ? process.env.IGNORED_TEAM_KEYS.split(",").map((key) => key.trim())
           : [];
+        const whitelistTeamKeys = process.env.WHITELIST_TEAM_KEYS
+          ? process.env.WHITELIST_TEAM_KEYS.split(",").map((key) => key.trim())
+          : [];
+        const ignoredAssigneeNames = process.env.IGNORED_ASSIGNEE_NAMES
+          ? process.env.IGNORED_ASSIGNEE_NAMES.split(",").map((name) =>
+              name.trim()
+            )
+          : [];
 
-        // Filter out ignored teams before writing to database
-        const filteredIssues =
-          ignoredTeamKeys.length > 0
-            ? projectIssues.filter(
-                (issue) => !ignoredTeamKeys.includes(issue.teamKey)
-              )
-            : projectIssues;
+        // Filter by team whitelist/blacklist and ignored assignees
+        const filteredIssues = projectIssues.filter((issue) => {
+          // Check team whitelist/blacklist
+          if (whitelistTeamKeys.length > 0) {
+            if (!whitelistTeamKeys.includes(issue.teamKey)) return false;
+          } else {
+            if (ignoredTeamKeys.includes(issue.teamKey)) return false;
+          }
+          // Check ignored assignees
+          return !ignoredAssigneeNames.includes(issue.assigneeName || "");
+        });
 
         if (filteredIssues.length !== projectIssues.length) {
           console.log(
-            `[SYNC] Filtered out ${projectIssues.length - filteredIssues.length} issues from ignored teams`
+            `[SYNC] Filtered out ${projectIssues.length - filteredIssues.length} issues from ignored teams/assignees`
           );
         }
 

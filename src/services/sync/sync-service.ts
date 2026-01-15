@@ -17,8 +17,8 @@ import {
   getSyncMetadata,
   getPhaseQueryCounts,
   savePhaseQueryCounts,
-  deleteIssuesByTeams,
 } from "../../db/queries.js";
+import { getCleanupConfig, runCleanup } from "./cleanup.js";
 import type { SyncPhase } from "../../db/queries.js";
 import type { SyncResult, SyncCallbacks, SyncOptions } from "./types.js";
 import { writeIssuesToDatabase } from "./utils.js";
@@ -278,17 +278,19 @@ export async function performSync(
       };
     }
 
-    // Get ignored team keys
-    const ignoredTeamKeys = process.env.IGNORED_TEAM_KEYS
-      ? process.env.IGNORED_TEAM_KEYS.split(",").map((key) => key.trim())
-      : [];
+    // Run data cleanup at the start of sync
+    // This removes issues/engineers from ignored teams and assignees
+    const cleanupConfig = getCleanupConfig();
+    const { ignoredTeamKeys, whitelistTeamKeys, ignoredAssigneeNames } =
+      cleanupConfig;
 
-    // Delete existing issues from ignored teams at the start of each sync
-    if (ignoredTeamKeys.length > 0) {
-      console.log(
-        `[SYNC] Removing issues from ${ignoredTeamKeys.length} ignored team(s): ${ignoredTeamKeys.join(", ")}`
-      );
-      deleteIssuesByTeams(ignoredTeamKeys);
+    if (
+      cleanupConfig.ignoredTeamKeys.length > 0 ||
+      cleanupConfig.whitelistTeamKeys.length > 0 ||
+      cleanupConfig.ignoredAssigneeNames.length > 0
+    ) {
+      console.log("[SYNC] Running data cleanup...");
+      runCleanup(cleanupConfig);
     }
 
     // Connect to Linear with query counter
@@ -338,6 +340,8 @@ export async function performSync(
       existingPartialSync,
       isResuming,
       ignoredTeamKeys,
+      whitelistTeamKeys,
+      ignoredAssigneeNames,
       startedIssues: [],
       recentlyUpdatedIssues: [],
       activeProjectIds,

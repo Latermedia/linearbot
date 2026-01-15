@@ -1,0 +1,41 @@
+# No PII in Version Control
+
+## Rule
+
+Never include personally identifiable information (PII) in files committed to git.
+
+## What Counts as PII
+
+- Real names of individuals (employees, contractors, customers)
+- Email addresses
+- Phone numbers
+- Physical addresses
+- User IDs that can be traced to real people
+- Any data that could identify a specific person
+
+## Examples
+
+### Bad
+
+```markdown
+To exclude Kevin DiVencenzo from metrics, add:
+IGNORED_ASSIGNEE_NAMES=Kevin DiVencenzo
+```
+
+### Good
+
+```markdown
+To exclude specific assignees from metrics, add:
+IGNORED_ASSIGNEE_NAMES=John Doe,External Contractor
+```
+
+## Where PII Belongs
+
+- Environment variables (.env files are gitignored)
+- Secrets management systems
+- Private configuration not in version control
+
+## Exceptions
+
+- Public figures in attribution contexts (e.g., open source maintainers in LICENSE files)
+- Your own name in commit messages (git config)

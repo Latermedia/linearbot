@@ -99,10 +99,23 @@ export async function syncInitialIssues(
     );
   }
 
-  // Filter ignored teams
-  const startedIssues = allIssues.filter(
-    (issue) => !context.ignoredTeamKeys.includes(issue.teamKey)
-  );
+  // Filter by team whitelist/blacklist and ignored assignees
+  const startedIssues = allIssues.filter((issue) => {
+    // Check team whitelist/blacklist
+    if (context.whitelistTeamKeys.length > 0) {
+      // Whitelist mode: only include teams on the whitelist
+      if (!context.whitelistTeamKeys.includes(issue.teamKey)) {
+        return false;
+      }
+    } else {
+      // Blacklist mode: exclude ignored teams
+      if (context.ignoredTeamKeys.includes(issue.teamKey)) {
+        return false;
+      }
+    }
+    // Check ignored assignees
+    return !context.ignoredAssigneeNames.includes(issue.assigneeName || "");
+  });
 
   // Write started issues to database immediately after fetching
   // Skip writing if resuming with initial sync complete (they're already in the database)

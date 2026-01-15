@@ -144,10 +144,23 @@ export async function syncRecentlyUpdatedIssues(
         `[SYNC] Fetched ${recentlyUpdatedIssues.length} recently updated issues from Linear`
       );
 
-      // Filter ignored teams from recently updated issues
-      recentlyUpdatedIssues = recentlyUpdatedIssues.filter(
-        (issue) => !ignoredTeamKeys.includes(issue.teamKey)
-      );
+      // Filter by team whitelist/blacklist and ignored assignees
+      recentlyUpdatedIssues = recentlyUpdatedIssues.filter((issue) => {
+        // Check team whitelist/blacklist
+        if (context.whitelistTeamKeys.length > 0) {
+          // Whitelist mode: only include teams on the whitelist
+          if (!context.whitelistTeamKeys.includes(issue.teamKey)) {
+            return false;
+          }
+        } else {
+          // Blacklist mode: exclude ignored teams
+          if (ignoredTeamKeys.includes(issue.teamKey)) {
+            return false;
+          }
+        }
+        // Check ignored assignees
+        return !context.ignoredAssigneeNames.includes(issue.assigneeName || "");
+      });
 
       // Deduplicate: remove issues that are already in startedIssues
       const startedIssueIds = new Set(startedIssues.map((i) => i.id));
