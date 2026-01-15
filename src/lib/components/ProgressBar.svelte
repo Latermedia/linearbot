@@ -1,33 +1,18 @@
 <script lang="ts">
   import type { ProjectSummary } from "../project-data";
-  import {
-    getProgressPercent,
-    getCompletedPercent,
-    getWIPPercent,
-  } from "../utils/project-helpers";
+  import { getCompletedPercent, getWIPPercent } from "../utils/project-helpers";
 
   let {
     project,
-    percentageSize = "text-xs",
   }: {
     project: ProjectSummary;
-    percentageSize?: string;
   } = $props();
 
-  const progress = $derived(getProgressPercent(project));
   const completedPercent = $derived(getCompletedPercent(project));
   const wipPercent = $derived(getWIPPercent(project));
 </script>
 
 <div class="space-y-1">
-  <!-- Percentage row -->
-  <div class="flex justify-end">
-    <span
-      class="font-semibold text-neutral-700 dark:text-neutral-300 {percentageSize}"
-    >
-      {progress}%
-    </span>
-  </div>
   <!-- Progress bar row -->
   <div class="flex gap-2 items-center">
     <div
@@ -35,13 +20,13 @@
     >
       {#if completedPercent > 0}
         <div
-          class="absolute top-0 left-0 h-full bg-violet-500 transition-colors duration-150"
+          class="absolute top-0 left-0 h-full transition-colors duration-150 bg-violet-400/60 dark:bg-violet-400/50"
           style={`width: ${completedPercent}%`}
         ></div>
       {/if}
       {#if wipPercent > 0}
         <div
-          class="absolute top-0 h-full bg-amber-500 transition-colors duration-150"
+          class="absolute top-0 h-full bg-violet-500/20 dark:bg-violet-400/20"
           style={`width: ${wipPercent}%; left: ${completedPercent}%`}
         ></div>
       {/if}
