@@ -17,7 +17,8 @@ export {
   calculateTeamHealth,
   calculateTeamHealthForTeam,
   calculateTeamHealthForDomain,
-  hasProjectWipViolation,
+  hasProjectViolation,
+  hasProjectWipViolation, // deprecated, use hasProjectViolation
   getProjectEngineersInViolation,
 } from "./team-health.js";
 

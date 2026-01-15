@@ -32,20 +32,29 @@ export type ProjectHealth = z.infer<typeof ProjectHealthSchema>;
 // ============================================================================
 
 export const TeamHealthSchemaV1 = z.object({
-  /** Percentage of ICs over WIP threshold (6+ issues) */
-  icWipViolationPercent: z.number(),
-  /** Percentage of projects with ANY engineer in WIP violation */
-  projectWipViolationPercent: z.number(),
-  /** Number of ICs within healthy WIP limits */
+  /** TOPLINE: Percentage of ICs with healthy workloads (≤5 issues AND single project) */
+  healthyWorkloadPercent: z.number(),
+  /** Number of ICs with healthy workloads */
   healthyIcCount: z.number(),
   /** Total number of ICs */
   totalIcCount: z.number(),
-  /** Number of projects with no WIP violations */
-  healthyProjectCount: z.number(),
+  /** Number of ICs with 6+ issues (WIP overload) */
+  wipViolationCount: z.number(),
+  /** Number of ICs on 2+ projects (context switching) */
+  multiProjectViolationCount: z.number(),
+  /** Number of projects impacted by any IC violation */
+  impactedProjectCount: z.number(),
   /** Total number of active projects */
   totalProjectCount: z.number(),
   /** Overall status for this pillar */
   status: PillarStatusSchema,
+  // Legacy fields for backward compatibility
+  /** @deprecated Use healthyWorkloadPercent instead */
+  icWipViolationPercent: z.number(),
+  /** @deprecated Use impactedProjectCount instead */
+  projectWipViolationPercent: z.number(),
+  /** @deprecated Use totalProjectCount - impactedProjectCount instead */
+  healthyProjectCount: z.number(),
 });
 
 export type TeamHealthV1 = z.infer<typeof TeamHealthSchemaV1>;
@@ -253,13 +262,18 @@ export function createEmptyMetricsSnapshot(
   return {
     schemaVersion: 1,
     teamHealth: {
-      icWipViolationPercent: 0,
-      projectWipViolationPercent: 0,
+      healthyWorkloadPercent: 100,
       healthyIcCount: 0,
       totalIcCount: 0,
-      healthyProjectCount: 0,
+      wipViolationCount: 0,
+      multiProjectViolationCount: 0,
+      impactedProjectCount: 0,
       totalProjectCount: 0,
       status: "healthy",
+      // Legacy fields
+      icWipViolationPercent: 0,
+      projectWipViolationPercent: 0,
+      healthyProjectCount: 0,
     },
     velocityHealth: {
       onTrackPercent: 100,
