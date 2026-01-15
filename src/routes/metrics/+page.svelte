@@ -15,6 +15,43 @@
   } from "../../types/metrics-snapshot";
   import type { LatestMetricsResponse } from "../api/metrics/latest/+server";
 
+  // Engineering principles - rotates every 5 seconds
+  const principles = [
+    "Principles over process",
+    "Don't Make Me Think",
+    "WIP Constraints",
+    "Work in public",
+    "Async First",
+    "Doings > Meetings",
+    "Velocity > Predictability",
+    "Single Source of Truth",
+    "Iterate to innovate",
+    "Clear, concise, complete",
+    "Ship value daily",
+    "POC is worth 1k meetings",
+    "Go slow to go fast",
+  ];
+
+  // Rotating principle state
+  let principleIndex = $state(Math.floor(Math.random() * principles.length));
+  let isAnimating = $state(false);
+  const currentPrinciple = $derived(principles[principleIndex]);
+
+  // Rotate principles every 5 seconds with blur poof animation
+  $effect(() => {
+    if (!browser) return;
+
+    const interval = setInterval(() => {
+      isAnimating = true;
+      setTimeout(() => {
+        principleIndex = (principleIndex + 1) % principles.length;
+        isAnimating = false;
+      }, 400); // Swap text at peak of blur
+    }, 5000);
+
+    return () => clearInterval(interval);
+  });
+
   // State
   let loading = $state(true);
   let error = $state<string | null>(null);
@@ -216,7 +253,13 @@
     <h1 class="text-2xl font-semibold tracking-tight text-white">
       Engineering Metrics
     </h1>
-    <p class="mt-1 text-sm text-neutral-400">Four Pillars health overview</p>
+    <p
+      class="mt-1 text-sm text-neutral-400 italic principle-text {isAnimating
+        ? 'principle-exit'
+        : 'principle-enter'}"
+    >
+      {currentPrinciple}
+    </p>
   </div>
 
   <!-- Loading State -->
@@ -243,9 +286,9 @@
       </p>
     </Card>
   {:else if orgSnapshot}
-    <!-- Four Pillars Overview -->
+    <!-- Health Metrics Overview -->
     <div class="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
-      <!-- Pillar 1: Team Health -->
+      <!-- Pillar 1: WIP Health -->
       <Card
         class="transition-colors duration-150 hover:bg-white/5 {teamHealthStatusClasses?.border ||
           ''} border"
@@ -254,7 +297,7 @@
           <div
             class="text-xs font-medium tracking-wide uppercase text-neutral-400"
           >
-            Team Health
+            WIP Health
           </div>
           <Badge
             variant={orgSnapshot.teamHealth.status === "healthy"
@@ -273,25 +316,33 @@
               class="text-2xl font-semibold {teamHealthStatusClasses?.text ||
                 ''}"
             >
-              {orgSnapshot.teamHealth.healthyIcCount}/{orgSnapshot.teamHealth
-                .totalIcCount}
+              {orgSnapshot.teamHealth.healthyWorkloadPercent.toFixed(0)}%
             </div>
-            <div class="text-xs text-neutral-500">ICs within WIP limits</div>
+            <div class="text-xs text-neutral-500">Healthy Workloads</div>
           </div>
 
-          <div class="flex gap-4 text-xs">
+          <div class="space-y-0.5 text-xs">
             <div>
-              <span class="text-neutral-400">Projects:</span>
-              <span class="ml-1 text-white">
-                {orgSnapshot.teamHealth.healthyProjectCount}/{orgSnapshot
-                  .teamHealth.totalProjectCount}
-              </span>
+              <span class={teamHealthStatusClasses?.text || "text-white"}
+                >{orgSnapshot.teamHealth.wipViolationCount}</span
+              >
+              <span class="text-neutral-500">ICs overloaded (6+ issues)</span>
             </div>
             <div>
-              <span class="text-neutral-400">IC Violations:</span>
-              <span class="ml-1 text-white">
-                {orgSnapshot.teamHealth.icWipViolationPercent.toFixed(0)}%
-              </span>
+              <span class={teamHealthStatusClasses?.text || "text-white"}
+                >{orgSnapshot.teamHealth.multiProjectViolationCount}</span
+              >
+              <span class="text-neutral-500"
+                >ICs context-switching (2+ proj)</span
+              >
+            </div>
+            <div>
+              <span class={teamHealthStatusClasses?.text || "text-white"}
+                >{orgSnapshot.teamHealth.impactedProjectCount}</span
+              >
+              <span class="text-neutral-500"
+                >of {orgSnapshot.teamHealth.totalProjectCount} projects impacted</span
+              >
             </div>
           </div>
         </div>
@@ -498,7 +549,7 @@
                   Domain
                 </th>
                 <th class="px-4 py-3 font-medium text-center text-neutral-400">
-                  Team Health
+                  WIP Health
                 </th>
                 <th class="px-4 py-3 font-medium text-center text-neutral-400">
                   Velocity
@@ -609,7 +660,7 @@
                   Team
                 </th>
                 <th class="px-4 py-3 font-medium text-center text-neutral-400">
-                  Team Health
+                  WIP Health
                 </th>
                 <th class="px-4 py-3 font-medium text-center text-neutral-400">
                   Velocity
@@ -747,3 +798,25 @@
 {#if selectedProject}
   <ProjectDetailModal project={selectedProject} onclose={closeModal} />
 {/if}
+
+<style>
+  /* Blur poof animation for rotating principles */
+  .principle-text {
+    transition:
+      opacity 400ms cubic-bezier(0.76, 0, 0.24, 1),
+      filter 400ms cubic-bezier(0.76, 0, 0.24, 1),
+      transform 400ms cubic-bezier(0.76, 0, 0.24, 1);
+  }
+
+  .principle-enter {
+    opacity: 1;
+    filter: blur(0px);
+    transform: scale(1);
+  }
+
+  .principle-exit {
+    opacity: 0;
+    filter: blur(12px);
+    transform: scale(1.08);
+  }
+</style>
