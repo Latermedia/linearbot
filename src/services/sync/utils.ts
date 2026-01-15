@@ -45,6 +45,7 @@ export function convertDbIssueToLinearFormat(dbIssue: Issue): LinearIssueData {
       : null,
     projectLeadId: dbIssue.project_lead_id,
     projectLeadName: dbIssue.project_lead_name,
+    projectLeadAvatarUrl: dbIssue.project_lead_avatar_url,
     projectLabels: [], // Database doesn't store project labels, but that's okay for determining project IDs
     projectTargetDate: dbIssue.project_target_date,
     projectStartDate: dbIssue.project_start_date,
@@ -92,6 +93,7 @@ export function writeIssuesToDatabase(
     projectUpdatedAt: Date | null;
     projectLeadId: string | null;
     projectLeadName: string | null;
+    projectLeadAvatarUrl: string | null;
     projectTargetDate: string | null;
     projectStartDate: string | null;
     projectCompletedAt: string | null;
@@ -160,6 +162,7 @@ export function writeIssuesToDatabase(
           : null,
         project_lead_id: issue.projectLeadId,
         project_lead_name: issue.projectLeadName,
+        project_lead_avatar_url: issue.projectLeadAvatarUrl,
         project_target_date: issue.projectTargetDate,
         project_start_date: issue.projectStartDate,
         project_completed_at: issue.projectCompletedAt,

@@ -34,6 +34,7 @@ export interface Issue {
   project_updated_at: string | null;
   project_lead_id: string | null;
   project_lead_name: string | null;
+  project_lead_avatar_url: string | null;
   project_target_date: string | null; // Linear's target date for the project
   project_start_date: string | null; // Linear's start date for the project
   project_completed_at: string | null; // Linear's completedAt date for the project
@@ -50,6 +51,7 @@ export interface Project {
   project_updated_at: string | null;
   project_lead_id: string | null;
   project_lead_name: string | null;
+  project_lead_avatar_url: string | null;
   project_description: string | null;
   project_content: string | null;
   total_issues: number;
@@ -186,6 +188,7 @@ const EXPECTED_ISSUES_COLUMNS = [
   "project_updated_at",
   "project_lead_id",
   "project_lead_name",
+  "project_lead_avatar_url",
   "project_target_date",
   "project_start_date",
   "project_completed_at",
@@ -303,6 +306,7 @@ export function initializeDatabase(db: Database): void {
       project_updated_at TEXT,
       project_lead_id TEXT,
       project_lead_name TEXT,
+      project_lead_avatar_url TEXT,
       project_target_date TEXT,
       project_start_date TEXT,
       project_completed_at TEXT,
@@ -320,6 +324,13 @@ export function initializeDatabase(db: Database): void {
     // Column might not exist or already renamed, ignore
   }
 
+  // Migration: Add project_lead_avatar_url column to issues table
+  try {
+    db.run(`ALTER TABLE issues ADD COLUMN project_lead_avatar_url TEXT`);
+  } catch (_e) {
+    // Column might already exist, ignore
+  }
+
   // Create projects table with computed metrics
   db.run(`
     CREATE TABLE IF NOT EXISTS projects (
@@ -331,6 +342,7 @@ export function initializeDatabase(db: Database): void {
       project_updated_at TEXT,
       project_lead_id TEXT,
       project_lead_name TEXT,
+      project_lead_avatar_url TEXT,
       project_description TEXT,
       project_content TEXT,
       total_issues INTEGER NOT NULL,
@@ -378,6 +390,13 @@ export function initializeDatabase(db: Database): void {
     );
   } catch (_e) {
     // Column might not exist or already renamed, ignore
+  }
+
+  // Migration: Add project_lead_avatar_url column to projects table
+  try {
+    db.run(`ALTER TABLE projects ADD COLUMN project_lead_avatar_url TEXT`);
+  } catch (_e) {
+    // Column might already exist, ignore
   }
 
   // Create engineers table with computed WIP metrics

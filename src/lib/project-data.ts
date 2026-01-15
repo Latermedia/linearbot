@@ -21,6 +21,7 @@ export interface ProjectSummary {
   lastActivityDate: string;
   teams: Set<string>;
   projectLeadName: string | null;
+  projectLeadAvatarUrl: string | null;
   missingLead: boolean;
   completedIssues: number;
   inProgressIssues: number;
@@ -100,6 +101,7 @@ export function projectToSummary(project: Project): ProjectSummary {
     lastActivityDate: project.last_activity_date,
     teams,
     projectLeadName: project.project_lead_name,
+    projectLeadAvatarUrl: project.project_lead_avatar_url,
     missingLead: project.missing_lead === 1,
     completedIssues: project.completed_issues,
     inProgressIssues: project.in_progress_issues,

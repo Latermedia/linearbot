@@ -64,6 +64,25 @@ export function getStartedIssuesByTeams(teamKeys: string[]): Issue[] {
 }
 
 /**
+ * Get non-project WIP issues for a specific team
+ * These are started issues that have no project assigned
+ */
+export function getNonProjectWipIssuesByTeam(teamKey: string): Issue[] {
+  const db = getDatabase();
+  const query = db.prepare(`
+    SELECT * FROM issues
+    WHERE state_type = 'started'
+      AND completed_at IS NULL
+      AND canceled_at IS NULL
+      AND (state_name NOT LIKE '%done%' AND state_name NOT LIKE '%completed%')
+      AND team_key = ?
+      AND project_id IS NULL
+    ORDER BY assignee_name, title
+  `);
+  return query.all(teamKey) as Issue[];
+}
+
+/**
  * Get all issues that have a project assigned
  */
 export function getIssuesWithProjects(): Issue[] {
@@ -160,6 +179,7 @@ export function upsertIssue(issue: {
   project_updated_at: string | null;
   project_lead_id: string | null;
   project_lead_name: string | null;
+  project_lead_avatar_url: string | null;
   project_target_date: string | null;
   project_start_date: string | null;
   project_completed_at: string | null;
@@ -179,7 +199,7 @@ export function upsertIssue(issue: {
       priority, estimate, last_comment_at, comment_count,
       created_at, updated_at, started_at, completed_at, canceled_at, url,
       project_id, project_name, project_state_category, project_status, project_health, project_updated_at,
-      project_lead_id, project_lead_name, project_target_date, project_start_date, project_completed_at, parent_id, labels
+      project_lead_id, project_lead_name, project_lead_avatar_url, project_target_date, project_start_date, project_completed_at, parent_id, labels
     ) VALUES (
       ?, ?, ?, ?, ?, ?, ?,
       ?, ?, ?,
@@ -187,7 +207,7 @@ export function upsertIssue(issue: {
       ?, ?, ?, ?,
       ?, ?, ?, ?, ?, ?,
       ?, ?, ?, ?, ?, ?,
-      ?, ?, ?, ?, ?, ?, ?
+      ?, ?, ?, ?, ?, ?, ?, ?
     )
     ON CONFLICT(id) DO UPDATE SET
       identifier = excluded.identifier,
@@ -221,6 +241,7 @@ export function upsertIssue(issue: {
       project_updated_at = excluded.project_updated_at,
       project_lead_id = excluded.project_lead_id,
       project_lead_name = excluded.project_lead_name,
+      project_lead_avatar_url = excluded.project_lead_avatar_url,
       project_target_date = excluded.project_target_date,
       project_start_date = excluded.project_start_date,
       project_completed_at = excluded.project_completed_at,
@@ -263,6 +284,7 @@ export function upsertIssue(issue: {
     issue.project_updated_at,
     issue.project_lead_id,
     issue.project_lead_name,
+    issue.project_lead_avatar_url,
     issue.project_target_date,
     issue.project_start_date,
     issue.project_completed_at,
@@ -409,7 +431,7 @@ export function upsertProject(project: Project): void {
   const query = db.prepare(`
     INSERT INTO projects (
       project_id, project_name, project_state_category, project_status, project_health, project_updated_at,
-      project_lead_id, project_lead_name, project_description, project_content,
+      project_lead_id, project_lead_name, project_lead_avatar_url, project_description, project_content,
       total_issues, completed_issues, in_progress_issues, engineer_count,
       missing_estimate_count, missing_priority_count, no_recent_comment_count,
       wip_age_violation_count, missing_description_count,
@@ -419,7 +441,7 @@ export function upsertProject(project: Project): void {
       start_date, last_activity_date, estimated_end_date, target_date, completed_at,
       issues_by_state, engineers, teams, velocity_by_team, labels, project_updates, last_synced_at
     ) VALUES (
-      ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?
+      ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?
     )
     ON CONFLICT(project_id) DO UPDATE SET
       project_name = excluded.project_name,
@@ -429,6 +451,7 @@ export function upsertProject(project: Project): void {
       project_updated_at = excluded.project_updated_at,
       project_lead_id = excluded.project_lead_id,
       project_lead_name = excluded.project_lead_name,
+      project_lead_avatar_url = excluded.project_lead_avatar_url,
       project_description = excluded.project_description,
       project_content = excluded.project_content,
       total_issues = excluded.total_issues,
@@ -477,6 +500,7 @@ export function upsertProject(project: Project): void {
     project.project_updated_at,
     project.project_lead_id,
     project.project_lead_name,
+    project.project_lead_avatar_url,
     project.project_description,
     project.project_content,
     project.total_issues,
@@ -1146,4 +1170,59 @@ export function getTeamNamesByKey(): Record<string, string> {
     result[row.team_key] = row.team_name;
   }
   return result;
+}
+
+/**
+ * Get global engineer WIP stats for engineers working on a team's projects
+ * Returns full Engineer records from the engineers table for all engineers
+ * who have WIP issues on projects belonging to the specified team
+ */
+export function getEngineersForTeamProjects(teamKey: string): Engineer[] {
+  const db = getDatabase();
+
+  // First, get all project IDs that include this team and have WIP
+  const projectsQuery = db.prepare(`
+    SELECT project_id, teams, engineers FROM projects
+    WHERE in_progress_issues > 0
+  `);
+  const allProjects = projectsQuery.all() as {
+    project_id: string;
+    teams: string;
+    engineers: string;
+  }[];
+
+  // Find all engineer names working on this team's projects
+  const engineerNames = new Set<string>();
+  for (const project of allProjects) {
+    try {
+      const teams: string[] = JSON.parse(project.teams || "[]");
+      if (teams.includes(teamKey)) {
+        const engineers: string[] = JSON.parse(project.engineers || "[]");
+        for (const engineer of engineers) {
+          engineerNames.add(engineer);
+        }
+      }
+    } catch {
+      // Skip projects with invalid JSON
+    }
+  }
+
+  if (engineerNames.size === 0) {
+    return [];
+  }
+
+  // Get full engineer records from the engineers table
+  const allEngineers = getAllEngineers();
+
+  // Filter to only engineers working on this team's projects and who have WIP
+  const result = allEngineers.filter(
+    (e) => engineerNames.has(e.assignee_name) && e.wip_issue_count > 0
+  );
+
+  // Sort by WIP issue count descending, then name
+  return result.sort(
+    (a, b) =>
+      b.wip_issue_count - a.wip_issue_count ||
+      a.assignee_name.localeCompare(b.assignee_name)
+  );
 }

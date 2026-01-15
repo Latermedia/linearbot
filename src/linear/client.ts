@@ -91,6 +91,7 @@ export interface LinearIssueData {
   projectUpdatedAt: Date | null;
   projectLeadId: string | null;
   projectLeadName: string | null;
+  projectLeadAvatarUrl: string | null;
   projectLabels: string[];
   projectTargetDate: string | null; // Linear's target date for the project
   projectStartDate: string | null; // Linear's start date for the project
@@ -126,6 +127,7 @@ export interface ProjectFullData {
   health?: string;
   leadId?: string | null;
   leadName?: string | null;
+  leadAvatarUrl?: string | null;
   targetDate?: string | null;
   startDate?: string | null;
   completedAt?: string | null;
@@ -266,6 +268,7 @@ export class LinearAPIClient {
               lead {
                 id
                 name
+                avatarUrl
               }
             }
           }
@@ -341,6 +344,7 @@ export class LinearAPIClient {
             : null,
           projectLeadId: issue.project?.lead?.id || null,
           projectLeadName: issue.project?.lead?.name || null,
+          projectLeadAvatarUrl: issue.project?.lead?.avatarUrl || null,
           projectLabels:
             issue.project?.labels?.nodes?.map(
               (l: { name: string }) => l.name
@@ -490,6 +494,7 @@ export class LinearAPIClient {
               lead {
                 id
                 name
+                avatarUrl
               }
             }
           }
@@ -566,6 +571,7 @@ export class LinearAPIClient {
             : null,
           projectLeadId: issue.project?.lead?.id || null,
           projectLeadName: issue.project?.lead?.name || null,
+          projectLeadAvatarUrl: issue.project?.lead?.avatarUrl || null,
           projectLabels:
             issue.project?.labels?.nodes?.map(
               (l: { name: string }) => l.name
@@ -742,6 +748,7 @@ export class LinearAPIClient {
                 lead {
                   id
                   name
+                  avatarUrl
                 }
               }
             }
@@ -826,6 +833,7 @@ export class LinearAPIClient {
               : null,
             projectLeadId: issue.project?.lead?.id || null,
             projectLeadName: issue.project?.lead?.name || null,
+            projectLeadAvatarUrl: issue.project?.lead?.avatarUrl || null,
             projectLabels:
               issue.project?.labels?.nodes?.map(
                 (l: { name: string }) => l.name
@@ -1137,6 +1145,7 @@ export class LinearAPIClient {
           lead {
             id
             name
+            avatarUrl
           }
           teams {
             nodes {
@@ -1224,6 +1233,7 @@ export class LinearAPIClient {
       health: project.health || null,
       leadId: project.lead?.id || null,
       leadName: project.lead?.name || null,
+      leadAvatarUrl: project.lead?.avatarUrl || null,
       targetDate: project.targetDate || null,
       startDate: project.startDate || null,
       completedAt: project.completedAt || null,
@@ -1267,6 +1277,7 @@ export class LinearAPIClient {
           lead {
             id
             name
+            avatarUrl
           }
           teams {
             nodes {
@@ -1366,6 +1377,7 @@ export class LinearAPIClient {
         health: project.health || null,
         leadId: project.lead?.id || null,
         leadName: project.lead?.name || null,
+        leadAvatarUrl: project.lead?.avatarUrl || null,
         targetDate: project.targetDate || null,
         startDate: project.startDate || null,
         completedAt: project.completedAt || null,
