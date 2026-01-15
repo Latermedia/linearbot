@@ -48,13 +48,11 @@ export function calculateTeamHealth(
     ? projects.filter(projectFilter)
     : projects;
 
-  // Filter to only "in progress" projects
-  const activeProjects = filteredProjects.filter((p) => {
-    const stateCategory = p.project_state_category?.toLowerCase() || "";
-    return (
-      stateCategory.includes("progress") || stateCategory.includes("started")
-    );
-  });
+  // Filter to only projects with active WIP (in-progress issues > 0)
+  // This aligns with the Projects page filter for consistency
+  const activeProjects = filteredProjects.filter(
+    (p) => p.in_progress_issues > 0
+  );
 
   // Get engineers who are working on the filtered projects
   const relevantEngineerIds = new Set<string>();

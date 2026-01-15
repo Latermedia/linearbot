@@ -179,13 +179,11 @@ export function calculateVelocityHealth(
     ? projects.filter(projectFilter)
     : projects;
 
-  // Only analyze "in progress" projects
-  const activeProjects = filteredProjects.filter((p) => {
-    const stateCategory = p.project_state_category?.toLowerCase() || "";
-    return (
-      stateCategory.includes("progress") || stateCategory.includes("started")
-    );
-  });
+  // Only analyze projects with active WIP (in-progress issues > 0)
+  // This aligns with the Projects page filter for consistency
+  const activeProjects = filteredProjects.filter(
+    (p) => p.in_progress_issues > 0
+  );
 
   // Calculate effective health for each project
   const projectStatuses: ProjectVelocityStatusV1[] = activeProjects.map(
@@ -284,12 +282,8 @@ export function calculateVelocityHealthForDomain(
 export function getProjectsNeedingAttention(
   projects: Project[]
 ): { project: Project; status: ProjectVelocityStatusV1 }[] {
-  const activeProjects = projects.filter((p) => {
-    const stateCategory = p.project_state_category?.toLowerCase() || "";
-    return (
-      stateCategory.includes("progress") || stateCategory.includes("started")
-    );
-  });
+  // Filter to projects with active WIP (in-progress issues > 0)
+  const activeProjects = projects.filter((p) => p.in_progress_issues > 0);
 
   return activeProjects
     .map((project) => {
