@@ -89,6 +89,18 @@ IGNORED_ASSIGNEE_NAMES=John Doe,External Contractor
 
 This removes issues and engineer records for the specified assignees during sync.
 
+### Engineer Team Mapping
+
+Map engineers to their teams for accurate WIP metrics when filtering by team:
+
+```bash
+ENGINEER_TEAM_MAPPING=Alice:ENG,Bob:ENG,Carol:DESIGN,Dave:PLATFORM
+```
+
+When viewing a specific team's dashboard, only engineers mapped to that team will count towards the "unique ICs" and "avg projects per IC" metrics. This prevents engineers from other teams working on shared projects from inflating another team's WIP statistics.
+
+When no team filter is applied (viewing all teams), all engineers are counted regardless of mapping.
+
 ## Documentation
 
 | Doc                                  | Purpose                        |
