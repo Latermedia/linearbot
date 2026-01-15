@@ -184,7 +184,7 @@
       </Card>
       <Card class="max-w-[180px]">
         <div class="mb-1 text-xs text-neutral-500 dark:text-neutral-300">
-          Total Violations
+          Total Gaps
         </div>
         <div
           class="text-2xl font-semibold {totalViolations > 0

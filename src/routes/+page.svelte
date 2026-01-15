@@ -436,30 +436,18 @@
       </Card>
       <Card class="max-w-[200px]">
         <div class="mb-1 text-xs text-neutral-500 dark:text-neutral-300">
-          Project Violations
+          Gaps
           <span class="text-neutral-400 dark:text-neutral-500">(target: 0)</span
           >
         </div>
         <div
-          class="text-2xl font-semibold {projectViolationsCount === 0
+          class="text-2xl font-semibold {projectViolationsCount +
+            icViolationsCount ===
+          0
             ? 'text-green-600 dark:text-green-400'
             : 'text-red-600 dark:text-red-400'}"
         >
-          {projectViolationsCount}
-        </div>
-      </Card>
-      <Card class="max-w-[200px]">
-        <div class="mb-1 text-xs text-neutral-500 dark:text-neutral-300">
-          IC Violations
-          <span class="text-neutral-400 dark:text-neutral-500">(target: 0)</span
-          >
-        </div>
-        <div
-          class="text-2xl font-semibold {icViolationsCount === 0
-            ? 'text-green-600 dark:text-green-400'
-            : 'text-red-600 dark:text-red-400'}"
-        >
-          {icViolationsCount}
+          {projectViolationsCount + icViolationsCount}
         </div>
       </Card>
     </div>

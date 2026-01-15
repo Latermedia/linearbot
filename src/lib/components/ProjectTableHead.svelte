@@ -18,7 +18,7 @@
     >
     <th
       class="text-left py-3 px-2 text-sm font-medium text-neutral-600 dark:text-neutral-400 w-[100px]"
-      >Violations</th
+      >Gaps</th
     >
   </tr>
 </thead>

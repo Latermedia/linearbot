@@ -382,16 +382,14 @@
     <ProgressBar {project} />
   </div>
 
-  <!-- Violations Summary -->
-  {@const projectViolations = [
-    project.missingLead && "Missing project lead",
-    project.isStaleUpdate && "Missing project update (7+ days)",
-    project.hasStatusMismatch && "Status mismatch",
-    project.missingHealth && "Missing project health",
+  <!-- Gaps Summary -->
+  {@const allGaps = [
+    project.missingLead && "Project missing lead",
+    project.isStaleUpdate && "Project missing update (7+ days)",
+    project.hasStatusMismatch && "Project status mismatch",
+    project.missingHealth && "Project missing health",
     project.hasDateDiscrepancy &&
-      "Target vs predicted dates differ by 30+ days",
-  ].filter(Boolean)}
-  {@const issueViolations = [
+      "Project target vs predicted dates differ by 30+ days",
     project.missingEstimateCount > 0 &&
       `${project.missingEstimateCount} issues missing points`,
     project.missingPriorityCount > 0 &&
@@ -399,60 +397,40 @@
     project.noRecentCommentCount > 0 &&
       `${project.noRecentCommentCount} issues with no recent comment`,
     project.wipAgeViolationCount > 0 &&
-      `${project.wipAgeViolationCount} issues with WIP age violation`,
+      `${project.wipAgeViolationCount} issues in WIP > 14 days`,
   ].filter(Boolean)}
-  {@const totalViolations =
-    projectViolations.length +
+  {@const totalGaps =
+    (project.missingLead ? 1 : 0) +
+    (project.isStaleUpdate ? 1 : 0) +
+    (project.hasStatusMismatch ? 1 : 0) +
+    (project.missingHealth ? 1 : 0) +
+    (project.hasDateDiscrepancy ? 1 : 0) +
     (project.missingEstimateCount || 0) +
     (project.missingPriorityCount || 0) +
     (project.noRecentCommentCount || 0) +
     (project.wipAgeViolationCount || 0)}
-  {#if totalViolations > 0}
+  {#if allGaps.length > 0}
     <div class="p-4 mb-6 rounded-md border bg-neutral-800/50 border-white/5">
       <div
         class="flex gap-2 items-center mb-3 text-sm font-medium text-neutral-300"
       >
-        Violations
+        Gaps
         <span
-          class={totalViolations > 5
+          class={totalGaps > 5
             ? "text-red-400"
-            : totalViolations > 2
+            : totalGaps > 2
               ? "text-amber-400"
-              : "text-green-400"}>({totalViolations})</span
+              : "text-green-400"}>({totalGaps})</span
         >
       </div>
-      <div class="space-y-2 text-sm">
-        {#if projectViolations.length > 0}
-          <div>
-            <div class="mb-1 text-xs text-neutral-500">Project-level</div>
-            <ul class="space-y-1">
-              {#each projectViolations as violation}
-                <li class="flex gap-2 items-center text-neutral-400">
-                  <span>•</span>
-                  <span>{violation}</span>
-                </li>
-              {/each}
-            </ul>
-          </div>
-        {/if}
-        {#if issueViolations.length > 0}
-          <div
-            class={projectViolations.length > 0
-              ? "pt-2 border-t border-white/5"
-              : ""}
-          >
-            <div class="mb-1 text-xs text-neutral-500">Issue-level</div>
-            <ul class="space-y-1">
-              {#each issueViolations as violation}
-                <li class="flex gap-2 items-center text-neutral-400">
-                  <span>•</span>
-                  <span>{violation}</span>
-                </li>
-              {/each}
-            </ul>
-          </div>
-        {/if}
-      </div>
+      <ul class="space-y-1 text-sm">
+        {#each allGaps as gap}
+          <li class="flex gap-2 items-center text-neutral-400">
+            <span>•</span>
+            <span>{gap}</span>
+          </li>
+        {/each}
+      </ul>
     </div>
   {/if}
 
