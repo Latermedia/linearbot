@@ -104,7 +104,12 @@
     return false;
   });
 
-  // Generate the config string (just the value part)
+  // Escape single quotes in a string for shell (using '\'' pattern)
+  function escapeForShell(str: string): string {
+    return str.replace(/'/g, "'\\''");
+  }
+
+  // Generate the config string (just the value part, unquoted for display)
   const configValue = $derived.by(() => {
     const entries = Object.entries(localMapping)
       .sort(([a], [b]) => a.localeCompare(b))
@@ -112,8 +117,14 @@
     return entries.join(",");
   });
 
-  // Full config string with variable name
-  const configString = $derived(`ENGINEER_TEAM_MAPPING=${configValue}`);
+  // Full config string with variable name (quoted for shell compatibility)
+  const configString = $derived.by(() => {
+    const entries = Object.entries(localMapping)
+      .sort(([a], [b]) => a.localeCompare(b))
+      .map(([engineer, team]) => `${escapeForShell(engineer)}:${team}`);
+    const escapedValue = entries.join(",");
+    return `ENGINEER_TEAM_MAPPING='${escapedValue}'`;
+  });
 
   // Get engineers for a team from local mapping
   function getTeamEngineers(teamKey: string): string[] {
@@ -449,7 +460,7 @@
           <code
             class="block mt-1 px-3 py-2 font-mono text-xs rounded bg-neutral-100 dark:bg-neutral-800 text-neutral-700 dark:text-neutral-300"
           >
-            ENGINEER_TEAM_MAPPING=Alice:ENG,Bob:ENG,Carol:DESIGN
+            ENGINEER_TEAM_MAPPING='Alice:ENG,Bob:ENG,Carol:DESIGN'
           </code>
         </div>
       </div>
@@ -1296,7 +1307,7 @@
         class="p-4 font-mono text-xs rounded bg-neutral-800 border border-neutral-700 overflow-x-auto"
       >
         <code class="text-neutral-200 break-all whitespace-pre-wrap">
-          {configValue ? configString : "ENGINEER_TEAM_MAPPING="}
+          {configValue ? configString : "ENGINEER_TEAM_MAPPING=''"}
         </code>
       </div>
     </div>
