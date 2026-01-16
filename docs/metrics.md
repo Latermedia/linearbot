@@ -56,6 +56,15 @@ Metrics snapshots are captured automatically after each successful sync (hourly 
 - Warning: 75-90% on track
 - Critical: < 75% on track
 
+**Dashboard Display**:
+
+The velocity card shows absolute counts split by source for transparency:
+
+- Projects flagged "at risk" or "off track" by human judgment (Linear health status)
+- Projects flagged by velocity prediction (when human status is optimistic but math says otherwise)
+
+This split helps identify whether issues are being surfaced proactively by teams or detected automatically.
+
 ### Pillar 3: Team Productivity
 
 **Core Metric**: TrueThroughput from GetDX (weighted PR velocity)
@@ -74,15 +83,32 @@ Thresholds are configurable via environment variables. If not configured, status
 - `GETDX_THROUGHPUT_HEALTHY`: TrueThroughput value for healthy status
 - `GETDX_THROUGHPUT_WARNING`: TrueThroughput value for warning status (below this = critical)
 
+**Dashboard Display**:
+
+The productivity card shows per-IC throughput as the headline metric (target: 3/wk per IC), with total throughput and IC count as supporting details. This makes it immediately clear whether the team is hitting velocity targets.
+
+**Engineer Count**:
+
+The per-IC calculation uses engineer count from one of two sources:
+
+1. **ENGINEER_TEAM_MAPPING** (preferred): If configured, only engineers explicitly listed in the mapping are counted. This excludes non-engineering roles (designers, PMs, etc.) from the productivity calculation.
+2. **All ICs**: If ENGINEER_TEAM_MAPPING is not set, falls back to counting all ICs with active work.
+
 ### Pillar 4: Quality
 
-**Core Metric**: Composite score (0-100) based on bug metrics
+**Core Metric**: Composite score (0-100) based on bug metrics (per-engineer scaling)
 
-**Components**:
+**Components** (all scaled by engineer count):
 
-- Open bug count (30% weight)
-- Net bug change over 14 days (40% weight)
-- Average age of open bugs (30% weight)
+- Bugs per engineer (30% weight) - Penalty: 12 points per bug/engineer
+- Net bug change per engineer over 14 days (40% weight) - Penalty: 200 points per net bug/engineer
+- Average age of open bugs (30% weight) - Penalty: 0.5 points per day
+
+**Thresholds** (score hits 0 at):
+
+- Bugs: ~8.3 bugs per engineer
+- Net change: 0.5 net new bugs per engineer per 14 days
+- Average age: 200 days
 
 **Status Thresholds**:
 
@@ -91,6 +117,18 @@ Thresholds are configurable via environment variables. If not configured, status
 - Critical: Score < 40
 
 **Bug Detection**: Issues with "type: bug" label (case-insensitive)
+
+**Engineer Count**: Uses `ENGINEER_TEAM_MAPPING` if configured, otherwise falls back to total IC count.
+
+**Dashboard Display**:
+
+The quality card uses natural language to illuminate the drivers:
+
+- Open bug count (absolute number)
+- Backlog trend: "Backlog growing (+5 in 14d)" or "Backlog shrinking (-3 in 14d)"
+- Average bug age in days
+
+This makes it immediately clear whether bugs are accumulating or being resolved, and whether old bugs are piling up.
 
 ## API Endpoints
 
@@ -260,6 +298,9 @@ Quality thresholds in `src/services/metrics/quality-health.ts`:
 
 - `HEALTHY_SCORE_THRESHOLD`: 70
 - `WARNING_SCORE_THRESHOLD`: 40
+- `BUG_PENALTY_PER_ENG`: 12 (score = 0 at ~8.3 bugs/engineer)
+- `NET_PENALTY_PER_ENG`: 200 (score = 0 at 0.5 net bugs/engineer)
+- `AGE_PENALTY_PER_DAY`: 0.5 (score = 0 at 200 days avg age)
 
 ## GetDX Setup Guide
 

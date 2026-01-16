@@ -50,6 +50,75 @@ import {
 } from "../getdx/index.js";
 
 /**
+ * Get engineer count from ENGINEER_TEAM_MAPPING if configured.
+ * Falls back to null if not configured (caller should use IC count instead).
+ *
+ * @param teamKey - Optional team key to filter engineers (for team-level metrics)
+ * @returns Engineer count or null if not configured
+ */
+function getEngineerCountFromMapping(teamKey?: string): number | null {
+  const mapping = process.env.ENGINEER_TEAM_MAPPING;
+  if (!mapping) {
+    return null;
+  }
+
+  const pairs = mapping.split(",");
+  const engineers = new Set<string>();
+
+  for (const pair of pairs) {
+    const [engineer, team] = pair.split(":").map((s) => s.trim());
+    if (engineer && team) {
+      // If filtering by team, only count engineers on that team
+      if (teamKey) {
+        if (team.toUpperCase() === teamKey.toUpperCase()) {
+          engineers.add(engineer);
+        }
+      } else {
+        engineers.add(engineer);
+      }
+    }
+  }
+
+  return engineers.size > 0 ? engineers.size : null;
+}
+
+/**
+ * Get engineer count for a domain from ENGINEER_TEAM_MAPPING.
+ * Uses TEAM_DOMAIN_MAPPINGS to determine which teams belong to the domain.
+ *
+ * @param domainName - The domain name
+ * @returns Engineer count or null if not configured
+ */
+function getEngineerCountForDomain(domainName: string): number | null {
+  const mapping = process.env.ENGINEER_TEAM_MAPPING;
+  if (!mapping) {
+    return null;
+  }
+
+  // Get team keys that belong to this domain
+  const domainTeamKeys = getTeamsForDomain(domainName).map((k) =>
+    k.toUpperCase()
+  );
+  if (domainTeamKeys.length === 0) {
+    return null;
+  }
+
+  const pairs = mapping.split(",");
+  const engineers = new Set<string>();
+
+  for (const pair of pairs) {
+    const [engineer, team] = pair.split(":").map((s) => s.trim());
+    if (engineer && team) {
+      if (domainTeamKeys.includes(team.toUpperCase())) {
+        engineers.add(engineer);
+      }
+    }
+  }
+
+  return engineers.size > 0 ? engineers.size : null;
+}
+
+/**
  * Result of a snapshot capture operation
  */
 export interface CaptureResult {
@@ -85,11 +154,22 @@ function buildMetricsSnapshot(
   if (level === "org") {
     teamHealth = calculateTeamHealth(engineers, projects);
     velocityHealth = calculateVelocityHealth(projects);
-    qualityHealth = calculateQualityHealth(issues);
 
-    // Calculate org-level productivity from GetDX, using IC count from Team Health
+    // Use engineer count from ENGINEER_TEAM_MAPPING if configured, else fall back to IC count
+    const engineerCount =
+      getEngineerCountFromMapping() ?? teamHealth.totalIcCount;
+
+    // Quality health uses engineer count for per-engineer scaling
+    qualityHealth = calculateQualityHealth(
+      issues,
+      undefined,
+      undefined,
+      engineerCount
+    );
+
+    // Calculate org-level productivity from GetDX
     const productivityResult = getdxMetrics
-      ? calculateProductivityHealthForOrg(getdxMetrics, teamHealth.totalIcCount)
+      ? calculateProductivityHealthForOrg(getdxMetrics, engineerCount)
       : null;
 
     teamProductivity = productivityResult
@@ -113,14 +193,25 @@ function buildMetricsSnapshot(
       issues
     );
     velocityHealth = calculateVelocityHealthForDomain(domainTeamKeys, projects);
-    qualityHealth = calculateQualityHealthForDomain(domainTeamKeys, issues);
 
-    // Calculate domain-level productivity from GetDX, using IC count from Team Health
+    // Use engineer count from ENGINEER_TEAM_MAPPING if configured, else fall back to IC count
+    const engineerCount =
+      getEngineerCountForDomain(levelId) ?? teamHealth.totalIcCount;
+
+    // Quality health uses engineer count for per-engineer scaling
+    qualityHealth = calculateQualityHealthForDomain(
+      domainTeamKeys,
+      issues,
+      undefined,
+      engineerCount
+    );
+
+    // Calculate domain-level productivity from GetDX
     const productivityResult = getdxMetrics
       ? calculateProductivityHealthForDomain(
           levelId,
           getdxMetrics,
-          teamHealth.totalIcCount
+          engineerCount
         )
       : null;
 
@@ -144,7 +235,18 @@ function buildMetricsSnapshot(
       issues
     );
     velocityHealth = calculateVelocityHealthForTeam(levelId, projects);
-    qualityHealth = calculateQualityHealthForTeam(levelId, issues);
+
+    // Use engineer count from ENGINEER_TEAM_MAPPING for this team, else fall back to IC count
+    const engineerCount =
+      getEngineerCountFromMapping(levelId) ?? teamHealth.totalIcCount;
+
+    // Quality health uses engineer count for per-engineer scaling
+    qualityHealth = calculateQualityHealthForTeam(
+      levelId,
+      issues,
+      undefined,
+      engineerCount
+    );
 
     // Team-level productivity is pending (future work)
     teamProductivity = calculateProductivityHealthForTeam();
@@ -152,7 +254,16 @@ function buildMetricsSnapshot(
     // Fallback to org-level if something is wrong
     teamHealth = calculateTeamHealth(engineers, projects);
     velocityHealth = calculateVelocityHealth(projects);
-    qualityHealth = calculateQualityHealth(issues);
+
+    const engineerCount =
+      getEngineerCountFromMapping() ?? teamHealth.totalIcCount;
+
+    qualityHealth = calculateQualityHealth(
+      issues,
+      undefined,
+      undefined,
+      engineerCount
+    );
     teamProductivity = {
       status: "pending",
       notes: "Invalid level configuration",

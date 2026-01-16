@@ -238,6 +238,28 @@
     orgSnapshot ? getStatusClasses(orgSnapshot.quality.status) : null
   );
 
+  // Velocity Health derived counts (split by source)
+  const velocityCounts = $derived.by(() => {
+    if (!orgSnapshot) return null;
+    const statuses = orgSnapshot.velocityHealth.projectStatuses;
+    return {
+      atRiskHuman: statuses.filter(
+        (p) => p.effectiveHealth === "atRisk" && p.healthSource === "human"
+      ).length,
+      atRiskVelocity: statuses.filter(
+        (p) => p.effectiveHealth === "atRisk" && p.healthSource === "velocity"
+      ).length,
+      offTrackHuman: statuses.filter(
+        (p) => p.effectiveHealth === "offTrack" && p.healthSource === "human"
+      ).length,
+      offTrackVelocity: statuses.filter(
+        (p) => p.effectiveHealth === "offTrack" && p.healthSource === "velocity"
+      ).length,
+      total: statuses.length,
+      onTrack: statuses.filter((p) => p.effectiveHealth === "onTrack").length,
+    };
+  });
+
   // Productivity derived values
   const orgProductivity = $derived(orgSnapshot?.teamProductivity ?? null);
   const orgHasProductivityData = $derived(
@@ -254,13 +276,15 @@
     <h1 class="text-2xl font-semibold tracking-tight text-white">
       Engineering Metrics
     </h1>
-    <p
-      class="mt-1 text-sm text-neutral-400 italic principle-text {isAnimating
-        ? 'principle-exit'
-        : 'principle-enter'}"
-    >
-      {currentPrinciple}
-    </p>
+    <div class="overflow-hidden">
+      <p
+        class="mt-1 text-sm text-neutral-400 italic principle-text {isAnimating
+          ? 'principle-exit'
+          : 'principle-enter'}"
+      >
+        {currentPrinciple}
+      </p>
+    </div>
   </div>
 
   <!-- Loading State -->
@@ -378,23 +402,51 @@
             >
               {orgSnapshot.velocityHealth.onTrackPercent.toFixed(0)}%
             </div>
-            <div class="text-xs text-neutral-500">Projects on track</div>
+            <div class="text-xs text-neutral-500">
+              {velocityCounts?.onTrack ?? 0} of {velocityCounts?.total ?? 0} projects
+              on track
+            </div>
           </div>
 
-          <div class="flex gap-4 text-xs">
-            <div>
-              <span class="text-amber-400">At Risk:</span>
-              <span class="ml-1 text-white">
-                {orgSnapshot.velocityHealth.atRiskPercent.toFixed(0)}%
-              </span>
+          {#if velocityCounts}
+            <div class="space-y-0.5 text-xs">
+              {#if velocityCounts.atRiskHuman > 0}
+                <div>
+                  <span class="text-amber-400"
+                    >{velocityCounts.atRiskHuman}</span
+                  >
+                  <span class="text-neutral-500">at risk (human)</span>
+                </div>
+              {/if}
+              {#if velocityCounts.atRiskVelocity > 0}
+                <div>
+                  <span class="text-amber-400"
+                    >{velocityCounts.atRiskVelocity}</span
+                  >
+                  <span class="text-neutral-500">at risk (velocity)</span>
+                </div>
+              {/if}
+              {#if velocityCounts.offTrackHuman > 0}
+                <div>
+                  <span class="text-red-400"
+                    >{velocityCounts.offTrackHuman}</span
+                  >
+                  <span class="text-neutral-500">off track (human)</span>
+                </div>
+              {/if}
+              {#if velocityCounts.offTrackVelocity > 0}
+                <div>
+                  <span class="text-red-400"
+                    >{velocityCounts.offTrackVelocity}</span
+                  >
+                  <span class="text-neutral-500">off track (velocity)</span>
+                </div>
+              {/if}
+              {#if velocityCounts.atRiskHuman === 0 && velocityCounts.atRiskVelocity === 0 && velocityCounts.offTrackHuman === 0 && velocityCounts.offTrackVelocity === 0}
+                <div class="text-neutral-500">All projects on track</div>
+              {/if}
             </div>
-            <div>
-              <span class="text-red-400">Off Track:</span>
-              <span class="ml-1 text-white">
-                {orgSnapshot.velocityHealth.offTrackPercent.toFixed(0)}%
-              </span>
-            </div>
-          </div>
+          {/if}
         </div>
       </Card>
 
@@ -430,36 +482,51 @@
         <div class="space-y-3">
           {#if orgHasProductivityData && orgProductivity && "trueThroughput" in orgProductivity}
             <div>
-              <div
-                class="text-2xl font-semibold {productivityStatusClasses?.text ||
-                  ''}"
-              >
-                {toWeeklyRate(orgProductivity.trueThroughput).toFixed(1)}<span
-                  class="text-sm font-normal text-neutral-400">/wk</span
+              {#if orgProductivity.trueThroughputPerEngineer !== null}
+                <div
+                  class="text-2xl font-semibold {productivityStatusClasses?.text ||
+                    ''}"
                 >
-              </div>
-              <div class="text-xs text-neutral-500">
-                TrueThroughput (target: 3/wk per IC)
-              </div>
-            </div>
-
-            <div class="flex gap-4 text-xs">
-              {#if orgProductivity.engineerCount !== null}
-                <div>
-                  <span class="text-neutral-400">ICs:</span>
-                  <span class="ml-1 text-white"
-                    >{orgProductivity.engineerCount}</span
+                  {toWeeklyRate(
+                    orgProductivity.trueThroughputPerEngineer
+                  ).toFixed(2)}<span
+                    class="text-sm font-normal text-neutral-400"
+                    >/wk per eng</span
                   >
                 </div>
+                <div class="text-xs text-neutral-500">
+                  TrueThroughput (target: 3/wk)
+                </div>
+              {:else}
+                <div
+                  class="text-2xl font-semibold {productivityStatusClasses?.text ||
+                    ''}"
+                >
+                  {toWeeklyRate(orgProductivity.trueThroughput).toFixed(1)}<span
+                    class="text-sm font-normal text-neutral-400">/wk</span
+                  >
+                </div>
+                <div class="text-xs text-neutral-500">
+                  TrueThroughput (total)
+                </div>
               {/if}
-              {#if orgProductivity.trueThroughputPerEngineer !== null}
+            </div>
+
+            <div class="space-y-0.5 text-xs">
+              <div>
+                <span class={productivityStatusClasses?.text || "text-white"}
+                  >{toWeeklyRate(orgProductivity.trueThroughput).toFixed(
+                    1
+                  )}</span
+                >
+                <span class="text-neutral-500">total throughput/wk</span>
+              </div>
+              {#if orgProductivity.engineerCount !== null}
                 <div>
-                  <span class="text-neutral-400">Per IC:</span>
-                  <span class="ml-1 text-white">
-                    {toWeeklyRate(
-                      orgProductivity.trueThroughputPerEngineer
-                    ).toFixed(2)}/wk
-                  </span>
+                  <span class={productivityStatusClasses?.text || "text-white"}
+                    >{orgProductivity.engineerCount}</span
+                  >
+                  <span class="text-neutral-500">engineers</span>
                 </div>
               {/if}
             </div>
@@ -513,25 +580,32 @@
             <div class="text-xs text-neutral-500">Quality score (0-100)</div>
           </div>
 
-          <div class="flex gap-4 text-xs">
+          <div class="space-y-0.5 text-xs">
             <div>
-              <span class="text-neutral-400">Open Bugs:</span>
-              <span class="ml-1 text-white">
-                {orgSnapshot.quality.openBugCount}
-              </span>
+              <span class={qualityStatusClasses?.text || "text-white"}
+                >{orgSnapshot.quality.openBugCount}</span
+              >
+              <span class="text-neutral-500">open bugs</span>
             </div>
             <div>
-              <span class="text-neutral-400">Net Change:</span>
-              <span
-                class="ml-1 {orgSnapshot.quality.netBugChange > 0
-                  ? 'text-red-400'
-                  : orgSnapshot.quality.netBugChange < 0
-                    ? 'text-emerald-400'
-                    : 'text-white'}"
+              {#if orgSnapshot.quality.netBugChange > 0}
+                <span class="text-red-400"
+                  >Backlog growing (+{orgSnapshot.quality.netBugChange} in 14d)</span
+                >
+              {:else if orgSnapshot.quality.netBugChange < 0}
+                <span class="text-emerald-400"
+                  >Backlog shrinking ({orgSnapshot.quality.netBugChange} in 14d)</span
+                >
+              {:else}
+                <span class="text-neutral-500"
+                  >Backlog stable (0 net in 14d)</span
+                >
+              {/if}
+            </div>
+            <div>
+              <span class="text-neutral-500"
+                >Avg age: {orgSnapshot.quality.averageBugAgeDays.toFixed(0)} days</span
               >
-                {orgSnapshot.quality.netBugChange > 0 ? "+" : ""}{orgSnapshot
-                  .quality.netBugChange}
-              </span>
             </div>
           </div>
         </div>
