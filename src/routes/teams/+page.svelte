@@ -1059,7 +1059,7 @@
     {/if}
 
     <!-- Unassigned Users -->
-    {#if isEditing && unassignedEngineers.length > 0}
+    {#if unassignedEngineers.length > 0}
       <div class="space-y-4">
         <div class="flex items-center gap-3">
           <h2
@@ -1078,8 +1078,13 @@
           class="p-5 border-amber-300 dark:border-amber-700/50 bg-amber-50/50 dark:bg-amber-950/20"
         >
           <p class="text-sm text-amber-700 dark:text-amber-400 mb-4">
-            These users have issues in the database but haven't been categorized
-            yet. Assign them to a team or mark as non-engineering.
+            {#if isEditing}
+              These users have issues in the database but haven't been
+              categorized yet. Assign them to a team or mark as non-engineering.
+            {:else}
+              These users have issues in the database but are not in
+              ENGINEER_TEAM_MAPPING. Click "Edit Teams" to assign them.
+            {/if}
           </p>
           <div class="space-y-2">
             {#each unassignedEngineers as engineer (engineer.id)}
@@ -1124,7 +1129,7 @@
                     {/if}
                   </p>
                 </div>
-                {#if engineer.suggestedTeamKey}
+                {#if isEditing && engineer.suggestedTeamKey}
                   <Button
                     size="sm"
                     variant="outline"
