@@ -4,7 +4,7 @@
   import UserProfile from "./UserProfile.svelte";
   import Modal from "./Modal.svelte";
   import { WIP_LIMIT } from "../../constants/thresholds";
-  import { getGapsBinaryColorClass } from "../utils/gaps-helpers";
+  import { getGapsColorClass } from "../utils/gaps-helpers";
 
   interface IssueSummary {
     id: string;
@@ -198,9 +198,7 @@
       <div class="p-3 rounded-md border bg-neutral-800/50 border-white/5">
         <div class="mb-1 text-xs text-neutral-500">Gaps</div>
         <div
-          class="text-2xl font-semibold {getGapsBinaryColorClass(
-            totalViolations
-          )}"
+          class="text-2xl font-semibold {getGapsColorClass(totalViolations)}"
         >
           {totalViolations}
         </div>

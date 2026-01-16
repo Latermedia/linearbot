@@ -27,7 +27,7 @@
     hasNoRecentComment,
     hasWIPAgeViolation,
   } from "../utils/issue-validators";
-  import { getGapsBinaryColorClass } from "$lib/utils/gaps-helpers";
+  import { getGapsColorClass } from "$lib/utils/gaps-helpers";
 
   // Engineer detail modal state (uses Engineer type which is compatible with EngineersTable's EngineerData)
   let selectedEngineer = $state<Engineer | null>(null);
@@ -455,7 +455,7 @@
           Gaps
         </div>
         <div
-          class="text-2xl font-semibold {getGapsBinaryColorClass(
+          class="text-2xl font-semibold {getGapsColorClass(
             projectViolationsCount + icViolationsCount
           )}"
         >
