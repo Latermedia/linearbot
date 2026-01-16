@@ -34,6 +34,16 @@ const mimeTypes = {
   ".css": "text/css",
   ".html": "text/html",
   ".svg": "image/svg+xml",
+  ".png": "image/png",
+  ".jpg": "image/jpeg",
+  ".jpeg": "image/jpeg",
+  ".gif": "image/gif",
+  ".webp": "image/webp",
+  ".ico": "image/x-icon",
+  ".woff": "font/woff",
+  ".woff2": "font/woff2",
+  ".ttf": "font/ttf",
+  ".eot": "application/vnd.ms-fontobject",
 };
 
 function getMimeType(url) {
@@ -41,6 +51,9 @@ function getMimeType(url) {
   const ext = pathname.substring(pathname.lastIndexOf("."));
   return mimeTypes[ext] || null;
 }
+
+// Known static files in the output client directory (from /static folder)
+const staticFiles = new Set(["favicon.svg"]);
 
 /**
  * Adds security headers to a response.
@@ -89,6 +102,25 @@ Bun.serve({
           headers: {
             "Content-Type": mimeType,
             "Cache-Control": "public, max-age=31536000, immutable",
+          },
+        });
+        return addSecurityHeaders(staticResponse);
+      }
+    }
+
+    // Handle root-level static files (favicon, etc.)
+    const filename = pathname.slice(1); // Remove leading slash
+    if (staticFiles.has(filename)) {
+      const filePath = `.svelte-kit/output/client/${filename}`;
+      const file = Bun.file(filePath);
+
+      if (await file.exists()) {
+        const mimeType = getMimeType(url) || "application/octet-stream";
+
+        const staticResponse = new Response(file, {
+          headers: {
+            "Content-Type": mimeType,
+            "Cache-Control": "public, max-age=86400", // 1 day cache for root static files
           },
         });
         return addSecurityHeaders(staticResponse);
