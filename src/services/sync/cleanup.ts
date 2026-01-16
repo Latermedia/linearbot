@@ -17,6 +17,8 @@ import {
   deleteIssuesByAssigneeNames,
   deleteEngineersByNames,
   cleanupProjectTeams,
+  deleteProjectsNotInTeams,
+  deleteEngineersNotInTeams,
 } from "../../db/queries.js";
 
 export interface CleanupConfig {
@@ -37,6 +39,10 @@ export interface CleanupResult {
   deletedEngineers: number;
   /** Number of projects with teams field cleaned up */
   cleanedUpProjects: number;
+  /** Number of projects deleted (had no whitelisted teams) */
+  deletedProjects: number;
+  /** Number of engineers deleted (had no whitelisted teams) */
+  deletedNonWhitelistEngineers: number;
 }
 
 /**
@@ -71,6 +77,8 @@ export function getCleanupConfig(): CleanupConfig {
  * - Issues assigned to ignored assignees (e.g., contractors)
  * - Engineer records for ignored assignees
  * - Stale team references from projects table
+ * - Projects with no whitelisted teams
+ * - Engineers with no whitelisted teams
  */
 export function runCleanup(config: CleanupConfig): CleanupResult {
   const result: CleanupResult = {
@@ -78,6 +86,8 @@ export function runCleanup(config: CleanupConfig): CleanupResult {
     deletedAssigneeIssues: 0,
     deletedEngineers: 0,
     cleanedUpProjects: 0,
+    deletedProjects: 0,
+    deletedNonWhitelistEngineers: 0,
   };
 
   // Whitelist mode: delete all issues NOT in the whitelist
@@ -92,11 +102,29 @@ export function runCleanup(config: CleanupConfig): CleanupResult {
       );
     }
 
-    // Also clean up stale teams from projects table
+    // Clean up stale teams from projects table
     result.cleanedUpProjects = cleanupProjectTeams(config.whitelistTeamKeys);
     if (result.cleanedUpProjects > 0) {
       console.log(
         `[CLEANUP] Cleaned up teams field in ${result.cleanedUpProjects} project(s)`
+      );
+    }
+
+    // Delete projects that have no whitelisted teams
+    result.deletedProjects = deleteProjectsNotInTeams(config.whitelistTeamKeys);
+    if (result.deletedProjects > 0) {
+      console.log(
+        `[CLEANUP] Removed ${result.deletedProjects} project(s) with no whitelisted teams`
+      );
+    }
+
+    // Delete engineers that have no whitelisted teams
+    result.deletedNonWhitelistEngineers = deleteEngineersNotInTeams(
+      config.whitelistTeamKeys
+    );
+    if (result.deletedNonWhitelistEngineers > 0) {
+      console.log(
+        `[CLEANUP] Removed ${result.deletedNonWhitelistEngineers} engineer(s) with no whitelisted teams`
       );
     }
   } else if (config.ignoredTeamKeys.length > 0) {

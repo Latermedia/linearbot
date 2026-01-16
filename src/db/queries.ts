@@ -375,6 +375,96 @@ export function cleanupProjectTeams(whitelistTeamKeys: string[]): number {
 }
 
 /**
+ * Delete projects that have no issues from whitelisted teams
+ * This finds projects whose teams array is empty or contains only non-whitelisted teams
+ * Returns the number of projects deleted
+ */
+export function deleteProjectsNotInTeams(whitelistTeamKeys: string[]): number {
+  if (whitelistTeamKeys.length === 0) return 0;
+
+  const db = getDatabase();
+  const whitelistSet = new Set(whitelistTeamKeys);
+
+  // Get all projects with their teams
+  const projects = db
+    .prepare(`SELECT project_id, teams FROM projects`)
+    .all() as { project_id: string; teams: string }[];
+
+  const projectIdsToDelete: string[] = [];
+
+  for (const project of projects) {
+    try {
+      const teams: string[] = JSON.parse(project.teams || "[]");
+      // Check if project has ANY whitelisted teams
+      const hasWhitelistedTeam = teams.some((team) => whitelistSet.has(team));
+      if (!hasWhitelistedTeam) {
+        projectIdsToDelete.push(project.project_id);
+      }
+    } catch {
+      // Invalid JSON - mark for deletion
+      projectIdsToDelete.push(project.project_id);
+    }
+  }
+
+  if (projectIdsToDelete.length === 0) return 0;
+
+  const placeholders = projectIdsToDelete.map(() => "?").join(",");
+  const deleteStmt = db.prepare(
+    `DELETE FROM projects WHERE project_id IN (${placeholders})`
+  );
+  const result = deleteStmt.run(...projectIdsToDelete);
+  return result.changes;
+}
+
+/**
+ * Delete engineers whose teams are not in the whitelist
+ * This checks the team_names JSON array and deletes engineers who have no whitelisted teams
+ * Returns the number of engineers deleted
+ */
+export function deleteEngineersNotInTeams(whitelistTeamKeys: string[]): number {
+  if (whitelistTeamKeys.length === 0) return 0;
+
+  const db = getDatabase();
+
+  // Get team_name -> team_key mapping to translate engineer's team_names to team_keys
+  const teamKeysByName = getTeamKeysByName();
+  const whitelistSet = new Set(whitelistTeamKeys);
+
+  // Get all engineers with their team_names
+  const engineers = db
+    .prepare(`SELECT assignee_id, team_names FROM engineers`)
+    .all() as { assignee_id: string; team_names: string }[];
+
+  const engineerIdsToDelete: string[] = [];
+
+  for (const engineer of engineers) {
+    try {
+      const teamNames: string[] = JSON.parse(engineer.team_names || "[]");
+      // Check if engineer has ANY whitelisted teams
+      const hasWhitelistedTeam = teamNames.some((teamName) => {
+        const teamKey = teamKeysByName[teamName];
+        return teamKey && whitelistSet.has(teamKey);
+      });
+      if (!hasWhitelistedTeam) {
+        engineerIdsToDelete.push(engineer.assignee_id);
+      }
+    } catch {
+      // Invalid JSON - mark for deletion
+      engineerIdsToDelete.push(engineer.assignee_id);
+    }
+  }
+
+  if (engineerIdsToDelete.length === 0) return 0;
+
+  const placeholders = engineerIdsToDelete.map(() => "?").join(",");
+  const deleteStmt = db.prepare(
+    `DELETE FROM engineers WHERE assignee_id IN (${placeholders})`
+  );
+  const result = deleteStmt.run(...engineerIdsToDelete);
+  return result.changes;
+}
+
+/**
  * Delete issues assigned to specific assignees (used for ignored assignees like contractors)
  */
 export function deleteIssuesByAssigneeNames(assigneeNames: string[]): number {
