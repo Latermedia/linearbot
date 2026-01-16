@@ -97,6 +97,8 @@
   }
 
   function _checkMissingEstimate(issue: IssueData): boolean {
+    // Exclude subissues from estimate warnings (estimates are optional for sub-issues)
+    if (issue.parent_id) return false;
     if (shouldSuppressAlerts(issue)) return false;
     return issue.estimate === null || issue.estimate === undefined;
   }

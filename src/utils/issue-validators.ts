@@ -69,8 +69,11 @@ export function shouldSuppressAlerts(issue: Issue): boolean {
 /**
  * Check if issue is missing an estimate
  * Note: 0-point estimates are valid (explicitly sized as zero)
+ * Note: Sub-issues do not require estimates (optional)
  */
 export function hasMissingEstimate(issue: Issue): boolean {
+  // Exclude subissues from estimate warnings (estimates are optional for sub-issues)
+  if (isSubissue(issue)) return false;
   // Suppress alerts for cancelled/duplicate issues
   if (shouldSuppressAlerts(issue)) return false;
   return issue.estimate === null;
