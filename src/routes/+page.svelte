@@ -432,17 +432,17 @@
           >i</span
         >
         <div class="pr-6 mb-1 text-xs text-neutral-500 dark:text-neutral-300">
-          Projects/IC
+          Avg Projects per IC
         </div>
         <div
-          class="text-2xl font-semibold {avgProjectsPerIC <= 0.5
+          class="text-2xl font-semibold {avgProjectsPerIC <= 1.5
             ? 'text-green-600 dark:text-green-400'
             : 'text-red-600 dark:text-red-400'}"
         >
           {avgProjectsPerIC.toFixed(2)}
         </div>
         <div class="text-xs text-neutral-400 dark:text-neutral-500">
-          target: ≤0.5
+          target: ≤1.5
         </div>
       </Card>
       <Card class="relative max-w-[200px]">
@@ -620,7 +620,7 @@
 
   <!-- Non-project WIP issues (shown when filtering by team) -->
   {#if selectedTeamKey !== null && !loading && !error}
-    <Card class="mt-8 px-4 py-4">
+    <Card class="px-4 py-4 mt-8">
       <div class="mb-4 text-sm font-medium text-neutral-300">
         Non-Project Work
         {#if loadingNonProjectWip}
@@ -659,7 +659,7 @@
 
     <!-- Team Engineers Table -->
     {#if coreTeamEngineers.length > 0}
-      <Card class="mt-8 px-4 py-4">
+      <Card class="px-4 py-4 mt-8">
         <div class="mb-4 text-sm font-medium text-neutral-300">
           {teamName} Engineers
           <span class="ml-2 text-neutral-500">({coreTeamEngineers.length})</span
@@ -674,7 +674,7 @@
 
     <!-- Cross-Team Contributors Table -->
     {#if crossTeamContributors.length > 0}
-      <Card class="mt-8 px-4 py-4">
+      <Card class="px-4 py-4 mt-8">
         <div class="mb-4 text-sm font-medium text-neutral-300">
           Cross-team Contributors
           <span class="ml-2 text-neutral-500"
@@ -690,7 +690,7 @@
   {/if}
 
   {#if loadingEngineers && selectedTeamKey !== null}
-    <Card class="mt-8 px-4 py-4">
+    <Card class="px-4 py-4 mt-8">
       <div class="text-sm text-neutral-400">Loading engineer data...</div>
     </Card>
   {/if}
