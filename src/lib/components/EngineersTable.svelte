@@ -1,7 +1,8 @@
 <script lang="ts">
   import Badge from "./Badge.svelte";
   import UserProfile from "./UserProfile.svelte";
-  import { WIP_THRESHOLDS } from "../../constants/thresholds";
+  import { WIP_LIMIT } from "../../constants/thresholds";
+  import { getGapsColorClass } from "../utils/gaps-helpers";
 
   interface EngineerData {
     assignee_id: string;
@@ -52,22 +53,16 @@
   function getWIPBadgeVariant(
     count: number
   ): "default" | "secondary" | "outline" | "destructive" {
-    if (count >= WIP_THRESHOLDS.CRITICAL) return "destructive";
-    if (count >= WIP_THRESHOLDS.WARNING) return "secondary";
-    return "outline";
+    return count > WIP_LIMIT ? "destructive" : "outline";
   }
 
   function getWIPBadgeClass(count: number): string {
-    if (count >= WIP_THRESHOLDS.CRITICAL)
-      return "bg-red-500/20 text-red-400 border-red-500/30";
-    if (count >= WIP_THRESHOLDS.WARNING)
-      return "bg-amber-500/20 text-amber-400 border-amber-500/30";
-    if (count <= WIP_THRESHOLDS.OK)
-      return "bg-emerald-500/20 text-emerald-400 border-emerald-500/30";
-    return "";
+    return count > WIP_LIMIT
+      ? "bg-red-500/20 text-red-400 border-red-500/30"
+      : "bg-emerald-500/20 text-emerald-400 border-emerald-500/30";
   }
 
-  function getTotalViolations(engineer: EngineerData): number {
+  function getTotalGaps(engineer: EngineerData): number {
     return (
       engineer.missing_estimate_count +
       engineer.missing_priority_count +
@@ -104,7 +99,7 @@
           >Oldest WIP</th
         >
         <th class="px-4 py-3 font-medium text-center text-neutral-400 w-[100px]"
-          >Violations</th
+          >Gaps</th
         >
         <th class="px-4 py-3 font-medium text-right text-neutral-400 w-[120px]"
           >Last Activity</th
@@ -114,7 +109,7 @@
     <tbody>
       {#each engineers as engineer}
         {@const teamNames = parseTeamNames(engineer.team_names)}
-        {@const totalViolations = getTotalViolations(engineer)}
+        {@const totalGaps = getTotalGaps(engineer)}
         <tr
           class="border-b transition-colors cursor-pointer border-white/5 hover:bg-white/5"
           onclick={() => onEngineerClick(engineer)}
@@ -128,16 +123,11 @@
           }}
         >
           <td class="px-4 py-3">
-            <div class="flex gap-2 items-center">
-              <UserProfile
-                name={engineer.assignee_name}
-                avatarUrl={engineer.avatar_url}
-                size="sm"
-              />
-              {#if engineer.wip_limit_violation}
-                <span class="text-amber-500" title="Over WIP limit">⚠️</span>
-              {/if}
-            </div>
+            <UserProfile
+              name={engineer.assignee_name}
+              avatarUrl={engineer.avatar_url}
+              size="sm"
+            />
           </td>
           <td class="px-4 py-3">
             <div class="flex flex-wrap gap-1">
@@ -161,16 +151,9 @@
             {formatWIPAge(engineer.oldest_wip_age_days)}
           </td>
           <td class="px-4 py-3 text-center">
-            {#if totalViolations > 0}
-              <Badge
-                variant="secondary"
-                class="bg-amber-500/20 text-amber-400 border-amber-500/30"
-              >
-                {totalViolations}
-              </Badge>
-            {:else}
-              <span class="text-neutral-500">—</span>
-            {/if}
+            <span class="text-sm font-medium {getGapsColorClass(totalGaps)}">
+              {totalGaps}
+            </span>
           </td>
           <td class="px-4 py-3 text-right text-neutral-400">
             {formatRelativeTime(engineer.last_activity_at)}

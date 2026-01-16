@@ -8,6 +8,7 @@
     isHealthUpdateOverdue,
     getDaysSinceHealthUpdate,
   } from "$lib/utils/project-helpers";
+  import { getGapsColorClass } from "$lib/utils/gaps-helpers";
 
   let {
     project,
@@ -38,14 +39,7 @@
     return count;
   });
 
-  // Color class based on violation count: red (>5), yellow (>2), green (0-2)
-  const violationColorClass = $derived(
-    totalViolations > 5
-      ? "text-red-500 dark:text-red-400"
-      : totalViolations > 2
-        ? "text-amber-500 dark:text-amber-400"
-        : "text-green-500 dark:text-green-400"
-  );
+  const gapsColorClass = $derived(getGapsColorClass(totalViolations));
 </script>
 
 <tr
@@ -117,7 +111,7 @@
     </div>
   </td>
   <td class="py-3 px-2 w-[100px]">
-    <span class="text-sm font-medium {violationColorClass}">
+    <span class="text-sm font-medium {gapsColorClass}">
       {totalViolations}
     </span>
   </td>

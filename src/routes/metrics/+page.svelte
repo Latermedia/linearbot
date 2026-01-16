@@ -30,6 +30,7 @@
     "Ship value daily",
     "POC is worth 1k meetings",
     "Go slow to go fast",
+    "Mind the gaps",
   ];
 
   // Rotating principle state

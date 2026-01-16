@@ -1,6 +1,6 @@
 import type { Issue, Engineer } from "../../db/schema.js";
 import { getStartedIssues, upsertEngineer } from "../../db/queries.js";
-import { WIP_THRESHOLDS } from "../../constants/thresholds.js";
+import { WIP_LIMIT } from "../../constants/thresholds.js";
 import {
   hasMissingEstimate,
   hasMissingPriority,
@@ -84,7 +84,7 @@ export function computeAndStoreEngineers(): number {
     }
 
     // Check WIP limit violation
-    const wipLimitViolation = wipIssueCount >= WIP_THRESHOLDS.WARNING ? 1 : 0;
+    const wipLimitViolation = wipIssueCount > WIP_LIMIT ? 1 : 0;
 
     // Calculate oldest WIP age (days since started)
     let oldestWipAgeDays: number | null = null;

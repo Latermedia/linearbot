@@ -1,6 +1,6 @@
 import { getDatabase } from "../db/connection.js";
 import { getDomainForTeam } from "../utils/domain-mapping.js";
-import { WIP_THRESHOLDS, PROJECT_THRESHOLDS } from "../constants/thresholds.js";
+import { WIP_LIMIT, PROJECT_THRESHOLDS } from "../constants/thresholds.js";
 import type { Issue } from "../db/schema.js";
 import type {
   AssigneeViolation,
@@ -58,11 +58,11 @@ export function loadProjectsData(): ProjectsData {
     if (name === "Unassigned") continue;
 
     const count = issues.length;
-    if (count > WIP_THRESHOLDS.IDEAL) {
+    if (count > WIP_LIMIT) {
       violations.push({
         name,
         count,
-        status: count >= WIP_THRESHOLDS.CRITICAL ? "critical" : "warning",
+        status: "warning",
       });
     }
   }
@@ -101,7 +101,7 @@ export function loadProjectsData(): ProjectsData {
       teamIssuesByAssignee.get(assignee)?.push(issue);
     }
     const hasWipViolation = Array.from(teamIssuesByAssignee.values()).some(
-      (assigneeIssues) => assigneeIssues.length > WIP_THRESHOLDS.IDEAL
+      (assigneeIssues) => assigneeIssues.length > WIP_LIMIT
     );
 
     if (
@@ -144,7 +144,7 @@ export function loadProjectsData(): ProjectsData {
       }
     }
     const hasWipViolation = Array.from(assigneeCountsInDomain.values()).some(
-      (count) => count > WIP_THRESHOLDS.IDEAL
+      (count) => count > WIP_LIMIT
     );
 
     if (

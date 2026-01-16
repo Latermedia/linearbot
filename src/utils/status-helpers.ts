@@ -1,6 +1,6 @@
 import type { Issue } from "../db/schema.js";
 import {
-  WIP_THRESHOLDS,
+  WIP_LIMIT,
   MULTI_PROJECT_THRESHOLDS,
   PROJECT_THRESHOLDS,
 } from "../constants/thresholds.js";
@@ -13,17 +13,13 @@ export interface StatusInfo {
 
 /**
  * Get WIP status badge based on issue count for an assignee
- * Thresholds: >= 8 critical, >= 6 warning, >= 4 ok, < 4 good
+ * Simple threshold: > 5 is over limit
  */
 export function getWIPStatus(count: number): StatusInfo {
-  if (count >= WIP_THRESHOLDS.CRITICAL) {
-    return { emoji: "●", label: "CRITICAL", color: "red" };
-  } else if (count >= WIP_THRESHOLDS.WARNING) {
-    return { emoji: "◉", label: "WARNING", color: "yellow" };
-  } else if (count >= WIP_THRESHOLDS.OK) {
-    return { emoji: "○", label: "OK", color: "white" };
+  if (count > WIP_LIMIT) {
+    return { emoji: "●", label: "OVER LIMIT", color: "red" };
   } else {
-    return { emoji: "✓", label: "GOOD", color: "green" };
+    return { emoji: "✓", label: "OK", color: "green" };
   }
 }
 

@@ -3,7 +3,8 @@
   import IssueTable from "./IssueTable.svelte";
   import UserProfile from "./UserProfile.svelte";
   import Modal from "./Modal.svelte";
-  import { WIP_THRESHOLDS } from "../../constants/thresholds";
+  import { WIP_LIMIT } from "../../constants/thresholds";
+  import { getGapsBinaryColorClass } from "../utils/gaps-helpers";
 
   interface IssueSummary {
     id: string;
@@ -86,17 +87,11 @@
   }
 
   function getWIPStatusText(count: number): string {
-    if (count >= WIP_THRESHOLDS.CRITICAL) return "Critical";
-    if (count >= WIP_THRESHOLDS.WARNING) return "Warning";
-    if (count <= WIP_THRESHOLDS.OK) return "Healthy";
-    return "Normal";
+    return count > WIP_LIMIT ? "Over Limit" : "OK";
   }
 
   function getWIPStatusClass(count: number): string {
-    if (count >= WIP_THRESHOLDS.CRITICAL) return "text-red-400";
-    if (count >= WIP_THRESHOLDS.WARNING) return "text-amber-400";
-    if (count <= WIP_THRESHOLDS.OK) return "text-emerald-400";
-    return "text-neutral-300";
+    return count > WIP_LIMIT ? "text-red-400" : "text-emerald-400";
   }
 
   const activeIssues = $derived(parseActiveIssues(engineer.active_issues));
@@ -201,11 +196,11 @@
         <div class="text-xs text-neutral-500">in WIP</div>
       </div>
       <div class="p-3 rounded-md border bg-neutral-800/50 border-white/5">
-        <div class="mb-1 text-xs text-neutral-500">Violations</div>
+        <div class="mb-1 text-xs text-neutral-500">Gaps</div>
         <div
-          class="text-2xl font-semibold {totalViolations > 0
-            ? 'text-amber-400'
-            : 'text-emerald-400'}"
+          class="text-2xl font-semibold {getGapsBinaryColorClass(
+            totalViolations
+          )}"
         >
           {totalViolations}
         </div>

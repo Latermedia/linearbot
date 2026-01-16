@@ -5,7 +5,8 @@
   import Skeleton from "$lib/components/Skeleton.svelte";
   import EngineersTable from "$lib/components/EngineersTable.svelte";
   import EngineerDetailModal from "$lib/components/EngineerDetailModal.svelte";
-  import { WIP_THRESHOLDS } from "../../constants/thresholds";
+  import { WIP_LIMIT } from "../../constants/thresholds";
+  import { getGapsBinaryColorClass } from "$lib/utils/gaps-helpers";
   import TeamFilter from "$lib/components/TeamFilter.svelte";
   import { teamsStore } from "$lib/stores/database";
   import {
@@ -129,7 +130,7 @@
         Engineer WIP
       </h1>
       <p class="mt-2 text-sm text-neutral-600 dark:text-neutral-400">
-        Work-in-progress tracking and constraint violations by engineer
+        Work-in-progress tracking and gaps by engineer
       </p>
     </div>
     <TeamFilter />
@@ -164,7 +165,7 @@
           {avgWIPPerEngineer}
         </div>
         <div class="text-xs text-neutral-500">
-          ideal: ≤{WIP_THRESHOLDS.IDEAL}
+          limit: {WIP_LIMIT}
         </div>
       </Card>
       <Card class="max-w-[180px]">
@@ -179,7 +180,7 @@
           {engineersOverLimit}
         </div>
         <div class="text-xs text-neutral-500">
-          engineers (≥{WIP_THRESHOLDS.WARNING})
+          engineers (>{WIP_LIMIT})
         </div>
       </Card>
       <Card class="max-w-[180px]">
@@ -187,9 +188,9 @@
           Total Gaps
         </div>
         <div
-          class="text-2xl font-semibold {totalViolations > 0
-            ? 'text-amber-500'
-            : 'text-emerald-500'}"
+          class="text-2xl font-semibold {getGapsBinaryColorClass(
+            totalViolations
+          )}"
         >
           {totalViolations}
         </div>

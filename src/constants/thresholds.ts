@@ -3,19 +3,8 @@
  * Centralizes magic numbers and makes them easily configurable
  */
 
-/**
- * WIP (Work in Progress) constraint thresholds
- */
-export const WIP_THRESHOLDS = {
-  /** Ideal maximum issues per assignee */
-  IDEAL: 5,
-  /** Warning threshold for assignee issue count */
-  WARNING: 6,
-  /** Critical threshold for assignee issue count */
-  CRITICAL: 8,
-  /** "OK" badge threshold */
-  OK: 4,
-} as const;
+/** Hard limit for WIP issues per engineer */
+export const WIP_LIMIT = 5;
 
 /**
  * Project activity thresholds

@@ -27,6 +27,7 @@
     hasNoRecentComment,
     hasWIPAgeViolation,
   } from "../utils/issue-validators";
+  import { getGapsBinaryColorClass } from "$lib/utils/gaps-helpers";
 
   // Engineer detail modal state (uses Engineer type which is compatible with EngineersTable's EngineerData)
   let selectedEngineer = $state<Engineer | null>(null);
@@ -404,12 +405,14 @@
           {teams.length}
         </div>
       </Card>
-      <Card class="max-w-[200px]">
-        <div class="mb-1 text-xs text-neutral-500 dark:text-neutral-300">
+      <Card class="relative max-w-[200px]">
+        <span
+          class="absolute top-2 right-2 inline-flex justify-center items-center w-3.5 h-3.5 text-[10px] rounded-full cursor-help bg-neutral-200 dark:bg-neutral-700 text-neutral-500 dark:text-neutral-400"
+          title="Number of active projects with work in progress. Target is based on having at least 2 ICs per project."
+          >i</span
+        >
+        <div class="pr-6 mb-1 text-xs text-neutral-500 dark:text-neutral-300">
           Projects
-          <span class="text-neutral-400 dark:text-neutral-500"
-            >(target: ≤{projectTarget})</span
-          >
         </div>
         <div
           class="text-2xl font-semibold {filteredProjects.size <= projectTarget
@@ -418,13 +421,18 @@
         >
           {filteredProjects.size}
         </div>
+        <div class="text-xs text-neutral-400 dark:text-neutral-500">
+          target: ≤{projectTarget}
+        </div>
       </Card>
-      <Card class="max-w-[200px]">
-        <div class="mb-1 text-xs text-neutral-500 dark:text-neutral-300">
+      <Card class="relative max-w-[200px]">
+        <span
+          class="absolute top-2 right-2 inline-flex justify-center items-center w-3.5 h-3.5 text-[10px] rounded-full cursor-help bg-neutral-200 dark:bg-neutral-700 text-neutral-500 dark:text-neutral-400"
+          title="Average number of projects each engineer is working on. Lower is better — engineers working on fewer projects can focus and deliver faster."
+          >i</span
+        >
+        <div class="pr-6 mb-1 text-xs text-neutral-500 dark:text-neutral-300">
           Projects/IC
-          <span class="text-neutral-400 dark:text-neutral-500"
-            >(target: ≤0.5)</span
-          >
         </div>
         <div
           class="text-2xl font-semibold {avgProjectsPerIC <= 0.5
@@ -433,21 +441,28 @@
         >
           {avgProjectsPerIC.toFixed(2)}
         </div>
+        <div class="text-xs text-neutral-400 dark:text-neutral-500">
+          target: ≤0.5
+        </div>
       </Card>
-      <Card class="max-w-[200px]">
-        <div class="mb-1 text-xs text-neutral-500 dark:text-neutral-300">
+      <Card class="relative max-w-[200px]">
+        <span
+          class="absolute top-2 right-2 inline-flex justify-center items-center w-3.5 h-3.5 text-[10px] rounded-full cursor-help bg-neutral-200 dark:bg-neutral-700 text-neutral-500 dark:text-neutral-400"
+          title="Total issues with missing data: missing estimates, missing priority, no recent comments (14+ days), or stale WIP (14+ days in progress)."
+          >i</span
+        >
+        <div class="pr-6 mb-1 text-xs text-neutral-500 dark:text-neutral-300">
           Gaps
-          <span class="text-neutral-400 dark:text-neutral-500">(target: 0)</span
-          >
         </div>
         <div
-          class="text-2xl font-semibold {projectViolationsCount +
-            icViolationsCount ===
-          0
-            ? 'text-green-600 dark:text-green-400'
-            : 'text-red-600 dark:text-red-400'}"
+          class="text-2xl font-semibold {getGapsBinaryColorClass(
+            projectViolationsCount + icViolationsCount
+          )}"
         >
           {projectViolationsCount + icViolationsCount}
+        </div>
+        <div class="text-xs text-neutral-400 dark:text-neutral-500">
+          target: 0
         </div>
       </Card>
     </div>
