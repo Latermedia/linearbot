@@ -1,5 +1,38 @@
 # Release Notes
 
+## v0.6.0
+
+### Added
+
+- Teams page with engineer mapping management
+- Engineer modal and non-project WIP display on main page
+- Four Pillars Metrics snapshot system with GetDX TrueThroughput integration
+- Composite healthy workload metric
+- Team whitelist and assignee filtering for sync
+- Project detail modal on metrics page
+- Project lead avatar URL sync
+- Active project count tracking per engineer
+
+### Changed
+
+- Renamed "violations" to "gaps" with unified terminology and styling
+- Redesigned projects table with gaps column
+- Redesigned WIP Health card with rotating principles
+- Refined progress bar with lighter purple tones
+- Updated project/IC target from 0.5 to 1.5
+
+### Fixed
+
+- Delete projects and engineers from non-whitelisted teams during sync
+- Threshold-based coloring for gaps display
+- Serve root-level static files like favicon
+- Shell compatibility for engineer team mapping quotes
+- Sync modal constrained to 90vh with scrollable content
+- WIP age validation now only checks in-progress issues
+- Stale sync state detection and reset
+- Sync status race conditions with optimistic UI updates
+- Bundle sync worker for production builds
+
 ## v0.5.0
 
 ### Added
