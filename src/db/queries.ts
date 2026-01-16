@@ -1173,6 +1173,25 @@ export function getTeamNamesByKey(): Record<string, string> {
 }
 
 /**
+ * Get mapping of team_name to team_key from issues table
+ * Returns a record like { "Engineering": "ENG", "Developer Experience": "DXP" }
+ */
+export function getTeamKeysByName(): Record<string, string> {
+  const db = getDatabase();
+  const query = db.prepare(`
+    SELECT DISTINCT team_key, team_name 
+    FROM issues 
+    WHERE team_key IS NOT NULL AND team_name IS NOT NULL
+  `);
+  const rows = query.all() as { team_key: string; team_name: string }[];
+  const result: Record<string, string> = {};
+  for (const row of rows) {
+    result[row.team_name] = row.team_key;
+  }
+  return result;
+}
+
+/**
  * Get global engineer WIP stats for engineers working on a team's projects
  * Returns full Engineer records from the engineers table for all engineers
  * who have WIP issues on projects belonging to the specified team
