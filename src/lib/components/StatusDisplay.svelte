@@ -15,7 +15,13 @@
     warnings = [],
   }: StatusDisplayProps = $props();
 
-  const config = $derived.by(() => {
+  type StatusConfig = {
+    iconType: "started" | "completed" | "canceled" | "default";
+    color: string;
+    bgColor: string;
+  };
+
+  const config: StatusConfig = $derived.by(() => {
     const name = stateName?.toLowerCase() || "";
     const type = stateType?.toLowerCase() || "";
 
@@ -25,7 +31,7 @@
       type === "completed"
     ) {
       return {
-        icon: CircleCheck,
+        iconType: "completed" as const,
         color: "text-green-400",
         bgColor: "bg-green-400/10",
       };
@@ -36,32 +42,56 @@
       name.includes("started")
     ) {
       return {
-        icon: Circle,
-        color: "text-blue-400",
-        bgColor: "bg-blue-400/10",
+        iconType: "started" as const,
+        color: "text-violet-400",
+        bgColor: "bg-violet-400/10",
       };
     }
     if (name.includes("cancel") || type === "canceled") {
       return {
-        icon: CircleX,
+        iconType: "canceled" as const,
         color: "text-neutral-500",
         bgColor: "bg-neutral-500/10",
       };
     }
     // Default/unstarted
     return {
-      icon: Circle,
+      iconType: "default" as const,
       color: "text-neutral-400",
       bgColor: "bg-neutral-400/10",
     };
   });
-
-  const Icon = $derived(config.icon);
 </script>
 
 <div class="flex gap-1.5 items-center">
   <div class="flex gap-1 items-center" title={stateName}>
-    <Icon class={config.color + " shrink-0"} size={14} />
+    {#if config.iconType === "started"}
+      <!-- Partial pie chart icon for in-progress -->
+      <svg
+        class="text-violet-400 shrink-0"
+        width="14"
+        height="14"
+        viewBox="0 0 24 24"
+        fill="none"
+        stroke="currentColor"
+        stroke-width="2"
+        stroke-linecap="round"
+        stroke-linejoin="round"
+      >
+        <circle cx="12" cy="12" r="10" />
+        <path
+          d="M12 2 A10 10 0 0 1 20.66 17 L12 12 Z"
+          fill="currentColor"
+          stroke="none"
+        />
+      </svg>
+    {:else if config.iconType === "completed"}
+      <CircleCheck class={config.color + " shrink-0"} size={14} />
+    {:else if config.iconType === "canceled"}
+      <CircleX class={config.color + " shrink-0"} size={14} />
+    {:else}
+      <Circle class={config.color + " shrink-0"} size={14} />
+    {/if}
     <span class="text-neutral-300 text-xs truncate max-w-[100px]">
       {stateName}
     </span>
