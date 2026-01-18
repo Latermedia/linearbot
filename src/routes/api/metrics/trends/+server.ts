@@ -7,6 +7,7 @@ import {
 import {
   safeParseMetricsSnapshot,
   type PillarStatus,
+  type ProductivityStatus,
 } from "../../../../types/metrics-snapshot.js";
 
 export interface TrendDataPoint {
@@ -14,6 +15,7 @@ export interface TrendDataPoint {
   teamHealth: {
     icViolationPercent: number;
     projectViolationPercent: number;
+    healthyWorkloadPercent: number;
     status: PillarStatus;
   };
   velocityHealth: {
@@ -21,6 +23,10 @@ export interface TrendDataPoint {
     atRiskPercent: number;
     offTrackPercent: number;
     status: PillarStatus;
+  };
+  productivity: {
+    trueThroughputPerEngineer: number | null;
+    status: ProductivityStatus;
   };
   quality: {
     compositeScore: number;
@@ -112,11 +118,19 @@ export const GET: RequestHandler = async ({ url }) => {
       const parsed = safeParseMetricsSnapshot(snapshot.metrics_json);
       if (!parsed) continue;
 
+      // Extract productivity data if available
+      const productivity = parsed.teamProductivity;
+      const trueThroughputPerEngineer =
+        "trueThroughput" in productivity
+          ? productivity.trueThroughputPerEngineer
+          : null;
+
       dataPoints.push({
         capturedAt: snapshot.captured_at,
         teamHealth: {
           icViolationPercent: parsed.teamHealth.icWipViolationPercent,
           projectViolationPercent: parsed.teamHealth.projectWipViolationPercent,
+          healthyWorkloadPercent: parsed.teamHealth.healthyWorkloadPercent,
           status: parsed.teamHealth.status,
         },
         velocityHealth: {
@@ -124,6 +138,10 @@ export const GET: RequestHandler = async ({ url }) => {
           atRiskPercent: parsed.velocityHealth.atRiskPercent,
           offTrackPercent: parsed.velocityHealth.offTrackPercent,
           status: parsed.velocityHealth.status,
+        },
+        productivity: {
+          trueThroughputPerEngineer,
+          status: productivity.status,
         },
         quality: {
           compositeScore: parsed.quality.compositeScore,

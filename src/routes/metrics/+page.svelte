@@ -5,6 +5,7 @@
   import Skeleton from "$lib/components/Skeleton.svelte";
   import Badge from "$lib/components/Badge.svelte";
   import ProjectDetailModal from "$lib/components/ProjectDetailModal.svelte";
+  import FourPillarsChart from "$lib/components/FourPillarsChart.svelte";
   import { databaseStore, projectsStore } from "$lib/stores/database";
   import type { ProjectSummary } from "$lib/project-data";
   import type {
@@ -14,6 +15,10 @@
     TeamProductivityV1,
   } from "../../types/metrics-snapshot";
   import type { LatestMetricsResponse } from "../api/metrics/latest/+server";
+  import type {
+    TrendDataPoint,
+    TrendsResponse,
+  } from "../api/metrics/trends/+server";
 
   // Engineering principles - rotates every 5 seconds
   const principles = [
@@ -68,6 +73,10 @@
   let selectedLevel = $state<"org" | "domain" | "team">("org");
   let teamNames = $state<Record<string, string>>({});
 
+  // Trend data state
+  let trendDataPoints = $state<TrendDataPoint[]>([]);
+  let trendLoading = $state(true);
+
   // Fetch metrics data
   async function fetchMetrics() {
     if (!browser) return;
@@ -98,6 +107,31 @@
     }
   }
 
+  // Fetch trend data for all-time view
+  async function fetchTrendData() {
+    if (!browser) return;
+
+    trendLoading = true;
+
+    try {
+      // Fetch all available trend data (high limit to get all-time data)
+      const response = await fetch("/api/metrics/trends?level=org&limit=10000");
+      const data = (await response.json()) as TrendsResponse;
+
+      if (data.success && data.dataPoints) {
+        // Sort by capturedAt ascending (oldest first, time flows left to right)
+        trendDataPoints = data.dataPoints.sort(
+          (a, b) =>
+            new Date(a.capturedAt).getTime() - new Date(b.capturedAt).getTime()
+        );
+      }
+    } catch (e) {
+      console.error("Failed to fetch trend data:", e);
+    } finally {
+      trendLoading = false;
+    }
+  }
+
   // State for project detail modal
   let selectedProject = $state<ProjectSummary | null>(null);
 
@@ -115,6 +149,7 @@
   // Load on mount
   onMount(() => {
     fetchMetrics();
+    fetchTrendData();
     databaseStore.load();
   });
 
@@ -276,9 +311,9 @@
     <h1 class="text-2xl font-semibold tracking-tight text-white">
       Engineering Metrics
     </h1>
-    <div class="overflow-hidden">
+    <div class="relative h-6 mt-1 -ml-4 pl-4 -mr-4 pr-4 overflow-hidden">
       <p
-        class="mt-1 text-sm text-neutral-400 italic principle-text {isAnimating
+        class="absolute left-4 right-4 top-0 text-sm text-neutral-400 italic principle-text {isAnimating
           ? 'principle-exit'
           : 'principle-enter'}"
       >
@@ -640,6 +675,27 @@
             </div>
           </div>
         </div>
+      </Card>
+    </div>
+
+    <!-- Four Pillars Trend Chart -->
+    <div class="mt-8">
+      <h2 class="mb-4 text-lg font-medium text-white">Trends</h2>
+      <Card>
+        {#if trendLoading}
+          <div class="flex justify-center items-center h-[280px]">
+            <Skeleton class="w-full h-64" />
+          </div>
+        {:else if trendDataPoints.length > 0}
+          <FourPillarsChart dataPoints={trendDataPoints} />
+        {:else}
+          <div
+            class="flex justify-center items-center h-[280px] text-sm text-neutral-500"
+          >
+            No trend data available yet. Metrics are captured hourly after each
+            sync.
+          </div>
+        {/if}
       </Card>
     </div>
 
