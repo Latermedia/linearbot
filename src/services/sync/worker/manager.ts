@@ -56,11 +56,19 @@ function ensureHandle(): WorkerHandle {
       }
 
       if (msg.type === "metadata") {
+        // Only update currentPhase from metadata if it's non-null.
+        // Progress messages are the authoritative source for currentPhase during sync,
+        // and metadata snapshots may lag behind or have null values before the DB is updated.
+        const currentState = getSyncState();
+        const newPhase =
+          msg.currentPhase ??
+          (currentState.isRunning ? currentState.currentPhase : null);
+
         setSyncState({
           status: msg.status,
           apiQueryCount: msg.apiQueryCount ?? undefined,
           statusMessage: msg.statusMessage ?? null,
-          currentPhase: msg.currentPhase ?? null,
+          currentPhase: newPhase,
           hasPartialSync: msg.hasPartialSync,
           partialSyncProgress: msg.partialSyncProgress ?? null,
         });
