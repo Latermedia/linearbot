@@ -659,25 +659,11 @@ export function formatAccuracyRatio(ratio: number | null): string {
 
 /**
  * Get color class for accuracy ratio
- * Green: within 30% (0.7-1.3)
- * Yellow: 30-70% off (0.3-0.7 or 1.3-1.7)
- * Red: 70%+ off (< 0.3 or > 1.7)
+ * Uses neutral gray for all values
  */
 export function getAccuracyColorClass(ratio: number | null): string {
   if (ratio === null) return "text-neutral-500";
-
-  // Green: within 30% (0.7 to 1.3 inclusive)
-  if (ratio >= 0.7 && ratio <= 1.3) {
-    return "text-green-400";
-  }
-  // Yellow: 30-70% off (0.3-0.7 or 1.3-1.7)
-  else if ((ratio >= 0.3 && ratio < 0.7) || (ratio > 1.3 && ratio <= 1.7)) {
-    return "text-amber-400";
-  }
-  // Red: 70%+ off
-  else {
-    return "text-red-400";
-  }
+  return "text-neutral-300";
 }
 
 /**

@@ -21,7 +21,7 @@
         return {
           icon: CircleAlert,
           label: "Urgent",
-          color: "text-red-400",
+          color: "text-neutral-300",
         };
       case 2:
         return {
