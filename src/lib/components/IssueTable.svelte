@@ -158,15 +158,23 @@
         issuesByState.get(stateName)!.push(issue);
       }
 
-      // Sort states: completed first, then in progress, then others
+      // Sort by Linear's state_type: started, unstarted, triage, backlog, completed, canceled
+      const stateTypeOrder: Record<string, number> = {
+        started: 1,
+        unstarted: 2,
+        triage: 3,
+        backlog: 4,
+        completed: 5,
+        canceled: 6,
+      };
+
       const sortedStates = Array.from(issuesByState.entries()).sort((a, b) => {
-        const aLower = a[0].toLowerCase();
-        const bLower = b[0].toLowerCase();
-        if (aLower.includes("done") || aLower.includes("completed")) return -1;
-        if (bLower.includes("done") || bLower.includes("completed")) return 1;
-        if (aLower.includes("progress") || aLower.includes("started"))
-          return -1;
-        if (bLower.includes("progress") || bLower.includes("started")) return 1;
+        // Get state_type from first issue in each group
+        const aStateType = a[1][0]?.state_type || "";
+        const bStateType = b[1][0]?.state_type || "";
+        const aPriority = stateTypeOrder[aStateType] ?? 99;
+        const bPriority = stateTypeOrder[bStateType] ?? 99;
+        if (aPriority !== bPriority) return aPriority - bPriority;
         return a[0].localeCompare(b[0]);
       });
 
@@ -227,9 +235,9 @@
         </select>
       </div>
     {/if}
-    <div class="overflow-x-auto">
+    <div class="overflow-x-auto max-h-[70vh] overflow-y-auto">
       <table class="w-full text-xs min-w-[680px]">
-        <thead>
+        <thead class="sticky top-0 z-10 bg-neutral-900">
           <tr class="border-b border-white/10">
             <th
               class="px-2 py-1.5 font-medium text-left text-neutral-400 w-[310px] min-w-[310px]"

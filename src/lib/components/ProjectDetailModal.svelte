@@ -410,7 +410,7 @@
     (project.noRecentCommentCount || 0) +
     (project.wipAgeViolationCount || 0)}
   {#if allGaps.length > 0}
-    <div class="p-4 mb-6 rounded-md border bg-neutral-800/50 border-white/5">
+    <div class="p-4 mb-6 rounded-md ring-1 ring-red-400 bg-neutral-800/50">
       <div
         class="flex gap-2 items-center mb-3 text-sm font-medium text-neutral-300"
       >
@@ -693,269 +693,118 @@
         }
         return map;
       })()}
+      {@const stateTypeOrder = {
+        started: 1,
+        unstarted: 2,
+        triage: 3,
+        backlog: 4,
+        completed: 5,
+        canceled: 6,
+      } as Record}
       {@const sortedStates = Array.from(issuesByState.entries()).sort(
         (a, b) => {
-          // Sort states: completed first, then in progress, then others
-          const aLower = a[0].toLowerCase();
-          const bLower = b[0].toLowerCase();
-          if (aLower.includes("done") || aLower.includes("completed"))
-            return -1;
-          if (bLower.includes("done") || bLower.includes("completed")) return 1;
-          if (aLower.includes("progress") || aLower.includes("started"))
-            return -1;
-          if (bLower.includes("progress") || bLower.includes("started"))
-            return 1;
+          // Sort by Linear's state_type: started, unstarted, triage, backlog, completed, canceled
+          const aStateType = a[1][0]?.state_type || "";
+          const bStateType = b[1][0]?.state_type || "";
+          const aPriority = stateTypeOrder[aStateType] ?? 99;
+          const bPriority = stateTypeOrder[bStateType] ?? 99;
+          if (aPriority !== bPriority) return aPriority - bPriority;
           return a[0].localeCompare(b[0]);
         }
       )}
       {@const columnCount = project.daysPerStoryPoint !== null ? 9 : 8}
-      <table class="w-full text-xs min-w-[680px]">
-        <thead>
-          <tr class="border-b border-white/10">
-            <th
-              class="px-2 py-1.5 font-medium text-left text-neutral-400 w-[310px] min-w-[310px]"
-              >Title</th
-            >
-            <th
-              class="px-2 py-1.5 font-medium text-left text-neutral-400 w-[120px] min-w-[120px]"
-              >Assignee</th
-            >
-            <th
-              class="px-2 py-1.5 font-medium text-left text-neutral-400 w-[120px] min-w-[120px]"
-              >Status</th
-            >
-            <th
-              class="px-2 py-1.5 font-medium text-right text-neutral-400 w-[70px] min-w-[70px]"
-              >Points</th
-            >
-            <th
-              class="px-2 py-1.5 font-medium text-right text-neutral-400 w-[80px] min-w-[80px]"
-              >Priority</th
-            >
-            <th
-              class="px-2 py-1.5 font-medium text-right text-neutral-400 w-[110px] min-w-[110px]"
-              title="Time since last comment">Last Comment</th
-            >
-            <th
-              class="px-2 py-1.5 font-medium text-right text-neutral-400 w-[80px] min-w-[80px]"
-              title="Total number of comments">Comments</th
-            >
-            <th
-              class="px-2 py-1.5 font-medium text-right text-neutral-400 w-[70px] min-w-[70px]"
-              >WIP Age</th
-            >
-            {#if project.daysPerStoryPoint !== null}
+      <div class="overflow-x-auto max-h-[60vh] overflow-y-auto">
+        <table class="w-full text-xs min-w-[680px]">
+          <thead class="sticky top-0 z-10 bg-neutral-900">
+            <tr class="border-b border-white/10">
               <th
-                class="px-2 py-1.5 font-medium text-right text-neutral-400 w-[120px] min-w-[120px]"
-                title="Ratio of actual time to estimated time. 1.0x = perfect match. < 1.0x = faster than estimated, > 1.0x = slower than estimated. Green = within 30%, Yellow = 30-70% off, Red = 70%+ off."
-                >Estimate Accuracy</th
+                class="px-2 py-1.5 font-medium text-left text-neutral-400 w-[310px] min-w-[310px]"
+                >Title</th
               >
-            {/if}
-          </tr>
-        </thead>
-        <tbody>
-          {#each sortedStates as [state, issues]}
-            <!-- Status Divider Row -->
-            <tr>
-              <td colspan={columnCount} class="px-2 py-2.5">
-                <span class="-ml-1 text-xs font-semibold text-neutral-400">
-                  {state} ({issues.length})
-                </span>
-              </td>
-            </tr>
-            <!-- Issues for this state - grouped by parent -->
-            {@const groupedIssues = groupIssuesByParent(issues)}
-            {#each groupedIssues as groupedIssue}
-              {#if "parent" in groupedIssue}
-                {@const parent = groupedIssue.parent}
-                {@const subissues = groupedIssue.subissues}
-                {@const isCompleted = (() => {
-                  const stateName = parent.state_name?.toLowerCase() || "";
-                  return (
-                    stateName.includes("done") ||
-                    stateName.includes("completed")
-                  );
-                })()}
-                {@const wipAge = calculateWIPAge(parent, isCompleted)}
-                {@const issueAccuracyRatio =
-                  project.daysPerStoryPoint !== null && isCompleted
-                    ? calculateIssueAccuracyRatio(
-                        parent,
-                        project.daysPerStoryPoint
-                      )
-                    : null}
-                {@const commentRecency = formatCommentRecency(
-                  parent.last_comment_at
-                )}
-                {@const hasOldComment = hasNoRecentComment(parent)}
-                {@const missingEstimate = hasMissingEstimate(parent)}
-                {@const hasStatusMismatch = hasSubissueStatusMismatch(
-                  parent,
-                  projectIssues
-                )}
-                <!-- Parent issue row -->
-                <tr
-                  class="border-b transition-colors cursor-pointer border-white/5 hover:bg-white/5 focus:outline-none"
-                  onclick={() => {
-                    if (parent.url && browser) {
-                      window.open(parent.url, "_blank", "noopener,noreferrer");
-                    }
-                  }}
-                  role="button"
-                  tabindex="0"
-                  onkeydown={(e) => {
-                    if (
-                      (e.key === "Enter" || e.key === " ") &&
-                      parent.url &&
-                      browser
-                    ) {
-                      e.preventDefault();
-                      window.open(parent.url, "_blank", "noopener,noreferrer");
-                    }
-                  }}
+              <th
+                class="px-2 py-1.5 font-medium text-left text-neutral-400 w-[120px] min-w-[120px]"
+                >Assignee</th
+              >
+              <th
+                class="px-2 py-1.5 font-medium text-left text-neutral-400 w-[120px] min-w-[120px]"
+                >Status</th
+              >
+              <th
+                class="px-2 py-1.5 font-medium text-right text-neutral-400 w-[70px] min-w-[70px]"
+                >Points</th
+              >
+              <th
+                class="px-2 py-1.5 font-medium text-right text-neutral-400 w-[80px] min-w-[80px]"
+                >Priority</th
+              >
+              <th
+                class="px-2 py-1.5 font-medium text-right text-neutral-400 w-[110px] min-w-[110px]"
+                title="Time since last comment">Last Comment</th
+              >
+              <th
+                class="px-2 py-1.5 font-medium text-right text-neutral-400 w-[80px] min-w-[80px]"
+                title="Total number of comments">Comments</th
+              >
+              <th
+                class="px-2 py-1.5 font-medium text-right text-neutral-400 w-[70px] min-w-[70px]"
+                >WIP Age</th
+              >
+              {#if project.daysPerStoryPoint !== null}
+                <th
+                  class="px-2 py-1.5 font-medium text-right text-neutral-400 w-[120px] min-w-[120px]"
+                  title="Ratio of actual time to estimated time. 1.0x = perfect match. < 1.0x = faster than estimated, > 1.0x = slower than estimated. Green = within 30%, Yellow = 30-70% off, Red = 70%+ off."
+                  >Estimate Accuracy</th
                 >
-                  <td
-                    class="px-2 py-1.5 text-neutral-200 w-[310px] min-w-[310px] max-w-[310px]"
-                  >
-                    <div
-                      class="overflow-hidden truncate whitespace-nowrap text-ellipsis"
-                      title={parent.title}
-                    >
-                      {parent.title}
-                      {#if subissues.length > 0}
-                        <span class="ml-1 text-xs text-neutral-500"
-                          >({subissues.length})</span
-                        >
-                      {/if}
-                    </div>
-                  </td>
-                  <td class="px-2 py-1.5 w-[120px] min-w-[120px] max-w-[120px]">
-                    {#if parent.assignee_name}
-                      <UserProfile
-                        name={parent.assignee_name}
-                        avatarUrl={parent.assignee_avatar_url}
-                        size="xs"
-                      />
-                    {:else}
-                      <span class="text-xs text-neutral-500">Unassigned</span>
-                    {/if}
-                  </td>
-                  <td class="px-2 py-1.5">
-                    <StatusDisplay
-                      stateName={parent.state_name || ""}
-                      stateType={parent.state_type || ""}
-                      showWarnings={!hideWarnings}
-                      warnings={hasStatusMismatch
-                        ? [
-                            {
-                              type: "status-mismatch",
-                              message:
-                                "Parent issue is done but has incomplete subissues",
-                            },
-                          ]
-                        : []}
-                    />
-                  </td>
-                  <td
-                    class="px-2 py-1.5 text-right text-neutral-300 w-[70px] min-w-[70px]"
-                  >
-                    <div class="flex gap-1.5 justify-end items-center">
-                      {#if parent.estimate !== null && parent.estimate !== undefined}
-                        {Math.round(parent.estimate)}
-                      {:else if !hideWarnings && missingEstimate}
-                        <span class="text-amber-400" title="Missing estimate"
-                          >⚠️</span
-                        >
-                      {:else}
-                        <span class="text-neutral-500">—</span>
-                      {/if}
-                    </div>
-                  </td>
-                  <td class="px-2 py-1.5 text-right w-[80px] min-w-[80px]">
-                    <div class="flex justify-end">
-                      <PriorityDisplay priority={parent.priority || 0} />
-                    </div>
-                  </td>
-                  <td class="px-2 py-1.5 text-right w-[110px] min-w-[110px]">
-                    <div class="flex gap-1.5 justify-end items-center">
-                      {#if !hideWarnings && hasOldComment}
-                        <span
-                          class="text-amber-400 shrink-0"
-                          title="No comment since last business day">⚠️</span
-                        >
-                      {/if}
-                      <span
-                        class={!hideWarnings && hasOldComment
-                          ? "text-amber-400"
-                          : "text-neutral-300"}>{commentRecency}</span
-                      >
-                    </div>
-                  </td>
-                  <td
-                    class="px-2 py-1.5 text-right text-neutral-300 w-[80px] min-w-[80px]"
-                  >
-                    {formatCommentCount(parent.comment_count)}
-                  </td>
-                  <td
-                    class="px-2 py-1.5 text-right text-neutral-300 w-[70px] min-w-[70px]"
-                  >
-                    <div class="flex gap-1 justify-end items-center">
-                      {#if hasWIPAgeViolation(parent)}
-                        <span
-                          class="text-amber-400"
-                          title="WIP age exceeds 14 days">⚠️</span
-                        >
-                      {/if}
-                      {formatWIPAge(wipAge)}
-                    </div>
-                  </td>
-                  {#if project.daysPerStoryPoint !== null}
-                    <td class="px-2 py-1.5 text-right w-[120px] min-w-[120px]">
-                      {#if issueAccuracyRatio !== null}
-                        <span
-                          class={getAccuracyColorClass(issueAccuracyRatio)}
-                          title={issueAccuracyRatio === 1.0
-                            ? "Perfect match! Actual time equals estimated time (1.0x)"
-                            : issueAccuracyRatio >= 1.0
-                              ? `Took ${((issueAccuracyRatio - 1) * 100).toFixed(0)}% longer than estimated (goal: 1.0x)`
-                              : `Completed ${((1 - issueAccuracyRatio) * 100).toFixed(0)}% faster than estimated (goal: 1.0x)`}
-                        >
-                          {formatAccuracyRatio(issueAccuracyRatio)}
-                        </span>
-                      {:else}
-                        <span class="text-neutral-500">—</span>
-                      {/if}
-                    </td>
-                  {/if}
-                </tr>
-                <!-- Subissue rows -->
-                {#each subissues as subissue}
-                  {@const subIsCompleted = (() => {
-                    const stateName = subissue.state_name?.toLowerCase() || "";
+              {/if}
+            </tr>
+          </thead>
+          <tbody>
+            {#each sortedStates as [state, issues]}
+              <!-- Status Divider Row -->
+              <tr>
+                <td colspan={columnCount} class="px-2 py-2.5">
+                  <span class="-ml-1 text-xs font-semibold text-neutral-400">
+                    {state} ({issues.length})
+                  </span>
+                </td>
+              </tr>
+              <!-- Issues for this state - grouped by parent -->
+              {@const groupedIssues = groupIssuesByParent(issues)}
+              {#each groupedIssues as groupedIssue}
+                {#if "parent" in groupedIssue}
+                  {@const parent = groupedIssue.parent}
+                  {@const subissues = groupedIssue.subissues}
+                  {@const isCompleted = (() => {
+                    const stateName = parent.state_name?.toLowerCase() || "";
                     return (
                       stateName.includes("done") ||
                       stateName.includes("completed")
                     );
                   })()}
-                  {@const subWipAge = calculateWIPAge(subissue, subIsCompleted)}
-                  {@const subIssueAccuracyRatio =
-                    project.daysPerStoryPoint !== null && subIsCompleted
+                  {@const wipAge = calculateWIPAge(parent, isCompleted)}
+                  {@const issueAccuracyRatio =
+                    project.daysPerStoryPoint !== null && isCompleted
                       ? calculateIssueAccuracyRatio(
-                          subissue,
+                          parent,
                           project.daysPerStoryPoint
                         )
                       : null}
-                  {@const subCommentRecency = formatCommentRecency(
-                    subissue.last_comment_at
+                  {@const commentRecency = formatCommentRecency(
+                    parent.last_comment_at
                   )}
-                  {@const subHasOldComment = hasNoRecentComment(subissue)}
-                  {@const subMissingEstimate = hasMissingEstimate(subissue)}
+                  {@const hasOldComment = hasNoRecentComment(parent)}
+                  {@const missingEstimate = hasMissingEstimate(parent)}
+                  {@const hasStatusMismatch = hasSubissueStatusMismatch(
+                    parent,
+                    projectIssues
+                  )}
+                  <!-- Parent issue row -->
                   <tr
                     class="border-b transition-colors cursor-pointer border-white/5 hover:bg-white/5 focus:outline-none"
                     onclick={() => {
-                      if (subissue.url && browser) {
+                      if (parent.url && browser) {
                         window.open(
-                          subissue.url,
+                          parent.url,
                           "_blank",
                           "noopener,noreferrer"
                         );
@@ -966,12 +815,12 @@
                     onkeydown={(e) => {
                       if (
                         (e.key === "Enter" || e.key === " ") &&
-                        subissue.url &&
+                        parent.url &&
                         browser
                       ) {
                         e.preventDefault();
                         window.open(
-                          subissue.url,
+                          parent.url,
                           "_blank",
                           "noopener,noreferrer"
                         );
@@ -982,20 +831,24 @@
                       class="px-2 py-1.5 text-neutral-200 w-[310px] min-w-[310px] max-w-[310px]"
                     >
                       <div
-                        class="overflow-hidden pl-6 truncate whitespace-nowrap text-ellipsis"
-                        title={subissue.title}
+                        class="overflow-hidden truncate whitespace-nowrap text-ellipsis"
+                        title={parent.title}
                       >
-                        <span class="mr-1 text-neutral-400 shrink-0">↳</span>
-                        {subissue.title}
+                        {parent.title}
+                        {#if subissues.length > 0}
+                          <span class="ml-1 text-xs text-neutral-500"
+                            >({subissues.length})</span
+                          >
+                        {/if}
                       </div>
                     </td>
                     <td
                       class="px-2 py-1.5 w-[120px] min-w-[120px] max-w-[120px]"
                     >
-                      {#if subissue.assignee_name}
+                      {#if parent.assignee_name}
                         <UserProfile
-                          name={subissue.assignee_name}
-                          avatarUrl={subissue.assignee_avatar_url}
+                          name={parent.assignee_name}
+                          avatarUrl={parent.assignee_avatar_url}
                           size="xs"
                         />
                       {:else}
@@ -1004,19 +857,27 @@
                     </td>
                     <td class="px-2 py-1.5">
                       <StatusDisplay
-                        stateName={subissue.state_name || ""}
-                        stateType={subissue.state_type || ""}
+                        stateName={parent.state_name || ""}
+                        stateType={parent.state_type || ""}
                         showWarnings={!hideWarnings}
-                        warnings={[]}
+                        warnings={hasStatusMismatch
+                          ? [
+                              {
+                                type: "status-mismatch",
+                                message:
+                                  "Parent issue is done but has incomplete subissues",
+                              },
+                            ]
+                          : []}
                       />
                     </td>
                     <td
                       class="px-2 py-1.5 text-right text-neutral-300 w-[70px] min-w-[70px]"
                     >
                       <div class="flex gap-1.5 justify-end items-center">
-                        {#if subissue.estimate !== null && subissue.estimate !== undefined}
-                          {Math.round(subissue.estimate)}
-                        {:else if !hideWarnings && subMissingEstimate}
+                        {#if parent.estimate !== null && parent.estimate !== undefined}
+                          {Math.round(parent.estimate)}
+                        {:else if !hideWarnings && missingEstimate}
                           <span class="text-amber-400" title="Missing estimate"
                             >⚠️</span
                           >
@@ -1027,56 +888,56 @@
                     </td>
                     <td class="px-2 py-1.5 text-right w-[80px] min-w-[80px]">
                       <div class="flex justify-end">
-                        <PriorityDisplay priority={subissue.priority || 0} />
+                        <PriorityDisplay priority={parent.priority || 0} />
                       </div>
                     </td>
                     <td class="px-2 py-1.5 text-right w-[110px] min-w-[110px]">
                       <div class="flex gap-1.5 justify-end items-center">
-                        {#if !hideWarnings && subHasOldComment}
+                        {#if !hideWarnings && hasOldComment}
                           <span
                             class="text-amber-400 shrink-0"
                             title="No comment since last business day">⚠️</span
                           >
                         {/if}
                         <span
-                          class={!hideWarnings && subHasOldComment
+                          class={!hideWarnings && hasOldComment
                             ? "text-amber-400"
-                            : "text-neutral-300"}>{subCommentRecency}</span
+                            : "text-neutral-300"}>{commentRecency}</span
                         >
                       </div>
                     </td>
                     <td
                       class="px-2 py-1.5 text-right text-neutral-300 w-[80px] min-w-[80px]"
                     >
-                      {formatCommentCount(subissue.comment_count)}
+                      {formatCommentCount(parent.comment_count)}
                     </td>
                     <td
                       class="px-2 py-1.5 text-right text-neutral-300 w-[70px] min-w-[70px]"
                     >
                       <div class="flex gap-1 justify-end items-center">
-                        {#if hasWIPAgeViolation(subissue)}
+                        {#if hasWIPAgeViolation(parent)}
                           <span
                             class="text-amber-400"
                             title="WIP age exceeds 14 days">⚠️</span
                           >
                         {/if}
-                        {formatWIPAge(subWipAge)}
+                        {formatWIPAge(wipAge)}
                       </div>
                     </td>
                     {#if project.daysPerStoryPoint !== null}
                       <td
                         class="px-2 py-1.5 text-right w-[120px] min-w-[120px]"
                       >
-                        {#if subIssueAccuracyRatio !== null}
+                        {#if issueAccuracyRatio !== null}
                           <span
-                            class={getAccuracyColorClass(subIssueAccuracyRatio)}
-                            title={subIssueAccuracyRatio === 1.0
+                            class={getAccuracyColorClass(issueAccuracyRatio)}
+                            title={issueAccuracyRatio === 1.0
                               ? "Perfect match! Actual time equals estimated time (1.0x)"
-                              : subIssueAccuracyRatio >= 1.0
-                                ? `Took ${((subIssueAccuracyRatio - 1) * 100).toFixed(0)}% longer than estimated (goal: 1.0x)`
-                                : `Completed ${((1 - subIssueAccuracyRatio) * 100).toFixed(0)}% faster than estimated (goal: 1.0x)`}
+                              : issueAccuracyRatio >= 1.0
+                                ? `Took ${((issueAccuracyRatio - 1) * 100).toFixed(0)}% longer than estimated (goal: 1.0x)`
+                                : `Completed ${((1 - issueAccuracyRatio) * 100).toFixed(0)}% faster than estimated (goal: 1.0x)`}
                           >
-                            {formatAccuracyRatio(subIssueAccuracyRatio)}
+                            {formatAccuracyRatio(issueAccuracyRatio)}
                           </span>
                         {:else}
                           <span class="text-neutral-500">—</span>
@@ -1084,155 +945,328 @@
                       </td>
                     {/if}
                   </tr>
-                {/each}
-              {:else}
-                {@const issue = groupedIssue}
-                {@const isCompleted = (() => {
-                  const stateName = issue.state_name?.toLowerCase() || "";
-                  return (
-                    stateName.includes("done") ||
-                    stateName.includes("completed")
-                  );
-                })()}
-                {@const wipAge = calculateWIPAge(issue, isCompleted)}
-                {@const issueAccuracyRatio =
-                  project.daysPerStoryPoint !== null && isCompleted
-                    ? calculateIssueAccuracyRatio(
-                        issue,
-                        project.daysPerStoryPoint
-                      )
-                    : null}
-                {@const commentRecency = formatCommentRecency(
-                  issue.last_comment_at
-                )}
-                {@const hasOldComment = hasNoRecentComment(issue)}
-                {@const missingEstimate = hasMissingEstimate(issue)}
-                <tr
-                  class="border-b transition-colors cursor-pointer border-white/5 hover:bg-white/5 focus:outline-none"
-                  onclick={() => {
-                    if (issue.url && browser) {
-                      window.open(issue.url, "_blank", "noopener,noreferrer");
-                    }
-                  }}
-                  role="button"
-                  tabindex="0"
-                  onkeydown={(e) => {
-                    if (
-                      (e.key === "Enter" || e.key === " ") &&
-                      issue.url &&
-                      browser
-                    ) {
-                      e.preventDefault();
-                      window.open(issue.url, "_blank", "noopener,noreferrer");
-                    }
-                  }}
-                >
-                  <td
-                    class="px-2 py-1.5 text-neutral-200 w-[310px] min-w-[310px] max-w-[310px]"
-                  >
-                    <div
-                      class="overflow-hidden truncate whitespace-nowrap text-ellipsis"
-                      title={issue.title}
+                  <!-- Subissue rows -->
+                  {#each subissues as subissue}
+                    {@const subIsCompleted = (() => {
+                      const stateName =
+                        subissue.state_name?.toLowerCase() || "";
+                      return (
+                        stateName.includes("done") ||
+                        stateName.includes("completed")
+                      );
+                    })()}
+                    {@const subWipAge = calculateWIPAge(
+                      subissue,
+                      subIsCompleted
+                    )}
+                    {@const subIssueAccuracyRatio =
+                      project.daysPerStoryPoint !== null && subIsCompleted
+                        ? calculateIssueAccuracyRatio(
+                            subissue,
+                            project.daysPerStoryPoint
+                          )
+                        : null}
+                    {@const subCommentRecency = formatCommentRecency(
+                      subissue.last_comment_at
+                    )}
+                    {@const subHasOldComment = hasNoRecentComment(subissue)}
+                    {@const subMissingEstimate = hasMissingEstimate(subissue)}
+                    <tr
+                      class="border-b transition-colors cursor-pointer border-white/5 hover:bg-white/5 focus:outline-none"
+                      onclick={() => {
+                        if (subissue.url && browser) {
+                          window.open(
+                            subissue.url,
+                            "_blank",
+                            "noopener,noreferrer"
+                          );
+                        }
+                      }}
+                      role="button"
+                      tabindex="0"
+                      onkeydown={(e) => {
+                        if (
+                          (e.key === "Enter" || e.key === " ") &&
+                          subissue.url &&
+                          browser
+                        ) {
+                          e.preventDefault();
+                          window.open(
+                            subissue.url,
+                            "_blank",
+                            "noopener,noreferrer"
+                          );
+                        }
+                      }}
                     >
-                      {issue.title}
-                    </div>
-                  </td>
-                  <td class="px-2 py-1.5 w-[120px] min-w-[120px] max-w-[120px]">
-                    {#if issue.assignee_name}
-                      <UserProfile
-                        name={issue.assignee_name}
-                        avatarUrl={issue.assignee_avatar_url}
-                        size="xs"
-                      />
-                    {:else}
-                      <span class="text-xs text-neutral-500">Unassigned</span>
-                    {/if}
-                  </td>
-                  <td class="px-2 py-1.5">
-                    <StatusDisplay
-                      stateName={issue.state_name || ""}
-                      stateType={issue.state_type || ""}
-                      showWarnings={!hideWarnings}
-                      warnings={[]}
-                    />
-                  </td>
-                  <td
-                    class="px-2 py-1.5 text-right text-neutral-300 w-[70px] min-w-[70px]"
-                  >
-                    <div class="flex gap-1.5 justify-end items-center">
-                      {#if issue.estimate !== null && issue.estimate !== undefined}
-                        {Math.round(issue.estimate)}
-                      {:else if !hideWarnings && missingEstimate}
-                        <span class="text-amber-400" title="Missing estimate"
-                          >⚠️</span
-                        >
-                      {:else}
-                        <span class="text-neutral-500">—</span>
-                      {/if}
-                    </div>
-                  </td>
-                  <td class="px-2 py-1.5 text-right w-[80px] min-w-[80px]">
-                    <div class="flex justify-end">
-                      <PriorityDisplay priority={issue.priority || 0} />
-                    </div>
-                  </td>
-                  <td class="px-2 py-1.5 text-right w-[110px] min-w-[110px]">
-                    <div class="flex gap-1.5 justify-end items-center">
-                      {#if !hideWarnings && hasOldComment}
-                        <span
-                          class="text-amber-400 shrink-0"
-                          title="No comment since last business day">⚠️</span
-                        >
-                      {/if}
-                      <span
-                        class={!hideWarnings && hasOldComment
-                          ? "text-amber-400"
-                          : "text-neutral-300"}>{commentRecency}</span
+                      <td
+                        class="px-2 py-1.5 text-neutral-200 w-[310px] min-w-[310px] max-w-[310px]"
                       >
-                    </div>
-                  </td>
-                  <td
-                    class="px-2 py-1.5 text-right text-neutral-300 w-[80px] min-w-[80px]"
-                  >
-                    {formatCommentCount(issue.comment_count)}
-                  </td>
-                  <td
-                    class="px-2 py-1.5 text-right text-neutral-300 w-[70px] min-w-[70px]"
-                  >
-                    <div class="flex gap-1 justify-end items-center">
-                      {#if hasWIPAgeViolation(issue)}
-                        <span
-                          class="text-amber-400"
-                          title="WIP age exceeds 14 days">⚠️</span
+                        <div
+                          class="overflow-hidden pl-6 truncate whitespace-nowrap text-ellipsis"
+                          title={subissue.title}
                         >
+                          <span class="mr-1 text-neutral-400 shrink-0">↳</span>
+                          {subissue.title}
+                        </div>
+                      </td>
+                      <td
+                        class="px-2 py-1.5 w-[120px] min-w-[120px] max-w-[120px]"
+                      >
+                        {#if subissue.assignee_name}
+                          <UserProfile
+                            name={subissue.assignee_name}
+                            avatarUrl={subissue.assignee_avatar_url}
+                            size="xs"
+                          />
+                        {:else}
+                          <span class="text-xs text-neutral-500"
+                            >Unassigned</span
+                          >
+                        {/if}
+                      </td>
+                      <td class="px-2 py-1.5">
+                        <StatusDisplay
+                          stateName={subissue.state_name || ""}
+                          stateType={subissue.state_type || ""}
+                          showWarnings={!hideWarnings}
+                          warnings={[]}
+                        />
+                      </td>
+                      <td
+                        class="px-2 py-1.5 text-right text-neutral-300 w-[70px] min-w-[70px]"
+                      >
+                        <div class="flex gap-1.5 justify-end items-center">
+                          {#if subissue.estimate !== null && subissue.estimate !== undefined}
+                            {Math.round(subissue.estimate)}
+                          {:else if !hideWarnings && subMissingEstimate}
+                            <span
+                              class="text-amber-400"
+                              title="Missing estimate">⚠️</span
+                            >
+                          {:else}
+                            <span class="text-neutral-500">—</span>
+                          {/if}
+                        </div>
+                      </td>
+                      <td class="px-2 py-1.5 text-right w-[80px] min-w-[80px]">
+                        <div class="flex justify-end">
+                          <PriorityDisplay priority={subissue.priority || 0} />
+                        </div>
+                      </td>
+                      <td
+                        class="px-2 py-1.5 text-right w-[110px] min-w-[110px]"
+                      >
+                        <div class="flex gap-1.5 justify-end items-center">
+                          {#if !hideWarnings && subHasOldComment}
+                            <span
+                              class="text-amber-400 shrink-0"
+                              title="No comment since last business day"
+                              >⚠️</span
+                            >
+                          {/if}
+                          <span
+                            class={!hideWarnings && subHasOldComment
+                              ? "text-amber-400"
+                              : "text-neutral-300"}>{subCommentRecency}</span
+                          >
+                        </div>
+                      </td>
+                      <td
+                        class="px-2 py-1.5 text-right text-neutral-300 w-[80px] min-w-[80px]"
+                      >
+                        {formatCommentCount(subissue.comment_count)}
+                      </td>
+                      <td
+                        class="px-2 py-1.5 text-right text-neutral-300 w-[70px] min-w-[70px]"
+                      >
+                        <div class="flex gap-1 justify-end items-center">
+                          {#if hasWIPAgeViolation(subissue)}
+                            <span
+                              class="text-amber-400"
+                              title="WIP age exceeds 14 days">⚠️</span
+                            >
+                          {/if}
+                          {formatWIPAge(subWipAge)}
+                        </div>
+                      </td>
+                      {#if project.daysPerStoryPoint !== null}
+                        <td
+                          class="px-2 py-1.5 text-right w-[120px] min-w-[120px]"
+                        >
+                          {#if subIssueAccuracyRatio !== null}
+                            <span
+                              class={getAccuracyColorClass(
+                                subIssueAccuracyRatio
+                              )}
+                              title={subIssueAccuracyRatio === 1.0
+                                ? "Perfect match! Actual time equals estimated time (1.0x)"
+                                : subIssueAccuracyRatio >= 1.0
+                                  ? `Took ${((subIssueAccuracyRatio - 1) * 100).toFixed(0)}% longer than estimated (goal: 1.0x)`
+                                  : `Completed ${((1 - subIssueAccuracyRatio) * 100).toFixed(0)}% faster than estimated (goal: 1.0x)`}
+                            >
+                              {formatAccuracyRatio(subIssueAccuracyRatio)}
+                            </span>
+                          {:else}
+                            <span class="text-neutral-500">—</span>
+                          {/if}
+                        </td>
                       {/if}
-                      {formatWIPAge(wipAge)}
-                    </div>
-                  </td>
-                  {#if project.daysPerStoryPoint !== null}
-                    <td class="px-2 py-1.5 text-right w-[120px] min-w-[120px]">
-                      {#if issueAccuracyRatio !== null}
-                        <span
-                          class={getAccuracyColorClass(issueAccuracyRatio)}
-                          title={issueAccuracyRatio === 1.0
-                            ? "Perfect match! Actual time equals estimated time (1.0x)"
-                            : issueAccuracyRatio >= 1.0
-                              ? `Took ${((issueAccuracyRatio - 1) * 100).toFixed(0)}% longer than estimated (goal: 1.0x)`
-                              : `Completed ${((1 - issueAccuracyRatio) * 100).toFixed(0)}% faster than estimated (goal: 1.0x)`}
-                        >
-                          {formatAccuracyRatio(issueAccuracyRatio)}
-                        </span>
+                    </tr>
+                  {/each}
+                {:else}
+                  {@const issue = groupedIssue}
+                  {@const isCompleted = (() => {
+                    const stateName = issue.state_name?.toLowerCase() || "";
+                    return (
+                      stateName.includes("done") ||
+                      stateName.includes("completed")
+                    );
+                  })()}
+                  {@const wipAge = calculateWIPAge(issue, isCompleted)}
+                  {@const issueAccuracyRatio =
+                    project.daysPerStoryPoint !== null && isCompleted
+                      ? calculateIssueAccuracyRatio(
+                          issue,
+                          project.daysPerStoryPoint
+                        )
+                      : null}
+                  {@const commentRecency = formatCommentRecency(
+                    issue.last_comment_at
+                  )}
+                  {@const hasOldComment = hasNoRecentComment(issue)}
+                  {@const missingEstimate = hasMissingEstimate(issue)}
+                  <tr
+                    class="border-b transition-colors cursor-pointer border-white/5 hover:bg-white/5 focus:outline-none"
+                    onclick={() => {
+                      if (issue.url && browser) {
+                        window.open(issue.url, "_blank", "noopener,noreferrer");
+                      }
+                    }}
+                    role="button"
+                    tabindex="0"
+                    onkeydown={(e) => {
+                      if (
+                        (e.key === "Enter" || e.key === " ") &&
+                        issue.url &&
+                        browser
+                      ) {
+                        e.preventDefault();
+                        window.open(issue.url, "_blank", "noopener,noreferrer");
+                      }
+                    }}
+                  >
+                    <td
+                      class="px-2 py-1.5 text-neutral-200 w-[310px] min-w-[310px] max-w-[310px]"
+                    >
+                      <div
+                        class="overflow-hidden truncate whitespace-nowrap text-ellipsis"
+                        title={issue.title}
+                      >
+                        {issue.title}
+                      </div>
+                    </td>
+                    <td
+                      class="px-2 py-1.5 w-[120px] min-w-[120px] max-w-[120px]"
+                    >
+                      {#if issue.assignee_name}
+                        <UserProfile
+                          name={issue.assignee_name}
+                          avatarUrl={issue.assignee_avatar_url}
+                          size="xs"
+                        />
                       {:else}
-                        <span class="text-neutral-500">—</span>
+                        <span class="text-xs text-neutral-500">Unassigned</span>
                       {/if}
                     </td>
-                  {/if}
-                </tr>
-              {/if}
+                    <td class="px-2 py-1.5">
+                      <StatusDisplay
+                        stateName={issue.state_name || ""}
+                        stateType={issue.state_type || ""}
+                        showWarnings={!hideWarnings}
+                        warnings={[]}
+                      />
+                    </td>
+                    <td
+                      class="px-2 py-1.5 text-right text-neutral-300 w-[70px] min-w-[70px]"
+                    >
+                      <div class="flex gap-1.5 justify-end items-center">
+                        {#if issue.estimate !== null && issue.estimate !== undefined}
+                          {Math.round(issue.estimate)}
+                        {:else if !hideWarnings && missingEstimate}
+                          <span class="text-amber-400" title="Missing estimate"
+                            >⚠️</span
+                          >
+                        {:else}
+                          <span class="text-neutral-500">—</span>
+                        {/if}
+                      </div>
+                    </td>
+                    <td class="px-2 py-1.5 text-right w-[80px] min-w-[80px]">
+                      <div class="flex justify-end">
+                        <PriorityDisplay priority={issue.priority || 0} />
+                      </div>
+                    </td>
+                    <td class="px-2 py-1.5 text-right w-[110px] min-w-[110px]">
+                      <div class="flex gap-1.5 justify-end items-center">
+                        {#if !hideWarnings && hasOldComment}
+                          <span
+                            class="text-amber-400 shrink-0"
+                            title="No comment since last business day">⚠️</span
+                          >
+                        {/if}
+                        <span
+                          class={!hideWarnings && hasOldComment
+                            ? "text-amber-400"
+                            : "text-neutral-300"}>{commentRecency}</span
+                        >
+                      </div>
+                    </td>
+                    <td
+                      class="px-2 py-1.5 text-right text-neutral-300 w-[80px] min-w-[80px]"
+                    >
+                      {formatCommentCount(issue.comment_count)}
+                    </td>
+                    <td
+                      class="px-2 py-1.5 text-right text-neutral-300 w-[70px] min-w-[70px]"
+                    >
+                      <div class="flex gap-1 justify-end items-center">
+                        {#if hasWIPAgeViolation(issue)}
+                          <span
+                            class="text-amber-400"
+                            title="WIP age exceeds 14 days">⚠️</span
+                          >
+                        {/if}
+                        {formatWIPAge(wipAge)}
+                      </div>
+                    </td>
+                    {#if project.daysPerStoryPoint !== null}
+                      <td
+                        class="px-2 py-1.5 text-right w-[120px] min-w-[120px]"
+                      >
+                        {#if issueAccuracyRatio !== null}
+                          <span
+                            class={getAccuracyColorClass(issueAccuracyRatio)}
+                            title={issueAccuracyRatio === 1.0
+                              ? "Perfect match! Actual time equals estimated time (1.0x)"
+                              : issueAccuracyRatio >= 1.0
+                                ? `Took ${((issueAccuracyRatio - 1) * 100).toFixed(0)}% longer than estimated (goal: 1.0x)`
+                                : `Completed ${((1 - issueAccuracyRatio) * 100).toFixed(0)}% faster than estimated (goal: 1.0x)`}
+                          >
+                            {formatAccuracyRatio(issueAccuracyRatio)}
+                          </span>
+                        {:else}
+                          <span class="text-neutral-500">—</span>
+                        {/if}
+                      </td>
+                    {/if}
+                  </tr>
+                {/if}
+              {/each}
             {/each}
-          {/each}
-        </tbody>
-      </table>
+          </tbody>
+        </table>
+      </div>
     {/if}
   </div>
 {/snippet}
