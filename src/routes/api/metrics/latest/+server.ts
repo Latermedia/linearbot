@@ -34,12 +34,30 @@ function getIgnoredTeamKeys(): Set<string> {
 }
 
 /**
- * Check if a team should be ignored
+ * Get whitelisted team keys from environment variable
  */
-function isIgnoredTeam(levelId: string | null): boolean {
-  if (!levelId) return false;
+function getWhitelistTeamKeys(): Set<string> {
+  const envValue = process.env.WHITELIST_TEAM_KEYS;
+  if (!envValue) return new Set();
+  return new Set(envValue.split(",").map((key) => key.trim().toUpperCase()));
+}
+
+/**
+ * Check if a team should be included based on whitelist/blacklist rules
+ * Whitelist takes precedence if configured
+ */
+function isTeamIncluded(levelId: string | null): boolean {
+  if (!levelId) return true; // Non-team levels are always included
+  const whitelist = getWhitelistTeamKeys();
   const ignored = getIgnoredTeamKeys();
-  return ignored.has(levelId.toUpperCase());
+
+  // If whitelist is set, only include teams on the whitelist
+  if (whitelist.size > 0) {
+    return whitelist.has(levelId.toUpperCase());
+  }
+
+  // Otherwise, use blacklist - exclude teams in ignoredTeamKeys
+  return !ignored.has(levelId.toUpperCase());
 }
 
 /**
@@ -64,8 +82,8 @@ export const GET: RequestHandler = async ({ url }) => {
 
       const results = allSnapshots
         .map((s) => {
-          // Skip ignored teams
-          if (s.level === "team" && isIgnoredTeam(s.level_id)) {
+          // Skip teams that don't pass whitelist/blacklist filtering
+          if (s.level === "team" && !isTeamIncluded(s.level_id)) {
             return null;
           }
 
@@ -81,13 +99,10 @@ export const GET: RequestHandler = async ({ url }) => {
         })
         .filter((r): r is NonNullable<typeof r> => r !== null);
 
-      // Include team name mapping for display purposes (excluding ignored teams)
+      // Include team name mapping for display purposes (respecting whitelist/blacklist)
       const allTeamNames = getTeamNamesByKey();
-      const ignoredKeys = getIgnoredTeamKeys();
       const teamNames = Object.fromEntries(
-        Object.entries(allTeamNames).filter(
-          ([key]) => !ignoredKeys.has(key.toUpperCase())
-        )
+        Object.entries(allTeamNames).filter(([key]) => isTeamIncluded(key))
       );
 
       return json({

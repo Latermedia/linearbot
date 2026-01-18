@@ -18,6 +18,7 @@ import {
   getTeamsForDomain,
   getDomainMappings,
 } from "../../utils/domain-mapping.js";
+import { getCleanupConfig, isTeamIncluded } from "../sync/cleanup.js";
 import {
   type MetricsSnapshotV1,
   type MetricsLevel,
@@ -286,16 +287,20 @@ function buildMetricsSnapshot(
 }
 
 /**
- * Get all unique team keys from projects
+ * Get all unique team keys from projects, filtered by whitelist/blacklist config
  */
 function getAllTeamKeys(projects: Project[]): string[] {
   const teamKeys = new Set<string>();
+  const config = getCleanupConfig();
 
   for (const project of projects) {
     try {
       const teams = JSON.parse(project.teams || "[]") as string[];
       for (const team of teams) {
-        teamKeys.add(team);
+        // Only include teams that pass whitelist/blacklist filtering
+        if (isTeamIncluded(team, config)) {
+          teamKeys.add(team);
+        }
       }
     } catch {
       // Invalid JSON, skip
