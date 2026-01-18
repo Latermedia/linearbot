@@ -512,7 +512,7 @@ export function getMetricsSummary(snapshot: MetricsSnapshotV1): string {
 
   const lines = [
     `Team Health: ${teamHealth.status.toUpperCase()} (${teamHealth.healthyIcCount}/${teamHealth.totalIcCount} ICs healthy, ${teamHealth.healthyProjectCount}/${teamHealth.totalProjectCount} projects healthy)`,
-    `Velocity: ${velocityHealth.status.toUpperCase()} (${velocityHealth.onTrackPercent.toFixed(1)}% on track, ${velocityHealth.atRiskPercent.toFixed(1)}% at risk, ${velocityHealth.offTrackPercent.toFixed(1)}% off track)`,
+    `Project Health: ${velocityHealth.status.toUpperCase()} (${velocityHealth.onTrackPercent.toFixed(1)}% on track, ${velocityHealth.atRiskPercent.toFixed(1)}% at risk, ${velocityHealth.offTrackPercent.toFixed(1)}% off track)`,
     `Quality: ${quality.status.toUpperCase()} (Score: ${quality.compositeScore}, ${quality.openBugCount} open bugs, ${quality.netBugChange >= 0 ? "+" : ""}${quality.netBugChange} net)`,
     `Productivity: ${productivitySummary}`,
   ];

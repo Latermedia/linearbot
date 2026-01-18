@@ -238,7 +238,7 @@
     orgSnapshot ? getStatusClasses(orgSnapshot.quality.status) : null
   );
 
-  // Velocity Health derived counts (split by source)
+  // Project Health derived counts (split by source: Self-reported vs Trajectory Alert)
   const velocityCounts = $derived.by(() => {
     if (!orgSnapshot) return null;
     const statuses = orgSnapshot.velocityHealth.projectStatuses;
@@ -348,13 +348,13 @@
 
           <div class="space-y-0.5 text-xs">
             <div>
-              <span class={teamHealthStatusClasses?.text || "text-white"}
+              <span class="font-semibold text-neutral-400"
                 >{orgSnapshot.teamHealth.wipViolationCount}</span
               >
               <span class="text-neutral-500">ICs overloaded (6+ issues)</span>
             </div>
             <div>
-              <span class={teamHealthStatusClasses?.text || "text-white"}
+              <span class="font-semibold text-neutral-400"
                 >{orgSnapshot.teamHealth.multiProjectViolationCount}</span
               >
               <span class="text-neutral-500"
@@ -362,7 +362,7 @@
               >
             </div>
             <div>
-              <span class={teamHealthStatusClasses?.text || "text-white"}
+              <span class="font-semibold text-neutral-400"
                 >{orgSnapshot.teamHealth.impactedProjectCount}</span
               >
               <span class="text-neutral-500"
@@ -373,7 +373,7 @@
         </div>
       </Card>
 
-      <!-- Pillar 2: Velocity Health -->
+      <!-- Pillar 2: Project Health -->
       <Card
         class="transition-colors duration-150 hover:bg-white/5 {velocityStatusClasses?.border ||
           ''} border"
@@ -382,7 +382,7 @@
           <div
             class="text-xs font-medium tracking-wide uppercase text-neutral-400"
           >
-            Velocity Health
+            Project Health
           </div>
           <Badge
             variant={orgSnapshot.velocityHealth.status === "healthy"
@@ -409,43 +409,67 @@
           </div>
 
           {#if velocityCounts}
-            <div class="space-y-0.5 text-xs">
-              {#if velocityCounts.atRiskHuman > 0}
-                <div>
-                  <span class="text-amber-400"
-                    >{velocityCounts.atRiskHuman}</span
-                  >
-                  <span class="text-neutral-500">at risk (human)</span>
-                </div>
-              {/if}
-              {#if velocityCounts.atRiskVelocity > 0}
-                <div>
-                  <span class="text-amber-400"
-                    >{velocityCounts.atRiskVelocity}</span
-                  >
-                  <span class="text-neutral-500">at risk (velocity)</span>
-                </div>
-              {/if}
-              {#if velocityCounts.offTrackHuman > 0}
-                <div>
-                  <span class="text-red-400"
-                    >{velocityCounts.offTrackHuman}</span
-                  >
-                  <span class="text-neutral-500">off track (human)</span>
-                </div>
-              {/if}
-              {#if velocityCounts.offTrackVelocity > 0}
-                <div>
-                  <span class="text-red-400"
-                    >{velocityCounts.offTrackVelocity}</span
-                  >
-                  <span class="text-neutral-500">off track (velocity)</span>
-                </div>
-              {/if}
-              {#if velocityCounts.atRiskHuman === 0 && velocityCounts.atRiskVelocity === 0 && velocityCounts.offTrackHuman === 0 && velocityCounts.offTrackVelocity === 0}
-                <div class="text-neutral-500">All projects on track</div>
-              {/if}
-            </div>
+            {@const hasIssues =
+              velocityCounts.atRiskHuman > 0 ||
+              velocityCounts.offTrackHuman > 0 ||
+              velocityCounts.atRiskVelocity > 0 ||
+              velocityCounts.offTrackVelocity > 0}
+            {#if hasIssues}
+              <div class="flex justify-between text-xs">
+                {#if velocityCounts.atRiskHuman > 0 || velocityCounts.offTrackHuman > 0}
+                  <div class="space-y-0.5">
+                    <div
+                      class="text-neutral-500 text-[10px] uppercase tracking-wider"
+                    >
+                      Self-reported
+                    </div>
+                    {#if velocityCounts.atRiskHuman > 0}
+                      <div>
+                        <span class="font-semibold text-neutral-400"
+                          >{velocityCounts.atRiskHuman}</span
+                        >
+                        <span class="text-neutral-500">at risk</span>
+                      </div>
+                    {/if}
+                    {#if velocityCounts.offTrackHuman > 0}
+                      <div>
+                        <span class="font-semibold text-neutral-400"
+                          >{velocityCounts.offTrackHuman}</span
+                        >
+                        <span class="text-neutral-500">off track</span>
+                      </div>
+                    {/if}
+                  </div>
+                {/if}
+                {#if velocityCounts.atRiskVelocity > 0 || velocityCounts.offTrackVelocity > 0}
+                  <div class="space-y-0.5">
+                    <div
+                      class="text-neutral-500 text-[10px] uppercase tracking-wider"
+                    >
+                      Trajectory Alert
+                    </div>
+                    {#if velocityCounts.atRiskVelocity > 0}
+                      <div>
+                        <span class="font-semibold text-neutral-400"
+                          >{velocityCounts.atRiskVelocity}</span
+                        >
+                        <span class="text-neutral-500">at risk</span>
+                      </div>
+                    {/if}
+                    {#if velocityCounts.offTrackVelocity > 0}
+                      <div>
+                        <span class="font-semibold text-neutral-400"
+                          >{velocityCounts.offTrackVelocity}</span
+                        >
+                        <span class="text-neutral-500">off track</span>
+                      </div>
+                    {/if}
+                  </div>
+                {/if}
+              </div>
+            {:else}
+              <div class="text-xs text-neutral-500">All projects on track</div>
+            {/if}
           {/if}
         </div>
       </Card>
@@ -514,7 +538,7 @@
 
             <div class="space-y-0.5 text-xs">
               <div>
-                <span class={productivityStatusClasses?.text || "text-white"}
+                <span class="font-semibold text-neutral-400"
                   >{toWeeklyRate(orgProductivity.trueThroughput).toFixed(
                     1
                   )}</span
@@ -523,7 +547,7 @@
               </div>
               {#if orgProductivity.engineerCount !== null}
                 <div>
-                  <span class={productivityStatusClasses?.text || "text-white"}
+                  <span class="font-semibold text-neutral-400"
                     >{orgProductivity.engineerCount}</span
                   >
                   <span class="text-neutral-500">engineers</span>
@@ -582,23 +606,30 @@
 
           <div class="space-y-0.5 text-xs">
             <div>
-              <span class={qualityStatusClasses?.text || "text-white"}
+              <span class="font-semibold text-neutral-400"
                 >{orgSnapshot.quality.openBugCount}</span
               >
               <span class="text-neutral-500">open bugs</span>
             </div>
             <div>
               {#if orgSnapshot.quality.netBugChange > 0}
-                <span class="text-red-400"
-                  >Backlog growing (+{orgSnapshot.quality.netBugChange} in 14d)</span
+                <span class="text-neutral-500"
+                  >Backlog growing (<span class="font-semibold text-neutral-400"
+                    >+{orgSnapshot.quality.netBugChange}</span
+                  > in 14d)</span
                 >
               {:else if orgSnapshot.quality.netBugChange < 0}
-                <span class="text-emerald-400"
-                  >Backlog shrinking ({orgSnapshot.quality.netBugChange} in 14d)</span
+                <span class="text-neutral-500"
+                  >Backlog shrinking (<span
+                    class="font-semibold text-neutral-400"
+                    >{orgSnapshot.quality.netBugChange}</span
+                  > in 14d)</span
                 >
               {:else}
                 <span class="text-neutral-500"
-                  >Backlog stable (0 net in 14d)</span
+                  >Backlog stable (<span class="font-semibold text-neutral-400"
+                    >0</span
+                  > net in 14d)</span
                 >
               {/if}
             </div>
@@ -627,13 +658,13 @@
                   WIP Health
                 </th>
                 <th class="px-4 py-3 font-medium text-center text-neutral-400">
-                  Velocity
+                  Project Health
                 </th>
                 <th class="px-4 py-3 font-medium text-center text-neutral-400">
                   Quality
                 </th>
                 <th class="px-4 py-3 font-medium text-center text-neutral-400">
-                  Throughput/IC
+                  Throughput/IC/week
                 </th>
                 <th class="px-4 py-3 font-medium text-right text-neutral-400">
                   ICs
@@ -683,7 +714,7 @@
                           ? "warning"
                           : "destructive"}
                     >
-                      Score: {snapshot.quality.compositeScore}
+                      {snapshot.quality.compositeScore}
                     </Badge>
                   </td>
                   <td class="px-4 py-3 text-center">
@@ -700,7 +731,7 @@
                         {toWeeklyRate(
                           snapshot.teamProductivity.trueThroughputPerEngineer ??
                             0
-                        ).toFixed(1)}/IC/wk
+                        ).toFixed(1)}
                       </Badge>
                     {:else}
                       <span class="text-neutral-500">—</span>
@@ -738,7 +769,7 @@
                   WIP Health
                 </th>
                 <th class="px-4 py-3 font-medium text-center text-neutral-400">
-                  Velocity
+                  Project Health
                 </th>
                 <th class="px-4 py-3 font-medium text-center text-neutral-400">
                   Quality
@@ -834,7 +865,9 @@
                       {project.daysOffTarget > 0
                         ? `${project.daysOffTarget} days behind target`
                         : `${Math.abs(project.daysOffTarget)} days ahead`}
-                      • Source: {project.healthSource}
+                      • {project.healthSource === "human"
+                        ? "Self-reported"
+                        : "Trajectory Alert"}
                     {:else}
                       No target date set
                     {/if}

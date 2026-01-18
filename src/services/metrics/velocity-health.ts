@@ -1,13 +1,17 @@
 /**
- * Velocity Health Pillar Calculation
+ * Project Health Pillar Calculation (UI: "Project Health")
  *
  * Core Question: Are projects tracking to goal?
  * Core Metric: % of Projects On Track (Inherited Velocity vs. Target Burn Down)
  *
+ * Data Sources:
+ * - Self-reported: Human-entered health status from Linear (PM judgment)
+ * - Trajectory Alert: System-calculated health based on velocity vs. target dates
+ *
  * Hybrid Logic:
- * 1. Trust pessimistic human judgment (offTrack/atRisk from Linear)
- * 2. Override optimistic human judgment if velocity shows otherwise
- * 3. Trust optimistic human judgment only if velocity agrees
+ * 1. Trust pessimistic human judgment (offTrack/atRisk from Linear) → "Self-reported"
+ * 2. Override optimistic human judgment if velocity shows otherwise → "Trajectory Alert"
+ * 3. Trust optimistic human judgment only if velocity agrees → "Self-reported"
  *
  * Thresholds:
  * - 2-4 weeks off target = at risk

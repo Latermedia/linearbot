@@ -21,6 +21,7 @@ export type PillarStatus = z.infer<typeof PillarStatusSchema>;
 
 export const PendingStatusSchema = z.literal("pending");
 
+/** Health source: "human" = Self-reported, "velocity" = Trajectory Alert */
 export const HealthSourceSchema = z.enum(["human", "velocity"]);
 export type HealthSource = z.infer<typeof HealthSourceSchema>;
 
@@ -60,21 +61,22 @@ export const TeamHealthSchemaV1 = z.object({
 export type TeamHealthV1 = z.infer<typeof TeamHealthSchemaV1>;
 
 // ============================================================================
-// Pillar 2: Velocity Health
+// Pillar 2: Project Health (UI: "Project Health", internal: velocityHealth)
+// Sources: Self-reported (human) vs Trajectory Alert (velocity)
 // ============================================================================
 
 export const ProjectVelocityStatusSchemaV1 = z.object({
   projectId: z.string(),
   projectName: z.string(),
-  /** Human-entered health from Linear (null if not set) */
+  /** Human-entered health from Linear - Self-reported (null if not set) */
   linearHealth: z.string().nullable(),
-  /** Velocity-based calculated health */
+  /** Velocity-based calculated health - Trajectory Alert */
   calculatedHealth: z.string(),
   /** Final effective health (hybrid logic result) */
   effectiveHealth: z.string(),
   /** Days predicted completion is off from target (null if no target) */
   daysOffTarget: z.number().nullable(),
-  /** Source of the effective health decision */
+  /** Source: "human" = Self-reported, "velocity" = Trajectory Alert */
   healthSource: HealthSourceSchema,
 });
 
@@ -199,7 +201,7 @@ export const MetricsSnapshotSchemaV1 = z.object({
   /** Pillar 1: Team Health - Is work flowing or stuck? */
   teamHealth: TeamHealthSchemaV1,
 
-  /** Pillar 2: Velocity Health - Are projects tracking to goal? */
+  /** Pillar 2: Project Health - Are projects tracking to goal? (Self-reported + Trajectory Alert) */
   velocityHealth: VelocityHealthSchemaV1,
 
   /** Pillar 3: Team Productivity - Is output healthy and consistent? (TBD) */
