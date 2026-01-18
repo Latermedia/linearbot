@@ -84,7 +84,7 @@
     return padding.top + innerHeight - (clampedValue / yMax) * innerHeight;
   }
 
-  // Generate SVG path for a line (straight lines between points)
+  // Generate SVG path for a line (monotonic cubic interpolation - prevents overshooting)
   function generatePath(values: (number | null)[]): string {
     const validPoints: { x: number; y: number }[] = [];
 
@@ -99,10 +99,57 @@
     if (validPoints.length === 1)
       return `M ${validPoints[0].x} ${validPoints[0].y}`;
 
-    // Straight line path connecting actual data points
-    return validPoints
-      .map((p, i) => (i === 0 ? `M ${p.x} ${p.y}` : `L ${p.x} ${p.y}`))
-      .join(" ");
+    if (validPoints.length === 2) {
+      return `M ${validPoints[0].x} ${validPoints[0].y} L ${validPoints[1].x} ${validPoints[1].y}`;
+    }
+
+    // Monotonic cubic interpolation (Fritsch-Carlson method)
+    // This prevents overshooting on steep slopes
+    const n = validPoints.length;
+
+    // Calculate slopes between consecutive points
+    const deltas: number[] = [];
+    const slopes: number[] = [];
+    for (let i = 0; i < n - 1; i++) {
+      const dx = validPoints[i + 1].x - validPoints[i].x;
+      const dy = validPoints[i + 1].y - validPoints[i].y;
+      deltas.push(dx);
+      slopes.push(dx === 0 ? 0 : dy / dx);
+    }
+
+    // Calculate tangents at each point
+    const tangents: number[] = [slopes[0]];
+    for (let i = 1; i < n - 1; i++) {
+      if (slopes[i - 1] * slopes[i] <= 0) {
+        // Different signs or zero - set tangent to 0 to prevent overshoot
+        tangents.push(0);
+      } else {
+        // Harmonic mean of slopes (Fritsch-Carlson)
+        tangents.push(
+          (2 * slopes[i - 1] * slopes[i]) / (slopes[i - 1] + slopes[i])
+        );
+      }
+    }
+    tangents.push(slopes[n - 2]);
+
+    // Build the path
+    let path = `M ${validPoints[0].x} ${validPoints[0].y}`;
+
+    for (let i = 0; i < n - 1; i++) {
+      const p0 = validPoints[i];
+      const p1 = validPoints[i + 1];
+      const dx = deltas[i];
+
+      // Control points for cubic bezier
+      const cp1x = p0.x + dx / 3;
+      const cp1y = p0.y + (tangents[i] * dx) / 3;
+      const cp2x = p1.x - dx / 3;
+      const cp2y = p1.y - (tangents[i + 1] * dx) / 3;
+
+      path += ` C ${cp1x} ${cp1y}, ${cp2x} ${cp2y}, ${p1.x} ${p1.y}`;
+    }
+
+    return path;
   }
 
   // Generate paths for each pillar
@@ -373,56 +420,6 @@
           class="opacity-60"
         />
       {/if}
-
-      <!-- Data point dots (always visible) -->
-      {#each normalizedData as point, i (point.capturedAt)}
-        {@const x = getX(i)}
-        {@const isHovered = hoveredIndex === i}
-        <!-- WIP Health dot -->
-        {#if point.wipHealth !== null}
-          <circle
-            cx={x}
-            cy={getY(point.wipHealth)}
-            r={isHovered ? 5 : 3}
-            fill={colors.wipHealth}
-            class="transition-all duration-100"
-            style="opacity: {isHovered ? 1 : 0.7}"
-          />
-        {/if}
-        <!-- Project Health dot -->
-        {#if point.projectHealth !== null}
-          <circle
-            cx={x}
-            cy={getY(point.projectHealth)}
-            r={isHovered ? 5 : 3}
-            fill={colors.projectHealth}
-            class="transition-all duration-100"
-            style="opacity: {isHovered ? 1 : 0.7}"
-          />
-        {/if}
-        <!-- Productivity dot -->
-        {#if point.productivity !== null}
-          <circle
-            cx={x}
-            cy={getY(point.productivity)}
-            r={isHovered ? 5 : 3}
-            fill={colors.productivity}
-            class="transition-all duration-100"
-            style="opacity: {isHovered ? 1 : 0.7}"
-          />
-        {/if}
-        <!-- Quality dot -->
-        {#if point.quality !== null}
-          <circle
-            cx={x}
-            cy={getY(point.quality)}
-            r={isHovered ? 5 : 3}
-            fill={colors.quality}
-            class="transition-all duration-100"
-            style="opacity: {isHovered ? 1 : 0.7}"
-          />
-        {/if}
-      {/each}
     {/if}
 
     <!-- Hover indicator line -->
