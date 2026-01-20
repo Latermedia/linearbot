@@ -16,20 +16,19 @@
  * - 30% weight: Bugs per engineer penalty
  * - 40% weight: Net bug change per engineer penalty
  * - 30% weight: Average age penalty
+ *
+ * Status Thresholds (unified with all pillars):
+ * - >= 90% = healthy
+ * - 75-90% = warning
+ * - < 75% = critical
  */
 
 import type { Issue } from "../../db/schema.js";
-import type {
-  QualityHealthV1,
-  PillarStatus,
-} from "../../types/metrics-snapshot.js";
+import type { QualityHealthV1 } from "../../types/metrics-snapshot.js";
+import { getPillarStatus } from "../../types/metrics-snapshot.js";
 
 /** Default measurement period in days */
 const DEFAULT_PERIOD_DAYS = 14;
-
-/** Composite score thresholds */
-const HEALTHY_SCORE_THRESHOLD = 70;
-const WARNING_SCORE_THRESHOLD = 40;
 
 /**
  * Label structure from Linear's API
@@ -155,11 +154,17 @@ export function calculateCompositeScore(
 
 /**
  * Determine quality status from composite score
+ *
+ * Uses unified threshold logic (same as WIP and Project Health):
+ * - Score >= 90% = healthy
+ * - Score 75-90% = warning
+ * - Score < 75% = critical
+ *
+ * This provides a consistent UX where users know any pillar below 75% is critical.
  */
-export function getQualityStatus(compositeScore: number): PillarStatus {
-  if (compositeScore >= HEALTHY_SCORE_THRESHOLD) return "healthy";
-  if (compositeScore >= WARNING_SCORE_THRESHOLD) return "warning";
-  return "critical";
+export function getQualityStatus(compositeScore: number) {
+  // Use unified getPillarStatus with inverted score (100 - score = "violation %")
+  return getPillarStatus(100 - compositeScore);
 }
 
 /**

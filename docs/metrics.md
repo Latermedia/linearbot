@@ -76,12 +76,15 @@ This split helps identify whether issues are being surfaced proactively by teams
 - **Org level**: Aggregates all GetDX teams
 - **Domain level**: Uses GetDX team names which map directly to domains
 
-**Status Thresholds**:
+**Status Thresholds** (unified with all pillars):
 
-Thresholds are configurable via environment variables. If not configured, status shows as "unknown" to allow baseline data collection.
+Per-IC throughput is normalized to a percentage of the target (default: 6 per 2-week period = 3/week):
 
-- `GETDX_THROUGHPUT_HEALTHY`: TrueThroughput value for healthy status
-- `GETDX_THROUGHPUT_WARNING`: TrueThroughput value for warning status (below this = critical)
+- Healthy: >= 90% of target
+- Warning: 75-90% of target
+- Critical: < 75% of target
+
+The target is configurable via `GETDX_THROUGHPUT_PER_IC_TARGET` (default: 6).
 
 **Dashboard Display**:
 
@@ -110,11 +113,11 @@ The per-IC calculation uses engineer count from one of two sources:
 - Net change: 0.5 net new bugs per engineer per 14 days
 - Average age: 200 days
 
-**Status Thresholds**:
+**Status Thresholds** (unified with all pillars):
 
-- Healthy: Score >= 70
-- Warning: Score 40-69
-- Critical: Score < 40
+- Healthy: Score >= 90
+- Warning: Score 75-90
+- Critical: Score < 75
 
 **Bug Detection**: Issues with "type: bug" label (case-insensitive)
 
@@ -279,9 +282,9 @@ Add PR-based quality metrics:
 
   **Note:** Multiple GetDX teams can map to the same domain (e.g., "GetDX Team Alpha" and "GetDX Team Beta" both map to "Product").
 
-- `GETDX_THROUGHPUT_PER_IC_HEALTHY`: Per-IC weekly throughput for healthy status (default: 6 = 3/week over 2 weeks)
+- `GETDX_THROUGHPUT_PER_IC_TARGET`: Target per-IC throughput over 2-week period (default: 6 = 3/week)
 
-- `GETDX_THROUGHPUT_PER_IC_WARNING`: Per-IC weekly throughput for warning status (default: 3 = 1.5/week over 2 weeks)
+  Status uses unified percentage-based thresholds (>= 90% healthy, 75-90% warning, < 75% critical).
 
 ### Thresholds
 
@@ -296,11 +299,19 @@ Velocity thresholds in `src/services/metrics/velocity-health.ts`:
 
 Quality thresholds in `src/services/metrics/quality-health.ts`:
 
-- `HEALTHY_SCORE_THRESHOLD`: 70
-- `WARNING_SCORE_THRESHOLD`: 40
 - `BUG_PENALTY_PER_ENG`: 12 (score = 0 at ~8.3 bugs/engineer)
 - `NET_PENALTY_PER_ENG`: 200 (score = 0 at 0.5 net bugs/engineer)
 - `AGE_PENALTY_PER_DAY`: 0.5 (score = 0 at 200 days avg age)
+
+### Unified Status Thresholds
+
+All four pillars use the same status thresholds (defined in `src/types/metrics-snapshot.ts`):
+
+- **Healthy**: >= 90% (< 10% violation/deficit)
+- **Warning**: 75-90% (10-25% violation/deficit)
+- **Critical**: < 75% (> 25% violation/deficit)
+
+This provides a consistent UX where users know any metric below 75% is critical without needing to remember pillar-specific thresholds.
 
 ## GetDX Setup Guide
 
@@ -336,16 +347,20 @@ GetDX team names typically differ from your domain names. Map them:
 | Infrastructure   | Platform |
 | Data Science     | Data     |
 
-### Phase 4: Set Per-IC Throughput Targets
+### Phase 4: Set Per-IC Throughput Target
 
 1. Determine your target TrueThroughput per IC per week (e.g., 3 PRs/week)
-2. Set `GETDX_THROUGHPUT_PER_IC_HEALTHY` to 2x your target (for 2-week window)
-3. Set `GETDX_THROUGHPUT_PER_IC_WARNING` to 1x your target
+2. Set `GETDX_THROUGHPUT_PER_IC_TARGET` to 2x your weekly target (for 2-week window)
 
 **Example:** For a target of 3 PRs/week per IC:
 
-- `GETDX_THROUGHPUT_PER_IC_HEALTHY=6` (3/week × 2 weeks)
-- `GETDX_THROUGHPUT_PER_IC_WARNING=3` (1.5/week × 2 weeks)
+- `GETDX_THROUGHPUT_PER_IC_TARGET=6` (3/week × 2 weeks)
+
+Status is then determined using unified thresholds:
+
+- Healthy: >= 5.4 per IC (90% of target)
+- Warning: 4.5-5.4 per IC (75-90% of target)
+- Critical: < 4.5 per IC (< 75% of target)
 
 ### Discovering GetDX Teams
 

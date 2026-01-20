@@ -77,6 +77,13 @@
   let trendDataPoints = $state<TrendDataPoint[]>([]);
   let trendLoading = $state(true);
 
+  // Hovered trend point (when user hovers on chart, shows historical data in cards)
+  let hoveredTrendPoint = $state<TrendDataPoint | null>(null);
+
+  function handleChartHover(dataPoint: TrendDataPoint | null) {
+    hoveredTrendPoint = dataPoint;
+  }
+
   // Fetch metrics data
   async function fetchMetrics() {
     if (!browser) return;
@@ -262,21 +269,91 @@
     return orgSnapshot;
   });
 
-  // Status classes for each pillar (derived from orgSnapshot)
+  // Display snapshot: use hovered historical data or current org snapshot
+  const displaySnapshot = $derived.by(() => {
+    if (hoveredTrendPoint) {
+      // Convert TrendDataPoint to display format
+      const tp = hoveredTrendPoint;
+      return {
+        teamHealth: tp.teamHealth,
+        velocityHealth: {
+          ...tp.velocityHealth,
+          // Add empty projectStatuses for compatibility (historical view won't show source breakdown)
+          projectStatuses: [] as typeof orgSnapshot extends {
+            velocityHealth: { projectStatuses: infer T };
+          }
+            ? T
+            : never[],
+        },
+        quality: tp.quality,
+        teamProductivity:
+          tp.productivity.trueThroughput !== null
+            ? {
+                trueThroughput: tp.productivity.trueThroughput,
+                engineerCount: tp.productivity.engineerCount,
+                trueThroughputPerEngineer:
+                  tp.productivity.trueThroughputPerEngineer,
+                status: tp.productivity.status,
+              }
+            : {
+                status: tp.productivity.status as "pending",
+                notes: "Historical data",
+              },
+        capturedAt: tp.capturedAt,
+      };
+    }
+    return orgSnapshot;
+  });
+
+  // Whether we're viewing historical data
+  const isViewingHistory = $derived(hoveredTrendPoint !== null);
+
+  // Format the historical timestamp for display
+  const historyTimestamp = $derived.by(() => {
+    if (!hoveredTrendPoint) return null;
+    const date = new Date(hoveredTrendPoint.capturedAt);
+    return date.toLocaleDateString("en-US", {
+      month: "short",
+      day: "numeric",
+      hour: "numeric",
+      minute: "2-digit",
+    });
+  });
+
+  // Status classes for each pillar (derived from displaySnapshot)
   const teamHealthStatusClasses = $derived(
-    orgSnapshot ? getStatusClasses(orgSnapshot.teamHealth.status) : null
+    displaySnapshot ? getStatusClasses(displaySnapshot.teamHealth.status) : null
   );
   const velocityStatusClasses = $derived(
-    orgSnapshot ? getStatusClasses(orgSnapshot.velocityHealth.status) : null
+    displaySnapshot
+      ? getStatusClasses(displaySnapshot.velocityHealth.status)
+      : null
   );
   const qualityStatusClasses = $derived(
-    orgSnapshot ? getStatusClasses(orgSnapshot.quality.status) : null
+    displaySnapshot ? getStatusClasses(displaySnapshot.quality.status) : null
   );
 
   // Project Health derived counts (split by source: Self-reported vs Trajectory Alert)
+  // For historical view, we use simplified counts from TrendDataPoint
   const velocityCounts = $derived.by(() => {
+    if (!displaySnapshot) return null;
+
+    // If viewing history, use the pre-computed counts from TrendDataPoint
+    if (isViewingHistory && hoveredTrendPoint) {
+      const vh = hoveredTrendPoint.velocityHealth;
+      return {
+        atRiskHuman: 0, // Not available in historical data
+        atRiskVelocity: vh.atRiskCount,
+        offTrackHuman: 0, // Not available in historical data
+        offTrackVelocity: vh.offTrackCount,
+        total: vh.totalProjectCount,
+        onTrack: vh.onTrackCount,
+      };
+    }
+
+    // Current view uses full projectStatuses breakdown
     if (!orgSnapshot) return null;
-    const statuses = orgSnapshot.velocityHealth.projectStatuses;
+    const statuses = displaySnapshot.velocityHealth.projectStatuses;
     return {
       atRiskHuman: statuses.filter(
         (p) => p.effectiveHealth === "atRisk" && p.healthSource === "human"
@@ -295,23 +372,32 @@
     };
   });
 
-  // Productivity derived values
-  const orgProductivity = $derived(orgSnapshot?.teamProductivity ?? null);
-  const orgHasProductivityData = $derived(
-    orgProductivity ? hasProductivityData(orgProductivity) : false
+  // Productivity derived values (use displaySnapshot for reactive updates)
+  const displayProductivity = $derived(
+    displaySnapshot?.teamProductivity ?? null
+  );
+  const displayHasProductivityData = $derived(
+    displayProductivity ? hasProductivityData(displayProductivity) : false
   );
   const productivityStatusClasses = $derived(
-    orgProductivity ? getStatusClasses(orgProductivity.status) : null
+    displayProductivity ? getStatusClasses(displayProductivity.status) : null
   );
 </script>
 
 <div class="space-y-6">
   <!-- Header -->
-  <div>
+  <div class="relative">
     <h1 class="text-2xl font-semibold tracking-tight text-white">
       Engineering Metrics
     </h1>
-    <div class="relative h-6 mt-1 -ml-4 pl-4 -mr-4 pr-4 overflow-hidden">
+    {#if isViewingHistory}
+      <div
+        class="absolute right-0 top-0 px-3 py-1.5 text-sm rounded-md border bg-violet-500/10 border-violet-500/30 text-violet-300"
+      >
+        Viewing <span class="font-medium">{historyTimestamp}</span>
+      </div>
+    {/if}
+    <div class="overflow-hidden relative pr-4 pl-4 mt-1 -mr-4 -ml-4 h-6">
       <p
         class="absolute left-4 right-4 top-0 text-sm text-neutral-400 italic principle-text {isAnimating
           ? 'principle-exit'
@@ -345,7 +431,7 @@
         run a sync first or trigger a manual capture.
       </p>
     </Card>
-  {:else if orgSnapshot}
+  {:else if displaySnapshot}
     <!-- Health Metrics Overview -->
     <div class="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
       <!-- Pillar 1: WIP Health -->
@@ -360,13 +446,13 @@
             WIP Health
           </div>
           <Badge
-            variant={orgSnapshot.teamHealth.status === "healthy"
+            variant={displaySnapshot.teamHealth.status === "healthy"
               ? "success"
-              : orgSnapshot.teamHealth.status === "warning"
+              : displaySnapshot.teamHealth.status === "warning"
                 ? "warning"
                 : "destructive"}
           >
-            {orgSnapshot.teamHealth.status}
+            {displaySnapshot.teamHealth.status}
           </Badge>
         </div>
 
@@ -376,7 +462,7 @@
               class="text-2xl font-semibold {teamHealthStatusClasses?.text ||
                 ''}"
             >
-              {orgSnapshot.teamHealth.healthyWorkloadPercent.toFixed(0)}%
+              {displaySnapshot.teamHealth.healthyWorkloadPercent.toFixed(0)}%
             </div>
             <div class="text-xs text-neutral-500">Healthy Workloads</div>
           </div>
@@ -384,24 +470,24 @@
           <div class="space-y-0.5 text-xs">
             <div>
               <span class="font-semibold text-neutral-400"
-                >{orgSnapshot.teamHealth.wipViolationCount}</span
+                >{displaySnapshot.teamHealth.wipViolationCount}</span
               >
               <span class="text-neutral-500">ICs overloaded (6+ issues)</span>
             </div>
             <div>
               <span class="font-semibold text-neutral-400"
-                >{orgSnapshot.teamHealth.multiProjectViolationCount}</span
+                >{displaySnapshot.teamHealth.multiProjectViolationCount}</span
               >
               <span class="text-neutral-500"
-                >ICs context-switching (2+ proj)</span
+                >ICs context-switching (2+ projects)</span
               >
             </div>
             <div>
               <span class="font-semibold text-neutral-400"
-                >{orgSnapshot.teamHealth.impactedProjectCount}</span
+                >{displaySnapshot.teamHealth.impactedProjectCount}</span
               >
               <span class="text-neutral-500"
-                >of {orgSnapshot.teamHealth.totalProjectCount} projects impacted</span
+                >of {displaySnapshot.teamHealth.totalProjectCount} projects impacted</span
               >
             </div>
           </div>
@@ -420,13 +506,13 @@
             Project Health
           </div>
           <Badge
-            variant={orgSnapshot.velocityHealth.status === "healthy"
+            variant={displaySnapshot.velocityHealth.status === "healthy"
               ? "success"
-              : orgSnapshot.velocityHealth.status === "warning"
+              : displaySnapshot.velocityHealth.status === "warning"
                 ? "warning"
                 : "destructive"}
           >
-            {orgSnapshot.velocityHealth.status}
+            {displaySnapshot.velocityHealth.status}
           </Badge>
         </div>
 
@@ -435,7 +521,7 @@
             <div
               class="text-2xl font-semibold {velocityStatusClasses?.text || ''}"
             >
-              {orgSnapshot.velocityHealth.onTrackPercent.toFixed(0)}%
+              {displaySnapshot.velocityHealth.onTrackPercent.toFixed(0)}%
             </div>
             <div class="text-xs text-neutral-500">
               {velocityCounts?.onTrack ?? 0} of {velocityCounts?.total ?? 0} projects
@@ -511,7 +597,7 @@
 
       <!-- Pillar 3: Team Productivity -->
       <Card
-        class="border transition-colors duration-150 hover:bg-white/5 {orgHasProductivityData
+        class="border transition-colors duration-150 hover:bg-white/5 {displayHasProductivityData
           ? productivityStatusClasses?.border
           : 'border-neutral-700/50 opacity-60'}"
       >
@@ -521,33 +607,33 @@
           >
             Productivity
           </div>
-          {#if orgHasProductivityData && orgProductivity && "trueThroughput" in orgProductivity}
+          {#if displayHasProductivityData && displayProductivity && "trueThroughput" in displayProductivity}
             <Badge
-              variant={orgProductivity.status === "healthy"
+              variant={displayProductivity.status === "healthy"
                 ? "success"
-                : orgProductivity.status === "warning"
+                : displayProductivity.status === "warning"
                   ? "warning"
-                  : orgProductivity.status === "critical"
+                  : displayProductivity.status === "critical"
                     ? "destructive"
                     : "outline"}
             >
-              {orgProductivity.status}
+              {displayProductivity.status}
             </Badge>
-          {:else if orgProductivity}
-            <Badge variant="outline">{orgProductivity.status}</Badge>
+          {:else if displayProductivity}
+            <Badge variant="outline">{displayProductivity.status}</Badge>
           {/if}
         </div>
 
         <div class="space-y-3">
-          {#if orgHasProductivityData && orgProductivity && "trueThroughput" in orgProductivity}
+          {#if displayHasProductivityData && displayProductivity && "trueThroughput" in displayProductivity}
             <div>
-              {#if orgProductivity.trueThroughputPerEngineer !== null}
+              {#if displayProductivity.trueThroughputPerEngineer !== null}
                 <div
                   class="text-2xl font-semibold {productivityStatusClasses?.text ||
                     ''}"
                 >
                   {toWeeklyRate(
-                    orgProductivity.trueThroughputPerEngineer
+                    displayProductivity.trueThroughputPerEngineer
                   ).toFixed(2)}<span
                     class="text-sm font-normal text-neutral-400"
                     >/wk per eng</span
@@ -561,8 +647,9 @@
                   class="text-2xl font-semibold {productivityStatusClasses?.text ||
                     ''}"
                 >
-                  {toWeeklyRate(orgProductivity.trueThroughput).toFixed(1)}<span
-                    class="text-sm font-normal text-neutral-400">/wk</span
+                  {toWeeklyRate(displayProductivity.trueThroughput).toFixed(
+                    1
+                  )}<span class="text-sm font-normal text-neutral-400">/wk</span
                   >
                 </div>
                 <div class="text-xs text-neutral-500">
@@ -574,29 +661,29 @@
             <div class="space-y-0.5 text-xs">
               <div>
                 <span class="font-semibold text-neutral-400"
-                  >{toWeeklyRate(orgProductivity.trueThroughput).toFixed(
+                  >{toWeeklyRate(displayProductivity.trueThroughput).toFixed(
                     1
                   )}</span
                 >
                 <span class="text-neutral-500">total throughput/wk</span>
               </div>
-              {#if orgProductivity.engineerCount !== null}
+              {#if displayProductivity.engineerCount !== null}
                 <div>
                   <span class="font-semibold text-neutral-400"
-                    >{orgProductivity.engineerCount}</span
+                    >{displayProductivity.engineerCount}</span
                   >
                   <span class="text-neutral-500">engineers</span>
                 </div>
               {/if}
             </div>
-          {:else if orgProductivity && "notes" in orgProductivity}
+          {:else if displayProductivity && "notes" in displayProductivity}
             <div>
               <div class="text-2xl font-semibold text-neutral-500">—</div>
               <div class="text-xs text-neutral-500">TrueThroughput</div>
             </div>
 
             <div class="text-xs italic text-neutral-500">
-              {orgProductivity.notes}
+              {displayProductivity.notes}
             </div>
           {:else}
             <div>
@@ -619,13 +706,13 @@
             Quality
           </div>
           <Badge
-            variant={orgSnapshot.quality.status === "healthy"
+            variant={displaySnapshot.quality.status === "healthy"
               ? "success"
-              : orgSnapshot.quality.status === "warning"
+              : displaySnapshot.quality.status === "warning"
                 ? "warning"
                 : "destructive"}
           >
-            {orgSnapshot.quality.status}
+            {displaySnapshot.quality.status}
           </Badge>
         </div>
 
@@ -634,7 +721,7 @@
             <div
               class="text-2xl font-semibold {qualityStatusClasses?.text || ''}"
             >
-              {orgSnapshot.quality.compositeScore}
+              {displaySnapshot.quality.compositeScore}
             </div>
             <div class="text-xs text-neutral-500">Quality score (0-100)</div>
           </div>
@@ -642,22 +729,22 @@
           <div class="space-y-0.5 text-xs">
             <div>
               <span class="font-semibold text-neutral-400"
-                >{orgSnapshot.quality.openBugCount}</span
+                >{displaySnapshot.quality.openBugCount}</span
               >
               <span class="text-neutral-500">open bugs</span>
             </div>
             <div>
-              {#if orgSnapshot.quality.netBugChange > 0}
+              {#if displaySnapshot.quality.netBugChange > 0}
                 <span class="text-neutral-500"
                   >Backlog growing (<span class="font-semibold text-neutral-400"
-                    >+{orgSnapshot.quality.netBugChange}</span
+                    >+{displaySnapshot.quality.netBugChange}</span
                   > in 14d)</span
                 >
-              {:else if orgSnapshot.quality.netBugChange < 0}
+              {:else if displaySnapshot.quality.netBugChange < 0}
                 <span class="text-neutral-500"
                   >Backlog shrinking (<span
                     class="font-semibold text-neutral-400"
-                    >{orgSnapshot.quality.netBugChange}</span
+                    >{displaySnapshot.quality.netBugChange}</span
                   > in 14d)</span
                 >
               {:else}
@@ -670,7 +757,7 @@
             </div>
             <div>
               <span class="text-neutral-500"
-                >Avg age: {orgSnapshot.quality.averageBugAgeDays.toFixed(0)} days</span
+                >Avg age: {displaySnapshot.quality.averageBugAgeDays.toFixed(0)} days</span
               >
             </div>
           </div>
@@ -683,14 +770,17 @@
       <h2 class="mb-4 text-lg font-medium text-white">Trends</h2>
       <Card>
         {#if trendLoading}
-          <div class="flex justify-center items-center h-[280px]">
-            <Skeleton class="w-full h-64" />
+          <div class="flex justify-center items-center h-[220px]">
+            <Skeleton class="w-full h-40" />
           </div>
         {:else if trendDataPoints.length > 0}
-          <FourPillarsChart dataPoints={trendDataPoints} />
+          <FourPillarsChart
+            dataPoints={trendDataPoints}
+            onhover={handleChartHover}
+          />
         {:else}
           <div
-            class="flex justify-center items-center h-[280px] text-sm text-neutral-500"
+            class="flex justify-center items-center h-[220px] text-sm text-neutral-500"
           >
             No trend data available yet. Metrics are captured hourly after each
             sync.
@@ -900,14 +990,14 @@
     {/if}
 
     <!-- Projects Needing Attention -->
-    {#if orgSnapshot.velocityHealth.projectStatuses.filter((p) => p.effectiveHealth !== "onTrack").length > 0}
+    {#if displaySnapshot.velocityHealth.projectStatuses.filter((p) => p.effectiveHealth !== "onTrack").length > 0}
       <div class="mt-8">
         <h2 class="mb-4 text-lg font-medium text-white">
           Projects Needing Attention
         </h2>
         <Card>
           <div class="space-y-2">
-            {#each orgSnapshot.velocityHealth.projectStatuses.filter((p) => p.effectiveHealth !== "onTrack") as project (project.projectId)}
+            {#each displaySnapshot.velocityHealth.projectStatuses.filter((p) => p.effectiveHealth !== "onTrack") as project (project.projectId)}
               <button
                 class="flex justify-between items-center px-3 py-2 w-full text-left rounded transition-colors cursor-pointer hover:bg-white/5"
                 onclick={() => handleProjectClick(project.projectId)}

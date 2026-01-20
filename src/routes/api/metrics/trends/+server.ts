@@ -10,28 +10,79 @@ import {
   type ProductivityStatus,
 } from "../../../../types/metrics-snapshot.js";
 
+/**
+ * Complete trend data point with ALL metrics from snapshot.
+ * Enables comprehensive hover state for dissecting each pillar.
+ */
 export interface TrendDataPoint {
   capturedAt: string;
+
+  /** Pillar 1: Team Health - Is work flowing or stuck? */
   teamHealth: {
-    icViolationPercent: number;
-    projectViolationPercent: number;
+    /** Percentage of ICs with healthy workloads (≤5 issues AND single project) */
     healthyWorkloadPercent: number;
+    /** Number of ICs with healthy workloads */
+    healthyIcCount: number;
+    /** Total number of ICs */
+    totalIcCount: number;
+    /** Number of ICs with 6+ issues (WIP overload) */
+    wipViolationCount: number;
+    /** Number of ICs on 2+ projects (context switching) */
+    multiProjectViolationCount: number;
+    /** Number of projects impacted by any IC violation */
+    impactedProjectCount: number;
+    /** Total number of active projects */
+    totalProjectCount: number;
+    /** Overall status for this pillar */
     status: PillarStatus;
   };
+
+  /** Pillar 2: Project Health - Are projects tracking to goal? */
   velocityHealth: {
+    /** Percentage of projects on track */
     onTrackPercent: number;
+    /** Percentage of projects at risk */
     atRiskPercent: number;
+    /** Percentage of projects off track */
     offTrackPercent: number;
+    /** Count of projects by health status */
+    onTrackCount: number;
+    atRiskCount: number;
+    offTrackCount: number;
+    totalProjectCount: number;
+    /** Overall status for this pillar */
     status: PillarStatus;
   };
+
+  /** Pillar 3: Team Productivity - Is output healthy and consistent? */
   productivity: {
+    /** TrueThroughput score from GetDX (14-day total) */
+    trueThroughput: number | null;
+    /** Number of engineers */
+    engineerCount: number | null;
+    /** TrueThroughput per engineer (14-day) */
     trueThroughputPerEngineer: number | null;
+    /** Overall status for this pillar */
     status: ProductivityStatus;
   };
+
+  /** Pillar 4: Quality - Are we building stable or creating debt? */
   quality: {
+    /** Composite score 0-100 (higher = healthier) */
     compositeScore: number;
+    /** Total open bugs with "type: bug" label */
     openBugCount: number;
+    /** Bugs opened in the measurement period (14 days) */
+    bugsOpenedInPeriod: number;
+    /** Bugs closed in the measurement period (14 days) */
+    bugsClosedInPeriod: number;
+    /** Net bug change (opened - closed); positive = growing backlog */
     netBugChange: number;
+    /** Average age of open bugs in days */
+    averageBugAgeDays: number;
+    /** Age of the oldest open bug in days */
+    maxBugAgeDays: number;
+    /** Overall status for this pillar */
     status: PillarStatus;
   };
 }
@@ -111,7 +162,7 @@ export const GET: RequestHandler = async ({ url }) => {
       );
     }
 
-    // Parse and extract trend data points
+    // Parse and extract trend data points with ALL metrics
     const dataPoints: TrendDataPoint[] = [];
 
     for (const snapshot of snapshots) {
@@ -120,33 +171,71 @@ export const GET: RequestHandler = async ({ url }) => {
 
       // Extract productivity data if available
       const productivity = parsed.teamProductivity;
-      const trueThroughputPerEngineer =
-        "trueThroughput" in productivity
-          ? productivity.trueThroughputPerEngineer
-          : null;
+      const hasProductivityData = "trueThroughput" in productivity;
+
+      // Calculate project counts from velocity health
+      const projectStatuses = parsed.velocityHealth.projectStatuses;
+      const onTrackCount = projectStatuses.filter(
+        (p) => p.effectiveHealth === "onTrack"
+      ).length;
+      const atRiskCount = projectStatuses.filter(
+        (p) => p.effectiveHealth === "atRisk"
+      ).length;
+      const offTrackCount = projectStatuses.filter(
+        (p) => p.effectiveHealth === "offTrack"
+      ).length;
 
       dataPoints.push({
         capturedAt: snapshot.captured_at,
+
+        // Pillar 1: Team Health - complete data
         teamHealth: {
-          icViolationPercent: parsed.teamHealth.icWipViolationPercent,
-          projectViolationPercent: parsed.teamHealth.projectWipViolationPercent,
           healthyWorkloadPercent: parsed.teamHealth.healthyWorkloadPercent,
+          healthyIcCount: parsed.teamHealth.healthyIcCount,
+          totalIcCount: parsed.teamHealth.totalIcCount,
+          wipViolationCount: parsed.teamHealth.wipViolationCount,
+          multiProjectViolationCount:
+            parsed.teamHealth.multiProjectViolationCount,
+          impactedProjectCount: parsed.teamHealth.impactedProjectCount,
+          totalProjectCount: parsed.teamHealth.totalProjectCount,
           status: parsed.teamHealth.status,
         },
+
+        // Pillar 2: Project Health - complete data
         velocityHealth: {
           onTrackPercent: parsed.velocityHealth.onTrackPercent,
           atRiskPercent: parsed.velocityHealth.atRiskPercent,
           offTrackPercent: parsed.velocityHealth.offTrackPercent,
+          onTrackCount,
+          atRiskCount,
+          offTrackCount,
+          totalProjectCount: projectStatuses.length,
           status: parsed.velocityHealth.status,
         },
+
+        // Pillar 3: Productivity - complete data
         productivity: {
-          trueThroughputPerEngineer,
+          trueThroughput: hasProductivityData
+            ? productivity.trueThroughput
+            : null,
+          engineerCount: hasProductivityData
+            ? productivity.engineerCount
+            : null,
+          trueThroughputPerEngineer: hasProductivityData
+            ? productivity.trueThroughputPerEngineer
+            : null,
           status: productivity.status,
         },
+
+        // Pillar 4: Quality - complete data
         quality: {
           compositeScore: parsed.quality.compositeScore,
           openBugCount: parsed.quality.openBugCount,
+          bugsOpenedInPeriod: parsed.quality.bugsOpenedInPeriod,
+          bugsClosedInPeriod: parsed.quality.bugsClosedInPeriod,
           netBugChange: parsed.quality.netBugChange,
+          averageBugAgeDays: parsed.quality.averageBugAgeDays,
+          maxBugAgeDays: parsed.quality.maxBugAgeDays,
           status: parsed.quality.status,
         },
       });

@@ -4,12 +4,14 @@
   interface Props {
     dataPoints: TrendDataPoint[];
     height?: number;
+    /** Callback when hovering over a data point (null when mouse leaves) */
+    onhover?: (dataPoint: TrendDataPoint | null) => void;
   }
 
-  let { dataPoints, height = 280 }: Props = $props();
+  let { dataPoints, height = 180, onhover }: Props = $props();
 
-  // Chart dimensions
-  const padding = { top: 20, right: 20, bottom: 40, left: 50 };
+  // Chart dimensions - balanced padding for clean look
+  const padding = { top: 16, right: 24, bottom: 32, left: 40 };
   const chartWidth = 800;
   const chartHeight = height;
   const innerWidth = chartWidth - padding.left - padding.right;
@@ -25,11 +27,6 @@
 
   // Target for productivity (3/wk per IC over 2 weeks = 6)
   const PRODUCTIVITY_TARGET = 6;
-
-  // Convert 14-day throughput to weekly rate
-  function toWeeklyRate(value: number): number {
-    return value / 2;
-  }
 
   // Normalize productivity to 0-100 based on target (3/wk = 100%)
   function normalizeProductivity(value: number | null): number | null {
@@ -166,17 +163,6 @@
     return date.toLocaleDateString("en-US", { month: "short", day: "numeric" });
   }
 
-  // Format date with time for tooltip
-  function formatDateTime(isoString: string): string {
-    const date = new Date(isoString);
-    return date.toLocaleDateString("en-US", {
-      month: "short",
-      day: "numeric",
-      hour: "numeric",
-      minute: "2-digit",
-    });
-  }
-
   // Generate X-axis labels (up to 5 evenly spaced dates based on time range)
   const xLabels = $derived.by(() => {
     if (normalizedData.length === 0) return [];
@@ -235,19 +221,18 @@
     return labels;
   });
 
-  // Y-axis labels
-  const yLabels = [0, 25, 50, 75, 100];
+  // Y-axis: major lines (labeled) and minor lines (unlabeled, subtler)
+  const yLabelsMajor = [0, 100];
+  const yLabelsMinor = [25, 50, 75];
 
   // Hover state
   let hoveredIndex = $state<number | null>(null);
 
-  // Get data point for hover tooltip
-  const hoveredData = $derived(
-    hoveredIndex !== null ? normalizedData[hoveredIndex] : null
-  );
-  const hoveredRaw = $derived(
-    hoveredIndex !== null ? dataPoints[hoveredIndex] : null
-  );
+  // Emit hover events to parent
+  $effect(() => {
+    const dataPoint = hoveredIndex !== null ? dataPoints[hoveredIndex] : null;
+    onhover?.(dataPoint);
+  });
 
   // Find nearest snapshot to mouse position
   function findNearestIndex(mouseX: number): number | null {
@@ -300,20 +285,7 @@
   ];
 </script>
 
-<div class="relative">
-  <!-- Legend -->
-  <div class="flex flex-wrap gap-4 justify-center mb-4 text-xs">
-    {#each legendItems as item (item.key)}
-      <div class="flex gap-1.5 items-center">
-        <div
-          class="w-3 h-0.5 rounded-full"
-          style="background-color: {item.color}"
-        ></div>
-        <span class="text-neutral-400">{item.label}</span>
-      </div>
-    {/each}
-  </div>
-
+<div class="relative pt-2 pb-1">
   <!-- Chart -->
   <svg
     viewBox="0 0 {chartWidth} {chartHeight}"
@@ -323,31 +295,45 @@
     onmousemove={handleMouseMove}
     onmouseleave={handleMouseLeave}
   >
-    <!-- Grid lines -->
-    <g class="grid-lines">
-      {#each yLabels as y (y)}
+    <!-- Grid lines (minor - subtler) -->
+    <g class="grid-lines-minor">
+      {#each yLabelsMinor as y (y)}
         <line
           x1={padding.left}
           y1={getY(y)}
           x2={chartWidth - padding.right}
           y2={getY(y)}
-          stroke="rgba(255,255,255,0.05)"
+          stroke="rgba(255,255,255,0.03)"
           stroke-width="1"
         />
       {/each}
     </g>
 
-    <!-- Y-axis labels -->
+    <!-- Grid lines (major) -->
+    <g class="grid-lines-major">
+      {#each yLabelsMajor as y (y)}
+        <line
+          x1={padding.left}
+          y1={getY(y)}
+          x2={chartWidth - padding.right}
+          y2={getY(y)}
+          stroke="rgba(255,255,255,0.06)"
+          stroke-width="1"
+        />
+      {/each}
+    </g>
+
+    <!-- Y-axis labels (major only) -->
     <g class="y-axis">
-      {#each yLabels as y (y)}
+      {#each yLabelsMajor as y (y)}
         <text
           x={padding.left - 10}
           y={getY(y) ?? 0}
           text-anchor="end"
           dominant-baseline="middle"
-          class="fill-neutral-500 text-[11px]"
+          class="fill-neutral-600 text-[9px]"
         >
-          {y}%
+          {y}
         </text>
       {/each}
     </g>
@@ -359,7 +345,7 @@
           {x}
           y={chartHeight - padding.bottom + 20}
           text-anchor="middle"
-          class="fill-neutral-500 text-[10px]"
+          class="fill-neutral-600 text-[9px]"
         >
           {label}
         </text>
@@ -374,10 +360,10 @@
           d={paths.wipHealth}
           fill="none"
           stroke={colors.wipHealth}
-          stroke-width="1.5"
+          stroke-width="2"
           stroke-linecap="round"
           stroke-linejoin="round"
-          class="opacity-60"
+          style="filter: drop-shadow(0 0 2px {colors.wipHealth})"
         />
       {/if}
 
@@ -387,10 +373,10 @@
           d={paths.projectHealth}
           fill="none"
           stroke={colors.projectHealth}
-          stroke-width="1.5"
+          stroke-width="2"
           stroke-linecap="round"
           stroke-linejoin="round"
-          class="opacity-60"
+          style="filter: drop-shadow(0 0 2px {colors.projectHealth})"
         />
       {/if}
 
@@ -400,11 +386,10 @@
           d={paths.productivity}
           fill="none"
           stroke={colors.productivity}
-          stroke-width="1.5"
+          stroke-width="2"
           stroke-linecap="round"
           stroke-linejoin="round"
-          stroke-dasharray="4 2"
-          class="opacity-60"
+          style="filter: drop-shadow(0 0 2px {colors.productivity})"
         />
       {/if}
 
@@ -414,10 +399,10 @@
           d={paths.quality}
           fill="none"
           stroke={colors.quality}
-          stroke-width="1.5"
+          stroke-width="2"
           stroke-linecap="round"
           stroke-linejoin="round"
-          class="opacity-60"
+          style="filter: drop-shadow(0 0 2px {colors.quality})"
         />
       {/if}
     {/if}
@@ -435,73 +420,6 @@
     {/if}
   </svg>
 
-  <!-- Tooltip -->
-  {#if hoveredData && hoveredRaw}
-    <div
-      class="absolute top-0 right-0 p-3 text-xs rounded-md border shadow-lg pointer-events-none bg-neutral-900 border-white/10"
-    >
-      <div class="mb-2 font-medium text-white">
-        {formatDateTime(hoveredData.capturedAt)}
-      </div>
-      <div class="space-y-1">
-        <div class="flex gap-2 justify-between items-center">
-          <div class="flex gap-1.5 items-center">
-            <div
-              class="w-2 h-2 rounded-full"
-              style="background-color: {colors.wipHealth}"
-            ></div>
-            <span class="text-neutral-400">WIP Health</span>
-          </div>
-          <span class="font-medium text-white"
-            >{hoveredData.wipHealth.toFixed(0)}%</span
-          >
-        </div>
-        <div class="flex gap-2 justify-between items-center">
-          <div class="flex gap-1.5 items-center">
-            <div
-              class="w-2 h-2 rounded-full"
-              style="background-color: {colors.projectHealth}"
-            ></div>
-            <span class="text-neutral-400">Project Health</span>
-          </div>
-          <span class="font-medium text-white"
-            >{hoveredData.projectHealth.toFixed(0)}%</span
-          >
-        </div>
-        <div class="flex gap-2 justify-between items-center">
-          <div class="flex gap-1.5 items-center">
-            <div
-              class="w-2 h-2 rounded-full"
-              style="background-color: {colors.productivity}"
-            ></div>
-            <span class="text-neutral-400">Productivity</span>
-          </div>
-          {#if hoveredRaw.productivity.trueThroughputPerEngineer !== null}
-            <span class="font-medium text-white"
-              >{toWeeklyRate(
-                hoveredRaw.productivity.trueThroughputPerEngineer
-              ).toFixed(2)}/wk</span
-            >
-          {:else}
-            <span class="text-neutral-500">—</span>
-          {/if}
-        </div>
-        <div class="flex gap-2 justify-between items-center">
-          <div class="flex gap-1.5 items-center">
-            <div
-              class="w-2 h-2 rounded-full"
-              style="background-color: {colors.quality}"
-            ></div>
-            <span class="text-neutral-400">Quality</span>
-          </div>
-          <span class="font-medium text-white"
-            >{hoveredData.quality.toFixed(0)}</span
-          >
-        </div>
-      </div>
-    </div>
-  {/if}
-
   <!-- Empty state -->
   {#if normalizedData.length === 0}
     <div
@@ -510,4 +428,19 @@
       No trend data available
     </div>
   {/if}
+
+  <!-- Legend (bottom) -->
+  <div
+    class="flex flex-wrap gap-6 justify-center pt-4 mt-2 text-xs border-t border-white/5"
+  >
+    {#each legendItems as item (item.key)}
+      <div class="flex gap-2 items-center">
+        <div
+          class="w-5 h-[3px] rounded-full"
+          style="background-color: {item.color}; box-shadow: 0 0 3px {item.color}"
+        ></div>
+        <span class="text-neutral-400">{item.label}</span>
+      </div>
+    {/each}
+  </div>
 </div>

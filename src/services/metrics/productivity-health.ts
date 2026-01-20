@@ -4,8 +4,12 @@
  * Core Question: Is output healthy and consistent?
  * Core Metric: TrueThroughput from GetDX
  *
- * Thresholds are configurable via environment variables.
- * If not configured, status is "unknown" to allow baseline data collection.
+ * Target: 3 TrueThroughput per week per IC (6 per 2-week period)
+ *
+ * Status Thresholds (unified with all pillars):
+ * - >= 90% of target = healthy
+ * - 75-90% of target = warning
+ * - < 75% of target = critical
  */
 
 import type { ProductivityMetrics } from "../getdx/index.js";
@@ -14,6 +18,7 @@ import {
   hasGetDXMappings,
   logGetDXTeamsForMapping,
 } from "../../utils/getdx-mapping.js";
+import { getPillarStatus } from "../../types/metrics-snapshot.js";
 
 /**
  * Productivity health status
@@ -46,47 +51,44 @@ export interface ProductivityPendingResult {
 }
 
 /**
- * Default thresholds for per-IC throughput (over 14-day period)
- * Target: 3 TrueThroughput per week per IC
- *
- * - Healthy: >= 6 per IC (3/week × 2 weeks)
- * - Warning: 3-6 per IC (1.5-3/week)
- * - Critical: < 3 per IC (<1.5/week)
+ * Default target for per-IC throughput (over 14-day period)
+ * Target: 3 TrueThroughput per week per IC = 6 per 2 weeks
  */
-const DEFAULT_PER_IC_THRESHOLDS = {
-  healthy: 6, // 3/week over 2 weeks
-  warning: 3, // 1.5/week over 2 weeks
-};
+const DEFAULT_PRODUCTIVITY_TARGET = 6;
 
 /**
- * Get configured throughput thresholds from environment
- * Falls back to default per-IC thresholds if not configured
+ * Get configured productivity target from environment
+ * Falls back to default target if not configured
  */
-function getPerICThresholds(): { healthy: number; warning: number } {
+function getProductivityTarget(): number {
   if (typeof process === "undefined" || !process.env) {
-    return DEFAULT_PER_IC_THRESHOLDS;
+    return DEFAULT_PRODUCTIVITY_TARGET;
   }
 
-  const healthy = process.env.GETDX_THROUGHPUT_PER_IC_HEALTHY;
-  const warning = process.env.GETDX_THROUGHPUT_PER_IC_WARNING;
+  const target = process.env.GETDX_THROUGHPUT_PER_IC_TARGET;
 
-  if (!healthy || !warning) {
-    return DEFAULT_PER_IC_THRESHOLDS;
+  if (!target) {
+    return DEFAULT_PRODUCTIVITY_TARGET;
   }
 
-  const healthyNum = parseFloat(healthy);
-  const warningNum = parseFloat(warning);
+  const targetNum = parseFloat(target);
 
-  if (isNaN(healthyNum) || isNaN(warningNum)) {
-    console.warn("[PRODUCTIVITY] Invalid threshold values - using defaults");
-    return DEFAULT_PER_IC_THRESHOLDS;
+  if (isNaN(targetNum) || targetNum <= 0) {
+    console.warn("[PRODUCTIVITY] Invalid target value - using default");
+    return DEFAULT_PRODUCTIVITY_TARGET;
   }
 
-  return { healthy: healthyNum, warning: warningNum };
+  return targetNum;
 }
 
 /**
- * Determine status based on per-IC throughput
+ * Determine status based on per-IC throughput using unified thresholds
+ *
+ * Normalizes throughput to a percentage of target, then uses the same
+ * threshold logic as all other pillars:
+ * - >= 90% of target = healthy
+ * - 75-90% of target = warning
+ * - < 75% of target = critical
  */
 function getStatusFromPerICThroughput(
   throughputPerIC: number | null
@@ -95,15 +97,13 @@ function getStatusFromPerICThroughput(
     return "unknown";
   }
 
-  const thresholds = getPerICThresholds();
+  const target = getProductivityTarget();
 
-  if (throughputPerIC >= thresholds.healthy) {
-    return "healthy";
-  } else if (throughputPerIC >= thresholds.warning) {
-    return "warning";
-  } else {
-    return "critical";
-  }
+  // Normalize to percentage of target (capped at 100% for status calculation)
+  const percentOfTarget = Math.min((throughputPerIC / target) * 100, 100);
+
+  // Use unified getPillarStatus with inverted percentage
+  return getPillarStatus(100 - percentOfTarget);
 }
 
 /**
@@ -140,7 +140,7 @@ export function calculateProductivityHealthForOrg(
       ? totalThroughput / engineerCount
       : null;
 
-  // Status is based on per-IC throughput (target: 3/week = 6 per 2 weeks)
+  // Status uses unified percentage-based thresholds
   const status = getStatusFromPerICThroughput(perEngineer);
 
   return {
@@ -205,7 +205,7 @@ export function calculateProductivityHealthForDomain(
       ? totalThroughput / engineerCount
       : null;
 
-  // Status is based on per-IC throughput (target: 3/week = 6 per 2 weeks)
+  // Status uses unified percentage-based thresholds
   const status = getStatusFromPerICThroughput(perEngineer);
 
   return {
