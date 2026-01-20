@@ -31,6 +31,30 @@ import {
 } from "../../lib/utils/project-helpers.js";
 
 /**
+ * Get allowed engineer names from ENGINEER_TEAM_MAPPING.
+ * Returns null if mapping is not configured (no filtering).
+ * Returns a Set of engineer names (case-insensitive matching) if configured.
+ */
+function getAllowedEngineers(): Set<string> | null {
+  const mapping = process.env.ENGINEER_TEAM_MAPPING;
+  if (!mapping) {
+    return null;
+  }
+
+  const pairs = mapping.split(",");
+  const engineers = new Set<string>();
+
+  for (const pair of pairs) {
+    const [engineer] = pair.split(":").map((s) => s.trim());
+    if (engineer) {
+      engineers.add(engineer.toLowerCase());
+    }
+  }
+
+  return engineers.size > 0 ? engineers : null;
+}
+
+/**
  * Data for projects with zero issues (from fetchProjectFullData)
  */
 export interface EmptyProjectData {
@@ -61,6 +85,9 @@ export async function computeAndStoreProjects(
   const whitelistSet = whitelistTeamKeys?.length
     ? new Set(whitelistTeamKeys)
     : null;
+
+  // Get allowed engineers from ENGINEER_TEAM_MAPPING (null = no filtering)
+  const allowedEngineers = getAllowedEngineers();
 
   // Group issues by project
   const projectGroups = new Map<string, Issue[]>();
@@ -114,9 +141,14 @@ export async function computeAndStoreProjects(
         inProgressCount++;
       }
 
-      // Track engineers
+      // Track engineers (filter by ENGINEER_TEAM_MAPPING if configured)
       if (issue.assignee_name) {
-        engineers.add(issue.assignee_name);
+        if (
+          !allowedEngineers ||
+          allowedEngineers.has(issue.assignee_name.toLowerCase())
+        ) {
+          engineers.add(issue.assignee_name);
+        }
       }
 
       // Track teams (filter by whitelist if set)

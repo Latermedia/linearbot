@@ -9,6 +9,30 @@ import {
 } from "../../utils/issue-validators.js";
 
 /**
+ * Get allowed engineer names from ENGINEER_TEAM_MAPPING.
+ * Returns null if mapping is not configured (no filtering).
+ * Returns a Set of engineer names (case-insensitive matching) if configured.
+ */
+function getAllowedEngineers(): Set<string> | null {
+  const mapping = process.env.ENGINEER_TEAM_MAPPING;
+  if (!mapping) {
+    return null;
+  }
+
+  const pairs = mapping.split(",");
+  const engineers = new Set<string>();
+
+  for (const pair of pairs) {
+    const [engineer] = pair.split(":").map((s) => s.trim());
+    if (engineer) {
+      engineers.add(engineer.toLowerCase());
+    }
+  }
+
+  return engineers.size > 0 ? engineers : null;
+}
+
+/**
  * Issue summary for storing in engineer's active_issues JSON
  */
 interface IssueSummary {
@@ -28,10 +52,14 @@ interface IssueSummary {
 }
 
 /**
- * Compute engineer WIP metrics from started issues and store in engineers table
+ * Compute engineer WIP metrics from started issues and store in engineers table.
+ * If ENGINEER_TEAM_MAPPING is configured, only engineers in the mapping are included.
  */
 export function computeAndStoreEngineers(): number {
   const startedIssues = getStartedIssues();
+
+  // Get allowed engineers from ENGINEER_TEAM_MAPPING (null = no filtering)
+  const allowedEngineers = getAllowedEngineers();
 
   // Group by assignee_id (skip unassigned)
   const engineerGroups = new Map<
@@ -41,6 +69,14 @@ export function computeAndStoreEngineers(): number {
 
   for (const issue of startedIssues) {
     if (!issue.assignee_id || !issue.assignee_name) continue;
+
+    // Filter by ENGINEER_TEAM_MAPPING if configured
+    if (
+      allowedEngineers &&
+      !allowedEngineers.has(issue.assignee_name.toLowerCase())
+    ) {
+      continue;
+    }
 
     if (!engineerGroups.has(issue.assignee_id)) {
       engineerGroups.set(issue.assignee_id, {
