@@ -232,11 +232,17 @@ export async function performSync(
       }
 
       console.log("[SYNC] Computing project metrics...");
+      // Get whitelist for team filtering (even in mock mode)
+      const mockCleanupConfig = getCleanupConfig();
       const computedProjectCount = await computeAndStoreProjects(
         projectLabelsMap,
         projectDescriptions,
         projectUpdates,
-        projectIds
+        projectIds,
+        false, // skipDeletion
+        undefined, // projectContentMap
+        undefined, // emptyProjects
+        mockCleanupConfig.whitelistTeamKeys // Filter teams by whitelist
       );
 
       console.log("[SYNC] Computing engineer WIP metrics...");
@@ -487,6 +493,25 @@ export async function performSync(
     );
     computedProjectCount = computingMetricsResult.projectCount;
     computedEngineerCount = computingMetricsResult.engineerCount;
+
+    // Run cleanup again after computing metrics to catch any stale data
+    // This is a safety net to ensure projects/teams outside the whitelist are removed
+    if (
+      cleanupConfig.whitelistTeamKeys.length > 0 ||
+      cleanupConfig.ignoredTeamKeys.length > 0
+    ) {
+      console.log("[SYNC] Running post-compute cleanup...");
+      const postCleanupResult = runCleanup(cleanupConfig);
+      if (
+        postCleanupResult.cleanedUpProjects > 0 ||
+        postCleanupResult.deletedProjects > 0 ||
+        postCleanupResult.deletedNonWhitelistEngineers > 0
+      ) {
+        console.log(
+          `[SYNC] Post-compute cleanup: cleaned ${postCleanupResult.cleanedUpProjects} project teams, deleted ${postCleanupResult.deletedProjects} projects, deleted ${postCleanupResult.deletedNonWhitelistEngineers} engineers`
+        );
+      }
+    }
 
     // Final phase complete
     updatePhase("complete");

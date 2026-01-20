@@ -42,6 +42,7 @@ export interface EmptyProjectData {
  * Compute project metrics from issues and store in projects table
  * @param skipDeletion - If true, skip deletion of inactive projects (used during incremental sync)
  * @param emptyProjects - Projects with zero issues that should still be stored
+ * @param whitelistTeamKeys - Team keys to include (filters out teams not in this list)
  */
 export async function computeAndStoreProjects(
   projectLabelsMap?: Map<string, string[]>,
@@ -50,10 +51,16 @@ export async function computeAndStoreProjects(
   syncedProjectIds?: Set<string>,
   _skipDeletion: boolean = false,
   projectContentMap?: Map<string, string | null>,
-  emptyProjects?: EmptyProjectData[]
+  emptyProjects?: EmptyProjectData[],
+  whitelistTeamKeys?: string[]
 ): Promise<number> {
   const syncTimestamp = syncedProjectIds ? new Date().toISOString() : null;
   const allIssues = getAllIssues();
+
+  // Create whitelist set for efficient lookups
+  const whitelistSet = whitelistTeamKeys?.length
+    ? new Set(whitelistTeamKeys)
+    : null;
 
   // Group issues by project
   const projectGroups = new Map<string, Issue[]>();
@@ -112,8 +119,10 @@ export async function computeAndStoreProjects(
         engineers.add(issue.assignee_name);
       }
 
-      // Track teams
-      teams.add(issue.team_key);
+      // Track teams (filter by whitelist if set)
+      if (!whitelistSet || whitelistSet.has(issue.team_key)) {
+        teams.add(issue.team_key);
+      }
 
       // Track latest activity
       if (new Date(issue.updated_at) > new Date(lastActivityDate)) {
@@ -418,6 +427,21 @@ export async function computeAndStoreProjects(
         continue;
       }
 
+      // Get teams from fullData, filtering by whitelist if set
+      const allTeamKeys = fullData.teams?.map((t) => t.key) || [];
+      const filteredTeamKeys = whitelistSet
+        ? allTeamKeys.filter((key) => whitelistSet.has(key))
+        : allTeamKeys;
+      const teams = new Set<string>(filteredTeamKeys);
+
+      // Skip empty projects that have no whitelisted teams
+      if (teams.size === 0) {
+        console.log(
+          `[SYNC] Skipping empty project "${fullData.name}" (${projectId}) - no whitelisted teams (had: ${allTeamKeys.join(", ")})`
+        );
+        continue;
+      }
+
       activeProjectIds.add(projectId);
 
       // Get project labels from fullData or map
@@ -425,9 +449,6 @@ export async function computeAndStoreProjects(
       if (projectLabelsMap?.has(projectId)) {
         projectLabels = projectLabelsMap.get(projectId) || [];
       }
-
-      // Get teams from fullData
-      const teams = new Set<string>(fullData.teams?.map((t) => t.key) || []);
 
       // Get project updates from map
       const projectUpdates =

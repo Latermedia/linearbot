@@ -15,6 +15,7 @@ import type { SyncResult, SyncCallbacks } from "./types.js";
 import { writeIssuesToDatabase } from "./utils.js";
 import { computeAndStoreProjects } from "./compute-projects.js";
 import { computeAndStoreEngineers } from "./compute-engineers.js";
+import { getCleanupConfig } from "./cleanup.js";
 
 /**
  * Sync a single project by project ID
@@ -243,13 +244,18 @@ export async function syncProject(
     callbacks?.onProgressPercent?.(90, 0, null);
     setSyncProgress(90);
 
+    // Get whitelist for team filtering
+    const cleanupConfig = getCleanupConfig();
+
     const computedProjectCount = await computeAndStoreProjects(
       projectLabelsMap,
       projectDescriptionsMap,
       projectUpdatesMap,
       new Set([projectId]),
       false,
-      projectContentMap
+      projectContentMap,
+      undefined, // emptyProjects
+      cleanupConfig.whitelistTeamKeys // Filter teams by whitelist
     );
 
     console.log(`[SYNC] Computing engineer WIP metrics...`);

@@ -332,7 +332,9 @@ export async function syncInitiativeProjects(
         projectUpdatesMap,
         new Set(projectsToSync),
         true,
-        initiativeProjectContentMap
+        initiativeProjectContentMap,
+        undefined, // emptyProjects
+        context.whitelistTeamKeys // Filter teams by whitelist
       );
       console.log(
         `[SYNC] Computed metrics for ${projectsToSync.length} initiative project(s)`

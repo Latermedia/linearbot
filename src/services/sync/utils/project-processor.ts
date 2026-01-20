@@ -395,7 +395,8 @@ export async function processProjectsInParallel(
       new Set([projectId]),
       true,
       projectContentMap,
-      emptyProjectsList // Pass empty projects
+      emptyProjectsList, // Pass empty projects
+      options.whitelistTeamKeys // Filter teams by whitelist
     );
 
     // Update project sync status

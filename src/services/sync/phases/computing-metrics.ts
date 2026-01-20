@@ -15,8 +15,13 @@ export async function syncComputingMetrics(
   recentlyUpdatedIssues: LinearIssueData[],
   activeProjectIds: Set<string>
 ): Promise<ComputingMetricsResult> {
-  const { callbacks, projectDescriptionsMap, projectUpdatesMap, updatePhase } =
-    context;
+  const {
+    callbacks,
+    projectDescriptionsMap,
+    projectUpdatesMap,
+    updatePhase,
+    whitelistTeamKeys,
+  } = context;
 
   updatePhase("computing_metrics");
   callbacks?.onProgressPercent?.(
@@ -50,7 +55,9 @@ export async function syncComputingMetrics(
       ? incrementallySyncedProjectIds
       : undefined,
     false, // Don't skip deletion - this is the final cleanup
-    undefined // Content should already be synced in earlier phases
+    undefined, // Content should already be synced in earlier phases
+    undefined, // emptyProjects - not used in this path
+    whitelistTeamKeys // Filter teams by whitelist
   );
   console.log(`[SYNC] Computed metrics for ${computedProjectCount} project(s)`);
 
