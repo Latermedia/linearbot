@@ -16,6 +16,8 @@
     groupBy = "team" as "team" | "domain",
     showScale = true,
     hideWarnings = false,
+    hideHeader = false,
+    embedded = false,
     endDateMode = "predicted" as "predicted" | "target",
     viewMode = "quarters" as "quarter" | "quarters",
   }: {
@@ -24,9 +26,16 @@
     groupBy?: "team" | "domain";
     showScale?: boolean;
     hideWarnings?: boolean;
+    /** Hide the group header (useful when parent already shows group info) */
+    hideHeader?: boolean;
+    /** Embedded mode: skip header (for use inside parent Card) */
+    embedded?: boolean;
     endDateMode?: "predicted" | "target";
     viewMode?: "quarter" | "quarters";
   } = $props();
+
+  // Embedded mode implies hideHeader
+  const shouldHideHeader = $derived(hideHeader || embedded);
 
   let selectedProject: ProjectSummary | null = $state(null);
   let hoveredProject: ProjectSummary | null = $state(null);
@@ -523,18 +532,20 @@
             onmouseenter={() => (hoveredSection = sectionKey)}
             onmouseleave={() => (hoveredSection = null)}
           >
-            <GanttSectionHeader
-              {group}
-              {hoveredSection}
-              {sectionKey}
-              onExport={() => {
-                if ("teamId" in group) {
-                  openExportModal(group);
-                } else {
-                  openExportModal(undefined, group);
-                }
-              }}
-            />
+            {#if !shouldHideHeader}
+              <GanttSectionHeader
+                {group}
+                {hoveredSection}
+                {sectionKey}
+                onExport={() => {
+                  if ("teamId" in group) {
+                    openExportModal(group);
+                  } else {
+                    openExportModal(undefined, group);
+                  }
+                }}
+              />
+            {/if}
             {#each group.projects as project}
               {@const position = getProjectPosition(project)}
               {@const targetDatePercent = getTargetDatePercent(project)}

@@ -7,18 +7,19 @@
   import ProjectDetailModal from "$lib/components/ProjectDetailModal.svelte";
   import FourPillarsChart from "$lib/components/FourPillarsChart.svelte";
   import { databaseStore, projectsStore } from "$lib/stores/database";
+  import { teamFilterStore } from "$lib/stores/team-filter";
   import type { ProjectSummary } from "$lib/project-data";
   import type {
     MetricsSnapshotV1,
     PillarStatus,
     ProductivityStatus,
     TeamProductivityV1,
-  } from "../../types/metrics-snapshot";
-  import type { LatestMetricsResponse } from "../api/metrics/latest/+server";
+  } from "../../../types/metrics-snapshot";
+  import type { LatestMetricsResponse } from "../../../routes/api/metrics/latest/+server";
   import type {
     TrendDataPoint,
     TrendsResponse,
-  } from "../api/metrics/trends/+server";
+  } from "../../../routes/api/metrics/trends/+server";
 
   // Engineering principles - rotates every 5 seconds
   const principles = [
@@ -52,7 +53,7 @@
       setTimeout(() => {
         principleIndex = (principleIndex + 1) % principles.length;
         isAnimating = false;
-      }, 400); // Swap text at peak of blur
+      }, 400);
     }, 5000);
 
     return () => clearInterval(interval);
@@ -70,7 +71,6 @@
       capturedAt: string;
     }>
   >([]);
-  let selectedLevel = $state<"org" | "domain" | "team">("org");
   let teamNames = $state<Record<string, string>>({});
 
   // Trend data state
@@ -83,6 +83,9 @@
   function handleChartHover(dataPoint: TrendDataPoint | null) {
     hoveredTrendPoint = dataPoint;
   }
+
+  // Team filter
+  const selectedTeamKey = $derived($teamFilterStore);
 
   // Fetch metrics data
   async function fetchMetrics() {
@@ -121,12 +124,10 @@
     trendLoading = true;
 
     try {
-      // Fetch all available trend data (high limit to get all-time data)
       const response = await fetch("/api/metrics/trends?level=org&limit=10000");
       const data = (await response.json()) as TrendsResponse;
 
       if (data.success && data.dataPoints) {
-        // Sort by capturedAt ascending (oldest first, time flows left to right)
         trendDataPoints = data.dataPoints.sort(
           (a, b) =>
             new Date(a.capturedAt).getTime() - new Date(b.capturedAt).getTime()
@@ -160,7 +161,7 @@
     databaseStore.load();
   });
 
-  // Get status color classes (works for both PillarStatus and ProductivityStatus)
+  // Get status color classes
   function getStatusClasses(status: PillarStatus | ProductivityStatus): {
     bg: string;
     text: string;
@@ -206,7 +207,7 @@
     }
   }
 
-  // Measurement period in weeks (data is aggregated over 14 days = 2 weeks)
+  // Measurement period in weeks
   const MEASUREMENT_PERIOD_WEEKS = 2;
 
   // Check if productivity has TrueThroughput data
@@ -224,25 +225,7 @@
     return value / MEASUREMENT_PERIOD_WEEKS;
   }
 
-  // Get productivity display string (as weekly rate)
-  function _getProductivityDisplay(p: TeamProductivityV1): string {
-    if (hasProductivityData(p)) {
-      const weeklyRate = toWeeklyRate(p.trueThroughput);
-      return `${weeklyRate.toFixed(1)}/wk`;
-    }
-    return "—";
-  }
-
-  // Get per-IC weekly rate
-  function _getPerICWeeklyRate(p: TeamProductivityV1): string {
-    if (hasProductivityData(p) && p.trueThroughputPerEngineer !== null) {
-      const weeklyPerIC = toWeeklyRate(p.trueThroughputPerEngineer);
-      return `${weeklyPerIC.toFixed(2)}/wk`;
-    }
-    return "—";
-  }
-
-  // Get team display name: "Full Name (KEY)" or just "KEY" if no full name
+  // Get team display name
   function getTeamDisplayName(teamKey: string | null): string {
     if (!teamKey) return "Unknown";
     const fullName = teamNames[teamKey];
@@ -262,23 +245,14 @@
     allSnapshots.filter((s) => s.level === "team")
   );
 
-  // Currently viewed snapshot based on level (for future use)
-  const _currentSnapshot = $derived.by(() => {
-    if (selectedLevel === "org") return orgSnapshot;
-    // For domain/team views, we could add a selector later
-    return orgSnapshot;
-  });
-
-  // Display snapshot: use hovered historical data or current org snapshot
+  // Display snapshot: use hovered historical data, team filter, or org snapshot
   const displaySnapshot = $derived.by(() => {
     if (hoveredTrendPoint) {
-      // Convert TrendDataPoint to display format
       const tp = hoveredTrendPoint;
       return {
         teamHealth: tp.teamHealth,
         velocityHealth: {
           ...tp.velocityHealth,
-          // Add empty projectStatuses for compatibility (historical view won't show source breakdown)
           projectStatuses: [] as typeof orgSnapshot extends {
             velocityHealth: { projectStatuses: infer T };
           }
@@ -302,6 +276,17 @@
         capturedAt: tp.capturedAt,
       };
     }
+
+    // If team filter is active, show team snapshot
+    if (selectedTeamKey) {
+      const teamSnapshot = allSnapshots.find(
+        (s) => s.level === "team" && s.levelId === selectedTeamKey
+      );
+      if (teamSnapshot) {
+        return teamSnapshot.snapshot;
+      }
+    }
+
     return orgSnapshot;
   });
 
@@ -320,7 +305,7 @@
     });
   });
 
-  // Status classes for each pillar (derived from displaySnapshot)
+  // Status classes for each pillar
   const teamHealthStatusClasses = $derived(
     displaySnapshot ? getStatusClasses(displaySnapshot.teamHealth.status) : null
   );
@@ -333,26 +318,23 @@
     displaySnapshot ? getStatusClasses(displaySnapshot.quality.status) : null
   );
 
-  // Project Health derived counts (split by source: Self-reported vs Trajectory Alert)
-  // For historical view, we use simplified counts from TrendDataPoint
+  // Project Health derived counts
   const velocityCounts = $derived.by(() => {
     if (!displaySnapshot) return null;
 
-    // If viewing history, use the pre-computed counts from TrendDataPoint
     if (isViewingHistory && hoveredTrendPoint) {
       const vh = hoveredTrendPoint.velocityHealth;
       return {
-        atRiskHuman: 0, // Not available in historical data
+        atRiskHuman: 0,
         atRiskVelocity: vh.atRiskCount,
-        offTrackHuman: 0, // Not available in historical data
+        offTrackHuman: 0,
         offTrackVelocity: vh.offTrackCount,
         total: vh.totalProjectCount,
         onTrack: vh.onTrackCount,
       };
     }
 
-    // Current view uses full projectStatuses breakdown
-    if (!orgSnapshot) return null;
+    if (!displaySnapshot.velocityHealth.projectStatuses) return null;
     const statuses = displaySnapshot.velocityHealth.projectStatuses;
     return {
       atRiskHuman: statuses.filter(
@@ -372,7 +354,7 @@
     };
   });
 
-  // Productivity derived values (use displaySnapshot for reactive updates)
+  // Productivity derived values
   const displayProductivity = $derived(
     displaySnapshot?.teamProductivity ?? null
   );
@@ -385,21 +367,21 @@
 </script>
 
 <div class="space-y-6">
-  <!-- Header -->
+  <!-- Header with rotating principles -->
   <div class="relative">
-    <h1 class="text-2xl font-semibold tracking-tight text-white">
-      Engineering Metrics
-    </h1>
-    {#if isViewingHistory}
-      <div
-        class="absolute right-0 top-0 px-3 py-1.5 text-sm rounded-md border bg-violet-500/10 border-violet-500/30 text-violet-300"
-      >
-        Viewing <span class="font-medium">{historyTimestamp}</span>
-      </div>
-    {/if}
-    <div class="overflow-hidden relative pr-4 pl-4 mt-1 -mr-4 -ml-4 h-6">
+    <div class="flex items-center justify-between">
+      <h2 class="text-lg font-semibold text-white">Engineering Health</h2>
+      {#if isViewingHistory}
+        <div
+          class="px-3 py-1.5 text-sm rounded-md border bg-violet-500/10 border-violet-500/30 text-violet-300"
+        >
+          Viewing <span class="font-medium">{historyTimestamp}</span>
+        </div>
+      {/if}
+    </div>
+    <div class="overflow-hidden relative h-6 mt-1">
       <p
-        class="absolute left-4 right-4 top-0 text-sm text-neutral-400 italic principle-text {isAnimating
+        class="absolute left-0 right-0 top-0 text-sm text-neutral-400 italic principle-text {isAnimating
           ? 'principle-exit'
           : 'principle-enter'}"
       >
@@ -472,22 +454,22 @@
               <span class="font-semibold text-neutral-400"
                 >{displaySnapshot.teamHealth.wipViolationCount}</span
               >
-              <span class="text-neutral-500">ICs overloaded (6+ issues)</span>
+              <span class="text-neutral-500"> ICs overloaded (6+ issues)</span>
             </div>
             <div>
               <span class="font-semibold text-neutral-400"
                 >{displaySnapshot.teamHealth.multiProjectViolationCount}</span
               >
-              <span class="text-neutral-500"
-                >ICs context-switching (2+ projects)</span
+              <span class="text-neutral-500">
+                ICs context-switching (2+ projects)</span
               >
             </div>
             <div>
               <span class="font-semibold text-neutral-400"
                 >{displaySnapshot.teamHealth.impactedProjectCount}</span
               >
-              <span class="text-neutral-500"
-                >of {displaySnapshot.teamHealth.totalProjectCount} projects impacted</span
+              <span class="text-neutral-500">
+                of {displaySnapshot.teamHealth.totalProjectCount} projects impacted</span
               >
             </div>
           </div>
@@ -549,7 +531,7 @@
                         <span class="font-semibold text-neutral-400"
                           >{velocityCounts.atRiskHuman}</span
                         >
-                        <span class="text-neutral-500">at risk</span>
+                        <span class="text-neutral-500"> at risk</span>
                       </div>
                     {/if}
                     {#if velocityCounts.offTrackHuman > 0}
@@ -557,7 +539,7 @@
                         <span class="font-semibold text-neutral-400"
                           >{velocityCounts.offTrackHuman}</span
                         >
-                        <span class="text-neutral-500">off track</span>
+                        <span class="text-neutral-500"> off track</span>
                       </div>
                     {/if}
                   </div>
@@ -574,7 +556,7 @@
                         <span class="font-semibold text-neutral-400"
                           >{velocityCounts.atRiskVelocity}</span
                         >
-                        <span class="text-neutral-500">at risk</span>
+                        <span class="text-neutral-500"> at risk</span>
                       </div>
                     {/if}
                     {#if velocityCounts.offTrackVelocity > 0}
@@ -582,7 +564,7 @@
                         <span class="font-semibold text-neutral-400"
                           >{velocityCounts.offTrackVelocity}</span
                         >
-                        <span class="text-neutral-500">off track</span>
+                        <span class="text-neutral-500"> off track</span>
                       </div>
                     {/if}
                   </div>
@@ -665,14 +647,14 @@
                     1
                   )}</span
                 >
-                <span class="text-neutral-500">total throughput/wk</span>
+                <span class="text-neutral-500"> total throughput/wk</span>
               </div>
               {#if displayProductivity.engineerCount !== null}
                 <div>
                   <span class="font-semibold text-neutral-400"
                     >{displayProductivity.engineerCount}</span
                   >
-                  <span class="text-neutral-500">engineers</span>
+                  <span class="text-neutral-500"> engineers</span>
                 </div>
               {/if}
             </div>
@@ -681,7 +663,6 @@
               <div class="text-2xl font-semibold text-neutral-500">—</div>
               <div class="text-xs text-neutral-500">TrueThroughput</div>
             </div>
-
             <div class="text-xs italic text-neutral-500">
               {displayProductivity.notes}
             </div>
@@ -690,6 +671,11 @@
               <div class="text-2xl font-semibold text-neutral-500">—</div>
               <div class="text-xs text-neutral-500">TrueThroughput</div>
             </div>
+            {#if selectedTeamKey}
+              <div class="text-xs italic text-neutral-500">
+                Not available at team level
+              </div>
+            {/if}
           {/if}
         </div>
       </Card>
@@ -731,7 +717,7 @@
               <span class="font-semibold text-neutral-400"
                 >{displaySnapshot.quality.openBugCount}</span
               >
-              <span class="text-neutral-500">open bugs</span>
+              <span class="text-neutral-500"> open bugs</span>
             </div>
             <div>
               {#if displaySnapshot.quality.netBugChange > 0}
@@ -767,7 +753,7 @@
 
     <!-- Four Pillars Trend Chart -->
     <div class="mt-8">
-      <h2 class="mb-4 text-lg font-medium text-white">Trends</h2>
+      <h3 class="mb-4 text-base font-medium text-white">Trends</h3>
       <Card>
         {#if trendLoading}
           <div class="flex justify-center items-center h-[220px]">
@@ -790,211 +776,216 @@
     </div>
 
     <!-- Domain Breakdown -->
-    {#if domainSnapshots.length > 0}
+    {#if domainSnapshots.length > 0 && !selectedTeamKey}
       <div class="mt-8">
-        <h2 class="mb-4 text-lg font-medium text-white">By Domain</h2>
-        <div class="overflow-x-auto">
-          <table class="w-full text-sm">
-            <thead>
-              <tr class="border-b border-white/10">
-                <th class="px-4 py-3 font-medium text-left text-neutral-400">
-                  Domain
-                </th>
-                <th class="px-4 py-3 font-medium text-center text-neutral-400">
-                  WIP Health
-                </th>
-                <th class="px-4 py-3 font-medium text-center text-neutral-400">
-                  Project Health
-                </th>
-                <th class="px-4 py-3 font-medium text-center text-neutral-400">
-                  Quality
-                </th>
-                <th class="px-4 py-3 font-medium text-center text-neutral-400">
-                  Throughput/IC/week
-                </th>
-                <th class="px-4 py-3 font-medium text-right text-neutral-400">
-                  ICs
-                </th>
-                <th class="px-4 py-3 font-medium text-right text-neutral-400">
-                  Projects
-                </th>
-                <th class="px-4 py-3 font-medium text-right text-neutral-400">
-                  Open Bugs
-                </th>
-              </tr>
-            </thead>
-            <tbody>
-              {#each domainSnapshots as { levelId, snapshot } (levelId)}
-                <tr
-                  class="border-b transition-colors border-white/5 hover:bg-white/5"
-                >
-                  <td class="px-4 py-3 font-medium text-white">{levelId}</td>
-                  <td class="px-4 py-3 text-center">
-                    <Badge
-                      variant={snapshot.teamHealth.status === "healthy"
-                        ? "success"
-                        : snapshot.teamHealth.status === "warning"
-                          ? "warning"
-                          : "destructive"}
-                    >
-                      {snapshot.teamHealth.status}
-                    </Badge>
-                  </td>
-                  <td class="px-4 py-3 text-center">
-                    <Badge
-                      variant={snapshot.velocityHealth.status === "healthy"
-                        ? "success"
-                        : snapshot.velocityHealth.status === "warning"
-                          ? "warning"
-                          : "destructive"}
-                    >
-                      {snapshot.velocityHealth.onTrackPercent.toFixed(0)}% on
-                      track
-                    </Badge>
-                  </td>
-                  <td class="px-4 py-3 text-center">
-                    <Badge
-                      variant={snapshot.quality.status === "healthy"
-                        ? "success"
-                        : snapshot.quality.status === "warning"
-                          ? "warning"
-                          : "destructive"}
-                    >
-                      {snapshot.quality.compositeScore}
-                    </Badge>
-                  </td>
-                  <td class="px-4 py-3 text-center">
-                    {#if hasProductivityData(snapshot.teamProductivity)}
-                      <Badge
-                        variant={snapshot.teamProductivity.status === "healthy"
-                          ? "success"
-                          : snapshot.teamProductivity.status === "warning"
-                            ? "warning"
-                            : snapshot.teamProductivity.status === "critical"
-                              ? "destructive"
-                              : "outline"}
-                      >
-                        {toWeeklyRate(
-                          snapshot.teamProductivity.trueThroughputPerEngineer ??
-                            0
-                        ).toFixed(1)}
-                      </Badge>
-                    {:else}
-                      <span class="text-neutral-500">—</span>
-                    {/if}
-                  </td>
-                  <td class="px-4 py-3 text-right text-neutral-400">
-                    {snapshot.teamHealth.totalIcCount}
-                  </td>
-                  <td class="px-4 py-3 text-right text-neutral-400">
-                    {snapshot.teamHealth.totalProjectCount}
-                  </td>
-                  <td class="px-4 py-3 text-right text-neutral-400">
-                    {snapshot.quality.openBugCount}
-                  </td>
+        <h3 class="mb-4 text-base font-medium text-white">By Domain</h3>
+        <Card class="p-0 overflow-hidden">
+          <div class="overflow-x-auto">
+            <table class="w-full text-sm">
+              <thead>
+                <tr class="border-b border-white/10">
+                  <th class="px-4 py-3 font-medium text-left text-neutral-400"
+                    >Domain</th
+                  >
+                  <th class="px-4 py-3 font-medium text-center text-neutral-400"
+                    >WIP Health</th
+                  >
+                  <th class="px-4 py-3 font-medium text-center text-neutral-400"
+                    >Project Health</th
+                  >
+                  <th class="px-4 py-3 font-medium text-center text-neutral-400"
+                    >Quality</th
+                  >
+                  <th class="px-4 py-3 font-medium text-center text-neutral-400"
+                    >Throughput/IC/wk</th
+                  >
+                  <th class="px-4 py-3 font-medium text-right text-neutral-400"
+                    >ICs</th
+                  >
+                  <th class="px-4 py-3 font-medium text-right text-neutral-400"
+                    >Projects</th
+                  >
+                  <th class="px-4 py-3 font-medium text-right text-neutral-400"
+                    >Open Bugs</th
+                  >
                 </tr>
-              {/each}
-            </tbody>
-          </table>
-        </div>
+              </thead>
+              <tbody>
+                {#each domainSnapshots as { levelId, snapshot } (levelId)}
+                  <tr
+                    class="border-b transition-colors border-white/5 hover:bg-white/5"
+                  >
+                    <td class="px-4 py-3 font-medium text-white">{levelId}</td>
+                    <td class="px-4 py-3 text-center">
+                      <Badge
+                        variant={snapshot.teamHealth.status === "healthy"
+                          ? "success"
+                          : snapshot.teamHealth.status === "warning"
+                            ? "warning"
+                            : "destructive"}
+                      >
+                        {snapshot.teamHealth.status}
+                      </Badge>
+                    </td>
+                    <td class="px-4 py-3 text-center">
+                      <Badge
+                        variant={snapshot.velocityHealth.status === "healthy"
+                          ? "success"
+                          : snapshot.velocityHealth.status === "warning"
+                            ? "warning"
+                            : "destructive"}
+                      >
+                        {snapshot.velocityHealth.onTrackPercent.toFixed(0)}% on
+                        track
+                      </Badge>
+                    </td>
+                    <td class="px-4 py-3 text-center">
+                      <Badge
+                        variant={snapshot.quality.status === "healthy"
+                          ? "success"
+                          : snapshot.quality.status === "warning"
+                            ? "warning"
+                            : "destructive"}
+                      >
+                        {snapshot.quality.compositeScore}
+                      </Badge>
+                    </td>
+                    <td class="px-4 py-3 text-center">
+                      {#if hasProductivityData(snapshot.teamProductivity)}
+                        <Badge
+                          variant={snapshot.teamProductivity.status ===
+                          "healthy"
+                            ? "success"
+                            : snapshot.teamProductivity.status === "warning"
+                              ? "warning"
+                              : snapshot.teamProductivity.status === "critical"
+                                ? "destructive"
+                                : "outline"}
+                        >
+                          {toWeeklyRate(
+                            snapshot.teamProductivity
+                              .trueThroughputPerEngineer ?? 0
+                          ).toFixed(1)}
+                        </Badge>
+                      {:else}
+                        <span class="text-neutral-500">—</span>
+                      {/if}
+                    </td>
+                    <td class="px-4 py-3 text-right text-neutral-400"
+                      >{snapshot.teamHealth.totalIcCount}</td
+                    >
+                    <td class="px-4 py-3 text-right text-neutral-400"
+                      >{snapshot.teamHealth.totalProjectCount}</td
+                    >
+                    <td class="px-4 py-3 text-right text-neutral-400"
+                      >{snapshot.quality.openBugCount}</td
+                    >
+                  </tr>
+                {/each}
+              </tbody>
+            </table>
+          </div>
+        </Card>
       </div>
     {/if}
 
     <!-- Team Breakdown -->
-    {#if teamSnapshots.length > 0}
+    {#if teamSnapshots.length > 0 && !selectedTeamKey}
       <div class="mt-8">
-        <h2 class="mb-4 text-lg font-medium text-white">By Team</h2>
-        <div class="overflow-x-auto">
-          <table class="w-full text-sm">
-            <thead>
-              <tr class="border-b border-white/10">
-                <th class="px-4 py-3 font-medium text-left text-neutral-400">
-                  Team
-                </th>
-                <th class="px-4 py-3 font-medium text-center text-neutral-400">
-                  WIP Health
-                </th>
-                <th class="px-4 py-3 font-medium text-center text-neutral-400">
-                  Project Health
-                </th>
-                <th class="px-4 py-3 font-medium text-center text-neutral-400">
-                  Quality
-                </th>
-                <th class="px-4 py-3 font-medium text-right text-neutral-400">
-                  ICs
-                </th>
-                <th class="px-4 py-3 font-medium text-right text-neutral-400">
-                  Projects
-                </th>
-                <th class="px-4 py-3 font-medium text-right text-neutral-400">
-                  Open Bugs
-                </th>
-              </tr>
-            </thead>
-            <tbody>
-              {#each teamSnapshots.sort( (a, b) => (a.levelId || "").localeCompare(b.levelId || "") ) as { levelId, snapshot } (levelId)}
-                <tr
-                  class="border-b transition-colors border-white/5 hover:bg-white/5"
-                >
-                  <td class="px-4 py-3 font-medium text-white"
-                    >{getTeamDisplayName(levelId)}</td
+        <h3 class="mb-4 text-base font-medium text-white">By Team</h3>
+        <Card class="p-0 overflow-hidden">
+          <div class="overflow-x-auto">
+            <table class="w-full text-sm">
+              <thead>
+                <tr class="border-b border-white/10">
+                  <th class="px-4 py-3 font-medium text-left text-neutral-400"
+                    >Team</th
                   >
-                  <td class="px-4 py-3 text-center">
-                    <Badge
-                      variant={snapshot.teamHealth.status === "healthy"
-                        ? "success"
-                        : snapshot.teamHealth.status === "warning"
-                          ? "warning"
-                          : "destructive"}
-                    >
-                      {snapshot.teamHealth.status}
-                    </Badge>
-                  </td>
-                  <td class="px-4 py-3 text-center">
-                    <Badge
-                      variant={snapshot.velocityHealth.status === "healthy"
-                        ? "success"
-                        : snapshot.velocityHealth.status === "warning"
-                          ? "warning"
-                          : "destructive"}
-                    >
-                      {snapshot.velocityHealth.onTrackPercent.toFixed(0)}%
-                    </Badge>
-                  </td>
-                  <td class="px-4 py-3 text-center">
-                    <Badge
-                      variant={snapshot.quality.status === "healthy"
-                        ? "success"
-                        : snapshot.quality.status === "warning"
-                          ? "warning"
-                          : "destructive"}
-                    >
-                      {snapshot.quality.compositeScore}
-                    </Badge>
-                  </td>
-                  <td class="px-4 py-3 text-right text-neutral-400">
-                    {snapshot.teamHealth.totalIcCount}
-                  </td>
-                  <td class="px-4 py-3 text-right text-neutral-400">
-                    {snapshot.teamHealth.totalProjectCount}
-                  </td>
-                  <td class="px-4 py-3 text-right text-neutral-400">
-                    {snapshot.quality.openBugCount}
-                  </td>
+                  <th class="px-4 py-3 font-medium text-center text-neutral-400"
+                    >WIP Health</th
+                  >
+                  <th class="px-4 py-3 font-medium text-center text-neutral-400"
+                    >Project Health</th
+                  >
+                  <th class="px-4 py-3 font-medium text-center text-neutral-400"
+                    >Quality</th
+                  >
+                  <th class="px-4 py-3 font-medium text-right text-neutral-400"
+                    >ICs</th
+                  >
+                  <th class="px-4 py-3 font-medium text-right text-neutral-400"
+                    >Projects</th
+                  >
+                  <th class="px-4 py-3 font-medium text-right text-neutral-400"
+                    >Open Bugs</th
+                  >
                 </tr>
-              {/each}
-            </tbody>
-          </table>
-        </div>
+              </thead>
+              <tbody>
+                {#each teamSnapshots.sort( (a, b) => (a.levelId || "").localeCompare(b.levelId || "") ) as { levelId, snapshot } (levelId)}
+                  <tr
+                    class="border-b transition-colors border-white/5 hover:bg-white/5"
+                  >
+                    <td class="px-4 py-3 font-medium text-white"
+                      >{getTeamDisplayName(levelId)}</td
+                    >
+                    <td class="px-4 py-3 text-center">
+                      <Badge
+                        variant={snapshot.teamHealth.status === "healthy"
+                          ? "success"
+                          : snapshot.teamHealth.status === "warning"
+                            ? "warning"
+                            : "destructive"}
+                      >
+                        {snapshot.teamHealth.status}
+                      </Badge>
+                    </td>
+                    <td class="px-4 py-3 text-center">
+                      <Badge
+                        variant={snapshot.velocityHealth.status === "healthy"
+                          ? "success"
+                          : snapshot.velocityHealth.status === "warning"
+                            ? "warning"
+                            : "destructive"}
+                      >
+                        {snapshot.velocityHealth.onTrackPercent.toFixed(0)}%
+                      </Badge>
+                    </td>
+                    <td class="px-4 py-3 text-center">
+                      <Badge
+                        variant={snapshot.quality.status === "healthy"
+                          ? "success"
+                          : snapshot.quality.status === "warning"
+                            ? "warning"
+                            : "destructive"}
+                      >
+                        {snapshot.quality.compositeScore}
+                      </Badge>
+                    </td>
+                    <td class="px-4 py-3 text-right text-neutral-400"
+                      >{snapshot.teamHealth.totalIcCount}</td
+                    >
+                    <td class="px-4 py-3 text-right text-neutral-400"
+                      >{snapshot.teamHealth.totalProjectCount}</td
+                    >
+                    <td class="px-4 py-3 text-right text-neutral-400"
+                      >{snapshot.quality.openBugCount}</td
+                    >
+                  </tr>
+                {/each}
+              </tbody>
+            </table>
+          </div>
+        </Card>
       </div>
     {/if}
 
     <!-- Projects Needing Attention -->
-    {#if displaySnapshot.velocityHealth.projectStatuses.filter((p) => p.effectiveHealth !== "onTrack").length > 0}
+    {#if displaySnapshot.velocityHealth.projectStatuses && displaySnapshot.velocityHealth.projectStatuses.filter((p) => p.effectiveHealth !== "onTrack").length > 0}
       <div class="mt-8">
-        <h2 class="mb-4 text-lg font-medium text-white">
+        <h3 class="mb-4 text-base font-medium text-white">
           Projects Needing Attention
-        </h2>
+        </h3>
         <Card>
           <div class="space-y-2">
             {#each displaySnapshot.velocityHealth.projectStatuses.filter((p) => p.effectiveHealth !== "onTrack") as project (project.projectId)}
@@ -1011,7 +1002,7 @@
                       {project.daysOffTarget > 0
                         ? `${project.daysOffTarget} days behind target`
                         : `${Math.abs(project.daysOffTarget)} days ahead`}
-                      • {project.healthSource === "human"
+                      - {project.healthSource === "human"
                         ? "Self-reported"
                         : "Trajectory Alert"}
                     {:else}
@@ -1054,7 +1045,6 @@
 {/if}
 
 <style>
-  /* Blur poof animation for rotating principles */
   .principle-text {
     transition:
       opacity 400ms cubic-bezier(0.76, 0, 0.24, 1),

@@ -5,17 +5,17 @@
   import type { Snippet } from "svelte";
   import { page } from "$app/stores";
   import { theme } from "$lib/stores/theme";
-  import { presentationMode } from "$lib/stores/presentation";
-  import { isAuthenticated, checkAuth } from "$lib/stores/auth";
-  import ThemeToggle from "$lib/components/ThemeToggle.svelte";
-  import DevMenuModal from "$lib/components/DevMenuModal.svelte";
-  import SyncIndicator from "$lib/components/SyncIndicator.svelte";
-  import Button from "$lib/components/Button.svelte";
+  import { checkAuth } from "$lib/stores/auth";
   import { goto } from "$app/navigation";
+  import AppShell from "$lib/components/AppShell.svelte";
+  import DevMenuModal from "$lib/components/DevMenuModal.svelte";
 
   let { children }: { children: Snippet } = $props();
   let showDevMenu = $state(false);
   let previousPathname = $state<string | null>(null);
+
+  // Check if we should show the app shell (not on login page)
+  const showAppShell = $derived($page.url.pathname !== "/login");
 
   // Initialize theme and check auth
   onMount(() => {
@@ -118,131 +118,19 @@
   });
 </script>
 
-<div class="min-h-screen bg-white dark:bg-neutral-950">
-  <header
-    class="sticky top-0 z-50 border-b backdrop-blur-sm border-neutral-200 dark:border-white/10 bg-white/95 dark:bg-neutral-950/95"
-  >
-    <div class="max-w-[1600px] mx-auto px-4 sm:px-6 lg:px-8 py-4">
-      <div class="flex justify-between items-center">
-        <div class="flex gap-6 items-center">
-          <h1
-            class="text-xl font-semibold tracking-tight text-neutral-900 dark:text-white"
-          >
-            LinearBot
-          </h1>
-          {#if !$presentationMode && $page.url.pathname !== "/login"}
-            <nav class="flex gap-1 items-center">
-              <a
-                href="/"
-                onclick={() => presentationMode.set(false)}
-                class="px-3 py-1.5 text-sm font-medium rounded transition-colors
-                  {$page.url.pathname === '/'
-                  ? 'bg-neutral-100 dark:bg-neutral-800 text-neutral-900 dark:text-white'
-                  : 'text-neutral-600 dark:text-neutral-400 hover:text-neutral-900 dark:hover:text-white hover:bg-neutral-50 dark:hover:bg-neutral-900'}"
-              >
-                Projects
-              </a>
-              <a
-                href="/engineers"
-                onclick={() => presentationMode.set(false)}
-                class="px-3 py-1.5 text-sm font-medium rounded transition-colors
-                  {$page.url.pathname === '/engineers'
-                  ? 'bg-neutral-100 dark:bg-neutral-800 text-neutral-900 dark:text-white'
-                  : 'text-neutral-600 dark:text-neutral-400 hover:text-neutral-900 dark:hover:text-white hover:bg-neutral-50 dark:hover:bg-neutral-900'}"
-              >
-                Engineers
-              </a>
-              <a
-                href="/initiatives"
-                onclick={() => presentationMode.set(false)}
-                class="px-3 py-1.5 text-sm font-medium rounded transition-colors
-                  {$page.url.pathname === '/initiatives'
-                  ? 'bg-neutral-100 dark:bg-neutral-800 text-neutral-900 dark:text-white'
-                  : 'text-neutral-600 dark:text-neutral-400 hover:text-neutral-900 dark:hover:text-white hover:bg-neutral-50 dark:hover:bg-neutral-900'}"
-              >
-                Initiatives
-              </a>
-              <a
-                href="/executive"
-                onclick={() => presentationMode.set(false)}
-                class="px-3 py-1.5 text-sm font-medium rounded transition-colors
-                  {$page.url.pathname === '/executive'
-                  ? 'bg-neutral-100 dark:bg-neutral-800 text-neutral-900 dark:text-white'
-                  : 'text-neutral-600 dark:text-neutral-400 hover:text-neutral-900 dark:hover:text-white hover:bg-neutral-50 dark:hover:bg-neutral-900'}"
-              >
-                Executive
-              </a>
-              <a
-                href="/metrics"
-                onclick={() => presentationMode.set(false)}
-                class="px-3 py-1.5 text-sm font-medium rounded transition-colors
-                  {$page.url.pathname === '/metrics'
-                  ? 'bg-neutral-100 dark:bg-neutral-800 text-neutral-900 dark:text-white'
-                  : 'text-neutral-600 dark:text-neutral-400 hover:text-neutral-900 dark:hover:text-white hover:bg-neutral-50 dark:hover:bg-neutral-900'}"
-              >
-                Metrics
-              </a>
-              <a
-                href="/teams"
-                onclick={() => presentationMode.set(false)}
-                class="px-3 py-1.5 text-sm font-medium rounded transition-colors
-                  {$page.url.pathname === '/teams'
-                  ? 'bg-neutral-100 dark:bg-neutral-800 text-neutral-900 dark:text-white'
-                  : 'text-neutral-600 dark:text-neutral-400 hover:text-neutral-900 dark:hover:text-white hover:bg-neutral-50 dark:hover:bg-neutral-900'}"
-              >
-                Teams
-              </a>
-            </nav>
-          {/if}
-        </div>
-        <div class="flex gap-4 items-center">
-          {#if $isAuthenticated}
-            <SyncIndicator />
-          {/if}
-          <ThemeToggle />
-          {#if $isAuthenticated}
-            <Button
-              variant="outline"
-              size="sm"
-              onclick={async () => {
-                const { csrfPost, clearCsrfToken } = await import("$lib/utils/csrf");
-                try {
-                  await csrfPost("/api/auth/logout");
-                } catch (error) {
-                  console.error("Logout error:", error);
-                } finally {
-                  // Always clear CSRF token cache on logout attempt, regardless of success/failure
-                  // This ensures stale tokens don't persist if logout fails (e.g., network error, expired session)
-                  clearCsrfToken();
-                }
-                isAuthenticated.set(false);
-                goto("/login");
-              }}
-            >
-              Logout
-            </Button>
-          {/if}
-        </div>
-      </div>
+{#if showAppShell}
+  <AppShell>
+    <div class="p-6">
+      {@render children()}
     </div>
-  </header>
-
-  <main class="max-w-[1600px] mx-auto px-4 sm:px-6 lg:px-8 py-8">
+  </AppShell>
+{:else}
+  <div class="min-h-screen bg-neutral-950">
     {@render children()}
-  </main>
+  </div>
+{/if}
 
-  <footer
-    class="mt-12 border-t border-neutral-200 dark:border-white/10 bg-neutral-50 dark:bg-neutral-900"
-  >
-    <div class="max-w-[1600px] mx-auto px-4 sm:px-6 lg:px-8 py-6">
-      <p class="text-sm text-center text-neutral-500 dark:text-neutral-500">
-        Linear Bot - Track WIP constraints and project health
-      </p>
-    </div>
-  </footer>
-
-  <!-- Dev Menu Modal -->
-  {#if showDevMenu}
-    <DevMenuModal onclose={() => (showDevMenu = false)} />
-  {/if}
-</div>
+<!-- Dev Menu Modal -->
+{#if showDevMenu}
+  <DevMenuModal onclose={() => (showDevMenu = false)} />
+{/if}

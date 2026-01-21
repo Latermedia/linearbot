@@ -13,11 +13,15 @@
       >Status</th
     >
     <th
-      class="text-left py-3 px-2 text-sm font-medium text-neutral-600 dark:text-neutral-400 w-[140px]"
+      class="text-left py-3 px-2 text-sm font-medium text-neutral-600 dark:text-neutral-400 w-[100px]"
       >Health</th
     >
     <th
-      class="text-left py-3 px-2 text-sm font-medium text-neutral-600 dark:text-neutral-400 w-[100px]"
+      class="text-left py-3 px-2 text-sm font-medium text-neutral-600 dark:text-neutral-400 w-[120px]"
+      >Update</th
+    >
+    <th
+      class="text-left py-3 px-2 text-sm font-medium text-neutral-600 dark:text-neutral-400 w-[80px]"
       >Gaps</th
     >
   </tr>

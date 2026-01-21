@@ -10,17 +10,46 @@
   } from "$lib/utils/project-helpers";
   import { getGapsColorClass } from "$lib/utils/gaps-helpers";
 
+  /** Effective health data from metrics snapshot */
+  export interface ProjectHealthData {
+    effectiveHealth: string;
+    healthSource: "human" | "velocity";
+    linearHealth: string | null;
+    calculatedHealth: string;
+  }
+
   let {
     project,
+    projectHealth,
     onclick,
   }: {
     project: ProjectSummary;
+    /** Calculated health from metrics (effectiveHealth based on self-reported or trajectory) */
+    projectHealth?: ProjectHealthData;
     onclick?: () => void;
   } = $props();
 
-  const healthDisplay = $derived(getHealthDisplay(project.projectHealth));
+  // Self-reported health display (for Update column)
+  const selfReportedHealthDisplay = $derived(
+    getHealthDisplay(project.projectHealth)
+  );
   const updateOverdue = $derived(isHealthUpdateOverdue(project));
   const daysSinceUpdate = $derived(getDaysSinceHealthUpdate(project));
+
+  // Effective health display (for Health column)
+  const effectiveHealthDisplay = $derived.by(() => {
+    if (!projectHealth) {
+      // Fallback to self-reported if no metrics data
+      return getHealthDisplay(project.projectHealth);
+    }
+    return getHealthDisplay(projectHealth.effectiveHealth);
+  });
+
+  // Source indicator (Self-reported or Trajectory)
+  const healthSourceLabel = $derived.by(() => {
+    if (!projectHealth) return null;
+    return projectHealth.healthSource === "human" ? "Self" : "Trajectory";
+  });
 
   // Calculate total violations (project-level + issue-level)
   const totalViolations = $derived.by(() => {
@@ -91,10 +120,28 @@
       {/if}
     </div>
   </td>
-  <td class="py-3 px-2 w-[140px]">
+  <td class="py-3 px-2 w-[100px]">
+    <div class="flex flex-col gap-0.5">
+      <Badge
+        variant={effectiveHealthDisplay.variant}
+        class={effectiveHealthDisplay.colorClass}
+      >
+        {effectiveHealthDisplay.text}
+      </Badge>
+      {#if healthSourceLabel}
+        <span class="text-[10px] text-neutral-500 dark:text-neutral-500">
+          {healthSourceLabel}
+        </span>
+      {/if}
+    </div>
+  </td>
+  <td class="py-3 px-2 w-[120px]">
     <div class="flex flex-wrap gap-y-1 gap-x-2 items-center">
-      <Badge variant={healthDisplay.variant} class={healthDisplay.colorClass}>
-        {healthDisplay.text}
+      <Badge
+        variant={selfReportedHealthDisplay.variant}
+        class={selfReportedHealthDisplay.colorClass}
+      >
+        {selfReportedHealthDisplay.text}
       </Badge>
       {#if updateOverdue}
         <span
@@ -103,14 +150,12 @@
             ? `Last update ${daysSinceUpdate} days ago`
             : "No health updates found"}
         >
-          ⚠️ {daysSinceUpdate !== null
-            ? `${daysSinceUpdate}d overdue`
-            : "no update"}
+          ⚠️ {daysSinceUpdate !== null ? `${daysSinceUpdate}d` : "none"}
         </span>
       {/if}
     </div>
   </td>
-  <td class="py-3 px-2 w-[100px]">
+  <td class="py-3 px-2 w-[80px]">
     <span class="text-sm font-medium {gapsColorClass}">
       {totalViolations}
     </span>
