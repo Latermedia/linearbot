@@ -64,6 +64,7 @@
     daysPerStoryPoint = null,
     groupByState = false,
     hideWarnings = false,
+    noMaxHeight = false,
   }: {
     issues: IssueData[];
     showAssignee?: boolean;
@@ -72,6 +73,7 @@
     daysPerStoryPoint?: number | null;
     groupByState?: boolean;
     hideWarnings?: boolean;
+    noMaxHeight?: boolean;
   } = $props();
 
   let groupBy: GroupByOption = $state("none");
@@ -235,7 +237,11 @@
         </select>
       </div>
     {/if}
-    <div class="overflow-x-auto max-h-[70vh] overflow-y-auto">
+    <div
+      class="overflow-x-auto {noMaxHeight
+        ? ''
+        : 'max-h-[70vh] overflow-y-auto'}"
+    >
       <table class="w-full text-xs min-w-[680px]">
         <thead class="sticky top-0 z-10 bg-neutral-900">
           <tr class="border-b border-white/10">

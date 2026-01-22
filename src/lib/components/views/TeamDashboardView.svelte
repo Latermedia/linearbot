@@ -30,6 +30,10 @@
     TrendDataPoint,
     TrendsResponse,
   } from "../../../routes/api/metrics/trends/+server";
+  import type { Issue } from "../../../db/schema";
+  import type { Engineer } from "../../../db/schema";
+  import IssueTable from "$lib/components/IssueTable.svelte";
+  import EngineersTable from "$lib/components/EngineersTable.svelte";
 
   // Engineer data type for modal
   interface EngineerData {
@@ -55,7 +59,6 @@
     engineerTeamMapping?: Record<string, string>;
   }
 
-  // eslint-disable-next-line @typescript-eslint/no-unused-vars
   let { engineerTeamMapping = {} }: Props = $props();
 
   // Metrics state
@@ -81,6 +84,13 @@
   let allEngineers = $state<EngineerData[]>([]);
   let selectedEngineer = $state<EngineerData | null>(null);
 
+  // Non-project WIP issues state
+  let nonProjectWipIssues = $state<Issue[]>([]);
+  let nonProjectWipLoading = $state(false);
+
+  // Team engineers state (engineers from ENGINEER_TEAM_MAPPING working on team projects)
+  let teamProjectEngineers = $state<Engineer[]>([]);
+
   // Fetch engineers for modal
   async function fetchEngineers() {
     if (!browser) return;
@@ -90,6 +100,35 @@
       allEngineers = data.engineers || [];
     } catch (e) {
       console.error("Failed to fetch engineers:", e);
+    }
+  }
+
+  // Fetch non-project WIP issues for a team
+  async function fetchNonProjectWipIssues(teamKey: string) {
+    if (!browser) return;
+    nonProjectWipLoading = true;
+    try {
+      const response = await fetch(`/api/issues/non-project-wip/${teamKey}`);
+      const data = await response.json();
+      nonProjectWipIssues = data.issues || [];
+    } catch (e) {
+      console.error("Failed to fetch non-project WIP issues:", e);
+      nonProjectWipIssues = [];
+    } finally {
+      nonProjectWipLoading = false;
+    }
+  }
+
+  // Fetch engineers working on team projects
+  async function fetchTeamProjectEngineers(teamKey: string) {
+    if (!browser) return;
+    try {
+      const response = await fetch(`/api/engineers/wip-stats/${teamKey}`);
+      const data = await response.json();
+      teamProjectEngineers = data.engineers || [];
+    } catch (e) {
+      console.error("Failed to fetch team project engineers:", e);
+      teamProjectEngineers = [];
     }
   }
 
@@ -175,6 +214,17 @@
     fetchTrendData();
     fetchEngineers();
     databaseStore.load();
+  });
+
+  // Fetch team-specific data when team filter changes
+  $effect(() => {
+    if (selectedTeamKey) {
+      fetchNonProjectWipIssues(selectedTeamKey);
+      fetchTeamProjectEngineers(selectedTeamKey);
+    } else {
+      nonProjectWipIssues = [];
+      teamProjectEngineers = [];
+    }
   });
 
   // Derived values from stores
@@ -296,6 +346,64 @@
     }
     return teamKey;
   }
+
+  // Get engineers from ENGINEER_TEAM_MAPPING for the selected team
+  const teamMappedEngineers = $derived.by((): EngineerData[] => {
+    if (!selectedTeamKey || Object.keys(engineerTeamMapping).length === 0) {
+      return [];
+    }
+
+    // Get engineer names mapped to the selected team
+    const mappedNames = new Set<string>();
+    for (const [name, teamKey] of Object.entries(engineerTeamMapping)) {
+      if (teamKey === selectedTeamKey) {
+        mappedNames.add(name);
+      }
+    }
+
+    // Filter allEngineers to only those mapped to this team
+    return allEngineers.filter((e) => mappedNames.has(e.assignee_name));
+  });
+
+  // Get cross-team collaborators (engineers NOT in team mapping but working on team's projects)
+  const crossTeamCollaborators = $derived.by((): EngineerData[] => {
+    if (!selectedTeamKey || Object.keys(engineerTeamMapping).length === 0) {
+      return [];
+    }
+
+    // Get engineer names mapped to the selected team
+    const mappedNames = new Set<string>();
+    for (const [name, teamKey] of Object.entries(engineerTeamMapping)) {
+      if (teamKey === selectedTeamKey) {
+        mappedNames.add(name);
+      }
+    }
+
+    // Filter teamProjectEngineers to only those NOT in the team mapping
+    // Cast to EngineerData since Engineer has compatible fields
+    return teamProjectEngineers
+      .filter((e) => !mappedNames.has(e.assignee_name))
+      .map(
+        (e) =>
+          ({
+            assignee_id: e.assignee_id,
+            assignee_name: e.assignee_name,
+            avatar_url: e.avatar_url,
+            team_ids: e.team_ids,
+            team_names: e.team_names,
+            wip_issue_count: e.wip_issue_count,
+            wip_total_points: e.wip_total_points,
+            wip_limit_violation: e.wip_limit_violation,
+            oldest_wip_age_days: e.oldest_wip_age_days,
+            last_activity_at: e.last_activity_at,
+            missing_estimate_count: e.missing_estimate_count,
+            missing_priority_count: e.missing_priority_count,
+            no_recent_comment_count: e.no_recent_comment_count,
+            wip_age_violation_count: e.wip_age_violation_count,
+            active_issues: e.active_issues,
+          }) as EngineerData
+      );
+  });
 </script>
 
 <div class="space-y-6">
@@ -315,6 +423,8 @@
       productivityUnderConstruction={selectedTeamKey !== null}
       onEngineerClick={handleEngineerClick}
       {trendDataPoints}
+      {engineerTeamMapping}
+      {selectedTeamKey}
     />
 
     {#if showTrends}
@@ -565,6 +675,95 @@
               ? "No projects match the current team filter."
               : "No projects found with the current filters."}
           </p>
+        </div>
+      </Card>
+    {/if}
+  {/if}
+
+  <!-- Team-specific sections (only shown when a team is selected) -->
+  {#if selectedTeamKey}
+    <!-- Non-Project WIP Issues Section -->
+    {#if nonProjectWipIssues.length > 0 || nonProjectWipLoading}
+      <Card class="p-0 overflow-hidden mt-6">
+        <div
+          class="flex flex-wrap items-center justify-between gap-4 px-4 py-3 border-b border-white/10 bg-white/5"
+        >
+          <div class="flex items-center gap-3">
+            <h2 class="text-lg font-semibold text-white">
+              Non-Project WIP Issues
+            </h2>
+            <Badge variant="outline">{nonProjectWipIssues.length} issues</Badge>
+          </div>
+        </div>
+        <div class="p-4">
+          {#if nonProjectWipLoading}
+            <div class="py-4 text-center text-neutral-400">Loading...</div>
+          {:else}
+            <IssueTable
+              issues={nonProjectWipIssues}
+              showAssignee={true}
+              showTeam={false}
+              groupByState={false}
+              noMaxHeight={true}
+            />
+          {/if}
+        </div>
+      </Card>
+    {/if}
+
+    <!-- Team Engineers Section (from ENGINEER_TEAM_MAPPING) -->
+    {#if teamMappedEngineers.length > 0}
+      <Card class="p-0 overflow-hidden mt-6">
+        <div
+          class="flex flex-wrap items-center justify-between gap-4 px-4 py-3 border-b border-white/10 bg-white/5"
+        >
+          <div class="flex items-center gap-3">
+            <h2 class="text-lg font-semibold text-white">
+              {getTeamDisplayName(selectedTeamKey)} Engineers
+            </h2>
+            <Badge variant="outline"
+              >{teamMappedEngineers.length} engineers</Badge
+            >
+          </div>
+        </div>
+        <div class="p-4">
+          <EngineersTable
+            engineers={teamMappedEngineers}
+            onEngineerClick={(engineer) => {
+              selectedEngineer = engineer;
+            }}
+          />
+        </div>
+      </Card>
+    {/if}
+
+    <!-- Cross-Team Collaborators Section -->
+    {#if crossTeamCollaborators.length > 0}
+      <Card class="p-0 overflow-hidden mt-6">
+        <div
+          class="flex flex-wrap items-center justify-between gap-4 px-4 py-3 border-b border-white/10 bg-white/5"
+        >
+          <div class="flex items-center gap-3">
+            <h2 class="text-lg font-semibold text-white">
+              Cross-Team Collaborators
+            </h2>
+            <Badge variant="outline"
+              >{crossTeamCollaborators.length} engineers</Badge
+            >
+          </div>
+          <span class="text-xs text-neutral-400">
+            Engineers from other teams working on {getTeamDisplayName(
+              selectedTeamKey
+            )} projects
+          </span>
+        </div>
+        <div class="p-4">
+          <EngineersTable
+            engineers={crossTeamCollaborators}
+            onEngineerClick={(engineer) => {
+              selectedEngineer = engineer;
+            }}
+          />
         </div>
       </Card>
     {/if}

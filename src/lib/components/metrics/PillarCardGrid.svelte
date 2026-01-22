@@ -43,6 +43,10 @@
     onEngineerClick?: (engineerId: string) => void;
     /** Trend data points for calculating week/month trends */
     trendDataPoints?: TrendDataPoint[];
+    /** Engineer-to-team mapping for filtering IC metrics by team */
+    engineerTeamMapping?: Record<string, string>;
+    /** Currently selected team key for filtering */
+    selectedTeamKey?: string | null;
   }
 
   let {
@@ -53,6 +57,8 @@
     onPillarClick,
     onEngineerClick,
     trendDataPoints = [],
+    engineerTeamMapping = {},
+    selectedTeamKey = null,
   }: Props = $props();
 
   // Engineer data state
@@ -81,12 +87,36 @@
     }
   });
 
-  // Filter engineers based on active detail
+  // Filter engineers by ENGINEER_TEAM_MAPPING when a team is selected
+  const filteredEngineers = $derived.by((): EngineerData[] => {
+    if (!selectedTeamKey) {
+      // No team filter - return all engineers
+      return allEngineers;
+    }
+
+    // Get engineers mapped to the selected team
+    const mappedEngineerNames = new Set<string>();
+    for (const [name, teamKey] of Object.entries(engineerTeamMapping)) {
+      if (teamKey === selectedTeamKey) {
+        mappedEngineerNames.add(name);
+      }
+    }
+
+    // If no mapping configured, return all engineers
+    if (Object.keys(engineerTeamMapping).length === 0) {
+      return allEngineers;
+    }
+
+    // Filter to only mapped engineers for this team
+    return allEngineers.filter((e) => mappedEngineerNames.has(e.assignee_name));
+  });
+
+  // Filter engineers based on active detail (using filtered engineers when team is selected)
   const hoveredEngineers = $derived.by((): EngineerItem[] => {
     if (!activeDetailId) return [];
 
     if (activeDetailId === "wip-overloaded") {
-      return allEngineers
+      return filteredEngineers
         .filter((e) => e.wip_limit_violation === 1)
         .map((e) => ({
           assignee_id: e.assignee_id,
@@ -96,7 +126,7 @@
     }
 
     if (activeDetailId === "multi-project") {
-      return allEngineers
+      return filteredEngineers
         .filter((e) => e.multi_project_violation === 1)
         .map((e) => ({
           assignee_id: e.assignee_id,
