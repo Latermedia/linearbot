@@ -8,8 +8,6 @@
     dataPoints: TrendDataPoint[];
     loading?: boolean;
     title?: string;
-    /** Callback when hovering over a data point (null when mouse leaves) */
-    onhover?: (dataPoint: TrendDataPoint | null) => void;
     /** Chart height in pixels */
     height?: number;
   }
@@ -18,7 +16,6 @@
     dataPoints,
     loading = false,
     title = "Trends",
-    onhover,
     height = 180,
   }: Props = $props();
 </script>
@@ -33,7 +30,7 @@
         <Skeleton class="w-full h-40" />
       </div>
     {:else if dataPoints.length > 0}
-      <FourPillarsChart {dataPoints} {onhover} {height} />
+      <FourPillarsChart {dataPoints} {height} />
     {:else}
       <div
         class="flex justify-center items-center h-[220px] text-sm text-neutral-500"

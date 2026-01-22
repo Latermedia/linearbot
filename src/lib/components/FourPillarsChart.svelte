@@ -1,21 +1,85 @@
 <script lang="ts">
+  import { onMount } from "svelte";
   import type { TrendDataPoint } from "../../routes/api/metrics/trends/+server";
 
   interface Props {
     dataPoints: TrendDataPoint[];
     height?: number;
-    /** Callback when hovering over a data point (null when mouse leaves) */
-    onhover?: (dataPoint: TrendDataPoint | null) => void;
+    /** Number of days visible in the viewport at a time */
+    visibleDays?: number;
   }
 
-  let { dataPoints, height = 180, onhover }: Props = $props();
+  let { dataPoints, height = 180, visibleDays = 14 }: Props = $props();
+
+  // Reference to scroll container for auto-scroll and measuring
+  let scrollContainer: HTMLDivElement | undefined = $state();
+
+  // Measured container width (responsive)
+  let containerWidth = $state(800); // Default fallback
 
   // Chart dimensions - balanced padding for clean look
   const padding = { top: 16, right: 24, bottom: 32, left: 40 };
-  const chartWidth = 800;
   const chartHeight = height;
-  const innerWidth = chartWidth - padding.left - padding.right;
   const innerHeight = chartHeight - padding.top - padding.bottom;
+
+  // Measure container width on mount and resize
+  onMount(() => {
+    if (!scrollContainer) return;
+
+    const updateWidth = () => {
+      if (scrollContainer) {
+        containerWidth = scrollContainer.clientWidth;
+      }
+    };
+
+    updateWidth();
+
+    const resizeObserver = new ResizeObserver(updateWidth);
+    resizeObserver.observe(scrollContainer);
+
+    // Scroll to end on mount if scrollable (after a tick to let the chart render)
+    setTimeout(() => {
+      if (scrollContainer && actualDays > visibleDays) {
+        scrollContainer.scrollLeft = scrollContainer.scrollWidth;
+      }
+    }, 0);
+
+    return () => resizeObserver.disconnect();
+  });
+
+  // Calculate actual time span in days from data
+  const actualDays = $derived.by(() => {
+    if (dataPoints.length < 2) return 0;
+    const timestamps = dataPoints.map((d) => new Date(d.capturedAt).getTime());
+    const minTime = Math.min(...timestamps);
+    const maxTime = Math.max(...timestamps);
+    const msPerDay = 24 * 60 * 60 * 1000;
+    return (maxTime - minTime) / msPerDay;
+  });
+
+  // Chart width: scale so visibleDays fits in container, minimum is container width
+  // With <= visibleDays of data, chart is exactly container width (data fills full width)
+  // With > visibleDays of data, chart is wider and scrollable
+  const chartWidth = $derived(
+    Math.max(containerWidth, (actualDays / visibleDays) * containerWidth)
+  );
+  const innerWidth = $derived(chartWidth - padding.left - padding.right);
+
+  // Whether scrolling is needed (more than visibleDays of data)
+  const isScrollable = $derived(actualDays > visibleDays);
+
+  // Also scroll to end when dataPoints changes - only if scrollable
+  $effect(() => {
+    // Track dataPoints length and scrollability to trigger effect
+    const _len = dataPoints.length;
+    const _scrollable = isScrollable;
+    // Use setTimeout to ensure DOM has updated
+    setTimeout(() => {
+      if (scrollContainer && isScrollable) {
+        scrollContainer.scrollLeft = scrollContainer.scrollWidth;
+      }
+    }, 0);
+  });
 
   // Pillar colors (Linear-style muted colors)
   const colors = {
@@ -50,7 +114,8 @@
     }))
   );
 
-  // Time range for X-axis (based on actual timestamps)
+  // Time range for X-axis (based on actual data timestamps)
+  // Data always fills the full chart width regardless of how many days it spans
   const timeRange = $derived.by(() => {
     if (normalizedData.length === 0) return { min: 0, max: 1 };
     const timestamps = normalizedData.map((d) => d.timestamp);
@@ -163,7 +228,7 @@
     return date.toLocaleDateString("en-US", { month: "short", day: "numeric" });
   }
 
-  // Generate X-axis labels (up to 5 evenly spaced dates based on time range)
+  // Generate X-axis labels at weekly intervals (every 7 days)
   const xLabels = $derived.by(() => {
     if (normalizedData.length === 0) return [];
 
@@ -185,12 +250,11 @@
 
     // Calculate total days in range
     const msPerDay = 24 * 60 * 60 * 1000;
-    const totalDays =
+    const dataTotalDays =
       Math.ceil((endDate.getTime() - startDate.getTime()) / msPerDay) + 1;
 
-    // Determine step size to show at most 5 labels
-    const maxLabels = 5;
-    const stepDays = Math.max(1, Math.ceil(totalDays / maxLabels));
+    // Show labels every 7 days for longer ranges, otherwise adjust for shorter ranges
+    const stepDays = dataTotalDays > 21 ? 7 : dataTotalDays > 7 ? 3 : 1;
 
     // Generate labels at regular day intervals
     const labels: { x: number; label: string }[] = [];
@@ -227,11 +291,42 @@
 
   // Hover state
   let hoveredIndex = $state<number | null>(null);
+  let mousePosition = $state({ x: 0, y: 0 });
 
-  // Emit hover events to parent
-  $effect(() => {
-    const dataPoint = hoveredIndex !== null ? dataPoints[hoveredIndex] : null;
-    onhover?.(dataPoint);
+  // Get hovered data point info for tooltip
+  const hoveredData = $derived.by(() => {
+    if (hoveredIndex === null) return null;
+    const point = dataPoints[hoveredIndex];
+    const norm = normalizedData[hoveredIndex];
+    if (!point || !norm) return null;
+
+    const date = new Date(point.capturedAt);
+    return {
+      date: date.toLocaleDateString("en-US", {
+        month: "short",
+        day: "numeric",
+        hour: "numeric",
+        minute: "2-digit",
+      }),
+      wipHealth: Math.round(norm.wipHealth ?? 0),
+      projectHealth: Math.round(norm.projectHealth ?? 0),
+      productivity: Math.round(norm.productivity ?? 0),
+      quality: Math.round(norm.quality ?? 0),
+    };
+  });
+
+  // Tooltip positioning - flip to left side when near right edge
+  const TOOLTIP_WIDTH = 180; // Approximate tooltip width
+  const TOOLTIP_OFFSET = 12;
+  const tooltipPosition = $derived.by(() => {
+    const shouldFlipLeft =
+      mousePosition.x + TOOLTIP_WIDTH + TOOLTIP_OFFSET > containerWidth;
+    return {
+      x: shouldFlipLeft
+        ? mousePosition.x - TOOLTIP_WIDTH - TOOLTIP_OFFSET
+        : mousePosition.x + TOOLTIP_OFFSET,
+      y: mousePosition.y - 60,
+    };
   });
 
   // Find nearest snapshot to mouse position
@@ -260,6 +355,15 @@
     const scaleX = chartWidth / rect.width;
     const mouseX = (event.clientX - rect.left) * scaleX;
 
+    // Track mouse position relative to the scroll container for tooltip positioning
+    if (scrollContainer) {
+      const containerRect = scrollContainer.getBoundingClientRect();
+      mousePosition = {
+        x: event.clientX - containerRect.left,
+        y: event.clientY - containerRect.top,
+      };
+    }
+
     // Only trigger hover if within chart area
     if (mouseX >= padding.left && mouseX <= chartWidth - padding.right) {
       hoveredIndex = findNearestIndex(mouseX);
@@ -286,139 +390,196 @@
 </script>
 
 <div class="relative pt-2 pb-1">
-  <!-- Chart -->
-  <svg
-    viewBox="0 0 {chartWidth} {chartHeight}"
-    class="w-full h-auto cursor-crosshair"
-    role="img"
-    aria-label="Four Pillars metrics trend chart"
-    onmousemove={handleMouseMove}
-    onmouseleave={handleMouseLeave}
+  <!-- Scrollable Chart Container -->
+  <div
+    bind:this={scrollContainer}
+    class="overflow-x-auto scrollbar-thin scrollbar-thumb-neutral-700 scrollbar-track-transparent"
+    style="max-width: 100%;"
   >
-    <!-- Grid lines (minor - subtler) -->
-    <g class="grid-lines-minor">
-      {#each yLabelsMinor as y (y)}
+    <!-- Chart -->
+    <svg
+      width={chartWidth}
+      height={chartHeight}
+      viewBox="0 0 {chartWidth} {chartHeight}"
+      class="cursor-default"
+      role="img"
+      aria-label="Four Pillars metrics trend chart"
+      onmousemove={handleMouseMove}
+      onmouseleave={handleMouseLeave}
+    >
+      <!-- Grid lines (minor - subtler) -->
+      <g class="grid-lines-minor">
+        {#each yLabelsMinor as y (y)}
+          <line
+            x1={padding.left}
+            y1={getY(y)}
+            x2={chartWidth - padding.right}
+            y2={getY(y)}
+            stroke="rgba(255,255,255,0.03)"
+            stroke-width="1"
+          />
+        {/each}
+      </g>
+
+      <!-- Grid lines (major) -->
+      <g class="grid-lines-major">
+        {#each yLabelsMajor as y (y)}
+          <line
+            x1={padding.left}
+            y1={getY(y)}
+            x2={chartWidth - padding.right}
+            y2={getY(y)}
+            stroke="rgba(255,255,255,0.06)"
+            stroke-width="1"
+          />
+        {/each}
+      </g>
+
+      <!-- Y-axis labels (major only) -->
+      <g class="y-axis">
+        {#each yLabelsMajor as y (y)}
+          <text
+            x={padding.left - 10}
+            y={getY(y) ?? 0}
+            text-anchor="end"
+            dominant-baseline="middle"
+            class="fill-neutral-600 text-[9px]"
+          >
+            {y}
+          </text>
+        {/each}
+      </g>
+
+      <!-- X-axis labels -->
+      <g class="x-axis">
+        {#each xLabels as { x, label }, idx (`${x}-${idx}`)}
+          <text
+            {x}
+            y={chartHeight - padding.bottom + 20}
+            text-anchor="middle"
+            class="fill-neutral-600 text-[9px]"
+          >
+            {label}
+          </text>
+        {/each}
+      </g>
+
+      <!-- Data lines -->
+      {#if normalizedData.length > 0}
+        <!-- WIP Health line -->
+        {#if paths.wipHealth}
+          <path
+            d={paths.wipHealth}
+            fill="none"
+            stroke={colors.wipHealth}
+            stroke-width="1.5"
+            stroke-linecap="round"
+            stroke-linejoin="round"
+          />
+        {/if}
+
+        <!-- Project Health line -->
+        {#if paths.projectHealth}
+          <path
+            d={paths.projectHealth}
+            fill="none"
+            stroke={colors.projectHealth}
+            stroke-width="1.5"
+            stroke-linecap="round"
+            stroke-linejoin="round"
+          />
+        {/if}
+
+        <!-- Productivity line -->
+        {#if paths.productivity}
+          <path
+            d={paths.productivity}
+            fill="none"
+            stroke={colors.productivity}
+            stroke-width="1.5"
+            stroke-linecap="round"
+            stroke-linejoin="round"
+          />
+        {/if}
+
+        <!-- Quality line -->
+        {#if paths.quality}
+          <path
+            d={paths.quality}
+            fill="none"
+            stroke={colors.quality}
+            stroke-width="1.5"
+            stroke-linecap="round"
+            stroke-linejoin="round"
+          />
+        {/if}
+      {/if}
+
+      <!-- Hover indicator line -->
+      {#if hoveredIndex !== null}
         <line
-          x1={padding.left}
-          y1={getY(y)}
-          x2={chartWidth - padding.right}
-          y2={getY(y)}
-          stroke="rgba(255,255,255,0.03)"
+          x1={getX(hoveredIndex)}
+          y1={padding.top}
+          x2={getX(hoveredIndex)}
+          y2={padding.top + innerHeight}
+          stroke="rgba(255,255,255,0.3)"
           stroke-width="1"
         />
-      {/each}
-    </g>
-
-    <!-- Grid lines (major) -->
-    <g class="grid-lines-major">
-      {#each yLabelsMajor as y (y)}
-        <line
-          x1={padding.left}
-          y1={getY(y)}
-          x2={chartWidth - padding.right}
-          y2={getY(y)}
-          stroke="rgba(255,255,255,0.06)"
-          stroke-width="1"
-        />
-      {/each}
-    </g>
-
-    <!-- Y-axis labels (major only) -->
-    <g class="y-axis">
-      {#each yLabelsMajor as y (y)}
-        <text
-          x={padding.left - 10}
-          y={getY(y) ?? 0}
-          text-anchor="end"
-          dominant-baseline="middle"
-          class="fill-neutral-600 text-[9px]"
-        >
-          {y}
-        </text>
-      {/each}
-    </g>
-
-    <!-- X-axis labels -->
-    <g class="x-axis">
-      {#each xLabels as { x, label }, idx (`${x}-${idx}`)}
-        <text
-          {x}
-          y={chartHeight - padding.bottom + 20}
-          text-anchor="middle"
-          class="fill-neutral-600 text-[9px]"
-        >
-          {label}
-        </text>
-      {/each}
-    </g>
-
-    <!-- Data lines -->
-    {#if normalizedData.length > 0}
-      <!-- WIP Health line -->
-      {#if paths.wipHealth}
-        <path
-          d={paths.wipHealth}
-          fill="none"
-          stroke={colors.wipHealth}
-          stroke-width="2"
-          stroke-linecap="round"
-          stroke-linejoin="round"
-          style="filter: drop-shadow(0 0 2px {colors.wipHealth})"
-        />
       {/if}
+    </svg>
+  </div>
 
-      <!-- Project Health line -->
-      {#if paths.projectHealth}
-        <path
-          d={paths.projectHealth}
-          fill="none"
-          stroke={colors.projectHealth}
-          stroke-width="2"
-          stroke-linecap="round"
-          stroke-linejoin="round"
-          style="filter: drop-shadow(0 0 2px {colors.projectHealth})"
-        />
-      {/if}
-
-      <!-- Productivity line -->
-      {#if paths.productivity}
-        <path
-          d={paths.productivity}
-          fill="none"
-          stroke={colors.productivity}
-          stroke-width="2"
-          stroke-linecap="round"
-          stroke-linejoin="round"
-          style="filter: drop-shadow(0 0 2px {colors.productivity})"
-        />
-      {/if}
-
-      <!-- Quality line -->
-      {#if paths.quality}
-        <path
-          d={paths.quality}
-          fill="none"
-          stroke={colors.quality}
-          stroke-width="2"
-          stroke-linecap="round"
-          stroke-linejoin="round"
-          style="filter: drop-shadow(0 0 2px {colors.quality})"
-        />
-      {/if}
-    {/if}
-
-    <!-- Hover indicator line -->
-    {#if hoveredIndex !== null}
-      <line
-        x1={getX(hoveredIndex)}
-        y1={padding.top}
-        x2={getX(hoveredIndex)}
-        y2={padding.top + innerHeight}
-        stroke="rgba(255,255,255,0.3)"
-        stroke-width="1"
-      />
-    {/if}
-  </svg>
+  <!-- Hover Card Tooltip -->
+  {#if hoveredData}
+    <div
+      class="absolute z-10 px-3 py-2 text-xs bg-neutral-900 border border-white/10 rounded-lg shadow-xl pointer-events-none"
+      style="left: {tooltipPosition.x}px; top: {tooltipPosition.y}px;"
+    >
+      <div class="mb-1.5 text-neutral-400">{hoveredData.date}</div>
+      <div class="grid grid-cols-2 gap-x-4 gap-y-1">
+        <div class="flex items-center gap-1.5">
+          <span
+            class="w-2 h-2 rounded-full"
+            style="background-color: {colors.wipHealth}"
+          ></span>
+          <span class="text-neutral-300">WIP</span>
+          <span class="ml-auto font-medium text-white"
+            >{hoveredData.wipHealth}%</span
+          >
+        </div>
+        <div class="flex items-center gap-1.5">
+          <span
+            class="w-2 h-2 rounded-full"
+            style="background-color: {colors.projectHealth}"
+          ></span>
+          <span class="text-neutral-300">Project</span>
+          <span class="ml-auto font-medium text-white"
+            >{hoveredData.projectHealth}%</span
+          >
+        </div>
+        <div class="flex items-center gap-1.5">
+          <span
+            class="w-2 h-2 rounded-full"
+            style="background-color: {colors.productivity}"
+          ></span>
+          <span class="text-neutral-300">Velocity</span>
+          <span class="ml-auto font-medium text-white"
+            >{hoveredData.productivity}%</span
+          >
+        </div>
+        <div class="flex items-center gap-1.5">
+          <span
+            class="w-2 h-2 rounded-full"
+            style="background-color: {colors.quality}"
+          ></span>
+          <span class="text-neutral-300">Quality</span>
+          <span class="ml-auto font-medium text-white"
+            >{hoveredData.quality}%</span
+          >
+        </div>
+      </div>
+    </div>
+  {/if}
 
   <!-- Empty state -->
   {#if normalizedData.length === 0}
@@ -436,8 +597,8 @@
     {#each legendItems as item (item.key)}
       <div class="flex gap-2 items-center">
         <div
-          class="w-5 h-[3px] rounded-full"
-          style="background-color: {item.color}; box-shadow: 0 0 3px {item.color}"
+          class="w-5 h-[2px] rounded-full"
+          style="background-color: {item.color}"
         ></div>
         <span class="text-neutral-400">{item.label}</span>
       </div>

@@ -1,13 +1,27 @@
 <script lang="ts">
+  import { onMount } from "svelte";
+  import { browser } from "$app/environment";
   import Card from "$lib/components/Card.svelte";
   import Skeleton from "$lib/components/Skeleton.svelte";
   import PillarCard from "./PillarCard.svelte";
+  import EngineerListPopover, {
+    type EngineerItem,
+  } from "./EngineerListPopover.svelte";
   import type {
     MetricsSnapshotV1,
     TeamProductivityV1,
   } from "../../../types/metrics-snapshot";
 
-  import type { TrendDataPoint } from "../../../routes/api/metrics/trends/+server";
+  // Engineer data from API
+  interface EngineerData {
+    assignee_id: string;
+    assignee_name: string;
+    avatar_url: string | null;
+    wip_issue_count: number;
+    wip_limit_violation: number;
+    active_project_count: number;
+    multi_project_violation: number;
+  }
 
   interface Props {
     snapshot: MetricsSnapshotV1 | null;
@@ -15,12 +29,12 @@
     error?: string | null;
     /** Mark productivity as under construction (GetDX mapping pending) */
     productivityUnderConstruction?: boolean;
-    /** Historical trend point for hover state (provides counts when projectStatuses empty) */
-    hoveredTrendPoint?: TrendDataPoint | null;
     /** Callback when a pillar card is clicked */
     onPillarClick?: (
       pillar: "wipHealth" | "projectHealth" | "productivity" | "quality"
     ) => void;
+    /** Callback when an engineer is clicked (to open modal) */
+    onEngineerClick?: (engineerId: string) => void;
   }
 
   let {
@@ -28,12 +42,128 @@
     loading = false,
     error = null,
     productivityUnderConstruction = false,
-    hoveredTrendPoint = null,
     onPillarClick,
+    onEngineerClick,
   }: Props = $props();
 
-  // Whether we're viewing historical data
-  const isViewingHistory = $derived(hoveredTrendPoint !== null);
+  // Engineer data state
+  let allEngineers = $state<EngineerData[]>([]);
+
+  // Hover state for engineer popover with delay
+  let pendingDetailId = $state<string | null>(null);
+  let activeDetailId = $state<string | null>(null);
+  let hoverPosition = $state({ x: 0, y: 0 });
+  let showDelayTimer: ReturnType<typeof setTimeout> | null = null;
+  let hideDelayTimer: ReturnType<typeof setTimeout> | null = null;
+  let isMouseInPopover = $state(false);
+
+  const SHOW_DELAY = 300; // ms before showing popover
+  const HIDE_DELAY = 150; // ms before hiding popover (allows mouse to enter)
+
+  // Fetch engineers on mount
+  onMount(async () => {
+    if (!browser) return;
+    try {
+      const response = await fetch("/api/engineers");
+      const data = await response.json();
+      allEngineers = data.engineers || [];
+    } catch (e) {
+      console.error("Failed to fetch engineers:", e);
+    }
+  });
+
+  // Filter engineers based on active detail
+  const hoveredEngineers = $derived.by((): EngineerItem[] => {
+    if (!activeDetailId) return [];
+
+    if (activeDetailId === "wip-overloaded") {
+      return allEngineers
+        .filter((e) => e.wip_limit_violation === 1)
+        .map((e) => ({
+          assignee_id: e.assignee_id,
+          assignee_name: e.assignee_name,
+          avatar_url: e.avatar_url,
+        }));
+    }
+
+    if (activeDetailId === "multi-project") {
+      return allEngineers
+        .filter((e) => e.multi_project_violation === 1)
+        .map((e) => ({
+          assignee_id: e.assignee_id,
+          assignee_name: e.assignee_name,
+          avatar_url: e.avatar_url,
+        }));
+    }
+
+    return [];
+  });
+
+  // Title for the popover based on detail type
+  const popoverTitle = $derived.by(() => {
+    if (activeDetailId === "wip-overloaded") return "Overloaded (6+ issues)";
+    if (activeDetailId === "multi-project")
+      return "Context-Switching (2+ projects)";
+    return "";
+  });
+
+  // Handle detail hover with delay
+  function handleWipDetailHover(
+    detailId: string | null,
+    event: MouseEvent | null
+  ) {
+    // Clear any existing timers
+    if (showDelayTimer) {
+      clearTimeout(showDelayTimer);
+      showDelayTimer = null;
+    }
+    if (hideDelayTimer) {
+      clearTimeout(hideDelayTimer);
+      hideDelayTimer = null;
+    }
+
+    if (detailId && event) {
+      // Mouse entered a detail - start show delay
+      pendingDetailId = detailId;
+      hoverPosition = { x: event.clientX, y: event.clientY };
+      showDelayTimer = setTimeout(() => {
+        activeDetailId = pendingDetailId;
+      }, SHOW_DELAY);
+    } else {
+      // Mouse left detail - start hide delay (unless mouse is in popover)
+      pendingDetailId = null;
+      if (!isMouseInPopover) {
+        hideDelayTimer = setTimeout(() => {
+          activeDetailId = null;
+        }, HIDE_DELAY);
+      }
+    }
+  }
+
+  // Handle mouse entering/leaving the popover
+  function handlePopoverMouseEnter() {
+    isMouseInPopover = true;
+    // Cancel any pending hide
+    if (hideDelayTimer) {
+      clearTimeout(hideDelayTimer);
+      hideDelayTimer = null;
+    }
+  }
+
+  function handlePopoverMouseLeave() {
+    isMouseInPopover = false;
+    // Start hide delay
+    hideDelayTimer = setTimeout(() => {
+      activeDetailId = null;
+    }, HIDE_DELAY);
+  }
+
+  // Handle engineer click
+  function handleEngineerClick(engineerId: string) {
+    activeDetailId = null; // Close popover
+    isMouseInPopover = false;
+    onEngineerClick?.(engineerId);
+  }
 
   // Measurement period in weeks (data is aggregated over 14 days = 2 weeks)
   const MEASUREMENT_PERIOD_WEEKS = 2;
@@ -66,21 +196,6 @@
 
   // Project Health counts
   const velocityCounts = $derived.by(() => {
-    // If viewing history, use pre-computed counts from TrendDataPoint
-    // (historical data doesn't have human/velocity breakdown)
-    if (isViewingHistory && hoveredTrendPoint) {
-      const vh = hoveredTrendPoint.velocityHealth;
-      return {
-        atRiskHuman: 0, // Not available in historical data
-        atRiskVelocity: vh.atRiskCount,
-        offTrackHuman: 0, // Not available in historical data
-        offTrackVelocity: vh.offTrackCount,
-        total: vh.totalProjectCount,
-        onTrack: vh.onTrackCount,
-      };
-    }
-
-    // Current view uses full projectStatuses breakdown
     if (!velocityHealth?.projectStatuses) return null;
     const statuses = velocityHealth.projectStatuses;
     return {
@@ -104,17 +219,33 @@
   // Build details arrays for each pillar
   const wipHealthDetails = $derived.by(() => {
     if (!teamHealth) return [];
+    const totalIcs = teamHealth.totalIcCount || 1; // Avoid division by zero
+    const totalProjects = teamHealth.totalProjectCount || 1;
+
+    const wipPct = ((teamHealth.wipViolationCount / totalIcs) * 100).toFixed(0);
+    const multiPct = (
+      (teamHealth.multiProjectViolationCount / totalIcs) *
+      100
+    ).toFixed(0);
+    const projectPct = (
+      (teamHealth.impactedProjectCount / totalProjects) *
+      100
+    ).toFixed(0);
+
     return [
       {
-        value: teamHealth.wipViolationCount,
+        id: "wip-overloaded",
+        value: `${wipPct}%`,
         label: " ICs overloaded (6+ issues)",
       },
       {
-        value: teamHealth.multiProjectViolationCount,
+        id: "multi-project",
+        value: `${multiPct}%`,
         label: " ICs context-switching (2+ projects)",
       },
       {
-        value: `${teamHealth.impactedProjectCount} of ${teamHealth.totalProjectCount}`,
+        id: "projects-impacted",
+        value: `${projectPct}%`,
         label: " projects impacted",
       },
     ];
@@ -124,33 +255,6 @@
   const projectHealthTwoColumnDetails = $derived.by(() => {
     if (!velocityCounts) return undefined;
 
-    // For historical data, we only have total counts (no human/velocity breakdown)
-    // Show as single column under "Trajectory Alert" header
-    if (isViewingHistory) {
-      const totalAtRisk = velocityCounts.atRiskVelocity;
-      const totalOffTrack = velocityCounts.offTrackVelocity;
-
-      if (totalAtRisk === 0 && totalOffTrack === 0) {
-        return undefined; // Will show noIssuesMessage
-      }
-
-      const items: { value: string | number; label: string }[] = [];
-      if (totalAtRisk > 0) {
-        items.push({ value: totalAtRisk, label: " at risk" });
-      }
-      if (totalOffTrack > 0) {
-        items.push({ value: totalOffTrack, label: " off track" });
-      }
-
-      return {
-        right: {
-          header: "Historical",
-          items,
-        },
-      };
-    }
-
-    // Current view: show breakdown by source
     const hasIssues =
       velocityCounts.atRiskHuman > 0 ||
       velocityCounts.offTrackHuman > 0 ||
@@ -302,6 +406,7 @@
       subtitle="Healthy Workloads"
       details={wipHealthDetails}
       onClick={() => onPillarClick?.("wipHealth")}
+      onDetailHover={handleWipDetailHover}
     />
 
     <!-- Pillar 2: Project Health -->
@@ -348,4 +453,16 @@
       </p>
     </div>
   </Card>
+{/if}
+
+<!-- Engineer list popover on hover -->
+{#if activeDetailId && hoveredEngineers.length > 0}
+  <EngineerListPopover
+    engineers={hoveredEngineers}
+    title={popoverTitle}
+    position={hoverPosition}
+    onEngineerClick={handleEngineerClick}
+    onMouseEnter={handlePopoverMouseEnter}
+    onMouseLeave={handlePopoverMouseLeave}
+  />
 {/if}

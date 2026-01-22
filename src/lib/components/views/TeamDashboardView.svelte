@@ -12,6 +12,7 @@
   import PillarCardGrid from "$lib/components/metrics/PillarCardGrid.svelte";
   import TrendsSection from "$lib/components/metrics/TrendsSection.svelte";
   import MiniPillarRow from "$lib/components/metrics/MiniPillarRow.svelte";
+  import EngineerDetailModal from "$lib/components/EngineerDetailModal.svelte";
   import { databaseStore, projectsStore } from "$lib/stores/database";
   import { executiveFocus } from "$lib/stores/dashboard";
   import { teamFilterStore, teamsMatchFilter } from "$lib/stores/team-filter";
@@ -27,6 +28,25 @@
     TrendDataPoint,
     TrendsResponse,
   } from "../../../routes/api/metrics/trends/+server";
+
+  // Engineer data type for modal
+  interface EngineerData {
+    assignee_id: string;
+    assignee_name: string;
+    avatar_url: string | null;
+    team_ids: string;
+    team_names: string;
+    wip_issue_count: number;
+    wip_total_points: number;
+    wip_limit_violation: number;
+    oldest_wip_age_days: number | null;
+    last_activity_at: string | null;
+    missing_estimate_count: number;
+    missing_priority_count: number;
+    no_recent_comment_count: number;
+    wip_age_violation_count: number;
+    active_issues: string;
+  }
 
   // Props
   interface Props {
@@ -54,73 +74,32 @@
   let trendDataPoints = $state<TrendDataPoint[]>([]);
   let trendLoading = $state(true);
 
-  // Hovered trend point (when user hovers on chart, shows historical data in cards)
-  let hoveredTrendPoint = $state<TrendDataPoint | null>(null);
+  // Engineer modal state
+  let allEngineers = $state<EngineerData[]>([]);
+  let selectedEngineer = $state<EngineerData | null>(null);
 
-  function handleChartHover(dataPoint: TrendDataPoint | null) {
-    hoveredTrendPoint = dataPoint;
+  // Fetch engineers for modal
+  async function fetchEngineers() {
+    if (!browser) return;
+    try {
+      const response = await fetch("/api/engineers");
+      const data = await response.json();
+      allEngineers = data.engineers || [];
+    } catch (e) {
+      console.error("Failed to fetch engineers:", e);
+    }
   }
 
-  // Whether we're viewing historical data
-  const isViewingHistory = $derived(hoveredTrendPoint !== null);
+  // Handle engineer click from PillarCardGrid
+  function handleEngineerClick(engineerId: string) {
+    const engineer = allEngineers.find((e) => e.assignee_id === engineerId);
+    if (engineer) {
+      selectedEngineer = engineer;
+    }
+  }
 
-  // Format the historical timestamp for display
-  const historyTimestamp = $derived.by(() => {
-    if (!hoveredTrendPoint) return null;
-    const date = new Date(hoveredTrendPoint.capturedAt);
-    return date.toLocaleDateString("en-US", {
-      month: "short",
-      day: "numeric",
-      hour: "numeric",
-      minute: "2-digit",
-    });
-  });
-
-  // Convert TrendDataPoint to a synthetic MetricsSnapshotV1 for display
-  function trendPointToSnapshot(tp: TrendDataPoint): MetricsSnapshotV1 {
-    return {
-      schemaVersion: 1,
-      teamHealth: {
-        ...tp.teamHealth,
-        // Legacy fields for backward compatibility
-        icWipViolationPercent: 100 - tp.teamHealth.healthyWorkloadPercent,
-        projectWipViolationPercent:
-          tp.teamHealth.totalProjectCount > 0
-            ? (tp.teamHealth.impactedProjectCount /
-                tp.teamHealth.totalProjectCount) *
-              100
-            : 0,
-        healthyProjectCount:
-          tp.teamHealth.totalProjectCount - tp.teamHealth.impactedProjectCount,
-      },
-      velocityHealth: {
-        onTrackPercent: tp.velocityHealth.onTrackPercent,
-        atRiskPercent: tp.velocityHealth.atRiskPercent,
-        offTrackPercent: tp.velocityHealth.offTrackPercent,
-        projectStatuses: [], // Not available in trend data
-        status: tp.velocityHealth.status,
-      },
-      teamProductivity:
-        tp.productivity.trueThroughput !== null
-          ? {
-              trueThroughput: tp.productivity.trueThroughput,
-              engineerCount: tp.productivity.engineerCount,
-              trueThroughputPerEngineer:
-                tp.productivity.trueThroughputPerEngineer,
-              status: tp.productivity.status,
-            }
-          : {
-              status: "pending" as const,
-              notes: "Historical data",
-            },
-      quality: tp.quality,
-      metadata: {
-        capturedAt: tp.capturedAt,
-        syncedAt: null,
-        level: "org",
-        levelId: null,
-      },
-    };
+  function closeEngineerModal() {
+    selectedEngineer = null;
   }
 
   // View state
@@ -191,6 +170,7 @@
   onMount(() => {
     fetchMetrics();
     fetchTrendData();
+    fetchEngineers();
     databaseStore.load();
   });
 
@@ -201,13 +181,8 @@
   const selectedTeamKey = $derived($teamFilterStore);
   const isExecutiveFocus = $derived($executiveFocus);
 
-  // Display snapshot: use hovered trend point, team filter snapshot, or org snapshot
+  // Display snapshot: use team filter snapshot or org snapshot
   const displaySnapshot = $derived.by((): MetricsSnapshotV1 | null => {
-    // If hovering on chart, show historical data
-    if (hoveredTrendPoint) {
-      return trendPointToSnapshot(hoveredTrendPoint);
-    }
-
     // If team filter is active, show team snapshot
     if (selectedTeamKey) {
       const teamSnapshot = allSnapshots.find(
@@ -322,28 +297,19 @@
 
 <div class="space-y-6">
   <!-- Header with rotating principles -->
-  <MetricsHeader
-    title="Overview"
-    showHistoryIndicator={isViewingHistory}
-    {historyTimestamp}
-  />
+  <MetricsHeader title="Overview" />
 
   <!-- Org-Level Health Metrics -->
   <PillarCardGrid
     snapshot={displaySnapshot}
     loading={metricsLoading && !orgSnapshot}
     error={metricsError}
-    productivityUnderConstruction={selectedTeamKey !== null &&
-      !isViewingHistory}
-    {hoveredTrendPoint}
+    productivityUnderConstruction={selectedTeamKey !== null}
+    onEngineerClick={handleEngineerClick}
   />
 
   <!-- Trends Chart -->
-  <TrendsSection
-    dataPoints={trendDataPoints}
-    loading={trendLoading}
-    onhover={handleChartHover}
-  />
+  <TrendsSection dataPoints={trendDataPoints} loading={trendLoading} />
 
   <!-- View controls -->
   <div
@@ -581,3 +547,11 @@
     {/if}
   {/if}
 </div>
+
+<!-- Engineer Detail Modal -->
+{#if selectedEngineer}
+  <EngineerDetailModal
+    engineer={selectedEngineer}
+    onclose={closeEngineerModal}
+  />
+{/if}

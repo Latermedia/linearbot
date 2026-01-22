@@ -5,7 +5,12 @@
   import Skeleton from "$lib/components/Skeleton.svelte";
   import Badge from "$lib/components/Badge.svelte";
   import ProjectDetailModal from "$lib/components/ProjectDetailModal.svelte";
+  import EngineerDetailModal from "$lib/components/EngineerDetailModal.svelte";
+  import EngineerListPopover, {
+    type EngineerItem,
+  } from "$lib/components/metrics/EngineerListPopover.svelte";
   import FourPillarsChart from "$lib/components/FourPillarsChart.svelte";
+  import MetricsHeader from "$lib/components/metrics/MetricsHeader.svelte";
   import { databaseStore, projectsStore } from "$lib/stores/database";
   import { teamFilterStore } from "$lib/stores/team-filter";
   import type { ProjectSummary } from "$lib/project-data";
@@ -21,43 +26,26 @@
     TrendsResponse,
   } from "../../../routes/api/metrics/trends/+server";
 
-  // Engineering principles - rotates every 5 seconds
-  const principles = [
-    "Principles over process",
-    "Don't Make Me Think",
-    "WIP Constraints",
-    "Work in public",
-    "Async First",
-    "Doings > Meetings",
-    "Velocity > Predictability",
-    "Single Source of Truth",
-    "Iterate to innovate",
-    "Clear, concise, complete",
-    "Ship value daily",
-    "POC is worth 1k meetings",
-    "Go slow to go fast",
-    "Mind the gaps",
-  ];
-
-  // Rotating principle state
-  let principleIndex = $state(Math.floor(Math.random() * principles.length));
-  let isAnimating = $state(false);
-  const currentPrinciple = $derived(principles[principleIndex]);
-
-  // Rotate principles every 5 seconds with blur poof animation
-  $effect(() => {
-    if (!browser) return;
-
-    const interval = setInterval(() => {
-      isAnimating = true;
-      setTimeout(() => {
-        principleIndex = (principleIndex + 1) % principles.length;
-        isAnimating = false;
-      }, 400);
-    }, 5000);
-
-    return () => clearInterval(interval);
-  });
+  // Engineer data type
+  interface EngineerData {
+    assignee_id: string;
+    assignee_name: string;
+    avatar_url: string | null;
+    team_ids: string;
+    team_names: string;
+    wip_issue_count: number;
+    wip_total_points: number;
+    wip_limit_violation: number;
+    multi_project_violation: number;
+    active_project_count: number;
+    oldest_wip_age_days: number | null;
+    last_activity_at: string | null;
+    missing_estimate_count: number;
+    missing_priority_count: number;
+    no_recent_comment_count: number;
+    wip_age_violation_count: number;
+    active_issues: string;
+  }
 
   // State
   let loading = $state(true);
@@ -77,11 +65,124 @@
   let trendDataPoints = $state<TrendDataPoint[]>([]);
   let trendLoading = $state(true);
 
-  // Hovered trend point (when user hovers on chart, shows historical data in cards)
-  let hoveredTrendPoint = $state<TrendDataPoint | null>(null);
+  // Engineer data state
+  let allEngineers = $state<EngineerData[]>([]);
+  let selectedEngineer = $state<EngineerData | null>(null);
 
-  function handleChartHover(dataPoint: TrendDataPoint | null) {
-    hoveredTrendPoint = dataPoint;
+  // Hover state for engineer popover with delay
+  let pendingWipMetric = $state<"overloaded" | "context-switching" | null>(
+    null
+  );
+  let activeWipMetric = $state<"overloaded" | "context-switching" | null>(null);
+  let hoverPosition = $state({ x: 0, y: 0 });
+  let showDelayTimer: ReturnType<typeof setTimeout> | null = null;
+  let hideDelayTimer: ReturnType<typeof setTimeout> | null = null;
+  let isMouseInPopover = $state(false);
+
+  const SHOW_DELAY = 300; // ms before showing popover
+  const HIDE_DELAY = 150; // ms before hiding popover (allows mouse to enter)
+
+  // Filter engineers based on active metric
+  const hoveredEngineers = $derived.by((): EngineerItem[] => {
+    if (!activeWipMetric) return [];
+
+    if (activeWipMetric === "overloaded") {
+      return allEngineers
+        .filter((e) => e.wip_limit_violation === 1)
+        .map((e) => ({
+          assignee_id: e.assignee_id,
+          assignee_name: e.assignee_name,
+          avatar_url: e.avatar_url,
+        }));
+    }
+
+    if (activeWipMetric === "context-switching") {
+      return allEngineers
+        .filter((e) => e.multi_project_violation === 1)
+        .map((e) => ({
+          assignee_id: e.assignee_id,
+          assignee_name: e.assignee_name,
+          avatar_url: e.avatar_url,
+        }));
+    }
+
+    return [];
+  });
+
+  // Title for the popover based on metric type
+  const popoverTitle = $derived.by(() => {
+    if (activeWipMetric === "overloaded") return "Overloaded (6+ issues)";
+    if (activeWipMetric === "context-switching")
+      return "Context-Switching (2+ projects)";
+    return "";
+  });
+
+  // Handle metric hover with delay
+  function startHover(
+    metric: "overloaded" | "context-switching",
+    event: MouseEvent
+  ) {
+    // Clear any existing timers
+    if (showDelayTimer) clearTimeout(showDelayTimer);
+    if (hideDelayTimer) clearTimeout(hideDelayTimer);
+
+    pendingWipMetric = metric;
+    hoverPosition = { x: event.clientX, y: event.clientY };
+    showDelayTimer = setTimeout(() => {
+      activeWipMetric = pendingWipMetric;
+    }, SHOW_DELAY);
+  }
+
+  function endHover() {
+    // Clear show timer
+    if (showDelayTimer) clearTimeout(showDelayTimer);
+    pendingWipMetric = null;
+
+    // Start hide delay (unless mouse is in popover)
+    if (!isMouseInPopover) {
+      hideDelayTimer = setTimeout(() => {
+        activeWipMetric = null;
+      }, HIDE_DELAY);
+    }
+  }
+
+  // Handle mouse entering/leaving the popover
+  function handlePopoverMouseEnter() {
+    isMouseInPopover = true;
+    if (hideDelayTimer) clearTimeout(hideDelayTimer);
+  }
+
+  function handlePopoverMouseLeave() {
+    isMouseInPopover = false;
+    hideDelayTimer = setTimeout(() => {
+      activeWipMetric = null;
+    }, HIDE_DELAY);
+  }
+
+  // Handle engineer click from popover
+  function handleEngineerClick(engineerId: string) {
+    const engineer = allEngineers.find((e) => e.assignee_id === engineerId);
+    if (engineer) {
+      activeWipMetric = null;
+      isMouseInPopover = false;
+      selectedEngineer = engineer;
+    }
+  }
+
+  function closeEngineerModal() {
+    selectedEngineer = null;
+  }
+
+  // Fetch engineers
+  async function fetchEngineers() {
+    if (!browser) return;
+    try {
+      const response = await fetch("/api/engineers");
+      const data = await response.json();
+      allEngineers = data.engineers || [];
+    } catch (e) {
+      console.error("Failed to fetch engineers:", e);
+    }
   }
 
   // Team filter
@@ -158,6 +259,7 @@
   onMount(() => {
     fetchMetrics();
     fetchTrendData();
+    fetchEngineers();
     databaseStore.load();
   });
 
@@ -245,38 +347,8 @@
     allSnapshots.filter((s) => s.level === "team")
   );
 
-  // Display snapshot: use hovered historical data, team filter, or org snapshot
+  // Display snapshot: use team filter or org snapshot
   const displaySnapshot = $derived.by(() => {
-    if (hoveredTrendPoint) {
-      const tp = hoveredTrendPoint;
-      return {
-        teamHealth: tp.teamHealth,
-        velocityHealth: {
-          ...tp.velocityHealth,
-          projectStatuses: [] as typeof orgSnapshot extends {
-            velocityHealth: { projectStatuses: infer T };
-          }
-            ? T
-            : never[],
-        },
-        quality: tp.quality,
-        teamProductivity:
-          tp.productivity.trueThroughput !== null
-            ? {
-                trueThroughput: tp.productivity.trueThroughput,
-                engineerCount: tp.productivity.engineerCount,
-                trueThroughputPerEngineer:
-                  tp.productivity.trueThroughputPerEngineer,
-                status: tp.productivity.status,
-              }
-            : {
-                status: tp.productivity.status as "pending",
-                notes: "Historical data",
-              },
-        capturedAt: tp.capturedAt,
-      };
-    }
-
     // If team filter is active, show team snapshot
     if (selectedTeamKey) {
       const teamSnapshot = allSnapshots.find(
@@ -288,21 +360,6 @@
     }
 
     return orgSnapshot;
-  });
-
-  // Whether we're viewing historical data
-  const isViewingHistory = $derived(hoveredTrendPoint !== null);
-
-  // Format the historical timestamp for display
-  const historyTimestamp = $derived.by(() => {
-    if (!hoveredTrendPoint) return null;
-    const date = new Date(hoveredTrendPoint.capturedAt);
-    return date.toLocaleDateString("en-US", {
-      month: "short",
-      day: "numeric",
-      hour: "numeric",
-      minute: "2-digit",
-    });
   });
 
   // Status classes for each pillar
@@ -321,19 +378,6 @@
   // Project Health derived counts
   const velocityCounts = $derived.by(() => {
     if (!displaySnapshot) return null;
-
-    if (isViewingHistory && hoveredTrendPoint) {
-      const vh = hoveredTrendPoint.velocityHealth;
-      return {
-        atRiskHuman: 0,
-        atRiskVelocity: vh.atRiskCount,
-        offTrackHuman: 0,
-        offTrackVelocity: vh.offTrackCount,
-        total: vh.totalProjectCount,
-        onTrack: vh.onTrackCount,
-      };
-    }
-
     if (!displaySnapshot.velocityHealth.projectStatuses) return null;
     const statuses = displaySnapshot.velocityHealth.projectStatuses;
     return {
@@ -368,27 +412,7 @@
 
 <div class="space-y-6">
   <!-- Header with rotating principles -->
-  <div class="relative">
-    <div class="flex items-center justify-between">
-      <h2 class="text-lg font-semibold text-white">Engineering Health</h2>
-      {#if isViewingHistory}
-        <div
-          class="px-3 py-1.5 text-sm rounded-md border bg-violet-500/10 border-violet-500/30 text-violet-300"
-        >
-          Viewing <span class="font-medium">{historyTimestamp}</span>
-        </div>
-      {/if}
-    </div>
-    <div class="overflow-hidden relative h-6 mt-1">
-      <p
-        class="absolute left-0 right-0 top-0 text-sm text-neutral-400 italic principle-text {isAnimating
-          ? 'principle-exit'
-          : 'principle-enter'}"
-      >
-        {currentPrinciple}
-      </p>
-    </div>
-  </div>
+  <MetricsHeader title="Engineering Health" />
 
   <!-- Loading State -->
   {#if loading && !orgSnapshot}
@@ -450,15 +474,37 @@
           </div>
 
           <div class="space-y-0.5 text-xs">
-            <div>
+            <!-- svelte-ignore a11y_no_static_element_interactions -->
+            <div
+              class="cursor-pointer hover:text-neutral-300 transition-colors"
+              onmouseenter={(e) => startHover("overloaded", e)}
+              onmouseleave={endHover}
+            >
               <span class="font-semibold text-neutral-400"
-                >{displaySnapshot.teamHealth.wipViolationCount}</span
+                >{(
+                  (displaySnapshot.teamHealth.wipViolationCount /
+                    (displaySnapshot.teamHealth.totalIcCount || 1)) *
+                  100
+                ).toFixed(0)}%</span
+              ><span class="text-neutral-400/50">
+                ({displaySnapshot.teamHealth.wipViolationCount})</span
               >
               <span class="text-neutral-500"> ICs overloaded (6+ issues)</span>
             </div>
-            <div>
+            <!-- svelte-ignore a11y_no_static_element_interactions -->
+            <div
+              class="cursor-pointer hover:text-neutral-300 transition-colors"
+              onmouseenter={(e) => startHover("context-switching", e)}
+              onmouseleave={endHover}
+            >
               <span class="font-semibold text-neutral-400"
-                >{displaySnapshot.teamHealth.multiProjectViolationCount}</span
+                >{(
+                  (displaySnapshot.teamHealth.multiProjectViolationCount /
+                    (displaySnapshot.teamHealth.totalIcCount || 1)) *
+                  100
+                ).toFixed(0)}%</span
+              ><span class="text-neutral-400/50">
+                ({displaySnapshot.teamHealth.multiProjectViolationCount})</span
               >
               <span class="text-neutral-500">
                 ICs context-switching (2+ projects)</span
@@ -466,11 +512,16 @@
             </div>
             <div>
               <span class="font-semibold text-neutral-400"
-                >{displaySnapshot.teamHealth.impactedProjectCount}</span
+                >{(
+                  (displaySnapshot.teamHealth.impactedProjectCount /
+                    (displaySnapshot.teamHealth.totalProjectCount || 1)) *
+                  100
+                ).toFixed(0)}%</span
+              ><span class="text-neutral-400/50">
+                ({displaySnapshot.teamHealth.impactedProjectCount} of {displaySnapshot
+                  .teamHealth.totalProjectCount})</span
               >
-              <span class="text-neutral-500">
-                of {displaySnapshot.teamHealth.totalProjectCount} projects impacted</span
-              >
+              <span class="text-neutral-500"> projects impacted</span>
             </div>
           </div>
         </div>
@@ -760,10 +811,7 @@
             <Skeleton class="w-full h-40" />
           </div>
         {:else if trendDataPoints.length > 0}
-          <FourPillarsChart
-            dataPoints={trendDataPoints}
-            onhover={handleChartHover}
-          />
+          <FourPillarsChart dataPoints={trendDataPoints} />
         {:else}
           <div
             class="flex justify-center items-center h-[220px] text-sm text-neutral-500"
@@ -1044,23 +1092,22 @@
   <ProjectDetailModal project={selectedProject} onclose={closeModal} />
 {/if}
 
-<style>
-  .principle-text {
-    transition:
-      opacity 400ms cubic-bezier(0.76, 0, 0.24, 1),
-      filter 400ms cubic-bezier(0.76, 0, 0.24, 1),
-      transform 400ms cubic-bezier(0.76, 0, 0.24, 1);
-  }
+<!-- Engineer list popover on hover -->
+{#if activeWipMetric && hoveredEngineers.length > 0}
+  <EngineerListPopover
+    engineers={hoveredEngineers}
+    title={popoverTitle}
+    position={hoverPosition}
+    onEngineerClick={handleEngineerClick}
+    onMouseEnter={handlePopoverMouseEnter}
+    onMouseLeave={handlePopoverMouseLeave}
+  />
+{/if}
 
-  .principle-enter {
-    opacity: 1;
-    filter: blur(0px);
-    transform: scale(1);
-  }
-
-  .principle-exit {
-    opacity: 0;
-    filter: blur(12px);
-    transform: scale(1.08);
-  }
-</style>
+<!-- Engineer Detail Modal -->
+{#if selectedEngineer}
+  <EngineerDetailModal
+    engineer={selectedEngineer}
+    onclose={closeEngineerModal}
+  />
+{/if}

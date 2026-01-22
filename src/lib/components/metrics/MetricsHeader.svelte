@@ -21,15 +21,9 @@
 
   interface Props {
     title?: string;
-    showHistoryIndicator?: boolean;
-    historyTimestamp?: string | null;
   }
 
-  let {
-    title = "Engineering Metrics",
-    showHistoryIndicator = false,
-    historyTimestamp = null,
-  }: Props = $props();
+  let { title = "Engineering Metrics" }: Props = $props();
 
   // Rotating principle state
   let principleIndex = $state(Math.floor(Math.random() * principles.length));
@@ -53,21 +47,14 @@
 </script>
 
 <div class="relative">
-  <div class="flex items-center justify-between">
+  <div class="flex justify-between items-center">
     <h1 class="text-2xl font-semibold tracking-tight text-white">
       {title}
     </h1>
-    {#if showHistoryIndicator && historyTimestamp}
-      <div
-        class="px-3 py-1.5 text-sm rounded-md border bg-violet-500/10 border-violet-500/30 text-violet-300"
-      >
-        Viewing <span class="font-medium">{historyTimestamp}</span>
-      </div>
-    {/if}
   </div>
-  <div class="overflow-hidden relative pr-4 pl-4 mt-1 -mr-4 -ml-4 h-6">
+  <div class="relative mt-1 h-6">
     <p
-      class="absolute left-4 right-4 top-0 text-sm text-neutral-400 italic principle-text {isAnimating
+      class="absolute left-0 right-0 top-0 z-50 text-sm text-neutral-400 italic pointer-events-none principle-text {isAnimating
         ? 'principle-exit'
         : 'principle-enter'}"
     >
