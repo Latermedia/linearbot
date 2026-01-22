@@ -28,17 +28,9 @@ export function calculateTrend(
   historicalValue: number,
   threshold = 2
 ): TrendResult {
-  if (historicalValue === 0) {
-    // Avoid division by zero - if historical was 0 and current is positive, that's "up"
-    if (currentValue > 0) {
-      return { direction: "up", percentChange: 100, hasEnoughData: true };
-    }
-    return { direction: "stable", percentChange: 0, hasEnoughData: true };
-  }
-
-  // Calculate percentage change
-  const percentChange =
-    ((currentValue - historicalValue) / historicalValue) * 100;
+  // Calculate absolute percentage point change (not relative)
+  // e.g., 20% -> 30% = +10 percentage points, not +50% relative
+  const percentChange = currentValue - historicalValue;
 
   // Determine direction based on threshold
   let direction: "up" | "down" | "stable";
