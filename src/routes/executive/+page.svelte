@@ -29,7 +29,6 @@
     getRecentVelocity,
     getTotalActiveEngineers,
   } from "$lib/utils/executive-stats";
-  import TeamFilter from "$lib/components/TeamFilter.svelte";
   import { teamFilterStore, teamsMatchFilter } from "$lib/stores/team-filter";
 
   let viewType = $state<"card" | "table" | "gantt">("card");
@@ -281,9 +280,6 @@
           Gantt
         </ToggleGroupItem>
       </ToggleGroupRoot>
-
-      <!-- Team filter dropdown -->
-      <TeamFilter />
 
       <!-- End date mode toggle (only for Gantt view) -->
       {#if viewType === "gantt"}

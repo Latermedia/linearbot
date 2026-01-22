@@ -5,7 +5,6 @@
   import Skeleton from "$lib/components/Skeleton.svelte";
   import InitiativesTable from "$lib/components/InitiativesTable.svelte";
   import InitiativeDetailModal from "$lib/components/InitiativeDetailModal.svelte";
-  import TeamFilter from "$lib/components/TeamFilter.svelte";
   import { projectsStore } from "$lib/stores/database";
   import { teamFilterStore, teamsMatchFilter } from "$lib/stores/team-filter";
 
@@ -148,7 +147,6 @@
         Strategic initiatives and their linked projects
       </p>
     </div>
-    <TeamFilter />
   </div>
 
   <!-- Stats summary -->
