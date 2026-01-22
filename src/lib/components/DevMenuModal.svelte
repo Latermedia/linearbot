@@ -138,14 +138,14 @@
               deleteConfirmationInput = "";
               adminPasswordInput = "";
             }}
-            class="flex-1 px-3 py-1.5 text-xs transition-colors text-neutral-400 hover:text-white"
+            class="flex-1 px-3 py-1.5 text-xs transition-colors cursor-pointer text-neutral-400 hover:text-white"
           >
             Clear
           </button>
           <button
             onclick={handleResetDatabase}
             disabled={isResetting || !canDelete}
-            class="flex-1 px-3 py-1.5 text-xs text-red-400 rounded transition-colors bg-red-500/10 hover:bg-red-500/20 disabled:opacity-40 disabled:cursor-not-allowed"
+            class="flex-1 px-3 py-1.5 text-xs text-red-400 rounded transition-colors cursor-pointer bg-red-500/10 hover:bg-red-500/20 disabled:opacity-40 disabled:cursor-not-allowed"
           >
             {isResetting ? "Resetting..." : "Reset"}
           </button>

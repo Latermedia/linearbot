@@ -74,7 +74,7 @@
 <button
   type="button"
   onclick={onClick}
-  class="flex flex-col p-4 rounded-md border transition-all duration-150 text-left min-w-[140px]
+  class="flex flex-col p-4 rounded-md border transition-all duration-150 text-left min-w-[140px] cursor-pointer
     {classes.bg} {classes.border}
     hover:scale-[1.02] hover:shadow-md
     focus:outline-none focus:ring-2 focus:ring-violet-500/50"

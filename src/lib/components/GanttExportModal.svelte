@@ -472,7 +472,7 @@
                   e.stopPropagation();
                   selectAllProjects();
                 }}
-                class="flex-1 px-2 py-1 text-xs font-medium rounded transition-colors bg-neutral-100 dark:bg-white/10 text-neutral-700 dark:text-neutral-300 hover:bg-neutral-200 dark:hover:bg-white/20"
+                class="flex-1 px-2 py-1 text-xs font-medium rounded transition-colors cursor-pointer bg-neutral-100 dark:bg-white/10 text-neutral-700 dark:text-neutral-300 hover:bg-neutral-200 dark:hover:bg-white/20"
               >
                 Select All
               </button>
@@ -482,7 +482,7 @@
                   e.stopPropagation();
                   deselectAllProjects();
                 }}
-                class="flex-1 px-2 py-1 text-xs font-medium rounded transition-colors bg-neutral-100 dark:bg-white/10 text-neutral-700 dark:text-neutral-300 hover:bg-neutral-200 dark:hover:bg-white/20"
+                class="flex-1 px-2 py-1 text-xs font-medium rounded transition-colors cursor-pointer bg-neutral-100 dark:bg-white/10 text-neutral-700 dark:text-neutral-300 hover:bg-neutral-200 dark:hover:bg-white/20"
               >
                 Deselect All
               </button>

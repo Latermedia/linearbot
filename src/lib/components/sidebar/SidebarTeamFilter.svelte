@@ -46,7 +46,7 @@
   <button
     type="button"
     onclick={toggleDropdown}
-    class="w-full flex items-center gap-2 px-3 py-2 text-sm rounded transition-colors duration-150
+    class="w-full flex items-center gap-2 px-3 py-2 text-sm rounded transition-colors duration-150 cursor-pointer
       text-neutral-400 hover:text-white hover:bg-white/5
       {isCollapsed ? 'justify-center' : ''}"
     title={isCollapsed ? `Team: ${selectedTeamName}` : undefined}
@@ -77,7 +77,7 @@
         <button
           type="button"
           onclick={() => handleSelect(null)}
-          class="w-full px-3 py-2 text-left text-sm transition-colors duration-150
+          class="w-full px-3 py-2 text-left text-sm transition-colors duration-150 cursor-pointer
             {selectedTeamKey === null
             ? 'text-white bg-white/10'
             : 'text-neutral-400 hover:text-white hover:bg-white/5'}"
@@ -88,7 +88,7 @@
           <button
             type="button"
             onclick={() => handleSelect(team.teamKey)}
-            class="w-full px-3 py-2 text-left text-sm transition-colors duration-150
+            class="w-full px-3 py-2 text-left text-sm transition-colors duration-150 cursor-pointer
               {selectedTeamKey === team.teamKey
               ? 'text-white bg-white/10'
               : 'text-neutral-400 hover:text-white hover:bg-white/5'}"
