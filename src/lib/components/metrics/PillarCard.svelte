@@ -1,14 +1,16 @@
 <script lang="ts">
   import Card from "$lib/components/Card.svelte";
   import Badge from "$lib/components/Badge.svelte";
-  import type {
-    PillarStatus,
-    ProductivityStatus,
-  } from "../../../types/metrics-snapshot";
+  import TrendChip from "./TrendChip.svelte";
+  import type { TrendResult } from "$lib/utils/trend-calculation";
 
   interface DetailLine {
+    /** Unique identifier for this detail line (used for hover callbacks) */
+    id?: string;
     label: string;
     value: string | number;
+    /** Secondary value shown between value and label (e.g., count in parens) */
+    secondaryValue?: string;
     highlight?: boolean;
   }
 
@@ -25,7 +27,6 @@
 
   interface Props {
     title: string;
-    status: PillarStatus | ProductivityStatus;
     value: string | number;
     /** Optional unit displayed inline after value with smaller styling */
     valueUnit?: string;
@@ -38,11 +39,18 @@
     noIssuesMessage?: string;
     underConstruction?: boolean;
     onClick?: () => void;
+    /** Callback when hovering over a detail line (null when mouse leaves) */
+    onDetailHover?: (detailId: string | null, event: MouseEvent | null) => void;
+    /** Week trend data */
+    weekTrend?: TrendResult | null;
+    /** Month trend data */
+    monthTrend?: TrendResult | null;
+    /** Whether higher values are better for this metric (for trend color) */
+    higherIsBetter?: boolean;
   }
 
   let {
     title,
-    status,
     value,
     valueUnit,
     subtitle,
@@ -51,84 +59,40 @@
     noIssuesMessage,
     underConstruction = false,
     onClick,
+    onDetailHover,
+    weekTrend = null,
+    monthTrend = null,
+    higherIsBetter = true,
   }: Props = $props();
+
+  function handleDetailMouseEnter(
+    detailId: string | undefined,
+    event: MouseEvent
+  ) {
+    if (detailId && onDetailHover) {
+      onDetailHover(detailId, event);
+    }
+  }
+
+  function handleDetailMouseLeave() {
+    onDetailHover?.(null, null);
+  }
 
   // Check if two-column details has any content
   const hasTwoColumnContent = $derived(
     (twoColumnDetails?.left?.items?.length ?? 0) > 0 ||
       (twoColumnDetails?.right?.items?.length ?? 0) > 0
   );
-
-  // Get status color classes
-  function getStatusClasses(status: PillarStatus | ProductivityStatus): {
-    bg: string;
-    text: string;
-    border: string;
-  } {
-    switch (status) {
-      case "healthy":
-        return {
-          bg: "bg-emerald-500/10",
-          text: "text-emerald-400",
-          border: "border-emerald-500/30",
-        };
-      case "warning":
-        return {
-          bg: "bg-amber-500/10",
-          text: "text-amber-400",
-          border: "border-amber-500/30",
-        };
-      case "critical":
-        return {
-          bg: "bg-red-500/10",
-          text: "text-red-400",
-          border: "border-red-500/30",
-        };
-      case "unknown":
-        return {
-          bg: "bg-blue-500/10",
-          text: "text-blue-400",
-          border: "border-blue-500/30",
-        };
-      case "pending":
-      default:
-        return {
-          bg: "bg-neutral-500/10",
-          text: "text-neutral-400",
-          border: "border-neutral-500/30",
-        };
-    }
-  }
-
-  const statusClasses = $derived(getStatusClasses(status));
-
-  // Get badge variant from status
-  function getBadgeVariant(
-    status: PillarStatus | ProductivityStatus
-  ): "success" | "warning" | "destructive" | "outline" {
-    switch (status) {
-      case "healthy":
-        return "success";
-      case "warning":
-        return "warning";
-      case "critical":
-        return "destructive";
-      default:
-        return "outline";
-    }
-  }
-
-  const badgeVariant = $derived(getBadgeVariant(status));
 </script>
 
 <Card
   class="transition-colors duration-150 border {underConstruction
     ? 'border-neutral-700/50 opacity-60 cursor-not-allowed'
-    : `hover:bg-white/5 ${statusClasses.border}`}"
+    : 'hover:bg-white/5 border-white/10'}"
 >
   <button
     type="button"
-    class="w-full text-left"
+    class="w-full text-left cursor-pointer disabled:cursor-not-allowed"
     onclick={onClick}
     disabled={underConstruction || !onClick}
   >
@@ -154,10 +118,6 @@
             TBD
           </span>
         </Badge>
-      {:else}
-        <Badge variant={badgeVariant}>
-          {status}
-        </Badge>
       {/if}
     </div>
 
@@ -167,10 +127,28 @@
           <div class="text-2xl font-semibold text-neutral-500">—</div>
           <div class="text-xs text-neutral-500">GetDX mapping pending</div>
         {:else}
-          <div class="text-2xl font-semibold {statusClasses.text}">
-            {value}{#if valueUnit}<span
-                class="text-sm font-normal text-neutral-400">{valueUnit}</span
-              >{/if}
+          <div class="flex items-center gap-2">
+            <span class="text-2xl font-semibold text-neutral-200">
+              {value}{#if valueUnit}<span
+                  class="text-sm font-normal text-neutral-400">{valueUnit}</span
+                >{/if}
+            </span>
+            {#if weekTrend?.hasEnoughData}
+              <TrendChip
+                direction={weekTrend.direction}
+                percentChange={weekTrend.percentChange}
+                period="{weekTrend.actualDays ?? 7}d"
+                {higherIsBetter}
+              />
+            {/if}
+            {#if monthTrend?.hasEnoughData}
+              <TrendChip
+                direction={monthTrend.direction}
+                percentChange={monthTrend.percentChange}
+                period="{monthTrend.actualDays ?? 30}d"
+                {higherIsBetter}
+              />
+            {/if}
           </div>
           {#if subtitle}
             <div class="text-xs text-neutral-500">{subtitle}</div>
@@ -224,9 +202,18 @@
         <!-- Standard list layout for details -->
         <div class="space-y-0.5 text-xs">
           {#each details as detail (detail.label)}
-            <div>
-              <span class="font-semibold text-neutral-400">{detail.value}</span>
-              <span class="text-neutral-500">{detail.label}</span>
+            <!-- svelte-ignore a11y_no_static_element_interactions -->
+            <div
+              class={detail.id && onDetailHover
+                ? "cursor-pointer hover:text-neutral-300 transition-colors"
+                : ""}
+              onmouseenter={(e) => handleDetailMouseEnter(detail.id, e)}
+              onmouseleave={handleDetailMouseLeave}
+            >
+              <span class="font-semibold text-neutral-400">{detail.value}</span
+              >{#if detail.secondaryValue}<span class="text-neutral-400/50"
+                  >{detail.secondaryValue}</span
+                >{/if}<span class="text-neutral-500">{detail.label}</span>
             </div>
           {/each}
         </div>

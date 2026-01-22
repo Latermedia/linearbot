@@ -10,6 +10,8 @@
     title?: string;
     /** Chart height in pixels */
     height?: number;
+    /** Remove top margin (for use with external spacing/transitions) */
+    noMargin?: boolean;
   }
 
   let {
@@ -17,10 +19,11 @@
     loading = false,
     title = "Trends",
     height = 180,
+    noMargin = false,
   }: Props = $props();
 </script>
 
-<div class="mt-8">
+<div class={noMargin ? "" : "mt-8"}>
   {#if title}
     <h2 class="mb-4 text-lg font-medium text-white">{title}</h2>
   {/if}

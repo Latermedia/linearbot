@@ -11,6 +11,12 @@
     MetricsSnapshotV1,
     TeamProductivityV1,
   } from "../../../types/metrics-snapshot";
+  import type { TrendDataPoint } from "../../../routes/api/metrics/trends/+server";
+  import {
+    calculateMetricTrends,
+    metricExtractors,
+    type TrendResult,
+  } from "$lib/utils/trend-calculation";
 
   // Engineer data from API
   interface EngineerData {
@@ -35,6 +41,8 @@
     ) => void;
     /** Callback when an engineer is clicked (to open modal) */
     onEngineerClick?: (engineerId: string) => void;
+    /** Trend data points for calculating week/month trends */
+    trendDataPoints?: TrendDataPoint[];
   }
 
   let {
@@ -44,6 +52,7 @@
     productivityUnderConstruction = false,
     onPillarClick,
     onEngineerClick,
+    trendDataPoints = [],
   }: Props = $props();
 
   // Engineer data state
@@ -343,25 +352,20 @@
     ];
   });
 
-  // Productivity value display
+  // Productivity goal target (3 throughput per engineer per week)
+  const PRODUCTIVITY_GOAL = 3;
+
+  // Productivity value display as % of goal
   const productivityValue = $derived.by(() => {
     if (!productivity || !hasProductivity) return "—";
     if (!("trueThroughput" in productivity)) return "—";
 
     if (productivity.trueThroughputPerEngineer !== null) {
-      return toWeeklyRate(productivity.trueThroughputPerEngineer).toFixed(2);
+      const weeklyRate = toWeeklyRate(productivity.trueThroughputPerEngineer);
+      const percentOfGoal = (weeklyRate / PRODUCTIVITY_GOAL) * 100;
+      return `${Math.round(percentOfGoal)}%`;
     }
-    return toWeeklyRate(productivity.trueThroughput).toFixed(1);
-  });
-
-  const productivityValueUnit = $derived.by(() => {
-    if (!productivity || !hasProductivity) return undefined;
-    if (!("trueThroughput" in productivity)) return undefined;
-
-    if (productivity.trueThroughputPerEngineer !== null) {
-      return "/wk per eng";
-    }
-    return "/wk";
+    return "—";
   });
 
   const productivitySubtitle = $derived.by(() => {
@@ -369,10 +373,58 @@
     if (!("trueThroughput" in productivity)) return undefined;
 
     if (productivity.trueThroughputPerEngineer !== null) {
-      return "TrueThroughput (target: 3/wk)";
+      const weeklyRate = toWeeklyRate(productivity.trueThroughputPerEngineer);
+      return `${weeklyRate.toFixed(2)}/wk per eng (goal: ${PRODUCTIVITY_GOAL})`;
     }
-    return "TrueThroughput (total)";
+    return "TrueThroughput";
   });
+
+  // Trend calculations for each pillar
+  const wipHealthTrends = $derived.by(
+    (): { week: TrendResult; month: TrendResult } | null => {
+      if (trendDataPoints.length === 0 || !teamHealth) return null;
+      return calculateMetricTrends(
+        trendDataPoints,
+        metricExtractors.wipHealth,
+        teamHealth.healthyWorkloadPercent
+      );
+    }
+  );
+
+  const projectHealthTrends = $derived.by(
+    (): { week: TrendResult; month: TrendResult } | null => {
+      if (trendDataPoints.length === 0 || !velocityHealth) return null;
+      return calculateMetricTrends(
+        trendDataPoints,
+        metricExtractors.projectHealth,
+        velocityHealth.onTrackPercent
+      );
+    }
+  );
+
+  const productivityTrends = $derived.by(
+    (): { week: TrendResult; month: TrendResult } | null => {
+      if (trendDataPoints.length === 0 || !productivity || !hasProductivity)
+        return null;
+      if (!("trueThroughputPerEngineer" in productivity)) return null;
+      return calculateMetricTrends(
+        trendDataPoints,
+        metricExtractors.productivity,
+        productivity.trueThroughputPerEngineer ?? undefined
+      );
+    }
+  );
+
+  const qualityTrends = $derived.by(
+    (): { week: TrendResult; month: TrendResult } | null => {
+      if (trendDataPoints.length === 0 || !quality) return null;
+      return calculateMetricTrends(
+        trendDataPoints,
+        metricExtractors.quality,
+        quality.compositeScore
+      );
+    }
+  );
 </script>
 
 {#if loading}
@@ -401,46 +453,54 @@
     <!-- Pillar 1: WIP Health -->
     <PillarCard
       title="WIP Health"
-      status={teamHealth?.status || "pending"}
       value="{teamHealth?.healthyWorkloadPercent.toFixed(0) || 0}%"
       subtitle="Healthy Workloads"
       details={wipHealthDetails}
       onClick={() => onPillarClick?.("wipHealth")}
       onDetailHover={handleWipDetailHover}
+      weekTrend={wipHealthTrends?.week}
+      monthTrend={wipHealthTrends?.month}
+      higherIsBetter={true}
     />
 
     <!-- Pillar 2: Project Health -->
     <PillarCard
       title="Project Health"
-      status={velocityHealth?.status || "pending"}
       value="{velocityHealth?.onTrackPercent.toFixed(0) || 0}%"
       subtitle="{velocityCounts?.onTrack ?? 0} of {velocityCounts?.total ??
         0} projects on track"
       twoColumnDetails={projectHealthTwoColumnDetails}
       noIssuesMessage="All projects on track"
       onClick={() => onPillarClick?.("projectHealth")}
+      weekTrend={projectHealthTrends?.week}
+      monthTrend={projectHealthTrends?.month}
+      higherIsBetter={true}
     />
 
     <!-- Pillar 3: Team Productivity -->
     <PillarCard
       title="Productivity"
-      status={productivity?.status || "pending"}
       value={productivityValue}
-      valueUnit={productivityValueUnit}
       subtitle={productivitySubtitle}
       details={productivityDetails}
       underConstruction={productivityUnderConstruction}
       onClick={() => onPillarClick?.("productivity")}
+      weekTrend={productivityTrends?.week}
+      monthTrend={productivityTrends?.month}
+      higherIsBetter={true}
     />
 
     <!-- Pillar 4: Quality -->
     <PillarCard
       title="Quality"
-      status={quality?.status || "pending"}
       value={quality?.compositeScore ?? "—"}
-      subtitle="Quality score (0-100)"
+      valueUnit="%"
+      subtitle="Quality score"
       details={qualityDetails}
       onClick={() => onPillarClick?.("quality")}
+      weekTrend={qualityTrends?.week}
+      monthTrend={qualityTrends?.month}
+      higherIsBetter={true}
     />
   </div>
 {:else}

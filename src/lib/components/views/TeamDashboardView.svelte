@@ -1,5 +1,7 @@
 <script lang="ts">
   import { onMount } from "svelte";
+  import { slide, fade } from "svelte/transition";
+  import { quartOut } from "svelte/easing";
   import { browser } from "$app/environment";
   import Card from "$lib/components/Card.svelte";
   import Skeleton from "$lib/components/Skeleton.svelte";
@@ -73,6 +75,7 @@
   // Trend data state
   let trendDataPoints = $state<TrendDataPoint[]>([]);
   let trendLoading = $state(true);
+  let showTrends = $state(false);
 
   // Engineer modal state
   let allEngineers = $state<EngineerData[]>([]);
@@ -297,19 +300,39 @@
 
 <div class="space-y-6">
   <!-- Header with rotating principles -->
-  <MetricsHeader title="Overview" />
-
-  <!-- Org-Level Health Metrics -->
-  <PillarCardGrid
-    snapshot={displaySnapshot}
-    loading={metricsLoading && !orgSnapshot}
-    error={metricsError}
-    productivityUnderConstruction={selectedTeamKey !== null}
-    onEngineerClick={handleEngineerClick}
+  <MetricsHeader
+    title="Overview"
+    {showTrends}
+    onToggleTrends={() => (showTrends = !showTrends)}
   />
 
-  <!-- Trends Chart -->
-  <TrendsSection dataPoints={trendDataPoints} loading={trendLoading} />
+  <!-- Org-Level Health Metrics + Trends (grouped to avoid space-y-6 affecting animation) -->
+  <div>
+    <PillarCardGrid
+      snapshot={displaySnapshot}
+      loading={metricsLoading && !orgSnapshot}
+      error={metricsError}
+      productivityUnderConstruction={selectedTeamKey !== null}
+      onEngineerClick={handleEngineerClick}
+      {trendDataPoints}
+    />
+
+    {#if showTrends}
+      <div
+        class="mt-6 overflow-hidden"
+        transition:slide={{ duration: 300, easing: quartOut }}
+      >
+        <div transition:fade={{ duration: 200, easing: quartOut }}>
+          <TrendsSection
+            dataPoints={trendDataPoints}
+            loading={trendLoading}
+            title=""
+            noMargin
+          />
+        </div>
+      </div>
+    {/if}
+  </div>
 
   <!-- View controls -->
   <div

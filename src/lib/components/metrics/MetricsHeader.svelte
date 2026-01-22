@@ -21,9 +21,15 @@
 
   interface Props {
     title?: string;
+    showTrends?: boolean;
+    onToggleTrends?: () => void;
   }
 
-  let { title = "Engineering Metrics" }: Props = $props();
+  let {
+    title = "Engineering Metrics",
+    showTrends = false,
+    onToggleTrends,
+  }: Props = $props();
 
   // Rotating principle state
   let principleIndex = $state(Math.floor(Math.random() * principles.length));
@@ -51,6 +57,27 @@
     <h1 class="text-2xl font-semibold tracking-tight text-white">
       {title}
     </h1>
+    {#if onToggleTrends}
+      <div class="flex gap-2 items-center">
+        <span class="text-xs text-neutral-400">Trends</span>
+        <button
+          type="button"
+          role="switch"
+          aria-checked={showTrends}
+          onclick={onToggleTrends}
+          class="relative inline-flex h-5 w-9 shrink-0 cursor-pointer items-center rounded-full transition-colors duration-200 ease-in-out focus:outline-none focus-visible:ring-2 focus-visible:ring-white/20 {showTrends
+            ? 'bg-violet-600'
+            : 'bg-neutral-700'}"
+        >
+          <span class="sr-only">Show trends</span>
+          <span
+            class="pointer-events-none inline-block h-4 w-4 transform rounded-full bg-white shadow ring-0 transition duration-200 ease-in-out {showTrends
+              ? 'translate-x-4'
+              : 'translate-x-0.5'}"
+          ></span>
+        </button>
+      </div>
+    {/if}
   </div>
   <div class="relative mt-1 h-6">
     <p
