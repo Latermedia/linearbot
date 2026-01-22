@@ -146,10 +146,11 @@ export function calculateCompositeScore(
   const netScore = Math.max(0, 100 - netPerEng * NET_PENALTY_PER_ENG);
   const ageScore = Math.max(0, 100 - avgAge * AGE_PENALTY_PER_DAY);
 
-  // Apply weights
+  // Apply weights and clamp to 0-100 range
+  // (netScore can exceed 100 when closing more bugs than opening)
   const weightedScore = bugScore * 0.3 + netScore * 0.4 + ageScore * 0.3;
 
-  return Math.round(weightedScore);
+  return Math.round(Math.min(100, weightedScore));
 }
 
 /**
