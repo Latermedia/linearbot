@@ -2,43 +2,18 @@
   import { onMount } from "svelte";
   import { browser } from "$app/environment";
   import Card from "$lib/components/Card.svelte";
-  import EngineersTable from "$lib/components/EngineersTable.svelte";
-  import EngineerDetailModal from "$lib/components/EngineerDetailModal.svelte";
+  import IssueTable from "$lib/components/IssueTable.svelte";
   import Skeleton from "$lib/components/Skeleton.svelte";
-  import type { TeamHealthV1 } from "../../types/metrics-snapshot";
+  import type { QualityHealthV1 } from "../../types/metrics-snapshot";
   import type { LatestMetricsResponse } from "../api/metrics/latest/+server";
-
-  interface EngineerData {
-    assignee_id: string;
-    assignee_name: string;
-    avatar_url: string | null;
-    team_ids: string;
-    team_names: string;
-    wip_issue_count: number;
-    wip_total_points: number;
-    wip_limit_violation: number;
-    oldest_wip_age_days: number | null;
-    last_activity_at: string | null;
-    missing_estimate_count: number;
-    missing_priority_count: number;
-    no_recent_comment_count: number;
-    wip_age_violation_count: number;
-    active_issues: string;
-    active_project_count?: number;
-    multi_project_violation?: number;
-  }
-
-  // Props from page.server.ts
-  let { data } = $props();
+  import type { Issue } from "../../db/schema";
 
   // Data state
   let loading = $state(true);
   let error = $state<string | null>(null);
-  let teamHealth = $state<TeamHealthV1 | null>(null);
-  let allEngineers = $state<EngineerData[]>([]);
-
-  // Engineer modal state
-  let selectedEngineer = $state<EngineerData | null>(null);
+  let quality = $state<QualityHealthV1 | null>(null);
+  let bugIssues = $state<Issue[]>([]);
+  let bugsLoading = $state(true);
 
   // KaTeX for rendering math formulas
   let katex: typeof import("katex") | null = null;
@@ -48,80 +23,48 @@
   onMount(async () => {
     if (!browser) return;
 
-    // Load KaTeX
-    katex = await import("katex");
-    if (katex) {
+    // Load KaTeX (non-blocking)
+    import("katex").then((k) => {
+      katex = k;
       formulaHtml = katex.default.renderToString(
-        "\\text{WIP Health} = \\frac{\\displaystyle\\sum_{i=1}^{N} \\mathbf{1}\\bigl[\\text{issues}_i \\leq 5 \\;\\land\\; \\text{projects}_i = 1\\bigr]}{N} \\times 100",
+        "\\text{Quality Score} = 100 - \\left( w_1 \\cdot \\frac{\\text{Open Bugs}}{\\text{Threshold}} + w_2 \\cdot \\frac{\\text{Avg Age}}{\\text{Max Age}} + w_3 \\cdot \\max(0, \\text{Net Change}) \\right)",
         { throwOnError: false, displayMode: true }
       );
-    }
+    });
 
-    // Fetch metrics and engineers in parallel
+    // Fetch metrics first (fast), then bugs (slower)
     try {
-      const [metricsRes, engineersRes] = await Promise.all([
-        fetch("/api/metrics/latest"),
-        fetch("/api/engineers"),
-      ]);
-
+      const metricsRes = await fetch("/api/metrics/latest");
       const metricsData = (await metricsRes.json()) as LatestMetricsResponse;
-      const engineersData = await engineersRes.json();
 
       if (!metricsData.success) {
         error = metricsData.error || "Failed to fetch metrics";
+        loading = false;
         return;
       }
 
-      teamHealth = metricsData.snapshot?.teamHealth || null;
-      allEngineers = engineersData.engineers || [];
+      quality = metricsData.snapshot?.quality || null;
+      loading = false;
+
+      // Fetch bugs separately (don't block the main UI)
+      try {
+        const issuesRes = await fetch(
+          "/api/issues?type=bug&status=open&limit=1000"
+        );
+        const issuesData = await issuesRes.json();
+        bugIssues = issuesData.issues || [];
+      } catch (e) {
+        console.error("Failed to fetch bug issues:", e);
+        // Don't set error - bugs list is optional
+      } finally {
+        bugsLoading = false;
+      }
     } catch (e) {
       error = e instanceof Error ? e.message : "Failed to load data";
-    } finally {
       loading = false;
+      bugsLoading = false;
     }
   });
-
-  // Filter engineers to only those in ENGINEER_TEAM_MAPPING
-  const mappedEngineerNames = $derived(
-    new Set(Object.keys(data.engineerTeamMapping || {}))
-  );
-
-  const hasMappingConfigured = $derived(mappedEngineerNames.size > 0);
-
-  // Filter to only mapped engineers (or all if no mapping configured)
-  const engineers = $derived(
-    hasMappingConfigured
-      ? allEngineers.filter((e) => mappedEngineerNames.has(e.assignee_name))
-      : allEngineers
-  );
-
-  // Calculate stats from filtered engineers
-  const totalEngineerCount = $derived(
-    hasMappingConfigured ? mappedEngineerNames.size : engineers.length
-  );
-
-  // Engineers with 6+ issues
-  const wipViolationEngineers = $derived(
-    engineers.filter((e) => e.wip_limit_violation === 1)
-  );
-
-  // Engineers on 2+ projects
-  const multiProjectEngineers = $derived(
-    engineers.filter((e) => e.multi_project_violation === 1)
-  );
-
-  // Combined: engineers with ANY violation (union of both)
-  const overloadedEngineers = $derived(
-    engineers.filter(
-      (e) => e.wip_limit_violation === 1 || e.multi_project_violation === 1
-    )
-  );
-
-  // Healthy count = total - overloaded
-  // This accounts for engineers in the mapping who have no WIP data (they have 0 issues = healthy)
-  const healthyCount = $derived(
-    totalEngineerCount - overloadedEngineers.length
-  );
 
   // Status indicator colors
   const statusColors: Record<string, string> = {
@@ -138,29 +81,16 @@
     unknown: "Unknown",
   };
 
-  // Calculate healthy percentage
-  const healthyPercent = $derived(
-    totalEngineerCount > 0
-      ? ((healthyCount / totalEngineerCount) * 100).toFixed(0)
-      : "0"
-  );
+  // Computed status
+  const computedStatus = $derived(quality?.status || "unknown");
 
-  // Determine status based on healthy percentage
-  const computedStatus = $derived.by((): "healthy" | "warning" | "critical" => {
-    const pct = parseFloat(healthyPercent);
-    if (pct >= 80) return "healthy";
-    if (pct >= 60) return "warning";
-    return "critical";
-  });
-
-  function closeEngineerModal() {
-    selectedEngineer = null;
-  }
+  // Open bugs driving the quality metric
+  const openBugs = $derived(bugIssues);
 </script>
 
 <div class="space-y-6">
   <!-- Page Title -->
-  <h1 class="text-2xl font-semibold text-white">WIP Health</h1>
+  <h1 class="text-2xl font-semibold text-white">Quality</h1>
 
   {#if loading}
     <!-- Loading state -->
@@ -187,7 +117,7 @@
       </div>
       <p class="text-neutral-700 dark:text-neutral-400">{error}</p>
     </Card>
-  {:else if teamHealth}
+  {:else if quality}
     <!-- Marquee Hero Section -->
     <div class="py-8 border-b border-white/10">
       <!-- Large metric -->
@@ -198,16 +128,16 @@
           ]} self-center"
         ></span>
         <span class="text-8xl lg:text-9xl font-bold text-white tracking-tight">
-          {healthyPercent}%
+          {quality.compositeScore}%
         </span>
       </div>
 
       <!-- Subtitle -->
       <p class="text-center text-xl text-neutral-400 mb-2">
-        Engineers within WIP constraints
+        Composite quality score
       </p>
       <p class="text-center text-sm text-neutral-500">
-        {healthyCount} of {totalEngineerCount} engineers
+        Based on bug count, age, and backlog trend
         <span
           class="ml-2 inline-block text-xs font-medium px-2 py-0.5 rounded {computedStatus ===
           'healthy'
@@ -222,46 +152,51 @@
 
       <!-- Breakdown row -->
       <div class="flex items-center justify-center gap-8 lg:gap-16 mt-8">
-        <!-- Overloaded (combined) -->
+        <!-- Open bugs -->
         <div class="text-center">
           <div class="text-4xl lg:text-5xl font-bold text-white">
-            {overloadedEngineers.length}
+            {quality.openBugCount}
           </div>
-          <div class="text-sm text-neutral-400 mt-1">Overloaded</div>
-          <div class="text-xs text-neutral-500">need attention</div>
+          <div class="text-sm text-neutral-400 mt-1">Open Bugs</div>
+          <div class="text-xs text-neutral-500">total backlog</div>
         </div>
 
         <!-- Divider -->
         <div class="h-12 w-px bg-white/10"></div>
 
-        <!-- 6+ issues breakdown -->
-        <div class="text-center opacity-70">
-          <div class="text-3xl lg:text-4xl font-bold text-white">
-            {wipViolationEngineers.length}
+        <!-- Average age -->
+        <div class="text-center">
+          <div class="text-4xl lg:text-5xl font-bold text-white">
+            {quality.averageBugAgeDays.toFixed(0)}
           </div>
-          <div class="text-sm text-neutral-400 mt-1">6+ issues</div>
+          <div class="text-sm text-neutral-400 mt-1">Avg Age (days)</div>
+          <div class="text-xs text-neutral-500">
+            max: {quality.maxBugAgeDays.toFixed(0)}d
+          </div>
         </div>
 
         <!-- Divider -->
         <div class="h-12 w-px bg-white/10"></div>
 
-        <!-- Context-switching breakdown -->
-        <div class="text-center opacity-70">
-          <div class="text-3xl lg:text-4xl font-bold text-white">
-            {multiProjectEngineers.length}
+        <!-- Net change -->
+        <div class="text-center">
+          <div class="text-4xl lg:text-5xl font-bold text-white">
+            {quality.netBugChange > 0 ? "+" : ""}{quality.netBugChange}
           </div>
-          <div class="text-sm text-neutral-400 mt-1">2+ projects</div>
+          <div class="text-sm text-neutral-400 mt-1">Net Change</div>
+          <div class="text-xs text-neutral-500">in 14 days</div>
         </div>
 
         <!-- Divider -->
         <div class="h-12 w-px bg-white/10"></div>
 
-        <!-- Projects impacted -->
+        <!-- Opened vs Closed -->
         <div class="text-center opacity-70">
           <div class="text-3xl lg:text-4xl font-bold text-white">
-            {teamHealth.impactedProjectCount}
+            {quality.bugsOpenedInPeriod} / {quality.bugsClosedInPeriod}
           </div>
-          <div class="text-sm text-neutral-400 mt-1">Projects impacted</div>
+          <div class="text-sm text-neutral-400 mt-1">Opened / Closed</div>
+          <div class="text-xs text-neutral-500">in 14 days</div>
         </div>
       </div>
     </div>
@@ -276,9 +211,10 @@
           Why this matters
         </h3>
         <p class="text-sm text-neutral-400 leading-relaxed">
-          WIP constraints reduce cycle time by limiting queue depth. Overloaded
-          engineers create bottlenecks; context-switching across projects
-          compounds delays through task-switching overhead.
+          Bug debt compounds over time. A growing backlog indicates we're
+          creating bugs faster than fixing them. Old bugs tend to get harder to
+          fix as context fades. Tracking the trend helps catch quality
+          regressions early.
         </p>
       </div>
 
@@ -290,11 +226,12 @@
           How it's calculated
         </h3>
         <p class="text-sm text-neutral-400">
-          An engineer is "within constraints" when they have <strong
-            class="text-neutral-300">5 or fewer</strong
-          >
-          in-progress issues AND are focused on a
-          <strong class="text-neutral-300">single project</strong>.
+          The composite score combines <strong class="text-neutral-300"
+            >open bug count</strong
+          >,
+          <strong class="text-neutral-300">average bug age</strong>, and
+          <strong class="text-neutral-300">14-day backlog trend</strong>. Higher
+          scores indicate healthier quality; 100% means zero bugs.
         </p>
 
         <!-- Formula -->
@@ -309,27 +246,30 @@
       </div>
     </div>
 
-    <!-- Overloaded Engineers Table -->
+    <!-- Open Bugs Table -->
     <Card class="p-0 overflow-hidden">
       <div
         class="flex items-center justify-between px-4 py-3 border-b border-white/10 bg-white/5"
       >
         <h3 class="text-sm font-medium text-white">
-          Overloaded Engineers ({overloadedEngineers.length})
+          Open Bugs {#if !bugsLoading}({openBugs.length}){/if}
         </h3>
-        <span class="text-xs text-neutral-500"> 6+ issues or 2+ projects </span>
       </div>
       <div class="p-4">
-        {#if overloadedEngineers.length > 0}
-          <EngineersTable
-            engineers={overloadedEngineers}
-            onEngineerClick={(engineer) => {
-              selectedEngineer = engineer;
-            }}
+        {#if bugsLoading}
+          <div class="py-8 text-center text-neutral-500">Loading bugs...</div>
+        {:else if openBugs.length > 0}
+          <IssueTable
+            issues={openBugs}
+            showAssignee={true}
+            showTeam={true}
+            showIdentifier={true}
+            groupByState={false}
+            noMaxHeight={true}
           />
         {:else}
           <div class="py-8 text-center text-neutral-500">
-            No engineers currently overloaded — great job!
+            No open bugs in the backlog — great job!
           </div>
         {/if}
       </div>
@@ -347,18 +287,10 @@
   {/if}
 </div>
 
-<!-- Engineer Detail Modal -->
-{#if selectedEngineer}
-  <EngineerDetailModal
-    engineer={selectedEngineer}
-    onclose={closeEngineerModal}
-  />
-{/if}
-
 <style>
   /* KaTeX formula styling */
   .formula-container :global(.katex) {
-    font-size: 1em;
+    font-size: 0.85em;
     color: #e5e5e5;
   }
   .formula-container :global(.katex-display) {

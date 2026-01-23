@@ -11,12 +11,6 @@
     MetricsSnapshotV1,
     TeamProductivityV1,
   } from "../../../types/metrics-snapshot";
-  import type { TrendDataPoint } from "../../../routes/api/metrics/trends/+server";
-  import {
-    calculateMetricTrends,
-    metricExtractors,
-    type TrendResult,
-  } from "$lib/utils/trend-calculation";
 
   // Engineer data from API
   interface EngineerData {
@@ -41,8 +35,6 @@
     ) => void;
     /** Callback when an engineer is clicked (to open modal) */
     onEngineerClick?: (engineerId: string) => void;
-    /** Trend data points for calculating week/month trends */
-    trendDataPoints?: TrendDataPoint[];
     /** Engineer-to-team mapping for filtering IC metrics by team */
     engineerTeamMapping?: Record<string, string>;
     /** Currently selected team key for filtering */
@@ -56,7 +48,6 @@
     productivityUnderConstruction = false,
     onPillarClick,
     onEngineerClick,
-    trendDataPoints = [],
     engineerTeamMapping = {},
     selectedTeamKey = null,
   }: Props = $props();
@@ -233,155 +224,6 @@
     productivity ? hasProductivityData(productivity) : false
   );
 
-  // Project Health counts
-  const velocityCounts = $derived.by(() => {
-    if (!velocityHealth?.projectStatuses) return null;
-    const statuses = velocityHealth.projectStatuses;
-    return {
-      atRiskHuman: statuses.filter(
-        (p) => p.effectiveHealth === "atRisk" && p.healthSource === "human"
-      ).length,
-      atRiskVelocity: statuses.filter(
-        (p) => p.effectiveHealth === "atRisk" && p.healthSource === "velocity"
-      ).length,
-      offTrackHuman: statuses.filter(
-        (p) => p.effectiveHealth === "offTrack" && p.healthSource === "human"
-      ).length,
-      offTrackVelocity: statuses.filter(
-        (p) => p.effectiveHealth === "offTrack" && p.healthSource === "velocity"
-      ).length,
-      total: statuses.length,
-      onTrack: statuses.filter((p) => p.effectiveHealth === "onTrack").length,
-    };
-  });
-
-  // Build details arrays for each pillar (kept for future use with pillar modals)
-  const _wipHealthDetails = $derived.by(() => {
-    if (!teamHealth) return [];
-    const totalIcs = teamHealth.totalIcCount || 1; // Avoid division by zero
-    const totalProjects = teamHealth.totalProjectCount || 1;
-
-    const wipPct = ((teamHealth.wipViolationCount / totalIcs) * 100).toFixed(0);
-    const multiPct = (
-      (teamHealth.multiProjectViolationCount / totalIcs) *
-      100
-    ).toFixed(0);
-    const projectPct = (
-      (teamHealth.impactedProjectCount / totalProjects) *
-      100
-    ).toFixed(0);
-
-    return [
-      {
-        id: "wip-overloaded",
-        value: `${wipPct}%`,
-        label: " ICs overloaded (6+ issues)",
-      },
-      {
-        id: "multi-project",
-        value: `${multiPct}%`,
-        label: " ICs context-switching (2+ projects)",
-      },
-      {
-        id: "projects-impacted",
-        value: `${projectPct}%`,
-        label: " projects impacted",
-      },
-    ];
-  });
-
-  // Project Health two-column details (Self-reported vs Trajectory Alert)
-  const projectHealthTwoColumnDetails = $derived.by(() => {
-    if (!velocityCounts) return undefined;
-
-    const hasIssues =
-      velocityCounts.atRiskHuman > 0 ||
-      velocityCounts.offTrackHuman > 0 ||
-      velocityCounts.atRiskVelocity > 0 ||
-      velocityCounts.offTrackVelocity > 0;
-
-    if (!hasIssues) {
-      return undefined; // Will show noIssuesMessage
-    }
-
-    const leftItems: { value: string | number; label: string }[] = [];
-    const rightItems: { value: string | number; label: string }[] = [];
-
-    if (velocityCounts.atRiskHuman > 0) {
-      leftItems.push({ value: velocityCounts.atRiskHuman, label: " at risk" });
-    }
-    if (velocityCounts.offTrackHuman > 0) {
-      leftItems.push({
-        value: velocityCounts.offTrackHuman,
-        label: " off track",
-      });
-    }
-    if (velocityCounts.atRiskVelocity > 0) {
-      rightItems.push({
-        value: velocityCounts.atRiskVelocity,
-        label: " at risk",
-      });
-    }
-    if (velocityCounts.offTrackVelocity > 0) {
-      rightItems.push({
-        value: velocityCounts.offTrackVelocity,
-        label: " off track",
-      });
-    }
-
-    return {
-      left:
-        leftItems.length > 0
-          ? { header: "Self-reported", items: leftItems }
-          : undefined,
-      right:
-        rightItems.length > 0
-          ? { header: "Trajectory Alert", items: rightItems }
-          : undefined,
-    };
-  });
-
-  const productivityDetails = $derived.by(() => {
-    if (!productivity || !hasProductivity) return [];
-    if (!("trueThroughput" in productivity)) return [];
-
-    const details: { value: string | number; label: string }[] = [
-      {
-        value: toWeeklyRate(productivity.trueThroughput).toFixed(1),
-        label: " total throughput/wk",
-      },
-    ];
-
-    if (productivity.engineerCount !== null) {
-      details.push({
-        value: productivity.engineerCount,
-        label: " engineers",
-      });
-    }
-
-    return details;
-  });
-
-  const qualityDetails = $derived.by(() => {
-    if (!quality) return [];
-
-    const bugChangeLabel =
-      quality.netBugChange > 0
-        ? ` Backlog growing (+${quality.netBugChange} in 14d)`
-        : quality.netBugChange < 0
-          ? ` Backlog shrinking (${quality.netBugChange} in 14d)`
-          : " Backlog stable (0 net in 14d)";
-
-    return [
-      { value: quality.openBugCount, label: " open bugs" },
-      { value: "", label: bugChangeLabel },
-      {
-        value: "",
-        label: `Avg age: ${quality.averageBugAgeDays.toFixed(0)} days`,
-      },
-    ];
-  });
-
   // Productivity goal target (3 throughput per engineer per week)
   const PRODUCTIVITY_GOAL = 3;
 
@@ -408,53 +250,6 @@
     }
     return "TrueThroughput";
   });
-
-  // Trend calculations for each pillar
-  const wipHealthTrends = $derived.by(
-    (): { week: TrendResult; month: TrendResult } | null => {
-      if (trendDataPoints.length === 0 || !teamHealth) return null;
-      return calculateMetricTrends(
-        trendDataPoints,
-        metricExtractors.wipHealth,
-        teamHealth.healthyWorkloadPercent
-      );
-    }
-  );
-
-  const projectHealthTrends = $derived.by(
-    (): { week: TrendResult; month: TrendResult } | null => {
-      if (trendDataPoints.length === 0 || !velocityHealth) return null;
-      return calculateMetricTrends(
-        trendDataPoints,
-        metricExtractors.projectHealth,
-        velocityHealth.onTrackPercent
-      );
-    }
-  );
-
-  const productivityTrends = $derived.by(
-    (): { week: TrendResult; month: TrendResult } | null => {
-      if (trendDataPoints.length === 0 || !productivity || !hasProductivity)
-        return null;
-      if (!("trueThroughputPerEngineer" in productivity)) return null;
-      return calculateMetricTrends(
-        trendDataPoints,
-        metricExtractors.productivity,
-        productivity.trueThroughputPerEngineer ?? undefined
-      );
-    }
-  );
-
-  const qualityTrends = $derived.by(
-    (): { week: TrendResult; month: TrendResult } | null => {
-      if (trendDataPoints.length === 0 || !quality) return null;
-      return calculateMetricTrends(
-        trendDataPoints,
-        metricExtractors.quality,
-        quality.compositeScore
-      );
-    }
-  );
 </script>
 
 {#if loading}
@@ -487,24 +282,15 @@
       subtitle="Engineers within WIP constraints"
       status={teamHealth?.status}
       onClick={() => onPillarClick?.("wipHealth")}
-      weekTrend={wipHealthTrends?.week}
-      monthTrend={wipHealthTrends?.month}
-      higherIsBetter={true}
     />
 
     <!-- Pillar 2: Project Health -->
     <PillarCard
       title="Project Health"
       value="{velocityHealth?.onTrackPercent.toFixed(0) || 0}%"
-      subtitle="{velocityCounts?.onTrack ?? 0} of {velocityCounts?.total ??
-        0} projects on track"
+      subtitle="Projects on track"
       status={velocityHealth?.status}
-      twoColumnDetails={projectHealthTwoColumnDetails}
-      noIssuesMessage="All projects on track"
       onClick={() => onPillarClick?.("projectHealth")}
-      weekTrend={projectHealthTrends?.week}
-      monthTrend={projectHealthTrends?.month}
-      higherIsBetter={true}
     />
 
     <!-- Pillar 3: Team Productivity -->
@@ -513,12 +299,8 @@
       value={productivityValue}
       subtitle={productivitySubtitle}
       status={productivity?.status}
-      details={productivityDetails}
       underConstruction={productivityUnderConstruction}
       onClick={() => onPillarClick?.("productivity")}
-      weekTrend={productivityTrends?.week}
-      monthTrend={productivityTrends?.month}
-      higherIsBetter={true}
     />
 
     <!-- Pillar 4: Quality -->
@@ -528,11 +310,7 @@
       valueUnit="%"
       subtitle="Quality score"
       status={quality?.status}
-      details={qualityDetails}
       onClick={() => onPillarClick?.("quality")}
-      weekTrend={qualityTrends?.week}
-      monthTrend={qualityTrends?.month}
-      higherIsBetter={true}
     />
   </div>
 {:else}

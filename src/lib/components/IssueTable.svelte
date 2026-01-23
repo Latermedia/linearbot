@@ -60,6 +60,7 @@
     issues,
     showAssignee = false,
     showTeam = true,
+    showIdentifier = false,
     showEstimateAccuracy = false,
     daysPerStoryPoint = null,
     groupByState = false,
@@ -69,6 +70,7 @@
     issues: IssueData[];
     showAssignee?: boolean;
     showTeam?: boolean;
+    showIdentifier?: boolean;
     showEstimateAccuracy?: boolean;
     daysPerStoryPoint?: number | null;
     groupByState?: boolean;
@@ -359,6 +361,11 @@
                       class="overflow-hidden truncate whitespace-nowrap text-ellipsis"
                       title={parent.title}
                     >
+                      {#if showIdentifier && parent.identifier}
+                        <span class="text-neutral-500 font-mono text-xs mr-1.5"
+                          >{parent.identifier}</span
+                        >
+                      {/if}
                       {parent.title}
                       {#if subissues.length > 0}
                         <span class="ml-1 text-xs text-neutral-500"
@@ -519,6 +526,12 @@
                         title={subissue.title}
                       >
                         <span class="mr-1 text-neutral-400 shrink-0">↳</span>
+                        {#if showIdentifier && subissue.identifier}
+                          <span
+                            class="text-neutral-500 font-mono text-xs mr-1.5"
+                            >{subissue.identifier}</span
+                          >
+                        {/if}
                         {subissue.title}
                       </div>
                     </td>
@@ -662,6 +675,11 @@
                       class="overflow-hidden truncate whitespace-nowrap text-ellipsis"
                       title={issue.title}
                     >
+                      {#if showIdentifier && issue.identifier}
+                        <span class="text-neutral-500 font-mono text-xs mr-1.5"
+                          >{issue.identifier}</span
+                        >
+                      {/if}
                       {issue.title}
                     </div>
                   </td>

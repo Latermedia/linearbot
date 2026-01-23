@@ -4,6 +4,9 @@
   import {
     LayoutDashboard,
     Activity,
+    FolderCheck,
+    TrendingUp,
+    Bug,
     Target,
     Users,
     Presentation,
@@ -76,6 +79,19 @@
   <nav class="flex-1 px-2 py-4 space-y-1 overflow-y-auto">
     <SidebarItem href="/" icon={LayoutDashboard} label="Overview" />
     <SidebarItem href="/wip-health" icon={Activity} label="WIP Health" indent />
+    <SidebarItem
+      href="/project-health"
+      icon={FolderCheck}
+      label="Project Health"
+      indent
+    />
+    <SidebarItem
+      href="/productivity"
+      icon={TrendingUp}
+      label="Productivity"
+      indent
+    />
+    <SidebarItem href="/quality" icon={Bug} label="Quality" indent />
     <SidebarItem href="/initiatives" icon={Target} label="Initiatives" />
     <SidebarItem href="/engineers" icon={Users} label="Engineers" />
     <SidebarItem href="/executive" icon={Presentation} label="Executive" />

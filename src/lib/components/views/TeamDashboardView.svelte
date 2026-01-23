@@ -85,23 +85,17 @@
   let allEngineers = $state<EngineerData[]>([]);
   let selectedEngineer = $state<EngineerData | null>(null);
 
-  // Pillar modal state (for future modals - wipHealth now has its own page)
-  let _activePillarModal = $state<
-    "projectHealth" | "productivity" | "quality" | null
-  >(null);
-
+  // Pillar click handler - navigate to dedicated metric pages
   function handlePillarClick(
     pillar: "wipHealth" | "projectHealth" | "productivity" | "quality"
   ) {
-    if (pillar === "wipHealth") {
-      goto("/wip-health");
-    } else {
-      _activePillarModal = pillar;
-    }
-  }
-
-  function _closePillarModal() {
-    _activePillarModal = null;
+    const routes: Record<string, string> = {
+      wipHealth: "/wip-health",
+      projectHealth: "/project-health",
+      productivity: "/productivity",
+      quality: "/quality",
+    };
+    goto(routes[pillar]);
   }
 
   // Non-project WIP issues state
@@ -443,7 +437,6 @@
       productivityUnderConstruction={selectedTeamKey !== null}
       onPillarClick={handlePillarClick}
       onEngineerClick={handleEngineerClick}
-      {trendDataPoints}
       {engineerTeamMapping}
       {selectedTeamKey}
     />
