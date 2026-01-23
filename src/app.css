@@ -1,5 +1,6 @@
 @import "tailwindcss";
 @import "./lib/styles/theme.css";
+@import "katex/dist/katex.min.css";
 @custom-variant dark (&:where(.dark, .dark *));
 
 :root {
