@@ -29,7 +29,10 @@
     getRecentVelocity,
     getTotalActiveEngineers,
   } from "$lib/utils/executive-stats";
-  import { teamFilterStore, teamsMatchFilter } from "$lib/stores/team-filter";
+  import {
+    teamFilterStore,
+    teamsMatchFullFilter,
+  } from "$lib/stores/team-filter";
 
   let viewType = $state<"card" | "table" | "gantt">("card");
   let endDateMode = $state<"predicted" | "target">("predicted");
@@ -82,7 +85,7 @@
   const _allDomains = $derived($domainsStore);
 
   // Get current team filter
-  const selectedTeamKey = $derived($teamFilterStore);
+  const filter = $derived($teamFilterStore);
 
   // Filter projects: Executive Visibility label + in progress + team filter
   const executiveProjects = $derived.by(() => {
@@ -100,10 +103,10 @@
         projectStateCategory.includes("started") ||
         projectStateCategory === "started";
 
-      // Apply team filter
-      const matchesTeam = teamsMatchFilter(project.teams, selectedTeamKey);
+      // Apply domain/team filter
+      const matchesFilter = teamsMatchFullFilter(project.teams, filter);
 
-      return hasExecutiveLabel && isInProgress && matchesTeam;
+      return hasExecutiveLabel && isInProgress && matchesFilter;
     });
   });
 

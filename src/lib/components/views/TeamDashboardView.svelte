@@ -18,7 +18,10 @@
   import EngineerDetailModal from "$lib/components/EngineerDetailModal.svelte";
   import { databaseStore, projectsStore } from "$lib/stores/database";
   import { executiveFocus } from "$lib/stores/dashboard";
-  import { teamFilterStore, teamsMatchFilter } from "$lib/stores/team-filter";
+  import {
+    teamFilterStore,
+    teamsMatchFullFilter,
+  } from "$lib/stores/team-filter";
   import {
     filterProjectsByMode,
     groupProjectsByTeams,
@@ -230,6 +233,14 @@
     databaseStore.load();
   });
 
+  // Derived values from stores
+  const loading = $derived($databaseStore.loading);
+  const error = $derived($databaseStore.error);
+  const projects = $derived($projectsStore);
+  const filter = $derived($teamFilterStore);
+  const selectedTeamKey = $derived(filter.teamKey);
+  const isExecutiveFocus = $derived($executiveFocus);
+
   // Fetch team-specific data when team filter changes
   $effect(() => {
     if (selectedTeamKey) {
@@ -240,13 +251,6 @@
       teamProjectEngineers = [];
     }
   });
-
-  // Derived values from stores
-  const loading = $derived($databaseStore.loading);
-  const error = $derived($databaseStore.error);
-  const projects = $derived($projectsStore);
-  const selectedTeamKey = $derived($teamFilterStore);
-  const isExecutiveFocus = $derived($executiveFocus);
 
   // Display snapshot: use team filter snapshot or org snapshot
   const displaySnapshot = $derived.by((): MetricsSnapshotV1 | null => {
@@ -325,11 +329,11 @@
       );
     }
 
-    // Apply team filter
-    if (selectedTeamKey !== null) {
+    // Apply domain/team filter (uses full filter state for both domain and team filtering)
+    if (filter.domain !== null || filter.teamKey !== null) {
       filtered = new Map(
         Array.from(filtered).filter(([_, project]) =>
-          teamsMatchFilter(project.teams, selectedTeamKey)
+          teamsMatchFullFilter(project.teams, filter)
         )
       );
     }
@@ -342,8 +346,13 @@
     const issues = $databaseStore.issues;
     let grouped = groupProjectsByTeams(filteredProjects, issues);
 
-    if (selectedTeamKey !== null) {
-      grouped = grouped.filter((team) => team.teamKey === selectedTeamKey);
+    // Filter to specific team if team filter is set
+    if (filter.teamKey !== null) {
+      grouped = grouped.filter((team) => team.teamKey === filter.teamKey);
+    }
+    // Filter to domain's teams if only domain filter is set
+    else if (filter.domain !== null) {
+      grouped = grouped.filter((team) => team.domain === filter.domain);
     }
 
     return grouped;

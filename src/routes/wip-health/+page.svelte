@@ -6,6 +6,8 @@
   import EngineerDetailModal from "$lib/components/EngineerDetailModal.svelte";
   import Skeleton from "$lib/components/Skeleton.svelte";
   import TeamFilterNotice from "$lib/components/TeamFilterNotice.svelte";
+  import { teamFilterStore } from "$lib/stores/team-filter";
+  import { getDomainForTeam } from "../../utils/domain-mapping";
   import type {
     TeamHealthV1,
     MetricsSnapshotV1,
@@ -115,6 +117,17 @@
     Object.keys(engineerTeamMapping).length > 0
   );
 
+  // Get current filter state
+  const filter = $derived($teamFilterStore);
+
+  // Determine active domain filter (from domain selection or derived from team)
+  const activeDomainFilter = $derived.by(() => {
+    if (filter.teamKey) {
+      return getDomainForTeam(filter.teamKey);
+    }
+    return filter.domain;
+  });
+
   // Get engineers mapped (from ENGINEER_TEAM_MAPPING)
   const teamMappedEngineerNames = $derived.by(() => {
     if (!hasMappingConfigured) return new Set<string>();
@@ -122,24 +135,60 @@
   });
 
   // Filter to only mapped engineers (or all if no mapping configured)
+  // Also filter by domain if active
   const engineers = $derived.by(() => {
-    if (!hasMappingConfigured) return allEngineers;
-    return allEngineers.filter((e) =>
-      teamMappedEngineerNames.has(e.assignee_name)
-    );
+    let filtered = allEngineers;
+
+    // Filter by mapping if configured
+    if (hasMappingConfigured) {
+      filtered = filtered.filter((e) =>
+        teamMappedEngineerNames.has(e.assignee_name)
+      );
+    }
+
+    // Filter by domain if active
+    if (activeDomainFilter && hasMappingConfigured) {
+      filtered = filtered.filter((e) => {
+        const teamKey = engineerTeamMapping[e.assignee_name];
+        if (!teamKey) return false;
+        const domain = getDomainForTeam(teamKey);
+        return domain === activeDomainFilter;
+      });
+    }
+
+    return filtered;
   });
 
-  // Calculate stats from filtered engineers
-  const totalEngineerCount = $derived(
-    hasMappingConfigured ? teamMappedEngineerNames.size : engineers.length
-  );
+  // Calculate total engineer count (filtered by domain if active)
+  const totalEngineerCount = $derived.by(() => {
+    if (!hasMappingConfigured) return engineers.length;
 
-  // Extract domain-level WIP health data for table
+    // If domain filter is active, count only engineers in that domain
+    if (activeDomainFilter) {
+      let count = 0;
+      for (const [, teamKey] of Object.entries(engineerTeamMapping)) {
+        const domain = getDomainForTeam(teamKey);
+        if (domain === activeDomainFilter) {
+          count++;
+        }
+      }
+      return count;
+    }
+
+    // No filter, return all mapped engineers
+    return teamMappedEngineerNames.size;
+  });
+
+  // Extract domain-level WIP health data for table (filtered by active domain)
   const domainWipHealthData = $derived.by((): DomainWipHealth[] => {
     const domains: DomainWipHealth[] = [];
 
     for (const snapshot of allSnapshots) {
       if (snapshot.level !== "domain" || !snapshot.levelId) continue;
+
+      // Filter by active domain if set
+      if (activeDomainFilter && snapshot.levelId !== activeDomainFilter)
+        continue;
 
       const health = snapshot.snapshot.teamHealth;
       if (!health) continue;
@@ -161,6 +210,18 @@
       (a, b) => a.healthyWorkloadPercent - b.healthyWorkloadPercent
     );
   });
+
+  // Get the filtered domain snapshot for hero metrics (when domain filter is active)
+  const filteredDomainHealth = $derived.by((): TeamHealthV1 | null => {
+    if (!activeDomainFilter) return null;
+    const domainSnapshot = allSnapshots.find(
+      (s) => s.level === "domain" && s.levelId === activeDomainFilter
+    );
+    return domainSnapshot?.snapshot?.teamHealth || null;
+  });
+
+  // Use filtered domain health if filter is active, otherwise org-level
+  const displayHealth = $derived(filteredDomainHealth || teamHealth);
 
   // Engineers with 6+ issues
   const wipViolationEngineers = $derived(
@@ -319,7 +380,8 @@
         <!-- Projects impacted -->
         <div class="text-center opacity-70">
           <div class="text-3xl lg:text-4xl font-bold text-white">
-            {teamHealth.impactedProjectCount}
+            {displayHealth?.impactedProjectCount ??
+              teamHealth.impactedProjectCount}
           </div>
           <div class="text-sm text-neutral-400 mt-1">Projects impacted</div>
         </div>

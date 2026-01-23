@@ -17,7 +17,10 @@
     groupProjectsByTeams,
     groupProjectsByDomains,
   } from "$lib/project-data";
-  import { teamFilterStore, teamsMatchFilter } from "$lib/stores/team-filter";
+  import {
+    teamFilterStore,
+    teamsMatchFullFilter,
+  } from "$lib/stores/team-filter";
   import type { Issue, Engineer } from "../../../db/schema";
   import {
     hasMissingEstimate,
@@ -73,8 +76,9 @@
 
   // Fetch non-project WIP issues and engineer stats when team filter changes
   $effect(() => {
-    const teamKey = $teamFilterStore;
-    if (!browser || teamKey === null) {
+    const filter = $teamFilterStore;
+    // Only fetch per-team data when a specific team is selected
+    if (!browser || filter.teamKey === null) {
       nonProjectWipIssues = [];
       teamProjectEngineers = [];
       return;
@@ -83,7 +87,7 @@
     loadingNonProjectWip = true;
     loadingEngineers = true;
 
-    fetch(`/api/issues/non-project-wip/${encodeURIComponent(teamKey)}`)
+    fetch(`/api/issues/non-project-wip/${encodeURIComponent(filter.teamKey)}`)
       .then((res) => res.json())
       .then((data) => {
         nonProjectWipIssues = data.issues || [];
@@ -96,7 +100,7 @@
         loadingNonProjectWip = false;
       });
 
-    fetch(`/api/engineers/wip-stats/${encodeURIComponent(teamKey)}`)
+    fetch(`/api/engineers/wip-stats/${encodeURIComponent(filter.teamKey)}`)
       .then((res) => res.json())
       .then((data) => {
         teamProjectEngineers = data.engineers || [];
@@ -114,7 +118,8 @@
   const loading = $derived($databaseStore.loading);
   const error = $derived($databaseStore.error);
   const projects = $derived($projectsStore);
-  const selectedTeamKey = $derived($teamFilterStore);
+  const filter = $derived($teamFilterStore);
+  const selectedTeamKey = $derived(filter.teamKey);
   const isExecutiveFocus = $derived($executiveFocus);
 
   const hasEngineerMapping = $derived(
@@ -135,11 +140,11 @@
       );
     }
 
-    // Apply team filter
-    if (selectedTeamKey !== null) {
+    // Apply domain/team filter (uses full filter state for both domain and team filtering)
+    if (filter.domain !== null || filter.teamKey !== null) {
       filtered = new Map(
         Array.from(filtered).filter(([_, project]) =>
-          teamsMatchFilter(project.teams, selectedTeamKey)
+          teamsMatchFullFilter(project.teams, filter)
         )
       );
     }
@@ -152,8 +157,13 @@
     const issues = $databaseStore.issues;
     let grouped = groupProjectsByTeams(filteredProjects, issues);
 
-    if (selectedTeamKey !== null) {
-      grouped = grouped.filter((team) => team.teamKey === selectedTeamKey);
+    // Filter to specific team if team filter is set
+    if (filter.teamKey !== null) {
+      grouped = grouped.filter((team) => team.teamKey === filter.teamKey);
+    }
+    // Filter to domain's teams if only domain filter is set
+    else if (filter.domain !== null) {
+      grouped = grouped.filter((team) => team.domain === filter.domain);
     }
 
     return grouped;

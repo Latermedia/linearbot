@@ -91,7 +91,8 @@
   }
 
   // Get current team filter
-  const selectedTeamKey = $derived($teamFilterStore);
+  const filter = $derived($teamFilterStore);
+  const selectedTeamKey = $derived(filter.teamKey);
 
   // Fetch team-specific data when team filter changes
   $effect(() => {

@@ -5,6 +5,11 @@
   import IssueTable from "$lib/components/IssueTable.svelte";
   import Skeleton from "$lib/components/Skeleton.svelte";
   import TeamFilterNotice from "$lib/components/TeamFilterNotice.svelte";
+  import { teamFilterStore } from "$lib/stores/team-filter";
+  import {
+    getDomainForTeam,
+    getTeamsForDomain,
+  } from "../../utils/domain-mapping";
   import type {
     QualityHealthV1,
     MetricsSnapshotV1,
@@ -105,18 +110,58 @@
     unknown: "Unknown",
   };
 
+  // Get current filter state
+  const filter = $derived($teamFilterStore);
+
+  // Determine active domain filter (from domain selection or derived from team)
+  const activeDomainFilter = $derived.by(() => {
+    if (filter.teamKey) {
+      return getDomainForTeam(filter.teamKey);
+    }
+    return filter.domain;
+  });
+
+  // Get filtered domain snapshot for hero metrics
+  const filteredDomainQuality = $derived.by((): QualityHealthV1 | null => {
+    if (!activeDomainFilter) return null;
+    const domainSnapshot = allSnapshots.find(
+      (s) => s.level === "domain" && s.levelId === activeDomainFilter
+    );
+    return domainSnapshot?.snapshot?.quality || null;
+  });
+
+  // Use filtered domain quality if filter is active, otherwise org-level
+  const displayQuality = $derived(filteredDomainQuality || quality);
+
   // Computed status
-  const computedStatus = $derived(quality?.status || "unknown");
+  const computedStatus = $derived(displayQuality?.status || "unknown");
 
-  // Open bugs driving the quality metric
-  const openBugs = $derived(bugIssues);
+  // Get teams in active domain for filtering bugs
+  const teamsInActiveDomain = $derived.by((): Set<string> | null => {
+    if (!activeDomainFilter) return null;
+    const teams = getTeamsForDomain(activeDomainFilter);
+    return teams.length > 0 ? new Set(teams) : null;
+  });
 
-  // Extract domain-level quality data for table
+  // Open bugs driving the quality metric (filtered by domain if active)
+  const openBugs = $derived.by(() => {
+    if (!activeDomainFilter || !teamsInActiveDomain) return bugIssues;
+    return bugIssues.filter((bug) => {
+      if (!bug.team_key) return false;
+      return teamsInActiveDomain.has(bug.team_key);
+    });
+  });
+
+  // Extract domain-level quality data for table (filtered by active domain)
   const domainQualityData = $derived.by((): DomainQuality[] => {
     const domains: DomainQuality[] = [];
 
     for (const snapshot of allSnapshots) {
       if (snapshot.level !== "domain" || !snapshot.levelId) continue;
+
+      // Filter by active domain if set
+      if (activeDomainFilter && snapshot.levelId !== activeDomainFilter)
+        continue;
 
       const qualityData = snapshot.snapshot.quality;
       if (!qualityData) continue;
@@ -169,13 +214,13 @@
       </div>
       <p class="text-neutral-700 dark:text-neutral-400">{error}</p>
     </Card>
-  {:else if quality}
+  {:else if displayQuality}
     <!-- Marquee Hero Section -->
     <div class="py-8 border-b border-white/10">
       <!-- Large metric -->
       <div class="flex items-baseline justify-center gap-4 mb-3">
         <span class="text-8xl lg:text-9xl font-bold text-white tracking-tight">
-          {quality.compositeScore}%
+          {displayQuality.compositeScore}%
         </span>
       </div>
 
@@ -202,7 +247,7 @@
         <!-- Open bugs -->
         <div class="text-center">
           <div class="text-4xl lg:text-5xl font-bold text-white">
-            {quality.openBugCount}
+            {displayQuality.openBugCount}
           </div>
           <div class="text-sm text-neutral-400 mt-1">Open Bugs</div>
           <div class="text-xs text-neutral-500">total backlog</div>
@@ -214,11 +259,11 @@
         <!-- Average age -->
         <div class="text-center">
           <div class="text-4xl lg:text-5xl font-bold text-white">
-            {quality.averageBugAgeDays.toFixed(0)}
+            {displayQuality.averageBugAgeDays.toFixed(0)}
           </div>
           <div class="text-sm text-neutral-400 mt-1">Avg Age (days)</div>
           <div class="text-xs text-neutral-500">
-            max: {quality.maxBugAgeDays.toFixed(0)}d
+            max: {displayQuality.maxBugAgeDays.toFixed(0)}d
           </div>
         </div>
 
@@ -228,7 +273,9 @@
         <!-- Net change -->
         <div class="text-center">
           <div class="text-4xl lg:text-5xl font-bold text-white">
-            {quality.netBugChange > 0 ? "+" : ""}{quality.netBugChange}
+            {displayQuality.netBugChange > 0
+              ? "+"
+              : ""}{displayQuality.netBugChange}
           </div>
           <div class="text-sm text-neutral-400 mt-1">Net Change</div>
           <div class="text-xs text-neutral-500">in 14 days</div>
@@ -240,7 +287,7 @@
         <!-- Opened vs Closed -->
         <div class="text-center opacity-70">
           <div class="text-3xl lg:text-4xl font-bold text-white">
-            {quality.bugsOpenedInPeriod} / {quality.bugsClosedInPeriod}
+            {displayQuality.bugsOpenedInPeriod} / {displayQuality.bugsClosedInPeriod}
           </div>
           <div class="text-sm text-neutral-400 mt-1">Opened / Closed</div>
           <div class="text-xs text-neutral-500">in 14 days</div>

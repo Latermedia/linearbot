@@ -6,6 +6,8 @@
   import ProjectDetailModal from "$lib/components/ProjectDetailModal.svelte";
   import TeamFilterNotice from "$lib/components/TeamFilterNotice.svelte";
   import { projectsStore, databaseStore } from "$lib/stores/database";
+  import { teamFilterStore } from "$lib/stores/team-filter";
+  import { getDomainForTeam } from "../../utils/domain-mapping";
   import type {
     VelocityHealthV1,
     ProjectVelocityStatusV1,
@@ -129,8 +131,31 @@
     velocity: "Trajectory Alert",
   };
 
-  // Derived counts
-  const projectStatuses = $derived(velocityHealth?.projectStatuses || []);
+  // Get current filter state
+  const filter = $derived($teamFilterStore);
+
+  // Determine active domain filter (from domain selection or derived from team)
+  const activeDomainFilter = $derived.by(() => {
+    if (filter.teamKey) {
+      return getDomainForTeam(filter.teamKey);
+    }
+    return filter.domain;
+  });
+
+  // Get filtered domain snapshot for hero metrics
+  const filteredDomainVelocity = $derived.by((): VelocityHealthV1 | null => {
+    if (!activeDomainFilter) return null;
+    const domainSnapshot = allSnapshots.find(
+      (s) => s.level === "domain" && s.levelId === activeDomainFilter
+    );
+    return domainSnapshot?.snapshot?.velocityHealth || null;
+  });
+
+  // Use filtered domain health if filter is active, otherwise org-level
+  const displayVelocity = $derived(filteredDomainVelocity || velocityHealth);
+
+  // Derived counts (from display velocity, which respects filter)
+  const projectStatuses = $derived(displayVelocity?.projectStatuses || []);
   const totalProjects = $derived(projectStatuses.length);
   const onTrackCount = $derived(
     projectStatuses.filter((p) => p.effectiveHealth === "onTrack").length
@@ -177,12 +202,16 @@
     return "critical";
   });
 
-  // Extract domain-level project health data for table
+  // Extract domain-level project health data for table (filtered by active domain)
   const domainProjectHealthData = $derived.by((): DomainProjectHealth[] => {
     const domains: DomainProjectHealth[] = [];
 
     for (const snapshot of allSnapshots) {
       if (snapshot.level !== "domain" || !snapshot.levelId) continue;
+
+      // Filter by active domain if set
+      if (activeDomainFilter && snapshot.levelId !== activeDomainFilter)
+        continue;
 
       const velocity = snapshot.snapshot.velocityHealth;
       if (!velocity) continue;
@@ -256,13 +285,13 @@
       </div>
       <p class="text-neutral-700 dark:text-neutral-400">{error}</p>
     </Card>
-  {:else if velocityHealth}
+  {:else if displayVelocity}
     <!-- Marquee Hero Section -->
     <div class="py-8 border-b border-white/10">
       <!-- Large metric -->
       <div class="flex items-baseline justify-center gap-4 mb-3">
         <span class="text-8xl lg:text-9xl font-bold text-white tracking-tight">
-          {velocityHealth.onTrackPercent.toFixed(0)}%
+          {displayVelocity.onTrackPercent.toFixed(0)}%
         </span>
       </div>
 

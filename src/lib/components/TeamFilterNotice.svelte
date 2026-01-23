@@ -1,5 +1,5 @@
 <script lang="ts">
-  import { teamFilterStore } from "$lib/stores/team-filter";
+  import { teamFilterStore, hasActiveFilter } from "$lib/stores/team-filter";
   import { teamsStore } from "$lib/stores/database";
   import { Info } from "lucide-svelte";
 
@@ -11,24 +11,30 @@
   let { level = "domain" }: Props = $props();
 
   const teams = $derived($teamsStore);
-  const selectedTeamKey = $derived($teamFilterStore);
+  const filter = $derived($teamFilterStore);
+  const isFilterActive = $derived($hasActiveFilter);
 
-  // Find the selected team name
-  const selectedTeamName = $derived.by(() => {
-    if (!selectedTeamKey) return null;
-    const team = teams.find((t) => t.teamKey === selectedTeamKey);
-    return team?.teamName || selectedTeamKey;
+  // Find the filter display name
+  const filterDisplayName = $derived.by(() => {
+    if (filter.teamKey) {
+      const team = teams.find((t) => t.teamKey === filter.teamKey);
+      return team?.teamName || filter.teamKey;
+    }
+    if (filter.domain) {
+      return filter.domain;
+    }
+    return null;
   });
 </script>
 
-{#if selectedTeamKey && selectedTeamName}
+{#if isFilterActive && filterDisplayName}
   <div
     class="inline-flex items-center gap-2 px-3 py-1.5 rounded-md bg-blue-500/10 border border-blue-500/20 text-xs text-blue-400"
   >
     <Info class="w-3.5 h-3.5 shrink-0" />
     <span>
       Filtering by <span class="font-medium text-blue-300"
-        >{selectedTeamName}</span
+        >{filterDisplayName}</span
       >
       — this view shows {level}-level data only
     </span>

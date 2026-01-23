@@ -1,24 +1,52 @@
 <script lang="ts">
   import { sidebarCollapsed } from "$lib/stores/sidebar";
-  import { teamFilterStore } from "$lib/stores/team-filter";
-  import { teamsStore } from "$lib/stores/database";
-  import { ChevronDown, Users } from "lucide-svelte";
+  import { teamFilterStore, hasActiveFilter } from "$lib/stores/team-filter";
+  import { domainsStore } from "$lib/stores/database";
+  import { ChevronDown, Users, X, Building2 } from "lucide-svelte";
 
   const isCollapsed = $derived($sidebarCollapsed);
-  const teams = $derived($teamsStore);
-  const selectedTeamKey = $derived($teamFilterStore);
+  const domains = $derived($domainsStore);
+  const filter = $derived($teamFilterStore);
+  const isFilterActive = $derived($hasActiveFilter);
 
-  // Find the selected team name
-  const selectedTeamName = $derived.by(() => {
-    if (!selectedTeamKey) return "All Teams";
-    const team = teams.find((t) => t.teamKey === selectedTeamKey);
-    return team?.teamName || selectedTeamKey;
+  // Get display text for the current filter state
+  const filterDisplayText = $derived.by(() => {
+    if (filter.teamKey) {
+      // Find team name from domains
+      for (const domain of domains) {
+        const team = domain.teams.find((t) => t.teamKey === filter.teamKey);
+        if (team) return team.teamName;
+      }
+      return filter.teamKey;
+    }
+    if (filter.domain) {
+      return filter.domain;
+    }
+    return "All Teams";
+  });
+
+  // Filter teams based on selected domain
+  const filteredDomains = $derived.by(() => {
+    if (filter.domain) {
+      return domains.filter((d) => d.domainName === filter.domain);
+    }
+    return domains;
   });
 
   let isOpen = $state(false);
 
-  function handleSelect(teamKey: string | null) {
-    teamFilterStore.set(teamKey);
+  function handleSelectDomain(domain: string | null) {
+    teamFilterStore.setDomain(domain);
+    isOpen = false;
+  }
+
+  function handleSelectTeam(teamKey: string) {
+    teamFilterStore.setTeam(teamKey);
+    isOpen = false;
+  }
+
+  function handleReset() {
+    teamFilterStore.clear();
     isOpen = false;
   }
 
@@ -43,26 +71,43 @@
 </script>
 
 <div class="relative" data-team-filter>
-  <button
-    type="button"
-    onclick={toggleDropdown}
-    class="w-full flex items-center gap-2 px-3 py-2 text-sm rounded transition-colors duration-150 cursor-pointer
-      text-neutral-400 hover:text-white hover:bg-white/5
+  <div
+    class="w-full flex items-center gap-2 px-3 py-2 text-sm rounded transition-colors duration-150
+      text-neutral-400 hover:text-white hover:bg-white/5 overflow-hidden
       {isCollapsed ? 'justify-center' : ''}"
-    title={isCollapsed ? `Team: ${selectedTeamName}` : undefined}
   >
-    <Users class="w-4 h-4 shrink-0" />
-    {#if !isCollapsed}
-      <span class="flex-1 text-left truncate text-neutral-300">
-        {selectedTeamName}
-      </span>
-      <ChevronDown
-        class="w-4 h-4 shrink-0 transition-transform duration-150 {isOpen
-          ? 'rotate-180'
-          : ''}"
-      />
+    <button
+      type="button"
+      onclick={toggleDropdown}
+      class="flex-1 min-w-0 flex items-center gap-2 cursor-pointer"
+      title={filterDisplayText}
+    >
+      <Users class="w-4 h-4 shrink-0" />
+      {#if !isCollapsed}
+        <span class="flex-1 min-w-0 text-left truncate text-neutral-300">
+          {filterDisplayText}
+        </span>
+        <ChevronDown
+          class="w-4 h-4 shrink-0 transition-transform duration-150 {isOpen
+            ? 'rotate-180'
+            : ''}"
+        />
+      {/if}
+    </button>
+    {#if !isCollapsed && isFilterActive}
+      <button
+        type="button"
+        onclick={(e) => {
+          e.stopPropagation();
+          handleReset();
+        }}
+        class="p-0.5 shrink-0 rounded hover:bg-white/10 text-neutral-400 hover:text-white cursor-pointer"
+        title="Clear filter"
+      >
+        <X class="w-3 h-3" />
+      </button>
     {/if}
-  </button>
+  </div>
 
   <!-- Dropdown -->
   {#if isOpen}
@@ -70,32 +115,73 @@
       class="absolute top-full mt-1 {isCollapsed
         ? 'left-full ml-2 -mt-10'
         : 'left-0 right-0'} 
-        min-w-[180px] max-h-64 overflow-y-auto
+        min-w-[220px] max-h-80 overflow-y-auto
         bg-neutral-900 border border-white/10 rounded shadow-xl z-50"
     >
       <div class="py-1">
+        <!-- Domain filter section -->
+        <div
+          class="px-3 py-1.5 text-xs font-medium text-neutral-500 uppercase tracking-wide flex items-center gap-1.5"
+        >
+          <Building2 class="w-3 h-3" />
+          Domains
+        </div>
+
         <button
           type="button"
-          onclick={() => handleSelect(null)}
+          onclick={() => handleSelectDomain(null)}
           class="w-full px-3 py-2 text-left text-sm transition-colors duration-150 cursor-pointer
-            {selectedTeamKey === null
+            {filter.domain === null && filter.teamKey === null
             ? 'text-white bg-white/10'
             : 'text-neutral-400 hover:text-white hover:bg-white/5'}"
         >
-          All Teams
+          All Domains
         </button>
-        {#each teams as team (team.teamKey)}
+
+        {#each domains as domain (domain.domainName)}
           <button
             type="button"
-            onclick={() => handleSelect(team.teamKey)}
+            onclick={() => handleSelectDomain(domain.domainName)}
             class="w-full px-3 py-2 text-left text-sm transition-colors duration-150 cursor-pointer
-              {selectedTeamKey === team.teamKey
+              {filter.domain === domain.domainName && filter.teamKey === null
               ? 'text-white bg-white/10'
               : 'text-neutral-400 hover:text-white hover:bg-white/5'}"
           >
-            {team.teamName}
+            {domain.domainName}
           </button>
         {/each}
+
+        <!-- Teams section - grouped by domain -->
+        <div class="border-t border-white/10 mt-1 pt-1">
+          <div
+            class="px-3 py-1.5 text-xs font-medium text-neutral-500 uppercase tracking-wide flex items-center gap-1.5"
+          >
+            <Users class="w-3 h-3" />
+            Teams
+          </div>
+
+          {#each filteredDomains as domain (domain.domainName)}
+            {#if domain.teams.length > 0}
+              <!-- Domain group header -->
+              <div class="px-3 py-1 text-xs text-neutral-500 bg-white/2">
+                {domain.domainName}
+              </div>
+
+              {#each domain.teams as team (team.teamKey)}
+                <button
+                  type="button"
+                  onclick={() => handleSelectTeam(team.teamKey)}
+                  class="w-full px-3 py-2 pl-5 text-left text-sm transition-colors duration-150 cursor-pointer
+                    {filter.teamKey === team.teamKey
+                    ? 'text-white bg-white/10'
+                    : 'text-neutral-400 hover:text-white hover:bg-white/5'}"
+                >
+                  {team.teamName}
+                </button>
+              {/each}
+            {/if}
+          {/each}
+        </div>
       </div>
     </div>
   {/if}

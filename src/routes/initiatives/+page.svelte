@@ -6,7 +6,10 @@
   import InitiativesTable from "$lib/components/InitiativesTable.svelte";
   import InitiativeDetailModal from "$lib/components/InitiativeDetailModal.svelte";
   import { projectsStore } from "$lib/stores/database";
-  import { teamFilterStore, teamsMatchFilter } from "$lib/stores/team-filter";
+  import {
+    teamFilterStore,
+    teamsMatchFullFilter,
+  } from "$lib/stores/team-filter";
 
   interface InitiativeData {
     id: string;
@@ -67,12 +70,12 @@
   // Get projects store for team filtering
   const projects = $derived($projectsStore);
 
-  // Get current team filter
-  const selectedTeamKey = $derived($teamFilterStore);
+  // Get current filter
+  const filter = $derived($teamFilterStore);
 
-  // Filter initiatives by team (check if any linked project belongs to selected team)
+  // Filter initiatives by domain/team (check if any linked project matches filter)
   const filteredInitiatives = $derived.by(() => {
-    if (!selectedTeamKey) return initiatives;
+    if (filter.domain === null && filter.teamKey === null) return initiatives;
 
     return initiatives.filter((initiative) => {
       // Parse project IDs from initiative
@@ -85,15 +88,15 @@
         return false;
       }
 
-      // Check if any linked project belongs to the selected team
+      // Check if any linked project matches the filter
       for (const projectId of projectIds) {
         const project = projects.get(projectId);
-        if (project && teamsMatchFilter(project.teams, selectedTeamKey)) {
+        if (project && teamsMatchFullFilter(project.teams, filter)) {
           return true;
         }
       }
 
-      // No linked projects match the team filter
+      // No linked projects match the filter
       return false;
     });
   });
@@ -218,13 +221,13 @@
   {:else if filteredInitiatives.length === 0}
     <Card>
       <div class="mb-3 text-sm font-medium text-neutral-900 dark:text-white">
-        {selectedTeamKey
-          ? "No Initiatives for Selected Team"
+        {filter.domain || filter.teamKey
+          ? "No Initiatives for Selected Filter"
           : "No Initiatives Found"}
       </div>
       <p class="text-neutral-700 dark:text-neutral-400">
-        {selectedTeamKey
-          ? "No initiatives have projects linked to the selected team."
+        {filter.domain || filter.teamKey
+          ? "No initiatives have projects linked to the selected domain/team."
           : "No initiatives found in the database. Sync the database to load data from Linear."}
       </p>
     </Card>

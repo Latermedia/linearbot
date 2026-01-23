@@ -4,6 +4,8 @@
   import Card from "$lib/components/Card.svelte";
   import Skeleton from "$lib/components/Skeleton.svelte";
   import TeamFilterNotice from "$lib/components/TeamFilterNotice.svelte";
+  import { teamFilterStore } from "$lib/stores/team-filter";
+  import { getDomainForTeam } from "../../utils/domain-mapping";
   import type {
     TeamProductivityV1,
     MetricsSnapshotV1,
@@ -100,27 +102,60 @@
     pending: "Pending",
   };
 
-  // Check if productivity has TrueThroughput data
-  const hasProductivityData = $derived(
-    teamProductivity && "trueThroughput" in teamProductivity
+  // Get current filter state
+  const filter = $derived($teamFilterStore);
+
+  // Determine active domain filter (from domain selection or derived from team)
+  const activeDomainFilter = $derived.by(() => {
+    if (filter.teamKey) {
+      return getDomainForTeam(filter.teamKey);
+    }
+    return filter.domain;
+  });
+
+  // Get filtered domain snapshot for hero metrics
+  const filteredDomainProductivity = $derived.by(
+    (): TeamProductivityV1 | null => {
+      if (!activeDomainFilter) return null;
+      const domainSnapshot = allSnapshots.find(
+        (s) => s.level === "domain" && s.levelId === activeDomainFilter
+      );
+      return domainSnapshot?.snapshot?.teamProductivity || null;
+    }
   );
 
-  // Productivity values
+  // Use filtered domain productivity if filter is active, otherwise org-level
+  const displayProductivity = $derived(
+    filteredDomainProductivity || teamProductivity
+  );
+
+  // Check if productivity has TrueThroughput data
+  const hasProductivityData = $derived(
+    displayProductivity && "trueThroughput" in displayProductivity
+  );
+
+  // Productivity values (from display productivity, which respects filter)
   const trueThroughput = $derived(
-    hasProductivityData && "trueThroughput" in teamProductivity!
-      ? teamProductivity!.trueThroughput
+    hasProductivityData &&
+      displayProductivity &&
+      "trueThroughput" in displayProductivity
+      ? displayProductivity.trueThroughput
       : 0
   );
 
   const engineerCount = $derived(
-    hasProductivityData && "engineerCount" in teamProductivity!
-      ? teamProductivity!.engineerCount
+    hasProductivityData &&
+      displayProductivity &&
+      "engineerCount" in displayProductivity
+      ? displayProductivity.engineerCount
       : null
   );
 
   const trueThroughputPerEngineer = $derived(
-    hasProductivityData && "trueThroughputPerEngineer" in teamProductivity!
-      ? teamProductivity!.trueThroughputPerEngineer
+    hasProductivityData &&
+      displayProductivity &&
+      "trueThroughputPerEngineer" in displayProductivity
+      ? displayProductivity.trueThroughputPerEngineer
       : null
   );
 
@@ -142,14 +177,18 @@
   const weeklyThroughput = $derived(toWeeklyRate(trueThroughput));
 
   // Status
-  const computedStatus = $derived(teamProductivity?.status || "unknown");
+  const computedStatus = $derived(displayProductivity?.status || "unknown");
 
-  // Extract domain-level productivity data for table
+  // Extract domain-level productivity data for table (filtered by active domain)
   const domainProductivityData = $derived.by((): DomainProductivity[] => {
     const domains: DomainProductivity[] = [];
 
     for (const snapshot of allSnapshots) {
       if (snapshot.level !== "domain" || !snapshot.levelId) continue;
+
+      // Filter by active domain if set
+      if (activeDomainFilter && snapshot.levelId !== activeDomainFilter)
+        continue;
 
       const productivity = snapshot.snapshot.teamProductivity;
       if (!productivity || !("trueThroughput" in productivity)) continue;
@@ -216,7 +255,7 @@
       </div>
       <p class="text-neutral-700 dark:text-neutral-400">{error}</p>
     </Card>
-  {:else if teamProductivity}
+  {:else if displayProductivity}
     <!-- Marquee Hero Section -->
     <div class="py-8 border-b border-white/10">
       <!-- Large metric -->

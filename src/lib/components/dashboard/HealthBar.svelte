@@ -20,7 +20,8 @@
   let error = $state<string | null>(null);
   let snapshot = $state<MetricsSnapshotV1 | null>(null);
 
-  const selectedTeamKey = $derived($teamFilterStore);
+  const filter = $derived($teamFilterStore);
+  const selectedTeamKey = $derived(filter.teamKey);
 
   // Fetch metrics based on team filter
   async function fetchMetrics() {

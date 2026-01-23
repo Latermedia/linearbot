@@ -8,10 +8,8 @@
   import { WIP_LIMIT } from "../../../constants/thresholds";
   import { getGapsColorClass } from "$lib/utils/gaps-helpers";
   import { teamsStore } from "$lib/stores/database";
-  import {
-    teamFilterStore,
-    teamNamesMatchFilter,
-  } from "$lib/stores/team-filter";
+  import { teamFilterStore } from "$lib/stores/team-filter";
+  import { getTeamsForDomain } from "../../../utils/domain-mapping";
 
   interface EngineerData {
     assignee_id: string;
@@ -66,21 +64,42 @@
     selectedEngineer = null;
   }
 
-  // Get current team filter and convert teamKey to teamName
-  const selectedTeamKey = $derived($teamFilterStore);
-  const selectedTeamName = $derived.by(() => {
-    if (!selectedTeamKey) return null;
-    const teams = $teamsStore;
-    const team = teams.find((t) => t.teamKey === selectedTeamKey);
-    return team?.teamName ?? null;
+  // Get current team filter and convert to team names for filtering
+  const filter = $derived($teamFilterStore);
+  const teams = $derived($teamsStore);
+
+  // Get team names for filtering (either specific team or all teams in domain)
+  const filterTeamNames = $derived.by((): Set<string> | null => {
+    // If team filter is set, get that team's name
+    if (filter.teamKey) {
+      const team = teams.find((t) => t.teamKey === filter.teamKey);
+      if (team) return new Set([team.teamName]);
+      return null;
+    }
+    // If domain filter is set, get all team names in that domain
+    if (filter.domain) {
+      const teamKeys = getTeamsForDomain(filter.domain);
+      const names = new Set<string>();
+      for (const teamKey of teamKeys) {
+        const team = teams.find((t) => t.teamKey === teamKey);
+        if (team) names.add(team.teamName);
+      }
+      return names.size > 0 ? names : null;
+    }
+    return null;
   });
 
-  // Filter engineers by team
+  // Filter engineers by team/domain
   const filteredEngineers = $derived.by(() => {
-    if (!selectedTeamName) return engineers;
-    return engineers.filter((e) =>
-      teamNamesMatchFilter(e.team_names, selectedTeamName)
-    );
+    if (!filterTeamNames) return engineers;
+    return engineers.filter((e) => {
+      try {
+        const engineerTeamNames: string[] = JSON.parse(e.team_names);
+        return engineerTeamNames.some((name) => filterTeamNames.has(name));
+      } catch {
+        return false;
+      }
+    });
   });
 
   // Computed stats
