@@ -3,6 +3,7 @@
   import { slide, fade } from "svelte/transition";
   import { quartOut } from "svelte/easing";
   import { browser } from "$app/environment";
+  import { goto } from "$app/navigation";
   import Card from "$lib/components/Card.svelte";
   import Skeleton from "$lib/components/Skeleton.svelte";
   import Badge from "$lib/components/Badge.svelte";
@@ -83,6 +84,25 @@
   // Engineer modal state
   let allEngineers = $state<EngineerData[]>([]);
   let selectedEngineer = $state<EngineerData | null>(null);
+
+  // Pillar modal state (for future modals - wipHealth now has its own page)
+  let _activePillarModal = $state<
+    "projectHealth" | "productivity" | "quality" | null
+  >(null);
+
+  function handlePillarClick(
+    pillar: "wipHealth" | "projectHealth" | "productivity" | "quality"
+  ) {
+    if (pillar === "wipHealth") {
+      goto("/wip-health");
+    } else {
+      _activePillarModal = pillar;
+    }
+  }
+
+  function _closePillarModal() {
+    _activePillarModal = null;
+  }
 
   // Non-project WIP issues state
   let nonProjectWipIssues = $state<Issue[]>([]);
@@ -421,6 +441,7 @@
       loading={metricsLoading && !orgSnapshot}
       error={metricsError}
       productivityUnderConstruction={selectedTeamKey !== null}
+      onPillarClick={handlePillarClick}
       onEngineerClick={handleEngineerClick}
       {trendDataPoints}
       {engineerTeamMapping}

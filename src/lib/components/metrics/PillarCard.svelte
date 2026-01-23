@@ -1,5 +1,4 @@
 <script lang="ts">
-  import { onMount } from "svelte";
   import Card from "$lib/components/Card.svelte";
   import Badge from "$lib/components/Badge.svelte";
   import TrendChip from "./TrendChip.svelte";
@@ -27,28 +26,12 @@
   }
 
   interface SubtitleInfo {
-    /** LaTeX formula to render (optional) */
+    /** The "why" - punchy principle statement */
+    why: string;
+    /** The "how" - plain English explanation lines */
+    how: string[];
+    /** LaTeX formula to render (optional, shown at bottom for curious users) */
     formula?: string;
-    /** Lines of content to show in the tooltip (supports basic text) */
-    content: string[];
-  }
-
-  // KaTeX for rendering math formulas
-  let katex: typeof import("katex") | null = null;
-  onMount(async () => {
-    katex = await import("katex");
-  });
-
-  function renderFormula(formula: string): string {
-    if (!katex) return formula;
-    try {
-      return katex.default.renderToString(formula, {
-        throwOnError: false,
-        displayMode: true,
-      });
-    } catch {
-      return formula;
-    }
   }
 
   interface Props {
@@ -57,6 +40,8 @@
     /** Optional unit displayed inline after value with smaller styling */
     valueUnit?: string;
     subtitle?: string;
+    /** Health status for the indicator dot */
+    status?: "healthy" | "warning" | "critical" | "unknown" | "pending";
     /** Optional info tooltip for the subtitle - shows (i) icon with hover content */
     subtitleInfo?: SubtitleInfo;
     /** Standard list-style details */
@@ -82,7 +67,8 @@
     value,
     valueUnit,
     subtitle,
-    subtitleInfo,
+    status,
+    subtitleInfo: _subtitleInfo,
     details = [],
     twoColumnDetails,
     noIssuesMessage,
@@ -94,41 +80,14 @@
     higherIsBetter = true,
   }: Props = $props();
 
-  // Info tooltip hover state
-  let showInfoTooltip = $state(false);
-  let infoTooltipPosition = $state({ x: 0, y: 0, alignRight: false });
-
-  const TOOLTIP_WIDTH = 380; // max-width of tooltip
-  const VIEWPORT_PADDING = 16; // padding from edge of viewport
-
-  function handleInfoMouseEnter(event: MouseEvent) {
-    const rect = (event.currentTarget as HTMLElement).getBoundingClientRect();
-    const viewportWidth = window.innerWidth;
-
-    // Check if tooltip would overflow right edge
-    const wouldOverflowRight =
-      rect.left + TOOLTIP_WIDTH > viewportWidth - VIEWPORT_PADDING;
-
-    if (wouldOverflowRight) {
-      // Align tooltip to right edge of viewport with padding
-      infoTooltipPosition = {
-        x: viewportWidth - TOOLTIP_WIDTH - VIEWPORT_PADDING,
-        y: rect.bottom + 8,
-        alignRight: true,
-      };
-    } else {
-      infoTooltipPosition = {
-        x: rect.left,
-        y: rect.bottom + 8,
-        alignRight: false,
-      };
-    }
-    showInfoTooltip = true;
-  }
-
-  function handleInfoMouseLeave() {
-    showInfoTooltip = false;
-  }
+  // Status indicator colors
+  const statusColors = {
+    healthy: "bg-emerald-500",
+    warning: "bg-amber-500",
+    critical: "bg-red-500",
+    unknown: "bg-neutral-500",
+    pending: "bg-neutral-500",
+  };
 
   function handleDetailMouseEnter(
     detailId: string | undefined,
@@ -162,7 +121,12 @@
     disabled={underConstruction || !onClick}
   >
     <div class="flex justify-between items-start mb-3">
-      <div class="text-xs font-medium tracking-wide uppercase text-neutral-400">
+      <div
+        class="flex items-center gap-2 text-xs font-medium tracking-wide uppercase text-neutral-400"
+      >
+        {#if status && !underConstruction}
+          <span class="w-2 h-2 rounded-full {statusColors[status]}"></span>
+        {/if}
         {title}
       </div>
       {#if underConstruction}
@@ -216,19 +180,7 @@
             {/if}
           </div>
           {#if subtitle}
-            <div class="flex gap-1 items-center text-xs text-neutral-500">
-              <span>{subtitle}</span>
-              {#if subtitleInfo}
-                <!-- svelte-ignore a11y_no_static_element_interactions -->
-                <span
-                  class="inline-flex justify-center items-center w-3.5 h-3.5 text-[9px] font-medium rounded-full border cursor-help text-neutral-400 border-neutral-600 hover:text-neutral-300 hover:border-neutral-500 transition-colors"
-                  onmouseenter={handleInfoMouseEnter}
-                  onmouseleave={handleInfoMouseLeave}
-                >
-                  i
-                </span>
-              {/if}
-            </div>
+            <div class="text-xs text-neutral-500">{subtitle}</div>
           {/if}
         {/if}
       </div>
@@ -298,34 +250,3 @@
     </div>
   </button>
 </Card>
-
-<!-- Info tooltip -->
-{#if showInfoTooltip && subtitleInfo}
-  <div
-    class="fixed z-50 px-4 py-3 text-xs rounded-md border shadow-lg pointer-events-none bg-neutral-900 border-neutral-700 max-w-[380px]"
-    style="left: {infoTooltipPosition.x}px; top: {infoTooltipPosition.y}px;"
-  >
-    <div class="space-y-3">
-      {#if subtitleInfo.formula}
-        <div class="py-2 text-center formula-container">
-          <!-- eslint-disable-next-line svelte/no-at-html-tags -->
-          {@html renderFormula(subtitleInfo.formula)}
-        </div>
-      {/if}
-      {#each subtitleInfo.content as line}
-        <p class="text-neutral-300 leading-relaxed">{line}</p>
-      {/each}
-    </div>
-  </div>
-{/if}
-
-<style>
-  /* KaTeX formula styling */
-  .formula-container :global(.katex) {
-    font-size: 1.1em;
-    color: #e5e5e5;
-  }
-  .formula-container :global(.katex-display) {
-    margin: 0;
-  }
-</style>

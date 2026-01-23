@@ -20,6 +20,8 @@
     no_recent_comment_count: number;
     wip_age_violation_count: number;
     active_issues: string;
+    active_project_count?: number;
+    multi_project_violation?: number;
   }
 
   let {
@@ -62,6 +64,21 @@
       : "bg-emerald-500/20 text-emerald-400 border-emerald-500/30";
   }
 
+  function getProjectBadgeVariant(
+    count: number | undefined
+  ): "default" | "secondary" | "outline" | "destructive" {
+    if (count === undefined) return "outline";
+    return count > 1 ? "destructive" : "outline";
+  }
+
+  function getProjectBadgeClass(count: number | undefined): string {
+    if (count === undefined)
+      return "bg-neutral-500/20 text-neutral-400 border-neutral-500/30";
+    return count > 1
+      ? "bg-amber-500/20 text-amber-400 border-amber-500/30"
+      : "bg-emerald-500/20 text-emerald-400 border-emerald-500/30";
+  }
+
   function getTotalGaps(engineer: EngineerData): number {
     return (
       engineer.missing_estimate_count +
@@ -91,6 +108,9 @@
         <th class="px-4 py-3 font-medium text-left text-neutral-400">Teams</th>
         <th class="px-4 py-3 font-medium text-center text-neutral-400 w-[100px]"
           >WIP Count</th
+        >
+        <th class="px-4 py-3 font-medium text-center text-neutral-400 w-[100px]"
+          >Projects</th
         >
         <th class="px-4 py-3 font-medium text-right text-neutral-400 w-[100px]"
           >Total Points</th
@@ -142,6 +162,14 @@
               class={getWIPBadgeClass(engineer.wip_issue_count)}
             >
               {engineer.wip_issue_count}
+            </Badge>
+          </td>
+          <td class="px-4 py-3 text-center">
+            <Badge
+              variant={getProjectBadgeVariant(engineer.active_project_count)}
+              class={getProjectBadgeClass(engineer.active_project_count)}
+            >
+              {engineer.active_project_count ?? "—"}
             </Badge>
           </td>
           <td class="px-4 py-3 text-right text-neutral-300">

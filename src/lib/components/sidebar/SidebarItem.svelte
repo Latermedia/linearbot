@@ -8,9 +8,16 @@
     icon: ComponentType<any> | Component<any>;
     label: string;
     exactMatch?: boolean;
+    indent?: boolean;
   }
 
-  let { href, icon: Icon, label, exactMatch = true }: Props = $props();
+  let {
+    href,
+    icon: Icon,
+    label,
+    exactMatch = true,
+    indent = false,
+  }: Props = $props();
 
   const isActive = $derived(
     exactMatch
@@ -22,13 +29,15 @@
 
 <a
   {href}
-  class="group relative flex items-center gap-3 px-3 py-2 text-sm font-medium rounded transition-colors duration-150
+  class="group relative flex items-center gap-3 py-2 text-sm font-medium rounded transition-colors duration-150
+    {indent && !isCollapsed ? 'pl-9 pr-3' : 'px-3'}
     {isActive
     ? 'text-white bg-white/10 border-l-2 border-violet-500 -ml-[2px] pl-[14px]'
-    : 'text-neutral-400 hover:text-white hover:bg-white/5'}"
+    : 'text-neutral-400 hover:text-white hover:bg-white/5'}
+    {isActive && indent && !isCollapsed ? 'pl-[34px]' : ''}"
   title={isCollapsed ? label : undefined}
 >
-  <Icon class="w-5 h-5 shrink-0" />
+  <Icon class="{indent ? 'w-4 h-4' : 'w-5 h-5'} shrink-0" />
   {#if !isCollapsed}
     <span class="truncate">{label}</span>
   {/if}

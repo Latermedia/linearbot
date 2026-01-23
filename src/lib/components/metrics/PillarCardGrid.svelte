@@ -146,8 +146,8 @@
     return "";
   });
 
-  // Handle detail hover with delay
-  function handleWipDetailHover(
+  // Handle detail hover with delay (kept for future use with other pillar modals)
+  function _handleWipDetailHover(
     detailId: string | null,
     event: MouseEvent | null
   ) {
@@ -255,8 +255,8 @@
     };
   });
 
-  // Build details arrays for each pillar
-  const wipHealthDetails = $derived.by(() => {
+  // Build details arrays for each pillar (kept for future use with pillar modals)
+  const _wipHealthDetails = $derived.by(() => {
     if (!teamHealth) return [];
     const totalIcs = teamHealth.totalIcCount || 1; // Avoid division by zero
     const totalProjects = teamHealth.totalProjectCount || 1;
@@ -485,17 +485,8 @@
       title="WIP Health"
       value="{teamHealth?.healthyWorkloadPercent.toFixed(0) || 0}%"
       subtitle="Engineers within WIP constraints"
-      subtitleInfo={{
-        formula:
-          "\\text{WIP Health} = \\frac{\\displaystyle\\sum_{i=1}^{N} \\mathbf{1}\\bigl[\\text{issues}_i \\leq 5 \\;\\land\\; \\text{projects}_i = 1\\bigr]}{N} \\times 100",
-        content: [
-          'An engineer is "within constraints" when they have 5 or fewer in-progress issues AND are focused on a single project.',
-          "WIP constraints reduce cycle time by limiting queue depth. Overloaded engineers create bottlenecks; context-switching across projects compounds delays through task-switching overhead.",
-        ],
-      }}
-      details={wipHealthDetails}
+      status={teamHealth?.status}
       onClick={() => onPillarClick?.("wipHealth")}
-      onDetailHover={handleWipDetailHover}
       weekTrend={wipHealthTrends?.week}
       monthTrend={wipHealthTrends?.month}
       higherIsBetter={true}
@@ -507,16 +498,7 @@
       value="{velocityHealth?.onTrackPercent.toFixed(0) || 0}%"
       subtitle="{velocityCounts?.onTrack ?? 0} of {velocityCounts?.total ??
         0} projects on track"
-      subtitleInfo={{
-        formula:
-          "\\text{Project Health} = \\frac{\\text{On Track Projects}}{\\text{Total Projects}} \\times 100",
-        content: [
-          'A project is "on track" when both human judgment (Linear health status) AND velocity math agree it will finish on time.',
-          "Self-reported: Team explicitly marked project as at risk or off track in Linear.",
-          "Trajectory alert: Velocity prediction shows 2-4 weeks late (at risk) or 4+ weeks late (off track), even if team says on track.",
-          "Predictability builds trust. Combining human intuition with velocity math catches blind spots early—when there's still time to course correct.",
-        ],
-      }}
+      status={velocityHealth?.status}
       twoColumnDetails={projectHealthTwoColumnDetails}
       noIssuesMessage="All projects on track"
       onClick={() => onPillarClick?.("projectHealth")}
@@ -530,15 +512,7 @@
       title="Productivity"
       value={productivityValue}
       subtitle={productivitySubtitle}
-      subtitleInfo={{
-        formula:
-          "\\text{Productivity} = \\frac{\\text{Throughput per Engineer per Week}}{\\text{Goal}} \\times 100",
-        content: [
-          "Throughput is measured over a 14-day rolling window, then converted to weekly rate per engineer.",
-          "The goal is 3 PRs/week as weighted by GetDX's TrueThroughput.",
-          "Sustainable pace beats heroics. Consistent throughput enables reliable planning and surfaces systemic blockers before they become crises.",
-        ],
-      }}
+      status={productivity?.status}
       details={productivityDetails}
       underConstruction={productivityUnderConstruction}
       onClick={() => onPillarClick?.("productivity")}
@@ -553,16 +527,7 @@
       value={quality?.compositeScore ?? "—"}
       valueUnit="%"
       subtitle="Quality score"
-      subtitleInfo={{
-        formula:
-          "\\text{Quality} = 0.3 \\cdot S_{\\text{bugs}} + 0.4 \\cdot S_{\\text{net}} + 0.3 \\cdot S_{\\text{age}}",
-        content: [
-          "Bug score: 100 − (open bugs ÷ engineers) × 12. Hits zero at ~8 bugs per engineer.",
-          "Net score: 100 − (net bug change ÷ engineers) × 200. Penalizes growing backlog; rewards shrinking it.",
-          "Age score: 100 − avg bug age × 0.5. Hits zero at 200 days average age.",
-          "Bug debt compounds. A growing backlog drains velocity from feature work; old bugs signal triage failures. Fix fast or pay forever.",
-        ],
-      }}
+      status={quality?.status}
       details={qualityDetails}
       onClick={() => onPillarClick?.("quality")}
       weekTrend={qualityTrends?.week}

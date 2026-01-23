@@ -3,6 +3,7 @@
   import { sidebarCollapsed } from "$lib/stores/sidebar";
   import {
     LayoutDashboard,
+    Activity,
     Target,
     Users,
     Presentation,
@@ -74,6 +75,7 @@
   <!-- Navigation -->
   <nav class="flex-1 px-2 py-4 space-y-1 overflow-y-auto">
     <SidebarItem href="/" icon={LayoutDashboard} label="Overview" />
+    <SidebarItem href="/wip-health" icon={Activity} label="WIP Health" indent />
     <SidebarItem href="/initiatives" icon={Target} label="Initiatives" />
     <SidebarItem href="/engineers" icon={Users} label="Engineers" />
     <SidebarItem href="/executive" icon={Presentation} label="Executive" />
