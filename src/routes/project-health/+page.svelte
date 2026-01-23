@@ -4,7 +4,12 @@
   import Card from "$lib/components/Card.svelte";
   import Skeleton from "$lib/components/Skeleton.svelte";
   import ProjectDetailModal from "$lib/components/ProjectDetailModal.svelte";
-  import { projectsStore, databaseStore } from "$lib/stores/database";
+  import {
+    projectsStore,
+    databaseStore,
+    teamsStore,
+  } from "$lib/stores/database";
+  import { teamFilterStore } from "$lib/stores/team-filter";
   import type {
     VelocityHealthV1,
     ProjectVelocityStatusV1,
@@ -29,7 +34,46 @@
   let katex: typeof import("katex") | null = null;
   let formulaHtml = $state("");
 
-  // Fetch data on mount
+  // Team filter state
+  const teams = $derived($teamsStore);
+  const selectedTeamKey = $derived($teamFilterStore);
+  const selectedTeamName = $derived.by(() => {
+    if (!selectedTeamKey) return null;
+    const team = teams.find((t) => t.teamKey === selectedTeamKey);
+    return team?.teamName || selectedTeamKey;
+  });
+
+  // Fetch data based on team filter
+  async function fetchData(teamKey: string | null) {
+    loading = true;
+    error = null;
+
+    try {
+      // Build metrics URL based on team filter
+      const metricsUrl = teamKey
+        ? `/api/metrics/latest?level=team&levelId=${encodeURIComponent(teamKey)}`
+        : "/api/metrics/latest";
+
+      const metricsRes = await fetch(metricsUrl);
+      const metricsData = (await metricsRes.json()) as LatestMetricsResponse;
+
+      if (!metricsData.success) {
+        error = metricsData.error || "Failed to fetch metrics";
+        return;
+      }
+
+      velocityHealth = metricsData.snapshot?.velocityHealth || null;
+    } catch (e) {
+      error = e instanceof Error ? e.message : "Failed to load data";
+    } finally {
+      loading = false;
+    }
+  }
+
+  // Track last fetched team key to avoid double fetching
+  let lastFetchedTeamKey: string | null | undefined = undefined;
+
+  // Initial setup
   onMount(async () => {
     if (!browser) return;
 
@@ -44,22 +88,13 @@
         { throwOnError: false, displayMode: true }
       );
     }
+  });
 
-    // Fetch metrics
-    try {
-      const metricsRes = await fetch("/api/metrics/latest");
-      const metricsData = (await metricsRes.json()) as LatestMetricsResponse;
-
-      if (!metricsData.success) {
-        error = metricsData.error || "Failed to fetch metrics";
-        return;
-      }
-
-      velocityHealth = metricsData.snapshot?.velocityHealth || null;
-    } catch (e) {
-      error = e instanceof Error ? e.message : "Failed to load data";
-    } finally {
-      loading = false;
+  // Fetch data when team filter changes (including initial load)
+  $effect(() => {
+    if (browser && lastFetchedTeamKey !== selectedTeamKey) {
+      lastFetchedTeamKey = selectedTeamKey;
+      fetchData(selectedTeamKey);
     }
   });
 
@@ -91,10 +126,10 @@
     offTrack: "Off Track",
   };
 
-  // Source badge styling
+  // Source badge styling (neutral to avoid visual overload)
   const sourceBadgeColors: Record<string, string> = {
-    human: "bg-violet-500/20 text-violet-400",
-    velocity: "bg-blue-500/20 text-blue-400",
+    human: "bg-neutral-500/20 text-neutral-400",
+    velocity: "bg-neutral-500/20 text-neutral-400",
   };
 
   const sourceLabels: Record<string, string> = {
@@ -161,7 +196,12 @@
 
 <div class="space-y-6">
   <!-- Page Title -->
-  <h1 class="text-2xl font-semibold text-white">Project Health</h1>
+  <div class="flex flex-wrap items-center gap-3">
+    <h1 class="text-2xl font-semibold text-white">Project Health</h1>
+    {#if selectedTeamName}
+      <span class="text-sm text-neutral-400">— {selectedTeamName}</span>
+    {/if}
+  </div>
 
   {#if loading}
     <!-- Loading state -->
@@ -368,13 +408,7 @@
                     </td>
                     <td class="py-3 pr-4">
                       {#if project.daysOffTarget !== null}
-                        <span
-                          class="text-sm {project.daysOffTarget > 14
-                            ? 'text-red-400'
-                            : project.daysOffTarget > 7
-                              ? 'text-amber-400'
-                              : 'text-neutral-400'}"
-                        >
+                        <span class="text-sm text-neutral-400">
                           {project.daysOffTarget > 0
                             ? "+"
                             : ""}{project.daysOffTarget}

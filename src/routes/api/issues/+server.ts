@@ -11,11 +11,13 @@ import type { Issue } from "../../../db/schema.js";
  * Query params:
  * - type: Filter by issue type (e.g., "bug")
  * - status: Filter by status ("open" = not completed/canceled, "closed" = completed/canceled)
+ * - teamKey: Filter by team key (e.g., "ENG")
  * - limit: Maximum number of issues to return (default: 500)
  */
 export const GET: RequestHandler = async ({ url }) => {
   const typeFilter = url.searchParams.get("type")?.toLowerCase();
   const statusFilter = url.searchParams.get("status")?.toLowerCase();
+  const teamKeyFilter = url.searchParams.get("teamKey");
   const limitParam = url.searchParams.get("limit");
   const limit = limitParam ? parseInt(limitParam, 10) : 500;
 
@@ -39,6 +41,13 @@ export const GET: RequestHandler = async ({ url }) => {
     // Closed = completed or canceled
     issues = issues.filter((issue) => {
       return issue.completed_at || issue.canceled_at;
+    });
+  }
+
+  // Filter by team key
+  if (teamKeyFilter) {
+    issues = issues.filter((issue) => {
+      return issue.team_key === teamKeyFilter;
     });
   }
 

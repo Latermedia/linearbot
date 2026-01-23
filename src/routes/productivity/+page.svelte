@@ -3,6 +3,7 @@
   import { browser } from "$app/environment";
   import Card from "$lib/components/Card.svelte";
   import Skeleton from "$lib/components/Skeleton.svelte";
+  import TeamFilterNotice from "$lib/components/TeamFilterNotice.svelte";
   import type {
     TeamProductivityV1,
     MetricsSnapshotV1,
@@ -185,7 +186,10 @@
 
 <div class="space-y-6">
   <!-- Page Title -->
-  <h1 class="text-2xl font-semibold text-white">Productivity</h1>
+  <div class="flex flex-wrap items-center justify-between gap-4">
+    <h1 class="text-2xl font-semibold text-white">Productivity</h1>
+    <TeamFilterNotice level="domain" />
+  </div>
 
   {#if loading}
     <!-- Loading state -->
@@ -379,11 +383,11 @@
                   class="text-left text-xs font-medium text-neutral-500 uppercase tracking-wider border-b border-white/10"
                 >
                   <th class="pb-3 pr-4">Domain</th>
+                  <th class="pb-3 pr-4">Status</th>
                   <th class="pb-3 pr-4 text-right">% of Goal</th>
                   <th class="pb-3 pr-4 text-right">Per Eng/wk</th>
                   <th class="pb-3 pr-4 text-right">Total/wk</th>
                   <th class="pb-3 pr-4 text-right">Engineers</th>
-                  <th class="pb-3 pr-4">Status</th>
                 </tr>
               </thead>
               <tbody class="divide-y divide-white/5">
@@ -392,6 +396,21 @@
                     <td class="py-3 pr-4">
                       <span class="text-sm text-white font-medium">
                         {domain.domainName}
+                      </span>
+                    </td>
+                    <td class="py-3 pr-4">
+                      <span
+                        class="text-xs font-medium px-2 py-1 rounded {statusColors[
+                          domain.status
+                        ]
+                          ? statusColors[domain.status].replace('bg-', 'bg-') +
+                            '/20 ' +
+                            statusColors[domain.status]
+                              .replace('bg-', 'text-')
+                              .replace('-500', '-400')
+                          : 'bg-neutral-500/20 text-neutral-400'}"
+                      >
+                        {statusLabels[domain.status] || domain.status}
                       </span>
                     </td>
                     <td class="py-3 pr-4 text-right">
@@ -414,21 +433,6 @@
                     <td class="py-3 pr-4 text-right">
                       <span class="text-sm text-neutral-400">
                         {domain.engineerCount ?? "—"}
-                      </span>
-                    </td>
-                    <td class="py-3 pr-4">
-                      <span
-                        class="text-xs font-medium px-2 py-1 rounded {statusColors[
-                          domain.status
-                        ]
-                          ? statusColors[domain.status].replace('bg-', 'bg-') +
-                            '/20 ' +
-                            statusColors[domain.status]
-                              .replace('bg-', 'text-')
-                              .replace('-500', '-400')
-                          : 'bg-neutral-500/20 text-neutral-400'}"
-                      >
-                        {statusLabels[domain.status] || domain.status}
                       </span>
                     </td>
                   </tr>

@@ -5,6 +5,11 @@
   import EngineersTable from "$lib/components/EngineersTable.svelte";
   import EngineerDetailModal from "$lib/components/EngineerDetailModal.svelte";
   import Skeleton from "$lib/components/Skeleton.svelte";
+  import {
+    teamFilterStore,
+    teamNamesMatchFilter,
+  } from "$lib/stores/team-filter";
+  import { teamsStore } from "$lib/stores/database";
   import type { TeamHealthV1 } from "../../types/metrics-snapshot";
   import type { LatestMetricsResponse } from "../api/metrics/latest/+server";
 
@@ -44,23 +49,28 @@
   let katex: typeof import("katex") | null = null;
   let formulaHtml = $state("");
 
-  // Fetch data on mount
-  onMount(async () => {
-    if (!browser) return;
+  // Team filter state
+  const teams = $derived($teamsStore);
+  const selectedTeamKey = $derived($teamFilterStore);
+  const selectedTeamName = $derived.by(() => {
+    if (!selectedTeamKey) return null;
+    const team = teams.find((t) => t.teamKey === selectedTeamKey);
+    return team?.teamName || selectedTeamKey;
+  });
 
-    // Load KaTeX
-    katex = await import("katex");
-    if (katex) {
-      formulaHtml = katex.default.renderToString(
-        "\\text{WIP Health} = \\frac{\\displaystyle\\sum_{i=1}^{N} \\mathbf{1}\\bigl[\\text{issues}_i \\leq 5 \\;\\land\\; \\text{projects}_i = 1\\bigr]}{N} \\times 100",
-        { throwOnError: false, displayMode: true }
-      );
-    }
+  // Fetch data based on team filter
+  async function fetchData(teamKey: string | null) {
+    loading = true;
+    error = null;
 
-    // Fetch metrics and engineers in parallel
     try {
+      // Build metrics URL based on team filter
+      const metricsUrl = teamKey
+        ? `/api/metrics/latest?level=team&levelId=${encodeURIComponent(teamKey)}`
+        : "/api/metrics/latest";
+
       const [metricsRes, engineersRes] = await Promise.all([
-        fetch("/api/metrics/latest"),
+        fetch(metricsUrl),
         fetch("/api/engineers"),
       ]);
 
@@ -79,25 +89,82 @@
     } finally {
       loading = false;
     }
+  }
+
+  // Track last fetched team key to avoid double fetching
+  let lastFetchedTeamKey: string | null | undefined = undefined;
+
+  // Initial setup
+  onMount(async () => {
+    if (!browser) return;
+
+    // Load KaTeX
+    katex = await import("katex");
+    if (katex) {
+      formulaHtml = katex.default.renderToString(
+        "\\text{WIP Health} = \\frac{\\displaystyle\\sum_{i=1}^{N} \\mathbf{1}\\bigl[\\text{issues}_i \\leq 5 \\;\\land\\; \\text{projects}_i = 1\\bigr]}{N} \\times 100",
+        { throwOnError: false, displayMode: true }
+      );
+    }
   });
 
-  // Filter engineers to only those in ENGINEER_TEAM_MAPPING
-  const mappedEngineerNames = $derived(
-    new Set(Object.keys(data.engineerTeamMapping || {}))
+  // Fetch data when team filter changes (including initial load)
+  $effect(() => {
+    if (browser && lastFetchedTeamKey !== selectedTeamKey) {
+      lastFetchedTeamKey = selectedTeamKey;
+      fetchData(selectedTeamKey);
+    }
+  });
+
+  // Get the engineer team mapping
+  const engineerTeamMapping = $derived(data.engineerTeamMapping || {});
+  const hasMappingConfigured = $derived(
+    Object.keys(engineerTeamMapping).length > 0
   );
 
-  const hasMappingConfigured = $derived(mappedEngineerNames.size > 0);
+  // Get engineers mapped to the selected team (from ENGINEER_TEAM_MAPPING)
+  const teamMappedEngineerNames = $derived.by(() => {
+    if (!hasMappingConfigured) return new Set<string>();
+
+    // If team filter is active, only include engineers mapped to that team
+    if (selectedTeamKey) {
+      return new Set(
+        Object.entries(engineerTeamMapping)
+          .filter(([_, teamKey]) => teamKey === selectedTeamKey)
+          .map(([name]) => name)
+      );
+    }
+
+    // No filter - include all mapped engineers
+    return new Set(Object.keys(engineerTeamMapping));
+  });
 
   // Filter to only mapped engineers (or all if no mapping configured)
-  const engineers = $derived(
-    hasMappingConfigured
-      ? allEngineers.filter((e) => mappedEngineerNames.has(e.assignee_name))
-      : allEngineers
-  );
+  // Also apply team filter when active
+  const engineers = $derived.by(() => {
+    let filtered = allEngineers;
+
+    // First filter by ENGINEER_TEAM_MAPPING (respecting team filter)
+    if (hasMappingConfigured) {
+      filtered = filtered.filter((e) =>
+        teamMappedEngineerNames.has(e.assignee_name)
+      );
+    }
+
+    // Then filter by team filter when active (for engineers not in mapping but with team_names)
+    if (selectedTeamKey && selectedTeamName) {
+      filtered = filtered.filter((e) =>
+        teamNamesMatchFilter(e.team_names, selectedTeamName)
+      );
+    }
+
+    return filtered;
+  });
 
   // Calculate stats from filtered engineers
+  // When team filter is active, use the count of engineers mapped to that team
   const totalEngineerCount = $derived(
-    hasMappingConfigured ? mappedEngineerNames.size : engineers.length
+    hasMappingConfigured ? teamMappedEngineerNames.size : engineers.length
   );
 
   // Engineers with 6+ issues
@@ -160,7 +227,12 @@
 
 <div class="space-y-6">
   <!-- Page Title -->
-  <h1 class="text-2xl font-semibold text-white">WIP Health</h1>
+  <div class="flex flex-wrap items-center gap-3">
+    <h1 class="text-2xl font-semibold text-white">WIP Health</h1>
+    {#if selectedTeamName}
+      <span class="text-sm text-neutral-400">— {selectedTeamName}</span>
+    {/if}
+  </div>
 
   {#if loading}
     <!-- Loading state -->

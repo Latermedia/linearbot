@@ -4,6 +4,8 @@
   import Card from "$lib/components/Card.svelte";
   import IssueTable from "$lib/components/IssueTable.svelte";
   import Skeleton from "$lib/components/Skeleton.svelte";
+  import { teamFilterStore } from "$lib/stores/team-filter";
+  import { teamsStore } from "$lib/stores/database";
   import type { QualityHealthV1 } from "../../types/metrics-snapshot";
   import type { LatestMetricsResponse } from "../api/metrics/latest/+server";
   import type { Issue } from "../../db/schema";
@@ -19,22 +21,28 @@
   let katex: typeof import("katex") | null = null;
   let formulaHtml = $state("");
 
-  // Fetch data on mount
-  onMount(async () => {
-    if (!browser) return;
+  // Team filter state
+  const teams = $derived($teamsStore);
+  const selectedTeamKey = $derived($teamFilterStore);
+  const selectedTeamName = $derived.by(() => {
+    if (!selectedTeamKey) return null;
+    const team = teams.find((t) => t.teamKey === selectedTeamKey);
+    return team?.teamName || selectedTeamKey;
+  });
 
-    // Load KaTeX (non-blocking)
-    import("katex").then((k) => {
-      katex = k;
-      formulaHtml = katex.default.renderToString(
-        "\\text{Quality Score} = 100 - \\left( w_1 \\cdot \\frac{\\text{Open Bugs}}{\\text{Threshold}} + w_2 \\cdot \\frac{\\text{Avg Age}}{\\text{Max Age}} + w_3 \\cdot \\max(0, \\text{Net Change}) \\right)",
-        { throwOnError: false, displayMode: true }
-      );
-    });
+  // Fetch data based on team filter
+  async function fetchData(teamKey: string | null) {
+    loading = true;
+    bugsLoading = true;
+    error = null;
 
-    // Fetch metrics first (fast), then bugs (slower)
     try {
-      const metricsRes = await fetch("/api/metrics/latest");
+      // Build metrics URL based on team filter
+      const metricsUrl = teamKey
+        ? `/api/metrics/latest?level=team&levelId=${encodeURIComponent(teamKey)}`
+        : "/api/metrics/latest";
+
+      const metricsRes = await fetch(metricsUrl);
       const metricsData = (await metricsRes.json()) as LatestMetricsResponse;
 
       if (!metricsData.success) {
@@ -46,16 +54,17 @@
       quality = metricsData.snapshot?.quality || null;
       loading = false;
 
-      // Fetch bugs separately (don't block the main UI)
+      // Fetch bugs with team filter
+      const bugsUrl = teamKey
+        ? `/api/issues?type=bug&status=open&limit=1000&teamKey=${encodeURIComponent(teamKey)}`
+        : "/api/issues?type=bug&status=open&limit=1000";
+
       try {
-        const issuesRes = await fetch(
-          "/api/issues?type=bug&status=open&limit=1000"
-        );
+        const issuesRes = await fetch(bugsUrl);
         const issuesData = await issuesRes.json();
         bugIssues = issuesData.issues || [];
       } catch (e) {
         console.error("Failed to fetch bug issues:", e);
-        // Don't set error - bugs list is optional
       } finally {
         bugsLoading = false;
       }
@@ -63,6 +72,31 @@
       error = e instanceof Error ? e.message : "Failed to load data";
       loading = false;
       bugsLoading = false;
+    }
+  }
+
+  // Track last fetched team key to avoid double fetching
+  let lastFetchedTeamKey: string | null | undefined = undefined;
+
+  // Initial setup
+  onMount(async () => {
+    if (!browser) return;
+
+    // Load KaTeX (non-blocking)
+    import("katex").then((k) => {
+      katex = k;
+      formulaHtml = katex.default.renderToString(
+        "\\text{Quality Score} = 100 - \\left( w_1 \\cdot \\frac{\\text{Open Bugs}}{\\text{Threshold}} + w_2 \\cdot \\frac{\\text{Avg Age}}{\\text{Max Age}} + w_3 \\cdot \\max(0, \\text{Net Change}) \\right)",
+        { throwOnError: false, displayMode: true }
+      );
+    });
+  });
+
+  // Fetch data when team filter changes (including initial load)
+  $effect(() => {
+    if (browser && lastFetchedTeamKey !== selectedTeamKey) {
+      lastFetchedTeamKey = selectedTeamKey;
+      fetchData(selectedTeamKey);
     }
   });
 
@@ -90,7 +124,12 @@
 
 <div class="space-y-6">
   <!-- Page Title -->
-  <h1 class="text-2xl font-semibold text-white">Quality</h1>
+  <div class="flex flex-wrap items-center gap-3">
+    <h1 class="text-2xl font-semibold text-white">Quality</h1>
+    {#if selectedTeamName}
+      <span class="text-sm text-neutral-400">— {selectedTeamName}</span>
+    {/if}
+  </div>
 
   {#if loading}
     <!-- Loading state -->
