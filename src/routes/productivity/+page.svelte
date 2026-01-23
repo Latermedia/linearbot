@@ -221,11 +221,6 @@
     <div class="py-8 border-b border-white/10">
       <!-- Large metric -->
       <div class="flex items-baseline justify-center gap-4 mb-3">
-        <span
-          class="w-4 h-4 rounded-full {statusColors[
-            computedStatus
-          ]} self-center"
-        ></span>
         <span class="text-8xl lg:text-9xl font-bold text-white tracking-tight">
           {hasProductivityData ? `${percentOfGoal}%` : "—"}
         </span>
@@ -465,8 +460,17 @@
                       >{domain.domainName}</span
                     >
                     <span
-                      class="w-2 h-2 rounded-full {statusColors[domain.status]}"
-                    ></span>
+                      class="text-[10px] font-medium px-1.5 py-0.5 rounded {domain.status ===
+                      'healthy'
+                        ? 'bg-emerald-500/20 text-emerald-400'
+                        : domain.status === 'warning'
+                          ? 'bg-amber-500/20 text-amber-400'
+                          : domain.status === 'critical'
+                            ? 'bg-red-500/20 text-red-400'
+                            : 'bg-neutral-500/20 text-neutral-400'}"
+                    >
+                      {statusLabels[domain.status] || domain.status}
+                    </span>
                   </div>
                   <div class="text-2xl font-bold text-white">
                     {domain.percentOfGoal}%

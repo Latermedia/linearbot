@@ -80,15 +80,6 @@
     higherIsBetter = true,
   }: Props = $props();
 
-  // Status indicator colors
-  const statusColors = {
-    healthy: "bg-emerald-500",
-    warning: "bg-amber-500",
-    critical: "bg-red-500",
-    unknown: "bg-neutral-500",
-    pending: "bg-neutral-500",
-  };
-
   function handleDetailMouseEnter(
     detailId: string | undefined,
     event: MouseEvent
@@ -124,9 +115,6 @@
       <div
         class="flex items-center gap-2 text-xs font-medium tracking-wide uppercase text-neutral-400"
       >
-        {#if status && !underConstruction}
-          <span class="w-2 h-2 rounded-full {statusColors[status]}"></span>
-        {/if}
         {title}
       </div>
       {#if underConstruction}
@@ -179,9 +167,31 @@
               />
             {/if}
           </div>
-          {#if subtitle}
-            <div class="text-xs text-neutral-500">{subtitle}</div>
-          {/if}
+          <div class="flex items-center gap-2">
+            {#if subtitle}
+              <span class="text-xs text-neutral-500">{subtitle}</span>
+            {/if}
+            {#if status && !underConstruction}
+              <span
+                class="text-[10px] font-medium px-1.5 py-0.5 rounded {status ===
+                'healthy'
+                  ? 'bg-emerald-500/20 text-emerald-400'
+                  : status === 'warning'
+                    ? 'bg-amber-500/20 text-amber-400'
+                    : status === 'critical'
+                      ? 'bg-red-500/20 text-red-400'
+                      : 'bg-neutral-500/20 text-neutral-400'}"
+              >
+                {status === "healthy"
+                  ? "Healthy"
+                  : status === "warning"
+                    ? "Warning"
+                    : status === "critical"
+                      ? "Critical"
+                      : "Unknown"}
+              </span>
+            {/if}
+          </div>
         {/if}
       </div>
 

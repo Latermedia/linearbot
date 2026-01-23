@@ -13,25 +13,6 @@
 
   let { title, status, value, underConstruction = false }: Props = $props();
 
-  // Get status color for the dot
-  function getStatusDotClass(
-    status: PillarStatus | ProductivityStatus
-  ): string {
-    switch (status) {
-      case "healthy":
-        return "bg-emerald-500";
-      case "warning":
-        return "bg-amber-500";
-      case "critical":
-        return "bg-red-500";
-      case "unknown":
-        return "bg-blue-500";
-      case "pending":
-      default:
-        return "bg-neutral-500";
-    }
-  }
-
   // Get status text color
   function getStatusTextClass(
     status: PillarStatus | ProductivityStatus
@@ -51,7 +32,6 @@
     }
   }
 
-  const dotClass = $derived(getStatusDotClass(status));
   const textClass = $derived(getStatusTextClass(status));
 </script>
 
@@ -60,11 +40,6 @@
     ? 'opacity-50'
     : ''}"
 >
-  <div
-    class="w-1.5 h-1.5 rounded-full {underConstruction
-      ? 'bg-neutral-500'
-      : dotClass}"
-  ></div>
   <span class="text-neutral-400 font-medium">{title}:</span>
   {#if underConstruction}
     <span class="text-neutral-500 italic">TBD</span>

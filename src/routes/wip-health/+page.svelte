@@ -5,12 +5,11 @@
   import EngineersTable from "$lib/components/EngineersTable.svelte";
   import EngineerDetailModal from "$lib/components/EngineerDetailModal.svelte";
   import Skeleton from "$lib/components/Skeleton.svelte";
-  import {
-    teamFilterStore,
-    teamNamesMatchFilter,
-  } from "$lib/stores/team-filter";
-  import { teamsStore } from "$lib/stores/database";
-  import type { TeamHealthV1 } from "../../types/metrics-snapshot";
+  import TeamFilterNotice from "$lib/components/TeamFilterNotice.svelte";
+  import type {
+    TeamHealthV1,
+    MetricsSnapshotV1,
+  } from "../../types/metrics-snapshot";
   import type { LatestMetricsResponse } from "../api/metrics/latest/+server";
 
   interface EngineerData {
@@ -33,6 +32,18 @@
     multi_project_violation?: number;
   }
 
+  // Domain WIP health data for table
+  interface DomainWipHealth {
+    domainName: string;
+    healthyWorkloadPercent: number;
+    healthyIcCount: number;
+    totalIcCount: number;
+    wipViolationCount: number;
+    multiProjectViolationCount: number;
+    impactedProjectCount: number;
+    status: string;
+  }
+
   // Props from page.server.ts
   let { data } = $props();
 
@@ -40,6 +51,14 @@
   let loading = $state(true);
   let error = $state<string | null>(null);
   let teamHealth = $state<TeamHealthV1 | null>(null);
+  let allSnapshots = $state<
+    Array<{
+      level: string;
+      levelId: string | null;
+      snapshot: MetricsSnapshotV1;
+      capturedAt: string;
+    }>
+  >([]);
   let allEngineers = $state<EngineerData[]>([]);
 
   // Engineer modal state
@@ -48,51 +67,6 @@
   // KaTeX for rendering math formulas
   let katex: typeof import("katex") | null = null;
   let formulaHtml = $state("");
-
-  // Team filter state
-  const teams = $derived($teamsStore);
-  const selectedTeamKey = $derived($teamFilterStore);
-  const selectedTeamName = $derived.by(() => {
-    if (!selectedTeamKey) return null;
-    const team = teams.find((t) => t.teamKey === selectedTeamKey);
-    return team?.teamName || selectedTeamKey;
-  });
-
-  // Fetch data based on team filter
-  async function fetchData(teamKey: string | null) {
-    loading = true;
-    error = null;
-
-    try {
-      // Build metrics URL based on team filter
-      const metricsUrl = teamKey
-        ? `/api/metrics/latest?level=team&levelId=${encodeURIComponent(teamKey)}`
-        : "/api/metrics/latest";
-
-      const [metricsRes, engineersRes] = await Promise.all([
-        fetch(metricsUrl),
-        fetch("/api/engineers"),
-      ]);
-
-      const metricsData = (await metricsRes.json()) as LatestMetricsResponse;
-      const engineersData = await engineersRes.json();
-
-      if (!metricsData.success) {
-        error = metricsData.error || "Failed to fetch metrics";
-        return;
-      }
-
-      teamHealth = metricsData.snapshot?.teamHealth || null;
-      allEngineers = engineersData.engineers || [];
-    } catch (e) {
-      error = e instanceof Error ? e.message : "Failed to load data";
-    } finally {
-      loading = false;
-    }
-  }
-
-  // Track last fetched team key to avoid double fetching
-  let lastFetchedTeamKey: string | null | undefined = undefined;
 
   // Initial setup
   onMount(async () => {
@@ -106,13 +80,32 @@
         { throwOnError: false, displayMode: true }
       );
     }
-  });
 
-  // Fetch data when team filter changes (including initial load)
-  $effect(() => {
-    if (browser && lastFetchedTeamKey !== selectedTeamKey) {
-      lastFetchedTeamKey = selectedTeamKey;
-      fetchData(selectedTeamKey);
+    // Fetch all metrics snapshots (including domain-level) and engineers
+    try {
+      const [metricsRes, engineersRes] = await Promise.all([
+        fetch("/api/metrics/latest?all=true"),
+        fetch("/api/engineers"),
+      ]);
+
+      const metricsData = (await metricsRes.json()) as LatestMetricsResponse;
+      const engineersData = await engineersRes.json();
+
+      if (!metricsData.success) {
+        error = metricsData.error || "Failed to fetch metrics";
+        return;
+      }
+
+      allSnapshots = metricsData.snapshots || [];
+      allEngineers = engineersData.engineers || [];
+
+      // Extract org-level team health
+      const orgSnapshot = allSnapshots.find((s) => s.level === "org");
+      teamHealth = orgSnapshot?.snapshot?.teamHealth || null;
+    } catch (e) {
+      error = e instanceof Error ? e.message : "Failed to load data";
+    } finally {
+      loading = false;
     }
   });
 
@@ -122,50 +115,52 @@
     Object.keys(engineerTeamMapping).length > 0
   );
 
-  // Get engineers mapped to the selected team (from ENGINEER_TEAM_MAPPING)
+  // Get engineers mapped (from ENGINEER_TEAM_MAPPING)
   const teamMappedEngineerNames = $derived.by(() => {
     if (!hasMappingConfigured) return new Set<string>();
-
-    // If team filter is active, only include engineers mapped to that team
-    if (selectedTeamKey) {
-      return new Set(
-        Object.entries(engineerTeamMapping)
-          .filter(([_, teamKey]) => teamKey === selectedTeamKey)
-          .map(([name]) => name)
-      );
-    }
-
-    // No filter - include all mapped engineers
     return new Set(Object.keys(engineerTeamMapping));
   });
 
   // Filter to only mapped engineers (or all if no mapping configured)
-  // Also apply team filter when active
   const engineers = $derived.by(() => {
-    let filtered = allEngineers;
-
-    // First filter by ENGINEER_TEAM_MAPPING (respecting team filter)
-    if (hasMappingConfigured) {
-      filtered = filtered.filter((e) =>
-        teamMappedEngineerNames.has(e.assignee_name)
-      );
-    }
-
-    // Then filter by team filter when active (for engineers not in mapping but with team_names)
-    if (selectedTeamKey && selectedTeamName) {
-      filtered = filtered.filter((e) =>
-        teamNamesMatchFilter(e.team_names, selectedTeamName)
-      );
-    }
-
-    return filtered;
+    if (!hasMappingConfigured) return allEngineers;
+    return allEngineers.filter((e) =>
+      teamMappedEngineerNames.has(e.assignee_name)
+    );
   });
 
   // Calculate stats from filtered engineers
-  // When team filter is active, use the count of engineers mapped to that team
   const totalEngineerCount = $derived(
     hasMappingConfigured ? teamMappedEngineerNames.size : engineers.length
   );
+
+  // Extract domain-level WIP health data for table
+  const domainWipHealthData = $derived.by((): DomainWipHealth[] => {
+    const domains: DomainWipHealth[] = [];
+
+    for (const snapshot of allSnapshots) {
+      if (snapshot.level !== "domain" || !snapshot.levelId) continue;
+
+      const health = snapshot.snapshot.teamHealth;
+      if (!health) continue;
+
+      domains.push({
+        domainName: snapshot.levelId,
+        healthyWorkloadPercent: health.healthyWorkloadPercent,
+        healthyIcCount: health.healthyIcCount,
+        totalIcCount: health.totalIcCount,
+        wipViolationCount: health.wipViolationCount,
+        multiProjectViolationCount: health.multiProjectViolationCount,
+        impactedProjectCount: health.impactedProjectCount,
+        status: health.status,
+      });
+    }
+
+    // Sort by healthy percent (ascending - domains needing attention first)
+    return domains.sort(
+      (a, b) => a.healthyWorkloadPercent - b.healthyWorkloadPercent
+    );
+  });
 
   // Engineers with 6+ issues
   const wipViolationEngineers = $derived(
@@ -227,11 +222,9 @@
 
 <div class="space-y-6">
   <!-- Page Title -->
-  <div class="flex flex-wrap items-center gap-3">
+  <div class="flex flex-wrap items-center justify-between gap-4">
     <h1 class="text-2xl font-semibold text-white">WIP Health</h1>
-    {#if selectedTeamName}
-      <span class="text-sm text-neutral-400">— {selectedTeamName}</span>
-    {/if}
+    <TeamFilterNotice level="domain" />
   </div>
 
   {#if loading}
@@ -264,11 +257,6 @@
     <div class="py-8 border-b border-white/10">
       <!-- Large metric -->
       <div class="flex items-baseline justify-center gap-4 mb-3">
-        <span
-          class="w-4 h-4 rounded-full {statusColors[
-            computedStatus
-          ]} self-center"
-        ></span>
         <span class="text-8xl lg:text-9xl font-bold text-white tracking-tight">
           {healthyPercent}%
         </span>
@@ -380,6 +368,87 @@
         {/if}
       </div>
     </div>
+
+    <!-- Domain WIP Health Table -->
+    {#if domainWipHealthData.length > 0}
+      <Card class="p-0 overflow-hidden">
+        <div
+          class="flex items-center justify-between px-4 py-3 border-b border-white/10 bg-white/5"
+        >
+          <h3 class="text-sm font-medium text-white">
+            Domain Breakdown ({domainWipHealthData.length})
+          </h3>
+          <span class="text-xs text-neutral-500">WIP health by domain</span>
+        </div>
+        <div class="p-4">
+          <div class="overflow-x-auto">
+            <table class="w-full">
+              <thead>
+                <tr
+                  class="text-left text-xs font-medium text-neutral-500 uppercase tracking-wider border-b border-white/10"
+                >
+                  <th class="pb-3 pr-4">Domain</th>
+                  <th class="pb-3 pr-4">Status</th>
+                  <th class="pb-3 pr-4 text-right">Healthy %</th>
+                  <th class="pb-3 pr-4 text-right">6+ Issues</th>
+                  <th class="pb-3 pr-4 text-right">2+ Projects</th>
+                  <th class="pb-3 pr-4 text-right">Engineers</th>
+                </tr>
+              </thead>
+              <tbody class="divide-y divide-white/5">
+                {#each domainWipHealthData as domain}
+                  <tr class="hover:bg-white/5 transition-colors">
+                    <td class="py-3 pr-4">
+                      <span class="text-sm text-white font-medium">
+                        {domain.domainName}
+                      </span>
+                    </td>
+                    <td class="py-3 pr-4">
+                      <span
+                        class="text-xs font-medium px-2 py-1 rounded {statusColors[
+                          domain.status
+                        ]
+                          ? statusColors[domain.status].replace('bg-', 'bg-') +
+                            '/20 ' +
+                            statusColors[domain.status]
+                              .replace('bg-', 'text-')
+                              .replace('-500', '-400')
+                          : 'bg-neutral-500/20 text-neutral-400'}"
+                      >
+                        {statusLabels[domain.status] || domain.status}
+                      </span>
+                    </td>
+                    <td class="py-3 pr-4 text-right">
+                      <span class="text-sm font-semibold text-white">
+                        {domain.healthyWorkloadPercent.toFixed(0)}%
+                      </span>
+                      <span class="text-xs text-neutral-500 ml-1">
+                        ({domain.healthyIcCount}/{domain.totalIcCount})
+                      </span>
+                    </td>
+                    <td class="py-3 pr-4 text-right">
+                      <span class="text-sm text-neutral-300">
+                        {domain.wipViolationCount}
+                      </span>
+                    </td>
+                    <td class="py-3 pr-4 text-right">
+                      <span class="text-sm text-neutral-300">
+                        {domain.multiProjectViolationCount}
+                      </span>
+                    </td>
+                    <td class="py-3 pr-4 text-right">
+                      <span class="text-sm text-neutral-400">
+                        {domain.totalIcCount}
+                      </span>
+                    </td>
+                  </tr>
+                {/each}
+              </tbody>
+            </table>
+          </div>
+        </div>
+      </Card>
+    {/if}
 
     <!-- Overloaded Engineers Table -->
     <Card class="p-0 overflow-hidden">

@@ -61,7 +61,6 @@
       <div
         class="flex items-center gap-1.5 px-2 py-1 rounded bg-white/5 animate-pulse"
       >
-        <div class="w-1.5 h-1.5 rounded-full bg-neutral-600"></div>
         <div class="w-12 h-3 rounded bg-neutral-700"></div>
       </div>
     {/each}

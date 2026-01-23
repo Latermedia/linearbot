@@ -4,16 +4,37 @@
   import Card from "$lib/components/Card.svelte";
   import IssueTable from "$lib/components/IssueTable.svelte";
   import Skeleton from "$lib/components/Skeleton.svelte";
-  import { teamFilterStore } from "$lib/stores/team-filter";
-  import { teamsStore } from "$lib/stores/database";
-  import type { QualityHealthV1 } from "../../types/metrics-snapshot";
+  import TeamFilterNotice from "$lib/components/TeamFilterNotice.svelte";
+  import type {
+    QualityHealthV1,
+    MetricsSnapshotV1,
+  } from "../../types/metrics-snapshot";
   import type { LatestMetricsResponse } from "../api/metrics/latest/+server";
   import type { Issue } from "../../db/schema";
+
+  // Domain quality data for table
+  interface DomainQuality {
+    domainName: string;
+    openBugCount: number;
+    averageBugAgeDays: number;
+    maxBugAgeDays: number;
+    netBugChange: number;
+    compositeScore: number;
+    status: string;
+  }
 
   // Data state
   let loading = $state(true);
   let error = $state<string | null>(null);
   let quality = $state<QualityHealthV1 | null>(null);
+  let allSnapshots = $state<
+    Array<{
+      level: string;
+      levelId: string | null;
+      snapshot: MetricsSnapshotV1;
+      capturedAt: string;
+    }>
+  >([]);
   let bugIssues = $state<Issue[]>([]);
   let bugsLoading = $state(true);
 
@@ -21,64 +42,7 @@
   let katex: typeof import("katex") | null = null;
   let formulaHtml = $state("");
 
-  // Team filter state
-  const teams = $derived($teamsStore);
-  const selectedTeamKey = $derived($teamFilterStore);
-  const selectedTeamName = $derived.by(() => {
-    if (!selectedTeamKey) return null;
-    const team = teams.find((t) => t.teamKey === selectedTeamKey);
-    return team?.teamName || selectedTeamKey;
-  });
-
-  // Fetch data based on team filter
-  async function fetchData(teamKey: string | null) {
-    loading = true;
-    bugsLoading = true;
-    error = null;
-
-    try {
-      // Build metrics URL based on team filter
-      const metricsUrl = teamKey
-        ? `/api/metrics/latest?level=team&levelId=${encodeURIComponent(teamKey)}`
-        : "/api/metrics/latest";
-
-      const metricsRes = await fetch(metricsUrl);
-      const metricsData = (await metricsRes.json()) as LatestMetricsResponse;
-
-      if (!metricsData.success) {
-        error = metricsData.error || "Failed to fetch metrics";
-        loading = false;
-        return;
-      }
-
-      quality = metricsData.snapshot?.quality || null;
-      loading = false;
-
-      // Fetch bugs with team filter
-      const bugsUrl = teamKey
-        ? `/api/issues?type=bug&status=open&limit=1000&teamKey=${encodeURIComponent(teamKey)}`
-        : "/api/issues?type=bug&status=open&limit=1000";
-
-      try {
-        const issuesRes = await fetch(bugsUrl);
-        const issuesData = await issuesRes.json();
-        bugIssues = issuesData.issues || [];
-      } catch (e) {
-        console.error("Failed to fetch bug issues:", e);
-      } finally {
-        bugsLoading = false;
-      }
-    } catch (e) {
-      error = e instanceof Error ? e.message : "Failed to load data";
-      loading = false;
-      bugsLoading = false;
-    }
-  }
-
-  // Track last fetched team key to avoid double fetching
-  let lastFetchedTeamKey: string | null | undefined = undefined;
-
-  // Initial setup
+  // Fetch data on mount
   onMount(async () => {
     if (!browser) return;
 
@@ -90,13 +54,39 @@
         { throwOnError: false, displayMode: true }
       );
     });
-  });
 
-  // Fetch data when team filter changes (including initial load)
-  $effect(() => {
-    if (browser && lastFetchedTeamKey !== selectedTeamKey) {
-      lastFetchedTeamKey = selectedTeamKey;
-      fetchData(selectedTeamKey);
+    // Fetch all metrics snapshots (including domain-level)
+    try {
+      const metricsRes = await fetch("/api/metrics/latest?all=true");
+      const metricsData = (await metricsRes.json()) as LatestMetricsResponse;
+
+      if (!metricsData.success) {
+        error = metricsData.error || "Failed to fetch metrics";
+        return;
+      }
+
+      allSnapshots = metricsData.snapshots || [];
+
+      // Extract org-level quality
+      const orgSnapshot = allSnapshots.find((s) => s.level === "org");
+      quality = orgSnapshot?.snapshot?.quality || null;
+    } catch (e) {
+      error = e instanceof Error ? e.message : "Failed to load data";
+    } finally {
+      loading = false;
+    }
+
+    // Fetch bugs (org-level)
+    try {
+      const issuesRes = await fetch(
+        "/api/issues?type=bug&status=open&limit=1000"
+      );
+      const issuesData = await issuesRes.json();
+      bugIssues = issuesData.issues || [];
+    } catch (e) {
+      console.error("Failed to fetch bug issues:", e);
+    } finally {
+      bugsLoading = false;
     }
   });
 
@@ -120,15 +110,38 @@
 
   // Open bugs driving the quality metric
   const openBugs = $derived(bugIssues);
+
+  // Extract domain-level quality data for table
+  const domainQualityData = $derived.by((): DomainQuality[] => {
+    const domains: DomainQuality[] = [];
+
+    for (const snapshot of allSnapshots) {
+      if (snapshot.level !== "domain" || !snapshot.levelId) continue;
+
+      const qualityData = snapshot.snapshot.quality;
+      if (!qualityData) continue;
+
+      domains.push({
+        domainName: snapshot.levelId,
+        openBugCount: qualityData.openBugCount,
+        averageBugAgeDays: qualityData.averageBugAgeDays,
+        maxBugAgeDays: qualityData.maxBugAgeDays,
+        netBugChange: qualityData.netBugChange,
+        compositeScore: qualityData.compositeScore,
+        status: qualityData.status,
+      });
+    }
+
+    // Sort by composite score (ascending - domains needing attention first)
+    return domains.sort((a, b) => a.compositeScore - b.compositeScore);
+  });
 </script>
 
 <div class="space-y-6">
   <!-- Page Title -->
-  <div class="flex flex-wrap items-center gap-3">
+  <div class="flex flex-wrap items-center justify-between gap-4">
     <h1 class="text-2xl font-semibold text-white">Quality</h1>
-    {#if selectedTeamName}
-      <span class="text-sm text-neutral-400">— {selectedTeamName}</span>
-    {/if}
+    <TeamFilterNotice level="domain" />
   </div>
 
   {#if loading}
@@ -161,11 +174,6 @@
     <div class="py-8 border-b border-white/10">
       <!-- Large metric -->
       <div class="flex items-baseline justify-center gap-4 mb-3">
-        <span
-          class="w-4 h-4 rounded-full {statusColors[
-            computedStatus
-          ]} self-center"
-        ></span>
         <span class="text-8xl lg:text-9xl font-bold text-white tracking-tight">
           {quality.compositeScore}%
         </span>
@@ -284,6 +292,87 @@
         {/if}
       </div>
     </div>
+
+    <!-- Domain Quality Table -->
+    {#if domainQualityData.length > 0}
+      <Card class="p-0 overflow-hidden">
+        <div
+          class="flex items-center justify-between px-4 py-3 border-b border-white/10 bg-white/5"
+        >
+          <h3 class="text-sm font-medium text-white">
+            Domain Breakdown ({domainQualityData.length})
+          </h3>
+          <span class="text-xs text-neutral-500">Quality metrics by domain</span
+          >
+        </div>
+        <div class="p-4">
+          <div class="overflow-x-auto">
+            <table class="w-full">
+              <thead>
+                <tr
+                  class="text-left text-xs font-medium text-neutral-500 uppercase tracking-wider border-b border-white/10"
+                >
+                  <th class="pb-3 pr-4">Domain</th>
+                  <th class="pb-3 pr-4">Status</th>
+                  <th class="pb-3 pr-4 text-right">Score</th>
+                  <th class="pb-3 pr-4 text-right">Open Bugs</th>
+                  <th class="pb-3 pr-4 text-right">Avg Age</th>
+                  <th class="pb-3 pr-4 text-right">Net Change</th>
+                </tr>
+              </thead>
+              <tbody class="divide-y divide-white/5">
+                {#each domainQualityData as domain}
+                  <tr class="hover:bg-white/5 transition-colors">
+                    <td class="py-3 pr-4">
+                      <span class="text-sm text-white font-medium">
+                        {domain.domainName}
+                      </span>
+                    </td>
+                    <td class="py-3 pr-4">
+                      <span
+                        class="text-xs font-medium px-2 py-1 rounded {statusColors[
+                          domain.status
+                        ]
+                          ? statusColors[domain.status].replace('bg-', 'bg-') +
+                            '/20 ' +
+                            statusColors[domain.status]
+                              .replace('bg-', 'text-')
+                              .replace('-500', '-400')
+                          : 'bg-neutral-500/20 text-neutral-400'}"
+                      >
+                        {statusLabels[domain.status] || domain.status}
+                      </span>
+                    </td>
+                    <td class="py-3 pr-4 text-right">
+                      <span class="text-sm font-semibold text-white">
+                        {domain.compositeScore}%
+                      </span>
+                    </td>
+                    <td class="py-3 pr-4 text-right">
+                      <span class="text-sm text-neutral-300">
+                        {domain.openBugCount}
+                      </span>
+                    </td>
+                    <td class="py-3 pr-4 text-right">
+                      <span class="text-sm text-neutral-400">
+                        {domain.averageBugAgeDays.toFixed(0)}d
+                      </span>
+                    </td>
+                    <td class="py-3 pr-4 text-right">
+                      <span class="text-sm text-neutral-300">
+                        {domain.netBugChange > 0
+                          ? "+"
+                          : ""}{domain.netBugChange}
+                      </span>
+                    </td>
+                  </tr>
+                {/each}
+              </tbody>
+            </table>
+          </div>
+        </div>
+      </Card>
+    {/if}
 
     <!-- Open Bugs Table -->
     <Card class="p-0 overflow-hidden">

@@ -4,22 +4,40 @@
   import Card from "$lib/components/Card.svelte";
   import Skeleton from "$lib/components/Skeleton.svelte";
   import ProjectDetailModal from "$lib/components/ProjectDetailModal.svelte";
-  import {
-    projectsStore,
-    databaseStore,
-    teamsStore,
-  } from "$lib/stores/database";
-  import { teamFilterStore } from "$lib/stores/team-filter";
+  import TeamFilterNotice from "$lib/components/TeamFilterNotice.svelte";
+  import { projectsStore, databaseStore } from "$lib/stores/database";
   import type {
     VelocityHealthV1,
     ProjectVelocityStatusV1,
+    MetricsSnapshotV1,
   } from "../../types/metrics-snapshot";
   import type { LatestMetricsResponse } from "../api/metrics/latest/+server";
+
+  // Domain project health data for table
+  interface DomainProjectHealth {
+    domainName: string;
+    onTrackPercent: number;
+    atRiskPercent: number;
+    offTrackPercent: number;
+    totalProjects: number;
+    onTrackCount: number;
+    atRiskCount: number;
+    offTrackCount: number;
+    status: string;
+  }
 
   // Data state
   let loading = $state(true);
   let error = $state<string | null>(null);
   let velocityHealth = $state<VelocityHealthV1 | null>(null);
+  let allSnapshots = $state<
+    Array<{
+      level: string;
+      levelId: string | null;
+      snapshot: MetricsSnapshotV1;
+      capturedAt: string;
+    }>
+  >([]);
 
   // Project modal state - store the project ID
   let selectedProjectId = $state<string | null>(null);
@@ -33,45 +51,6 @@
   // KaTeX for rendering math formulas
   let katex: typeof import("katex") | null = null;
   let formulaHtml = $state("");
-
-  // Team filter state
-  const teams = $derived($teamsStore);
-  const selectedTeamKey = $derived($teamFilterStore);
-  const selectedTeamName = $derived.by(() => {
-    if (!selectedTeamKey) return null;
-    const team = teams.find((t) => t.teamKey === selectedTeamKey);
-    return team?.teamName || selectedTeamKey;
-  });
-
-  // Fetch data based on team filter
-  async function fetchData(teamKey: string | null) {
-    loading = true;
-    error = null;
-
-    try {
-      // Build metrics URL based on team filter
-      const metricsUrl = teamKey
-        ? `/api/metrics/latest?level=team&levelId=${encodeURIComponent(teamKey)}`
-        : "/api/metrics/latest";
-
-      const metricsRes = await fetch(metricsUrl);
-      const metricsData = (await metricsRes.json()) as LatestMetricsResponse;
-
-      if (!metricsData.success) {
-        error = metricsData.error || "Failed to fetch metrics";
-        return;
-      }
-
-      velocityHealth = metricsData.snapshot?.velocityHealth || null;
-    } catch (e) {
-      error = e instanceof Error ? e.message : "Failed to load data";
-    } finally {
-      loading = false;
-    }
-  }
-
-  // Track last fetched team key to avoid double fetching
-  let lastFetchedTeamKey: string | null | undefined = undefined;
 
   // Initial setup
   onMount(async () => {
@@ -88,13 +67,26 @@
         { throwOnError: false, displayMode: true }
       );
     }
-  });
 
-  // Fetch data when team filter changes (including initial load)
-  $effect(() => {
-    if (browser && lastFetchedTeamKey !== selectedTeamKey) {
-      lastFetchedTeamKey = selectedTeamKey;
-      fetchData(selectedTeamKey);
+    // Fetch all metrics snapshots (including domain-level)
+    try {
+      const metricsRes = await fetch("/api/metrics/latest?all=true");
+      const metricsData = (await metricsRes.json()) as LatestMetricsResponse;
+
+      if (!metricsData.success) {
+        error = metricsData.error || "Failed to fetch metrics";
+        return;
+      }
+
+      allSnapshots = metricsData.snapshots || [];
+
+      // Extract org-level velocity health
+      const orgSnapshot = allSnapshots.find((s) => s.level === "org");
+      velocityHealth = orgSnapshot?.snapshot?.velocityHealth || null;
+    } catch (e) {
+      error = e instanceof Error ? e.message : "Failed to load data";
+    } finally {
+      loading = false;
     }
   });
 
@@ -185,6 +177,44 @@
     return "critical";
   });
 
+  // Extract domain-level project health data for table
+  const domainProjectHealthData = $derived.by((): DomainProjectHealth[] => {
+    const domains: DomainProjectHealth[] = [];
+
+    for (const snapshot of allSnapshots) {
+      if (snapshot.level !== "domain" || !snapshot.levelId) continue;
+
+      const velocity = snapshot.snapshot.velocityHealth;
+      if (!velocity) continue;
+
+      const totalProjects = velocity.projectStatuses.length;
+      const onTrackCount = velocity.projectStatuses.filter(
+        (p) => p.effectiveHealth === "onTrack"
+      ).length;
+      const atRiskCount = velocity.projectStatuses.filter(
+        (p) => p.effectiveHealth === "atRisk"
+      ).length;
+      const offTrackCount = velocity.projectStatuses.filter(
+        (p) => p.effectiveHealth === "offTrack"
+      ).length;
+
+      domains.push({
+        domainName: snapshot.levelId,
+        onTrackPercent: velocity.onTrackPercent,
+        atRiskPercent: velocity.atRiskPercent,
+        offTrackPercent: velocity.offTrackPercent,
+        totalProjects,
+        onTrackCount,
+        atRiskCount,
+        offTrackCount,
+        status: velocity.status,
+      });
+    }
+
+    // Sort by on-track percent (ascending - domains needing attention first)
+    return domains.sort((a, b) => a.onTrackPercent - b.onTrackPercent);
+  });
+
   function closeProjectModal() {
     selectedProjectId = null;
   }
@@ -196,11 +226,9 @@
 
 <div class="space-y-6">
   <!-- Page Title -->
-  <div class="flex flex-wrap items-center gap-3">
+  <div class="flex flex-wrap items-center justify-between gap-4">
     <h1 class="text-2xl font-semibold text-white">Project Health</h1>
-    {#if selectedTeamName}
-      <span class="text-sm text-neutral-400">— {selectedTeamName}</span>
-    {/if}
+    <TeamFilterNotice level="domain" />
   </div>
 
   {#if loading}
@@ -233,11 +261,6 @@
     <div class="py-8 border-b border-white/10">
       <!-- Large metric -->
       <div class="flex items-baseline justify-center gap-4 mb-3">
-        <span
-          class="w-4 h-4 rounded-full {statusColors[
-            computedStatus
-          ]} self-center"
-        ></span>
         <span class="text-8xl lg:text-9xl font-bold text-white tracking-tight">
           {velocityHealth.onTrackPercent.toFixed(0)}%
         </span>
@@ -352,6 +375,87 @@
         {/if}
       </div>
     </div>
+
+    <!-- Domain Project Health Table -->
+    {#if domainProjectHealthData.length > 0}
+      <Card class="p-0 overflow-hidden">
+        <div
+          class="flex items-center justify-between px-4 py-3 border-b border-white/10 bg-white/5"
+        >
+          <h3 class="text-sm font-medium text-white">
+            Domain Breakdown ({domainProjectHealthData.length})
+          </h3>
+          <span class="text-xs text-neutral-500">Project health by domain</span>
+        </div>
+        <div class="p-4">
+          <div class="overflow-x-auto">
+            <table class="w-full">
+              <thead>
+                <tr
+                  class="text-left text-xs font-medium text-neutral-500 uppercase tracking-wider border-b border-white/10"
+                >
+                  <th class="pb-3 pr-4">Domain</th>
+                  <th class="pb-3 pr-4">Status</th>
+                  <th class="pb-3 pr-4 text-right">On Track</th>
+                  <th class="pb-3 pr-4 text-right">At Risk</th>
+                  <th class="pb-3 pr-4 text-right">Off Track</th>
+                  <th class="pb-3 pr-4 text-right">Total</th>
+                </tr>
+              </thead>
+              <tbody class="divide-y divide-white/5">
+                {#each domainProjectHealthData as domain}
+                  <tr class="hover:bg-white/5 transition-colors">
+                    <td class="py-3 pr-4">
+                      <span class="text-sm text-white font-medium">
+                        {domain.domainName}
+                      </span>
+                    </td>
+                    <td class="py-3 pr-4">
+                      <span
+                        class="text-xs font-medium px-2 py-1 rounded {statusColors[
+                          domain.status
+                        ]
+                          ? statusColors[domain.status].replace('bg-', 'bg-') +
+                            '/20 ' +
+                            statusColors[domain.status]
+                              .replace('bg-', 'text-')
+                              .replace('-500', '-400')
+                          : 'bg-neutral-500/20 text-neutral-400'}"
+                      >
+                        {statusLabels[domain.status] || domain.status}
+                      </span>
+                    </td>
+                    <td class="py-3 pr-4 text-right">
+                      <span class="text-sm font-semibold text-white">
+                        {domain.onTrackPercent.toFixed(0)}%
+                      </span>
+                      <span class="text-xs text-neutral-500 ml-1">
+                        ({domain.onTrackCount})
+                      </span>
+                    </td>
+                    <td class="py-3 pr-4 text-right">
+                      <span class="text-sm text-neutral-300">
+                        {domain.atRiskCount}
+                      </span>
+                    </td>
+                    <td class="py-3 pr-4 text-right">
+                      <span class="text-sm text-neutral-300">
+                        {domain.offTrackCount}
+                      </span>
+                    </td>
+                    <td class="py-3 pr-4 text-right">
+                      <span class="text-sm text-neutral-400">
+                        {domain.totalProjects}
+                      </span>
+                    </td>
+                  </tr>
+                {/each}
+              </tbody>
+            </table>
+          </div>
+        </div>
+      </Card>
+    {/if}
 
     <!-- Projects Needing Attention Table -->
     <Card class="p-0 overflow-hidden">
