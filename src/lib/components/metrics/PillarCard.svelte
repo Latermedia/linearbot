@@ -163,6 +163,40 @@
           </span>
         </div>
 
+        <!-- 7d/30d Trend Chips -->
+        {#if weekTrend?.hasEnoughData || monthTrend?.hasEnoughData}
+          <div class="flex items-center justify-center gap-2 mt-3">
+            {#if weekTrend?.hasEnoughData}
+              {@const actualDays = weekTrend.actualDays ?? 7}
+              {@const isLimited = actualDays < 7}
+              <TrendChip
+                direction={weekTrend.direction}
+                percentChange={weekTrend.percentChange}
+                period="7d"
+                {higherIsBetter}
+                {isLimited}
+                tooltip={isLimited
+                  ? `Based on ${actualDays} days of data`
+                  : undefined}
+              />
+            {/if}
+            {#if monthTrend?.hasEnoughData}
+              {@const actualDays = monthTrend.actualDays ?? 30}
+              {@const isLimited = actualDays < 30}
+              <TrendChip
+                direction={monthTrend.direction}
+                percentChange={monthTrend.percentChange}
+                period="30d"
+                {higherIsBetter}
+                {isLimited}
+                tooltip={isLimited
+                  ? `Based on ${actualDays} days of data`
+                  : undefined}
+              />
+            {/if}
+          </div>
+        {/if}
+
         <!-- Subtitle -->
         {#if subtitle}
           <p class="text-sm text-neutral-400 text-center mt-2">
@@ -250,19 +284,31 @@
                   >{/if}
               </span>
               {#if weekTrend?.hasEnoughData}
+                {@const actualDays = weekTrend.actualDays ?? 7}
+                {@const isLimited = actualDays < 7}
                 <TrendChip
                   direction={weekTrend.direction}
                   percentChange={weekTrend.percentChange}
-                  period="{weekTrend.actualDays ?? 7}d"
+                  period="7d"
                   {higherIsBetter}
+                  {isLimited}
+                  tooltip={isLimited
+                    ? `Based on ${actualDays} days of data`
+                    : undefined}
                 />
               {/if}
               {#if monthTrend?.hasEnoughData}
+                {@const actualDays = monthTrend.actualDays ?? 30}
+                {@const isLimited = actualDays < 30}
                 <TrendChip
                   direction={monthTrend.direction}
                   percentChange={monthTrend.percentChange}
-                  period="{monthTrend.actualDays ?? 30}d"
+                  period="30d"
                   {higherIsBetter}
+                  {isLimited}
+                  tooltip={isLimited
+                    ? `Based on ${actualDays} days of data`
+                    : undefined}
                 />
               {/if}
             </div>

@@ -5,16 +5,25 @@
   import IssueTable from "$lib/components/IssueTable.svelte";
   import Skeleton from "$lib/components/Skeleton.svelte";
   import TeamFilterNotice from "$lib/components/TeamFilterNotice.svelte";
+  import TrendChip from "$lib/components/metrics/TrendChip.svelte";
   import { teamFilterStore } from "$lib/stores/team-filter";
   import {
     getDomainForTeam,
     getTeamsForDomain,
   } from "../../utils/domain-mapping";
+  import {
+    calculateMetricTrends,
+    metricExtractors,
+  } from "$lib/utils/trend-calculation";
   import type {
     QualityHealthV1,
     MetricsSnapshotV1,
   } from "../../types/metrics-snapshot";
   import type { LatestMetricsResponse } from "../api/metrics/latest/+server";
+  import type {
+    TrendDataPoint,
+    TrendsResponse,
+  } from "../api/metrics/trends/+server";
   import type { Issue } from "../../db/schema";
 
   // Domain quality data for table
@@ -43,9 +52,36 @@
   let bugIssues = $state<Issue[]>([]);
   let bugsLoading = $state(true);
 
+  // Trend data state
+  let trendDataPoints = $state<TrendDataPoint[]>([]);
+
   // KaTeX for rendering math formulas
   let katex: typeof import("katex") | null = null;
   let formulaHtml = $state("");
+
+  // Fetch trend data based on current filter
+  async function fetchTrendData(level: string, levelId: string | null) {
+    if (!browser) return;
+    try {
+      const params = new URLSearchParams({ level, limit: "10000" });
+      if (levelId) params.set("levelId", levelId);
+
+      const res = await fetch(`/api/metrics/trends?${params}`);
+      const data = (await res.json()) as TrendsResponse;
+
+      if (data.success && data.dataPoints) {
+        trendDataPoints = data.dataPoints.sort(
+          (a, b) =>
+            new Date(a.capturedAt).getTime() - new Date(b.capturedAt).getTime()
+        );
+      } else {
+        trendDataPoints = [];
+      }
+    } catch (e) {
+      console.error("Failed to fetch trend data:", e);
+      trendDataPoints = [];
+    }
+  }
 
   // Fetch data on mount
   onMount(async () => {
@@ -75,6 +111,9 @@
       // Extract org-level quality
       const orgSnapshot = allSnapshots.find((s) => s.level === "org");
       quality = orgSnapshot?.snapshot?.quality || null;
+
+      // Fetch initial org-level trends
+      await fetchTrendData("org", null);
     } catch (e) {
       error = e instanceof Error ? e.message : "Failed to load data";
     } finally {
@@ -93,6 +132,34 @@
     } finally {
       bugsLoading = false;
     }
+  });
+
+  // Re-fetch trends when filter changes
+  $effect(() => {
+    if (!browser || loading) return;
+
+    const domain = activeDomainFilter;
+    if (domain) {
+      fetchTrendData("domain", domain);
+    } else {
+      fetchTrendData("org", null);
+    }
+  });
+
+  // Calculate WoW and MoM trends
+  const qualityTrends = $derived(
+    calculateMetricTrends(trendDataPoints, metricExtractors.quality)
+  );
+
+  // Check if any trend data is limited (actual days < expected)
+  const hasLimitedTrendData = $derived.by(() => {
+    const weekLimited =
+      qualityTrends.week.hasEnoughData &&
+      (qualityTrends.week.actualDays ?? 7) < 7;
+    const monthLimited =
+      qualityTrends.month.hasEnoughData &&
+      (qualityTrends.month.actualDays ?? 30) < 30;
+    return weekLimited || monthLimited;
   });
 
   // Status indicator colors
@@ -223,6 +290,43 @@
           {displayQuality.compositeScore}%
         </span>
       </div>
+
+      <!-- 7d/30d Trend Chips -->
+      <div class="flex items-center justify-center gap-2 mb-2">
+        {#if qualityTrends.week.hasEnoughData}
+          {@const actualDays = qualityTrends.week.actualDays ?? 7}
+          {@const isLimited = actualDays < 7}
+          <TrendChip
+            direction={qualityTrends.week.direction}
+            percentChange={qualityTrends.week.percentChange}
+            period="7d"
+            higherIsBetter={true}
+            {isLimited}
+            tooltip={isLimited
+              ? `Based on ${actualDays} days of data`
+              : undefined}
+          />
+        {/if}
+        {#if qualityTrends.month.hasEnoughData}
+          {@const actualDays = qualityTrends.month.actualDays ?? 30}
+          {@const isLimited = actualDays < 30}
+          <TrendChip
+            direction={qualityTrends.month.direction}
+            percentChange={qualityTrends.month.percentChange}
+            period="30d"
+            higherIsBetter={true}
+            {isLimited}
+            tooltip={isLimited
+              ? `Based on ${actualDays} days of data`
+              : undefined}
+          />
+        {/if}
+      </div>
+      {#if hasLimitedTrendData}
+        <p class="text-center text-[10px] text-neutral-500 mb-2">
+          * Based on available historical data
+        </p>
+      {/if}
 
       <!-- Subtitle -->
       <p class="text-center text-xl text-neutral-400 mb-2">

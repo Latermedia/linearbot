@@ -11,6 +11,14 @@
     MetricsSnapshotV1,
     TeamProductivityV1,
   } from "../../../types/metrics-snapshot";
+  import type {
+    TrendDataPoint,
+    TrendsResponse,
+  } from "../../../routes/api/metrics/trends/+server";
+  import {
+    calculateMetricTrends,
+    metricExtractors,
+  } from "$lib/utils/trend-calculation";
 
   // Engineer data from API
   interface EngineerData {
@@ -58,6 +66,9 @@
   // Engineer data state
   let allEngineers = $state<EngineerData[]>([]);
 
+  // Trend data state
+  let trendDataPoints = $state<TrendDataPoint[]>([]);
+
   // Hover state for engineer popover with delay
   let pendingDetailId = $state<string | null>(null);
   let activeDetailId = $state<string | null>(null);
@@ -69,17 +80,45 @@
   const SHOW_DELAY = 300; // ms before showing popover
   const HIDE_DELAY = 150; // ms before hiding popover (allows mouse to enter)
 
-  // Fetch engineers on mount
+  // Fetch engineers and trend data on mount
   onMount(async () => {
     if (!browser) return;
     try {
-      const response = await fetch("/api/engineers");
-      const data = await response.json();
-      allEngineers = data.engineers || [];
+      // Fetch engineers and trends in parallel
+      const [engineersRes, trendsRes] = await Promise.all([
+        fetch("/api/engineers"),
+        fetch("/api/metrics/trends?level=org&limit=10000"),
+      ]);
+
+      const engineersData = await engineersRes.json();
+      allEngineers = engineersData.engineers || [];
+
+      const trendsData = (await trendsRes.json()) as TrendsResponse;
+      if (trendsData.success && trendsData.dataPoints) {
+        // Sort chronologically (oldest first)
+        trendDataPoints = trendsData.dataPoints.sort(
+          (a, b) =>
+            new Date(a.capturedAt).getTime() - new Date(b.capturedAt).getTime()
+        );
+      }
     } catch (e) {
-      console.error("Failed to fetch engineers:", e);
+      console.error("Failed to fetch data:", e);
     }
   });
+
+  // Calculate WoW and MoM trends for each pillar
+  const wipHealthTrends = $derived(
+    calculateMetricTrends(trendDataPoints, metricExtractors.wipHealth)
+  );
+  const projectHealthTrends = $derived(
+    calculateMetricTrends(trendDataPoints, metricExtractors.projectHealth)
+  );
+  const productivityTrends = $derived(
+    calculateMetricTrends(trendDataPoints, metricExtractors.productivity)
+  );
+  const qualityTrends = $derived(
+    calculateMetricTrends(trendDataPoints, metricExtractors.quality)
+  );
 
   // Filter engineers by ENGINEER_TEAM_MAPPING when a team is selected
   const filteredEngineers = $derived.by((): EngineerData[] => {
@@ -286,6 +325,9 @@
       subtitle="Engineers within WIP constraints"
       status={teamHealth?.status}
       onClick={() => onPillarClick?.("wipHealth")}
+      weekTrend={wipHealthTrends.week}
+      monthTrend={wipHealthTrends.month}
+      higherIsBetter={true}
       {variant}
     />
 
@@ -297,6 +339,9 @@
       subtitle="Projects on track"
       status={velocityHealth?.status}
       onClick={() => onPillarClick?.("projectHealth")}
+      weekTrend={projectHealthTrends.week}
+      monthTrend={projectHealthTrends.month}
+      higherIsBetter={true}
       {variant}
     />
 
@@ -309,6 +354,9 @@
       status={productivity?.status}
       underConstruction={productivityUnderConstruction}
       onClick={() => onPillarClick?.("productivity")}
+      weekTrend={productivityTrends.week}
+      monthTrend={productivityTrends.month}
+      higherIsBetter={true}
       {variant}
     />
 
@@ -320,6 +368,9 @@
       subtitle="Quality score"
       status={quality?.status}
       onClick={() => onPillarClick?.("quality")}
+      weekTrend={qualityTrends.week}
+      monthTrend={qualityTrends.month}
+      higherIsBetter={true}
       {variant}
     />
   </div>

@@ -10,6 +10,7 @@
   import ToggleGroupRoot from "$lib/components/ToggleGroupRoot.svelte";
   import ToggleGroupItem from "$lib/components/ToggleGroupItem.svelte";
   import MiniPillarRow from "$lib/components/metrics/MiniPillarRow.svelte";
+  import TrendChip from "$lib/components/metrics/TrendChip.svelte";
   import { projectsStore, databaseStore } from "$lib/stores/database";
   import {
     teamFilterStore,
@@ -22,12 +23,20 @@
     groupProjectsByDomains,
   } from "$lib/project-data";
   import { getDomainForTeam } from "../../utils/domain-mapping";
+  import {
+    calculateMetricTrends,
+    metricExtractors,
+  } from "$lib/utils/trend-calculation";
   import { Star } from "lucide-svelte";
   import type {
     VelocityHealthV1,
     MetricsSnapshotV1,
   } from "../../types/metrics-snapshot";
   import type { LatestMetricsResponse } from "../api/metrics/latest/+server";
+  import type {
+    TrendDataPoint,
+    TrendsResponse,
+  } from "../api/metrics/trends/+server";
 
   // Domain project health data for table
   interface DomainProjectHealth {
@@ -55,6 +64,9 @@
     }>
   >([]);
 
+  // Trend data state
+  let trendDataPoints = $state<TrendDataPoint[]>([]);
+
   // View state for project list
   let groupBy = $state<"team" | "domain">("team");
   let viewType = $state<"table" | "gantt">("table");
@@ -70,6 +82,30 @@
   // KaTeX for rendering math formulas
   let katex: typeof import("katex") | null = null;
   let formulaHtml = $state("");
+
+  // Fetch trend data based on current filter
+  async function fetchTrendData(level: string, levelId: string | null) {
+    if (!browser) return;
+    try {
+      const params = new URLSearchParams({ level, limit: "10000" });
+      if (levelId) params.set("levelId", levelId);
+
+      const res = await fetch(`/api/metrics/trends?${params}`);
+      const data = (await res.json()) as TrendsResponse;
+
+      if (data.success && data.dataPoints) {
+        trendDataPoints = data.dataPoints.sort(
+          (a, b) =>
+            new Date(a.capturedAt).getTime() - new Date(b.capturedAt).getTime()
+        );
+      } else {
+        trendDataPoints = [];
+      }
+    } catch (e) {
+      console.error("Failed to fetch trend data:", e);
+      trendDataPoints = [];
+    }
+  }
 
   // Initial setup
   onMount(async () => {
@@ -103,11 +139,42 @@
       // Extract org-level velocity health
       const orgSnapshot = allSnapshots.find((s) => s.level === "org");
       velocityHealth = orgSnapshot?.snapshot?.velocityHealth || null;
+
+      // Fetch initial org-level trends
+      await fetchTrendData("org", null);
     } catch (e) {
       error = e instanceof Error ? e.message : "Failed to load data";
     } finally {
       loading = false;
     }
+  });
+
+  // Re-fetch trends when filter changes
+  $effect(() => {
+    if (!browser || loading) return;
+
+    const domain = activeDomainFilter;
+    if (domain) {
+      fetchTrendData("domain", domain);
+    } else {
+      fetchTrendData("org", null);
+    }
+  });
+
+  // Calculate WoW and MoM trends
+  const projectHealthTrends = $derived(
+    calculateMetricTrends(trendDataPoints, metricExtractors.projectHealth)
+  );
+
+  // Check if any trend data is limited (actual days < expected)
+  const hasLimitedTrendData = $derived.by(() => {
+    const weekLimited =
+      projectHealthTrends.week.hasEnoughData &&
+      (projectHealthTrends.week.actualDays ?? 7) < 7;
+    const monthLimited =
+      projectHealthTrends.month.hasEnoughData &&
+      (projectHealthTrends.month.actualDays ?? 30) < 30;
+    return weekLimited || monthLimited;
   });
 
   // Status labels for computed status badge
@@ -385,6 +452,43 @@
           {displayVelocity.onTrackPercent.toFixed(0)}%
         </span>
       </div>
+
+      <!-- 7d/30d Trend Chips -->
+      <div class="flex items-center justify-center gap-2 mb-2">
+        {#if projectHealthTrends.week.hasEnoughData}
+          {@const actualDays = projectHealthTrends.week.actualDays ?? 7}
+          {@const isLimited = actualDays < 7}
+          <TrendChip
+            direction={projectHealthTrends.week.direction}
+            percentChange={projectHealthTrends.week.percentChange}
+            period="7d"
+            higherIsBetter={true}
+            {isLimited}
+            tooltip={isLimited
+              ? `Based on ${actualDays} days of data`
+              : undefined}
+          />
+        {/if}
+        {#if projectHealthTrends.month.hasEnoughData}
+          {@const actualDays = projectHealthTrends.month.actualDays ?? 30}
+          {@const isLimited = actualDays < 30}
+          <TrendChip
+            direction={projectHealthTrends.month.direction}
+            percentChange={projectHealthTrends.month.percentChange}
+            period="30d"
+            higherIsBetter={true}
+            {isLimited}
+            tooltip={isLimited
+              ? `Based on ${actualDays} days of data`
+              : undefined}
+          />
+        {/if}
+      </div>
+      {#if hasLimitedTrendData}
+        <p class="text-center text-[10px] text-neutral-500 mb-2">
+          * Based on available historical data
+        </p>
+      {/if}
 
       <!-- Subtitle -->
       <p class="text-center text-xl text-neutral-400 mb-2">

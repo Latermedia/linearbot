@@ -1,9 +1,13 @@
 <script lang="ts">
   interface Props {
-    direction: "up" | "down" | "flat";
+    direction: "up" | "down" | "flat" | "stable";
     percentChange: number;
     period: string;
     higherIsBetter?: boolean;
+    /** Whether the data is limited (actual range differs from expected) */
+    isLimited?: boolean;
+    /** Tooltip text to show on hover (for limited data explanation) */
+    tooltip?: string;
   }
 
   let {
@@ -11,17 +15,24 @@
     percentChange,
     period,
     higherIsBetter = true,
+    isLimited = false,
+    tooltip,
   }: Props = $props();
+
+  // Normalize direction (stable and flat are equivalent)
+  const normalizedDirection = $derived(
+    direction === "stable" ? "flat" : direction
+  );
 
   // Determine if the trend is positive (good) or negative (bad)
   const isPositive = $derived(
-    (direction === "up" && higherIsBetter) ||
-      (direction === "down" && !higherIsBetter)
+    (normalizedDirection === "up" && higherIsBetter) ||
+      (normalizedDirection === "down" && !higherIsBetter)
   );
 
   const isNegative = $derived(
-    (direction === "down" && higherIsBetter) ||
-      (direction === "up" && !higherIsBetter)
+    (normalizedDirection === "down" && higherIsBetter) ||
+      (normalizedDirection === "up" && !higherIsBetter)
   );
 
   // Format the percent change for display
@@ -29,7 +40,11 @@
 
   // Arrow symbol based on direction
   const arrow = $derived(
-    direction === "up" ? "↑" : direction === "down" ? "↓" : "→"
+    normalizedDirection === "up"
+      ? "↑"
+      : normalizedDirection === "down"
+        ? "↓"
+        : "→"
   );
 </script>
 
@@ -39,8 +54,11 @@
     : isNegative
       ? 'bg-red-500/10 text-red-400'
       : 'bg-neutral-500/10 text-neutral-400'}"
+  title={tooltip}
 >
   <span>{arrow}</span>
   <span>{displayPercent}%</span>
-  <span class="text-neutral-500">{period}</span>
+  <span class="text-neutral-500"
+    >{period}{#if isLimited}*{/if}</span
+  >
 </span>
