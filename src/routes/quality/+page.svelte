@@ -424,14 +424,12 @@
           How it's calculated
         </h3>
         <p class="text-sm text-neutral-400">
-          Three components, each clamped 0–100: <strong class="text-neutral-300"
-            >bug count</strong
-          >
-          (30% weight, 0 at 100+ bugs),
-          <strong class="text-neutral-300">net change</strong> (40% weight,
-          penalizes +10 new bugs), and
-          <strong class="text-neutral-300">average age</strong> (30% weight, 0 at
-          200+ days). 100% = zero bugs.
+          Three components: <strong class="text-neutral-300">bug count</strong>
+          (0 at 100+ bugs),
+          <strong class="text-neutral-300">net change</strong> (rewards closing
+          bugs, 0 at +10 net new), and
+          <strong class="text-neutral-300">average age</strong> (0 at 200+ days).
+          100% = zero bugs.
         </p>
 
         <!-- Formula -->
