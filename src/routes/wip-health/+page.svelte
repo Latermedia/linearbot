@@ -136,8 +136,12 @@
 
   // Filter to only mapped engineers (or all if no mapping configured)
   // Also filter by domain if active
+  // IMPORTANT: Only include engineers with active WIP (wip_issue_count > 0) to match snapshot calculation
   const engineers = $derived.by(() => {
     let filtered = allEngineers;
+
+    // Filter to engineers with active WIP to match snapshot calculation
+    filtered = filtered.filter((e) => e.wip_issue_count > 0);
 
     // Filter by mapping if configured
     if (hasMappingConfigured) {
@@ -157,26 +161,6 @@
     }
 
     return filtered;
-  });
-
-  // Calculate total engineer count (filtered by domain if active)
-  const totalEngineerCount = $derived.by(() => {
-    if (!hasMappingConfigured) return engineers.length;
-
-    // If domain filter is active, count only engineers in that domain
-    if (activeDomainFilter) {
-      let count = 0;
-      for (const [, teamKey] of Object.entries(engineerTeamMapping)) {
-        const domain = getDomainForTeam(teamKey);
-        if (domain === activeDomainFilter) {
-          count++;
-        }
-      }
-      return count;
-    }
-
-    // No filter, return all mapped engineers
-    return teamMappedEngineerNames.size;
   });
 
   // Extract domain-level WIP health data for table (filtered by active domain)
@@ -223,27 +207,11 @@
   // Use filtered domain health if filter is active, otherwise org-level
   const displayHealth = $derived(filteredDomainHealth || teamHealth);
 
-  // Engineers with 6+ issues
-  const wipViolationEngineers = $derived(
-    engineers.filter((e) => e.wip_limit_violation === 1)
-  );
-
-  // Engineers on 2+ projects
-  const multiProjectEngineers = $derived(
-    engineers.filter((e) => e.multi_project_violation === 1)
-  );
-
-  // Combined: engineers with ANY violation (union of both)
+  // Combined: engineers with ANY violation (WIP 6+ issues OR 2+ projects)
   const overloadedEngineers = $derived(
     engineers.filter(
       (e) => e.wip_limit_violation === 1 || e.multi_project_violation === 1
     )
-  );
-
-  // Healthy count = total - overloaded
-  // This accounts for engineers in the mapping who have no WIP data (they have 0 issues = healthy)
-  const healthyCount = $derived(
-    totalEngineerCount - overloadedEngineers.length
   );
 
   // Status indicator colors
@@ -261,15 +229,28 @@
     unknown: "Unknown",
   };
 
-  // Calculate healthy percentage
+  // Use snapshot data for hero metrics (more reliable than re-computing from engineers)
+  // This ensures consistency with the overview table and handles domain filtering correctly
   const healthyPercent = $derived(
-    totalEngineerCount > 0
-      ? ((healthyCount / totalEngineerCount) * 100).toFixed(0)
-      : "0"
+    displayHealth?.healthyWorkloadPercent?.toFixed(0) ?? "0"
   );
 
-  // Determine status based on healthy percentage
+  const totalEngineerCount = $derived(displayHealth?.totalIcCount ?? 0);
+
+  const healthyCount = $derived(displayHealth?.healthyIcCount ?? 0);
+
+  // Determine status from snapshot or compute from percentage
   const computedStatus = $derived.by((): "healthy" | "warning" | "critical" => {
+    if (displayHealth?.status) {
+      const status = displayHealth.status;
+      if (
+        status === "healthy" ||
+        status === "warning" ||
+        status === "critical"
+      ) {
+        return status;
+      }
+    }
     const pct = parseFloat(healthyPercent);
     if (pct >= 80) return "healthy";
     if (pct >= 60) return "warning";
@@ -343,10 +324,11 @@
 
       <!-- Breakdown row -->
       <div class="flex items-center justify-center gap-8 lg:gap-16 mt-8">
-        <!-- Overloaded (combined) -->
+        <!-- Overloaded (combined) - use snapshot data -->
         <div class="text-center">
           <div class="text-4xl lg:text-5xl font-bold text-white">
-            {overloadedEngineers.length}
+            {(displayHealth?.totalIcCount ?? 0) -
+              (displayHealth?.healthyIcCount ?? 0)}
           </div>
           <div class="text-sm text-neutral-400 mt-1">Overloaded</div>
           <div class="text-xs text-neutral-500">need attention</div>
@@ -355,10 +337,10 @@
         <!-- Divider -->
         <div class="h-12 w-px bg-white/10"></div>
 
-        <!-- 6+ issues breakdown -->
+        <!-- 6+ issues breakdown - use snapshot data -->
         <div class="text-center opacity-70">
           <div class="text-3xl lg:text-4xl font-bold text-white">
-            {wipViolationEngineers.length}
+            {displayHealth?.wipViolationCount ?? 0}
           </div>
           <div class="text-sm text-neutral-400 mt-1">6+ issues</div>
         </div>
@@ -366,10 +348,10 @@
         <!-- Divider -->
         <div class="h-12 w-px bg-white/10"></div>
 
-        <!-- Context-switching breakdown -->
+        <!-- Context-switching breakdown - use snapshot data -->
         <div class="text-center opacity-70">
           <div class="text-3xl lg:text-4xl font-bold text-white">
-            {multiProjectEngineers.length}
+            {displayHealth?.multiProjectViolationCount ?? 0}
           </div>
           <div class="text-sm text-neutral-400 mt-1">2+ projects</div>
         </div>
@@ -380,8 +362,7 @@
         <!-- Projects impacted -->
         <div class="text-center opacity-70">
           <div class="text-3xl lg:text-4xl font-bold text-white">
-            {displayHealth?.impactedProjectCount ??
-              teamHealth.impactedProjectCount}
+            {displayHealth?.impactedProjectCount ?? 0}
           </div>
           <div class="text-sm text-neutral-400 mt-1">Projects impacted</div>
         </div>
