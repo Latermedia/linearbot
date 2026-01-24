@@ -2,20 +2,21 @@
  * Quality Health Pillar Calculation
  *
  * Core Question: Are we building stable or creating debt?
- * Core Metric: Composite score based on bug metrics (per-engineer scaling)
+ * Core Metric: Composite score based on bug metrics (absolute values)
  *
  * Metrics:
- * - Total open bugs (scaled per engineer)
+ * - Total open bugs
  * - Bugs opened in period (14 days)
  * - Bugs closed in period (14 days)
- * - Net bug change (opened - closed, scaled per engineer)
+ * - Net bug change (opened - closed)
  * - Average age of open bugs
  * - Max age of open bugs
  *
  * Composite Score (0-100, higher = healthier):
- * - 30% weight: Bugs per engineer penalty
- * - 40% weight: Net bug change per engineer penalty
- * - 30% weight: Average age penalty
+ * Each component is clamped to 0-100 before weighting:
+ * - 30% weight: Open bug count (0 bugs = 100, 100+ bugs = 0)
+ * - 40% weight: Net bug change (closing bugs = 100, +10 net bugs = 0)
+ * - 30% weight: Average age (0 days = 100, 200+ days = 0)
  *
  * Status Thresholds (unified with all pillars):
  * - >= 90% = healthy
@@ -104,53 +105,59 @@ export function calculateIssueAgeDays(issue: Issue): number {
 }
 
 /**
- * Per-engineer scaling thresholds for quality score
+ * Quality score thresholds (absolute values, not per-engineer)
  *
  * These determine when each component score hits zero:
- * - BUG_PENALTY_PER_ENG: 12 → score = 0 at ~8.3 bugs per engineer
- * - NET_PENALTY_PER_ENG: 200 → score = 0 at 0.5 net new bugs per engineer (14 days)
+ * - BUG_PENALTY: 1 → score = 0 at 100 open bugs
+ * - NET_PENALTY: 10 → score = 0 at +10 net new bugs in period
  * - AGE_PENALTY_PER_DAY: 0.5 → score = 0 at 200 days average age
+ *
+ * Each component is clamped to 0-100 before applying weights,
+ * ensuring no single component can inflate the total score.
  */
-const BUG_PENALTY_PER_ENG = 12;
-const NET_PENALTY_PER_ENG = 200;
+const BUG_PENALTY = 1;
+const NET_PENALTY = 10;
 const AGE_PENALTY_PER_DAY = 0.5;
 
 /**
- * Calculate composite quality score (per-engineer scaling)
+ * Calculate composite quality score (absolute values, properly clamped)
  *
- * Weights:
- * - 30%: Bugs per engineer
- * - 40%: Net bug change per engineer (14 days)
- * - 30%: Average age of open bugs
+ * Weights (sum to 1.0):
+ * - 30%: Open bug count penalty
+ * - 40%: Net bug change penalty (14-day period)
+ * - 30%: Average age of open bugs penalty
+ *
+ * Each component is individually clamped to 0-100 before weighting,
+ * ensuring no component can inflate the total beyond its weight allocation.
  *
  * @param openCount - Number of open bugs
  * @param netChange - Net bugs added (opened - closed)
  * @param avgAge - Average age of open bugs in days
- * @param engineerCount - Number of engineers for scaling (defaults to 1)
  * @returns Score from 0-100 (higher = healthier)
  */
 export function calculateCompositeScore(
   openCount: number,
   netChange: number,
-  avgAge: number,
-  engineerCount: number = 1
+  avgAge: number
 ): number {
-  const engCount = Math.max(1, engineerCount);
+  // Calculate individual scores (0-100 each, clamped)
+  // bugScore: 0 bugs = 100, 100 bugs = 0
+  const bugScore = Math.min(100, Math.max(0, 100 - openCount * BUG_PENALTY));
 
-  // Per-engineer metrics
-  const bugsPerEng = openCount / engCount;
-  const netPerEng = netChange / engCount;
+  // netScore: -10 or fewer = 100 (closing bugs is good), +10 or more = 0
+  // Negative net change (closing more than opening) is rewarded but capped at 100
+  const netScore = Math.min(100, Math.max(0, 100 - netChange * NET_PENALTY));
 
-  // Calculate individual scores (0-100 each)
-  const bugScore = Math.max(0, 100 - bugsPerEng * BUG_PENALTY_PER_ENG);
-  const netScore = Math.max(0, 100 - netPerEng * NET_PENALTY_PER_ENG);
-  const ageScore = Math.max(0, 100 - avgAge * AGE_PENALTY_PER_DAY);
+  // ageScore: 0 days = 100, 200 days = 0
+  const ageScore = Math.min(
+    100,
+    Math.max(0, 100 - avgAge * AGE_PENALTY_PER_DAY)
+  );
 
-  // Apply weights and clamp to 0-100 range
-  // (netScore can exceed 100 when closing more bugs than opening)
+  // Apply weights (sum to 1.0) - each component contributes its weighted portion
   const weightedScore = bugScore * 0.3 + netScore * 0.4 + ageScore * 0.3;
 
-  return Math.round(Math.min(100, weightedScore));
+  return Math.round(weightedScore);
 }
 
 /**
@@ -174,14 +181,12 @@ export function getQualityStatus(compositeScore: number) {
  * @param issues - All issues to analyze
  * @param periodDays - Measurement period in days (default 14)
  * @param issueFilter - Optional filter function to scope to specific issues
- * @param engineerCount - Number of engineers for per-engineer scaling (default 1)
  * @returns QualityHealthV1 metrics object
  */
 export function calculateQualityHealth(
   issues: Issue[],
   periodDays: number = DEFAULT_PERIOD_DAYS,
-  issueFilter?: (issue: Issue) => boolean,
-  engineerCount: number = 1
+  issueFilter?: (issue: Issue) => boolean
 ): QualityHealthV1 {
   const now = Date.now();
   const periodStart = now - periodDays * 24 * 60 * 60 * 1000;
@@ -216,12 +221,11 @@ export function calculateQualityHealth(
   // Calculate net change
   const netChange = bugsOpened.length - bugsClosed.length;
 
-  // Calculate composite score (scaled by engineer count)
+  // Calculate composite score (absolute values, properly clamped)
   const compositeScore = calculateCompositeScore(
     openBugs.length,
     netChange,
-    avgAge,
-    engineerCount
+    avgAge
   );
 
   // Determine status
@@ -245,20 +249,17 @@ export function calculateQualityHealth(
  * @param teamKey - The team key to filter by
  * @param issues - All issues
  * @param periodDays - Measurement period in days
- * @param engineerCount - Number of engineers for per-engineer scaling
  * @returns QualityHealthV1 for the team
  */
 export function calculateQualityHealthForTeam(
   teamKey: string,
   issues: Issue[],
-  periodDays: number = DEFAULT_PERIOD_DAYS,
-  engineerCount: number = 1
+  periodDays: number = DEFAULT_PERIOD_DAYS
 ): QualityHealthV1 {
   return calculateQualityHealth(
     issues,
     periodDays,
-    (issue) => issue.team_key.toUpperCase() === teamKey.toUpperCase(),
-    engineerCount
+    (issue) => issue.team_key.toUpperCase() === teamKey.toUpperCase()
   );
 }
 
@@ -268,22 +269,17 @@ export function calculateQualityHealthForTeam(
  * @param domainTeamKeys - Array of team keys in the domain
  * @param issues - All issues
  * @param periodDays - Measurement period in days
- * @param engineerCount - Number of engineers for per-engineer scaling
  * @returns QualityHealthV1 for the domain
  */
 export function calculateQualityHealthForDomain(
   domainTeamKeys: string[],
   issues: Issue[],
-  periodDays: number = DEFAULT_PERIOD_DAYS,
-  engineerCount: number = 1
+  periodDays: number = DEFAULT_PERIOD_DAYS
 ): QualityHealthV1 {
   const domainKeysUpper = domainTeamKeys.map((k) => k.toUpperCase());
 
-  return calculateQualityHealth(
-    issues,
-    periodDays,
-    (issue) => domainKeysUpper.includes(issue.team_key.toUpperCase()),
-    engineerCount
+  return calculateQualityHealth(issues, periodDays, (issue) =>
+    domainKeysUpper.includes(issue.team_key.toUpperCase())
   );
 }
 

@@ -199,13 +199,8 @@ function buildMetricsSnapshot(
       teamHealth = { ...teamHealth, totalIcCount: configuredEngineerCount };
     }
 
-    // Quality health uses engineer count for per-engineer scaling
-    qualityHealth = calculateQualityHealth(
-      issues,
-      undefined,
-      undefined,
-      engineerCount
-    );
+    // Quality health (absolute values, no per-engineer scaling)
+    qualityHealth = calculateQualityHealth(issues);
 
     // Calculate org-level productivity from GetDX
     const productivityResult = getdxMetrics
@@ -244,13 +239,8 @@ function buildMetricsSnapshot(
       teamHealth = { ...teamHealth, totalIcCount: configuredEngineerCount };
     }
 
-    // Quality health uses engineer count for per-engineer scaling
-    qualityHealth = calculateQualityHealthForDomain(
-      domainTeamKeys,
-      issues,
-      undefined,
-      engineerCount
-    );
+    // Quality health (absolute values, no per-engineer scaling)
+    qualityHealth = calculateQualityHealthForDomain(domainTeamKeys, issues);
 
     // Calculate domain-level productivity from GetDX
     const productivityResult = getdxMetrics
@@ -283,22 +273,14 @@ function buildMetricsSnapshot(
     );
     velocityHealth = calculateVelocityHealthForTeam(levelId, projects);
 
-    // Use engineer count from ENGINEER_TEAM_MAPPING for this team, else fall back to IC count
-    const configuredEngineerCount = getEngineerCountFromMapping(levelId);
-    const engineerCount = configuredEngineerCount ?? teamHealth.totalIcCount;
-
     // Override totalIcCount with configured count for display purposes
+    const configuredEngineerCount = getEngineerCountFromMapping(levelId);
     if (configuredEngineerCount !== null) {
       teamHealth = { ...teamHealth, totalIcCount: configuredEngineerCount };
     }
 
-    // Quality health uses engineer count for per-engineer scaling
-    qualityHealth = calculateQualityHealthForTeam(
-      levelId,
-      issues,
-      undefined,
-      engineerCount
-    );
+    // Quality health (absolute values, no per-engineer scaling)
+    qualityHealth = calculateQualityHealthForTeam(levelId, issues);
 
     // Team-level productivity is pending (future work)
     teamProductivity = calculateProductivityHealthForTeam();
@@ -312,20 +294,13 @@ function buildMetricsSnapshot(
     );
     velocityHealth = calculateVelocityHealth(projects);
 
-    const configuredEngineerCount = getEngineerCountFromMapping();
-    const engineerCount = configuredEngineerCount ?? teamHealth.totalIcCount;
-
     // Override totalIcCount with configured count for display purposes
+    const configuredEngineerCount = getEngineerCountFromMapping();
     if (configuredEngineerCount !== null) {
       teamHealth = { ...teamHealth, totalIcCount: configuredEngineerCount };
     }
 
-    qualityHealth = calculateQualityHealth(
-      issues,
-      undefined,
-      undefined,
-      engineerCount
-    );
+    qualityHealth = calculateQualityHealth(issues);
     teamProductivity = {
       status: "pending",
       notes: "Invalid level configuration",

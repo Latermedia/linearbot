@@ -10,6 +10,7 @@
     "year-in-review": "bun run scripts/year-in-review.ts",
     "explore": "bun run scripts/explore-linear-data.ts",
     "reset-db": "bun run scripts/reset-db.ts",
+    "migrate:quality-scores": "bun run scripts/migrate-quality-scores.ts",
     "release-prepare": "bun run scripts/release-prepare.ts",
     "release-prepare-patch": "bun run scripts/release-prepare.ts patch",
     "release-prepare-minor": "bun run scripts/release-prepare.ts minor",
