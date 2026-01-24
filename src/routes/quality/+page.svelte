@@ -91,7 +91,7 @@
     import("katex").then((k) => {
       katex = k;
       formulaHtml = katex.default.renderToString(
-        "\\text{Quality Score} = 100 - \\left( w_1 \\cdot \\frac{\\text{Open Bugs}}{\\text{Threshold}} + w_2 \\cdot \\frac{\\text{Avg Age}}{\\text{Max Age}} + w_3 \\cdot \\max(0, \\text{Net Change}) \\right)",
+        "\\text{Score} = 0.3 \\times \\underbrace{(100 - \\text{Bugs})}_{\\text{Bug Score}} + 0.4 \\times \\underbrace{(100 - \\text{Net} \\times 10)}_{\\text{Net Score}} + 0.3 \\times \\underbrace{(100 - \\text{Age} \\times 0.5)}_{\\text{Age Score}}",
         { throwOnError: false, displayMode: true }
       );
     });
@@ -424,12 +424,14 @@
           How it's calculated
         </h3>
         <p class="text-sm text-neutral-400">
-          The composite score combines <strong class="text-neutral-300"
-            >open bug count</strong
-          >,
-          <strong class="text-neutral-300">average bug age</strong>, and
-          <strong class="text-neutral-300">14-day backlog trend</strong>. Higher
-          scores indicate healthier quality; 100% means zero bugs.
+          Three components, each clamped 0–100: <strong class="text-neutral-300"
+            >bug count</strong
+          >
+          (30% weight, 0 at 100+ bugs),
+          <strong class="text-neutral-300">net change</strong> (40% weight,
+          penalizes +10 new bugs), and
+          <strong class="text-neutral-300">average age</strong> (30% weight, 0 at
+          200+ days). 100% = zero bugs.
         </p>
 
         <!-- Formula -->
