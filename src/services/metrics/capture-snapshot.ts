@@ -29,6 +29,7 @@ import {
   calculateTeamHealth,
   calculateTeamHealthForTeam,
   calculateTeamHealthForDomain,
+  type EngineerTeamMapping,
 } from "./team-health.js";
 import {
   calculateVelocityHealth,
@@ -120,6 +121,31 @@ function getEngineerCountForDomain(domainName: string): number | null {
 }
 
 /**
+ * Parse ENGINEER_TEAM_MAPPING env var into an EngineerTeamMapping object.
+ * This is used to filter engineers in team health calculations.
+ *
+ * @returns EngineerTeamMapping object or undefined if not configured
+ */
+function getEngineerTeamMapping(): EngineerTeamMapping | undefined {
+  const mapping = process.env.ENGINEER_TEAM_MAPPING;
+  if (!mapping) {
+    return undefined;
+  }
+
+  const result: EngineerTeamMapping = {};
+  const pairs = mapping.split(",");
+
+  for (const pair of pairs) {
+    const [engineer, team] = pair.split(":").map((s) => s.trim());
+    if (engineer && team) {
+      result[engineer] = team;
+    }
+  }
+
+  return Object.keys(result).length > 0 ? result : undefined;
+}
+
+/**
  * Result of a snapshot capture operation
  */
 export interface CaptureResult {
@@ -152,13 +178,26 @@ function buildMetricsSnapshot(
   let qualityHealth;
   let teamProductivity: TeamProductivityV1;
 
+  // Get engineer team mapping (used for filtering engineers in team health)
+  const engineerTeamMapping = getEngineerTeamMapping();
+
   if (level === "org") {
-    teamHealth = calculateTeamHealth(engineers, projects);
+    teamHealth = calculateTeamHealth(
+      engineers,
+      projects,
+      undefined,
+      engineerTeamMapping
+    );
     velocityHealth = calculateVelocityHealth(projects);
 
     // Use engineer count from ENGINEER_TEAM_MAPPING if configured, else fall back to IC count
-    const engineerCount =
-      getEngineerCountFromMapping() ?? teamHealth.totalIcCount;
+    const configuredEngineerCount = getEngineerCountFromMapping();
+    const engineerCount = configuredEngineerCount ?? teamHealth.totalIcCount;
+
+    // Override totalIcCount with configured count for display purposes
+    if (configuredEngineerCount !== null) {
+      teamHealth = { ...teamHealth, totalIcCount: configuredEngineerCount };
+    }
 
     // Quality health uses engineer count for per-engineer scaling
     qualityHealth = calculateQualityHealth(
@@ -191,13 +230,19 @@ function buildMetricsSnapshot(
       domainTeamKeys,
       engineers,
       projects,
-      issues
+      issues,
+      engineerTeamMapping
     );
     velocityHealth = calculateVelocityHealthForDomain(domainTeamKeys, projects);
 
     // Use engineer count from ENGINEER_TEAM_MAPPING if configured, else fall back to IC count
-    const engineerCount =
-      getEngineerCountForDomain(levelId) ?? teamHealth.totalIcCount;
+    const configuredEngineerCount = getEngineerCountForDomain(levelId);
+    const engineerCount = configuredEngineerCount ?? teamHealth.totalIcCount;
+
+    // Override totalIcCount with configured count for display purposes
+    if (configuredEngineerCount !== null) {
+      teamHealth = { ...teamHealth, totalIcCount: configuredEngineerCount };
+    }
 
     // Quality health uses engineer count for per-engineer scaling
     qualityHealth = calculateQualityHealthForDomain(
@@ -233,13 +278,19 @@ function buildMetricsSnapshot(
       levelId,
       engineers,
       projects,
-      issues
+      issues,
+      engineerTeamMapping
     );
     velocityHealth = calculateVelocityHealthForTeam(levelId, projects);
 
     // Use engineer count from ENGINEER_TEAM_MAPPING for this team, else fall back to IC count
-    const engineerCount =
-      getEngineerCountFromMapping(levelId) ?? teamHealth.totalIcCount;
+    const configuredEngineerCount = getEngineerCountFromMapping(levelId);
+    const engineerCount = configuredEngineerCount ?? teamHealth.totalIcCount;
+
+    // Override totalIcCount with configured count for display purposes
+    if (configuredEngineerCount !== null) {
+      teamHealth = { ...teamHealth, totalIcCount: configuredEngineerCount };
+    }
 
     // Quality health uses engineer count for per-engineer scaling
     qualityHealth = calculateQualityHealthForTeam(
@@ -253,11 +304,21 @@ function buildMetricsSnapshot(
     teamProductivity = calculateProductivityHealthForTeam();
   } else {
     // Fallback to org-level if something is wrong
-    teamHealth = calculateTeamHealth(engineers, projects);
+    teamHealth = calculateTeamHealth(
+      engineers,
+      projects,
+      undefined,
+      engineerTeamMapping
+    );
     velocityHealth = calculateVelocityHealth(projects);
 
-    const engineerCount =
-      getEngineerCountFromMapping() ?? teamHealth.totalIcCount;
+    const configuredEngineerCount = getEngineerCountFromMapping();
+    const engineerCount = configuredEngineerCount ?? teamHealth.totalIcCount;
+
+    // Override totalIcCount with configured count for display purposes
+    if (configuredEngineerCount !== null) {
+      teamHealth = { ...teamHealth, totalIcCount: configuredEngineerCount };
+    }
 
     qualityHealth = calculateQualityHealth(
       issues,
