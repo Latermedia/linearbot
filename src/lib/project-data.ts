@@ -1,6 +1,7 @@
 import type { Issue, Project } from "../db/schema";
 import { getAllProjects } from "./queries";
 import { getDomainForTeam, getAllDomains } from "../utils/domain-mapping";
+import { getTeamNameByKey } from "../utils/team-name-mapping";
 import type { ProjectUpdate } from "../linear/client";
 import { isPlannedProject } from "../utils/status-helpers";
 
@@ -206,12 +207,16 @@ export function groupProjectsByTeams(
         const teamIssue = projectIssues.find((i) => i.team_key === teamKey);
         // Fallback to team info from other issues (for projects without issues in current filter)
         const fallbackTeamInfo = teamInfoMap.get(teamKey);
+        // Use team name mapping as final fallback (loaded from config at startup)
+        const teamName =
+          teamIssue?.team_name ||
+          fallbackTeamInfo?.teamName ||
+          getTeamNameByKey(teamKey);
         teamMap.set(teamKey, {
           projects: [],
           teamInfo: {
             teamId: teamIssue?.team_id || fallbackTeamInfo?.teamId || teamKey,
-            teamName:
-              teamIssue?.team_name || fallbackTeamInfo?.teamName || teamKey,
+            teamName,
             teamKey,
           },
         });
@@ -234,16 +239,6 @@ export function groupProjectsByTeams(
       }
     }
 
-    if (teamInfo.teamName === "Creator Applications" || teamKey === "APP") {
-      console.log("[groupProjectsByTeams] Team mapping:", {
-        teamKey,
-        teamName: teamInfo.teamName,
-        domain,
-        projectsCount: uniqueProjects.length,
-        hadDuplicates: projects.length !== uniqueProjects.length,
-      });
-    }
-
     teams.push({
       teamId: teamInfo.teamId,
       teamName: teamInfo.teamName,
@@ -262,16 +257,6 @@ export function groupProjectsByTeams(
 export function groupProjectsByDomains(teams: TeamSummary[]): DomainSummary[] {
   const domainMap = new Map<string, DomainSummary>();
   const allDomains = getAllDomains();
-
-  console.log("[groupProjectsByDomains] All domains from mapping:", allDomains);
-  console.log(
-    "[groupProjectsByDomains] Teams with domains:",
-    teams.map((t) => ({
-      team: t.teamName,
-      teamKey: t.teamKey,
-      domain: t.domain,
-    }))
-  );
 
   // Initialize all domains from the mapping
   for (const domainName of allDomains) {
@@ -336,16 +321,6 @@ export function groupProjectsByDomains(teams: TeamSummary[]): DomainSummary[] {
       );
     }
   }
-
-  console.log(
-    "[groupProjectsByDomains] Final domains:",
-    domains.map((d) => ({
-      domain: d.domainName,
-      teams: d.teams.length,
-      projects: d.projects.length,
-      uniqueProjects: new Set(d.projects.map((p) => p.projectId)).size,
-    }))
-  );
 
   return domains.sort((a, b) => {
     // Put "Unmapped" at the end

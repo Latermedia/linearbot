@@ -61,15 +61,6 @@ export function getDomainForTeam(teamKey: string): DomainName | null {
     return TEAM_TO_DOMAIN[matchingKey];
   }
 
-  if (teamKey === "APP" || teamKey.toLowerCase() === "app") {
-    console.log(
-      "[getDomainForTeam] No match for team:",
-      teamKey,
-      "Available keys:",
-      Object.keys(TEAM_TO_DOMAIN)
-    );
-  }
-
   return null;
 }
 
