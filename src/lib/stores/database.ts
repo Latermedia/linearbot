@@ -2,10 +2,8 @@ import { writable, derived } from "svelte/store";
 import { browser } from "$app/environment";
 import type { Issue } from "../../db/schema";
 import { getIssuesWithProjects } from "../queries";
-import {
-  initializeDomainMappings,
-  getAllDomains,
-} from "../../utils/domain-mapping";
+import { initializeDomainMappings } from "../../utils/domain-mapping";
+import { initializeTeamNameMappings } from "../../utils/team-name-mapping";
 import {
   processProjects,
   groupProjectsByTeams,
@@ -21,36 +19,65 @@ interface DatabaseState {
   error: string | null;
   issues: Issue[];
   lastSync: Date | null;
+  configLoaded: boolean;
 }
 
-async function loadConfig() {
-  if (!browser) return;
+// Track if config loading is in progress to avoid duplicate calls
+let configLoadPromise: Promise<void> | null = null;
 
-  try {
-    const response = await fetch("/api/config");
-    if (response.ok) {
-      const config = await response.json();
-      if (config.teamDomainMappings) {
-        console.log(
-          "[loadConfig] Initializing domain mappings:",
-          Object.keys(config.teamDomainMappings).length,
-          "teams"
-        );
-        initializeDomainMappings(config.teamDomainMappings);
-        const domains = getAllDomains();
-        console.log("[loadConfig] Available domains:", domains);
-      } else {
-        console.warn("[loadConfig] No teamDomainMappings in config");
-      }
-    } else {
-      console.error(
-        "[loadConfig] Config API returned status:",
-        response.status
-      );
-    }
-  } catch (error) {
-    console.error("[loadConfig] Failed to load config:", error);
+async function loadConfig() {
+  if (!browser) {
+    return;
   }
+
+  // Return existing promise if already loading
+  if (configLoadPromise) {
+    return configLoadPromise;
+  }
+
+  configLoadPromise = (async () => {
+    try {
+      const response = await fetch("/api/config");
+      if (response.ok) {
+        const config = await response.json();
+        if (config.teamDomainMappings) {
+          console.log(
+            "[loadConfig] Initializing domain mappings:",
+            Object.keys(config.teamDomainMappings).length,
+            "teams"
+          );
+          initializeDomainMappings(config.teamDomainMappings);
+        } else {
+          console.warn("[loadConfig] No teamDomainMappings in config");
+        }
+        if (config.teamNameMappings) {
+          console.log(
+            "[loadConfig] Initializing team name mappings:",
+            Object.keys(config.teamNameMappings).length,
+            "teams"
+          );
+          initializeTeamNameMappings(config.teamNameMappings);
+        } else {
+          console.warn("[loadConfig] No teamNameMappings in config");
+        }
+      } else {
+        console.error(
+          "[loadConfig] Config API returned status:",
+          response.status
+        );
+      }
+    } catch (error) {
+      console.error("[loadConfig] Failed to load config:", error);
+    }
+  })();
+
+  return configLoadPromise;
+}
+
+// Eagerly load config when module is first imported in browser
+// This ensures domain mappings are available before any projects are processed
+if (browser) {
+  loadConfig();
 }
 
 function createDatabaseStore() {
@@ -59,6 +86,7 @@ function createDatabaseStore() {
     error: null,
     issues: [],
     lastSync: null,
+    configLoaded: false,
   });
 
   return {
@@ -103,6 +131,7 @@ function createDatabaseStore() {
         error: null,
         issues: [],
         lastSync: null,
+        configLoaded: false,
       });
     },
     async refreshProject(projectId: string) {
@@ -157,6 +186,13 @@ databaseStore.subscribe(async ($db) => {
   if ($db.loading) {
     return;
   }
+
+  // Wait for config to be loaded before processing projects
+  // This ensures domain mappings are available
+  if (configLoadPromise) {
+    await configLoadPromise;
+  }
+
   console.log("[projectsStore] Loading projects from database...");
   try {
     const projects = await processProjects();
