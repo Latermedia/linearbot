@@ -6,6 +6,7 @@
   import SyncModal from "./SyncModal.svelte";
   import { isAuthenticated } from "$lib/stores/auth";
   import { syncStatusStore } from "$lib/stores/sync-status";
+  import { sidebarCollapsed } from "$lib/stores/sidebar";
 
   let {
     projectId,
@@ -24,6 +25,8 @@
     null
   );
   let syncingProjectId = $state<string | null>(null);
+
+  const isCollapsed = $derived($sidebarCollapsed);
 
   // Keyboard shortcut: Cmd+Shift+S (Mac) or Ctrl+Shift+S (Windows/Linux)
   $effect(() => {
@@ -138,89 +141,96 @@
 </script>
 
 {#if $isAuthenticated}
-  <!-- Always show sync indicator, but with different styles based on state -->
-  <div
-    class="flex relative items-center m-0 text-sm text-neutral-600 dark:text-neutral-400"
+  <!-- Sync button styled like other nav items -->
+  <button
+    type="button"
+    class="group relative w-full flex items-center gap-3 px-3 py-2 text-sm font-medium rounded transition-colors duration-150 cursor-pointer overflow-hidden
+      {hasError
+      ? 'text-red-400 hover:text-red-300 hover:bg-red-500/10 border border-red-500/30'
+      : isSyncing
+        ? 'text-neutral-400'
+        : 'text-neutral-400 hover:text-white hover:bg-white/5'}
+      {isCollapsed ? 'justify-center' : ''}"
+    title={isCollapsed
+      ? tooltipText() ||
+        (isSyncing ? "Syncing..." : hasError ? "Sync error" : "Sync (⌘⇧S)")
+      : undefined}
+    onclick={() => {
+      showSyncModal = true;
+    }}
   >
-    <!-- Container with progress bar background -->
-    <div
-      class="relative px-3 py-1.5 overflow-clip rounded-md sync-container bg-neutral-100 dark:bg-white/5 cursor-pointer {hasError
-        ? 'border border-red-500/50'
-        : isSyncing
-          ? ''
-          : 'hover:bg-neutral-200 dark:hover:bg-white/10'} transition-colors"
-      title={tooltipText() ||
-        (isSyncing
-          ? "Click to view sync progress"
-          : "Click to sync (Cmd+Shift+S)")}
-      onclick={() => {
-        showSyncModal = true;
-      }}
-      role="button"
-      tabindex="0"
-      onkeydown={(e) => {
-        if (e.key === "Enter" || e.key === " ") {
-          e.preventDefault();
-          showSyncModal = true;
-        }
-      }}
-    >
-      <!-- Progress bar fill (only show when syncing or error) -->
-      {#if isSyncing || hasError}
-        <div
-          class="absolute inset-0 rounded-l-md transition-all duration-300 ease-out {hasError
-            ? 'bg-red-500/20 dark:bg-red-500/30'
-            : 'bg-gray-500/15 dark:bg-gray-500/25'}"
-          style="width: {displayProgress}%;"
-        ></div>
-      {/if}
+    <!-- Progress bar fill (only show when syncing or error) -->
+    {#if isSyncing || hasError}
+      <div
+        class="absolute inset-0 rounded transition-all duration-300 ease-out {hasError
+          ? 'bg-red-500/10'
+          : 'bg-white/5'}"
+        style="width: {displayProgress}%;"
+      ></div>
+    {/if}
 
-      <!-- Content overlay -->
-      <div class="flex relative gap-2 items-center">
-        {#if isSyncing || hasError}
-          <!-- 3x3 grid animation (Linear-style) -->
-          <div class="grid grid-cols-3 gap-0.5 w-4 h-4">
-            {#each Array(9) as _, i}
-              <div
-                class="sync-block w-full h-full rounded-[1px] {hasError
-                  ? 'bg-red-500'
-                  : 'bg-current'}"
-                style="animation-delay: {delays[i]}s;"
-              ></div>
-            {/each}
-          </div>
-          <span
-            class="text-xs font-medium whitespace-nowrap {hasError
-              ? 'text-red-600 dark:text-red-400'
-              : ''}"
-          >
-            {hasError
-              ? hasPartialSync
-                ? "Partial sync"
-                : "Sync error"
-              : "Syncing..."}
-          </span>
-        {:else}
-          <!-- Idle state: show sync button -->
-          <svg
-            class="w-4 h-4"
-            fill="none"
-            stroke="currentColor"
-            viewBox="0 0 24 24"
-            xmlns="http://www.w3.org/2000/svg"
-          >
-            <path
-              stroke-linecap="round"
-              stroke-linejoin="round"
-              stroke-width="2"
-              d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"
-            ></path>
-          </svg>
-          <span class="text-xs font-medium whitespace-nowrap">Sync</span>
-        {/if}
-      </div>
+    <!-- Icon -->
+    <div class="relative shrink-0">
+      {#if isSyncing || hasError}
+        <!-- 3x3 grid animation (Linear-style) -->
+        <div class="grid grid-cols-3 gap-0.5 w-5 h-5">
+          {#each Array(9) as _, i}
+            <div
+              class="sync-block w-full h-full rounded-[1px] {hasError
+                ? 'bg-red-500'
+                : 'bg-current'}"
+              style="animation-delay: {delays[i]}s;"
+            ></div>
+          {/each}
+        </div>
+      {:else}
+        <!-- Idle state: sync icon -->
+        <svg
+          class="w-5 h-5"
+          fill="none"
+          stroke="currentColor"
+          viewBox="0 0 24 24"
+          xmlns="http://www.w3.org/2000/svg"
+        >
+          <path
+            stroke-linecap="round"
+            stroke-linejoin="round"
+            stroke-width="2"
+            d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"
+          ></path>
+        </svg>
+      {/if}
     </div>
-  </div>
+
+    <!-- Label (hidden when collapsed) -->
+    {#if !isCollapsed}
+      <span class="relative whitespace-nowrap {hasError ? 'text-red-400' : ''}">
+        {hasError
+          ? hasPartialSync
+            ? "Partial sync"
+            : "Sync error"
+          : isSyncing
+            ? "Syncing..."
+            : "Sync"}
+      </span>
+    {/if}
+
+    <!-- Tooltip when collapsed -->
+    {#if isCollapsed}
+      <div
+        class="absolute left-full ml-2 px-2 py-1 text-xs font-medium text-white bg-neutral-800 rounded shadow-lg
+          opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all duration-150 whitespace-nowrap z-50"
+      >
+        {hasError
+          ? hasPartialSync
+            ? "Partial sync"
+            : "Sync error"
+          : isSyncing
+            ? "Syncing..."
+            : "Sync (⌘⇧S)"}
+      </div>
+    {/if}
+  </button>
 
   {#if showSyncModal}
     <SyncModal onclose={() => (showSyncModal = false)} />
@@ -245,11 +255,5 @@
 
   .sync-block {
     animation: sync-pulse 1.2s ease-in-out infinite;
-  }
-
-  .sync-container {
-    box-shadow:
-      inset 0 1px 2px 0 rgb(0 0 0 / 0.05),
-      inset 0 0 0 1px rgb(0 0 0 / 0.05);
   }
 </style>

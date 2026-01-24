@@ -28,11 +28,7 @@
 
 <div class="space-y-1">
   <!-- Sync Status -->
-  {#if !isCollapsed}
-    <div class="px-1 py-1">
-      <SyncIndicator />
-    </div>
-  {/if}
+  <SyncIndicator />
 
   <!-- Theme Toggle -->
   <button
