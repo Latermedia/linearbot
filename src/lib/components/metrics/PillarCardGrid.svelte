@@ -39,6 +39,8 @@
     engineerTeamMapping?: Record<string, string>;
     /** Currently selected team key for filtering */
     selectedTeamKey?: string | null;
+    /** Display variant for pillar cards: default or hero (larger centered) */
+    variant?: "default" | "hero";
   }
 
   let {
@@ -50,6 +52,7 @@
     onEngineerClick,
     engineerTeamMapping = {},
     selectedTeamKey = null,
+    variant = "default",
   }: Props = $props();
 
   // Engineer data state
@@ -227,15 +230,15 @@
   // Productivity goal target (3 throughput per engineer per week)
   const PRODUCTIVITY_GOAL = 3;
 
-  // Productivity value display as % of goal
-  const productivityValue = $derived.by(() => {
+  // Productivity value display as % of goal (number only, unit added separately)
+  const productivityValueNumber = $derived.by(() => {
     if (!productivity || !hasProductivity) return "—";
     if (!("trueThroughput" in productivity)) return "—";
 
     if (productivity.trueThroughputPerEngineer !== null) {
       const weeklyRate = toWeeklyRate(productivity.trueThroughputPerEngineer);
       const percentOfGoal = (weeklyRate / PRODUCTIVITY_GOAL) * 100;
-      return `${Math.round(percentOfGoal)}%`;
+      return Math.round(percentOfGoal);
     }
     return "—";
   });
@@ -278,29 +281,35 @@
     <!-- Pillar 1: WIP Health -->
     <PillarCard
       title="WIP Health"
-      value="{teamHealth?.healthyWorkloadPercent.toFixed(0) || 0}%"
+      value={teamHealth?.healthyWorkloadPercent.toFixed(0) || 0}
+      valueUnit="%"
       subtitle="Engineers within WIP constraints"
       status={teamHealth?.status}
       onClick={() => onPillarClick?.("wipHealth")}
+      {variant}
     />
 
     <!-- Pillar 2: Project Health -->
     <PillarCard
       title="Project Health"
-      value="{velocityHealth?.onTrackPercent.toFixed(0) || 0}%"
+      value={velocityHealth?.onTrackPercent.toFixed(0) || 0}
+      valueUnit="%"
       subtitle="Projects on track"
       status={velocityHealth?.status}
       onClick={() => onPillarClick?.("projectHealth")}
+      {variant}
     />
 
     <!-- Pillar 3: Team Productivity -->
     <PillarCard
       title="Productivity"
-      value={productivityValue}
+      value={productivityValueNumber}
+      valueUnit={productivityValueNumber !== "—" ? "%" : undefined}
       subtitle={productivitySubtitle}
       status={productivity?.status}
       underConstruction={productivityUnderConstruction}
       onClick={() => onPillarClick?.("productivity")}
+      {variant}
     />
 
     <!-- Pillar 4: Quality -->
@@ -311,6 +320,7 @@
       subtitle="Quality score"
       status={quality?.status}
       onClick={() => onPillarClick?.("quality")}
+      {variant}
     />
   </div>
 {:else}
