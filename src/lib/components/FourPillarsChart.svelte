@@ -7,9 +7,19 @@
     height?: number;
     /** Number of days visible in the viewport at a time */
     visibleDays?: number;
+    /** Compact mode for multi-chart layouts - smaller legend */
+    compact?: boolean;
+    /** Optional title shown above chart */
+    title?: string;
   }
 
-  let { dataPoints, height = 180, visibleDays = 14 }: Props = $props();
+  let {
+    dataPoints,
+    height = 180,
+    visibleDays = 14,
+    compact = false,
+    title,
+  }: Props = $props();
 
   // Reference to scroll container for auto-scroll and measuring
   let scrollContainer: HTMLDivElement | undefined = $state();
@@ -17,8 +27,8 @@
   // Measured container width (responsive)
   let containerWidth = $state(800); // Default fallback
 
-  // Chart dimensions - balanced padding for clean look
-  const padding = { top: 16, right: 24, bottom: 32, left: 40 };
+  // Chart dimensions - balanced padding for clean look (increased left for larger labels)
+  const padding = { top: 16, right: 24, bottom: 32, left: 48 };
   const chartHeight = height;
   const innerHeight = chartHeight - padding.top - padding.bottom;
 
@@ -125,9 +135,48 @@
     };
   });
 
-  // Y-axis scale (0-100, but allow up to 150 for productivity)
-  const yMax = 100;
-  const yMin = 0;
+  // Calculate dynamic Y-axis range based on data
+  // +/- 5 buffer, rounded to nearest 5 (down for min, up for max)
+  // Min clamped to 0 (can't go negative)
+  // Max: WIP/Project/Quality clamp at 100, only Productivity can exceed 100
+  const yRange = $derived.by(() => {
+    if (normalizedData.length === 0) return { min: 0, max: 100 };
+
+    // Collect values separately - capped metrics vs uncapped (productivity)
+    const cappedValues: number[] = []; // WIP, Project, Quality - max 100
+    const uncappedValues: number[] = []; // Productivity - can exceed 100
+
+    for (const d of normalizedData) {
+      if (d.wipHealth !== null) cappedValues.push(Math.min(d.wipHealth, 100));
+      if (d.projectHealth !== null)
+        cappedValues.push(Math.min(d.projectHealth, 100));
+      if (d.quality !== null) cappedValues.push(Math.min(d.quality, 100));
+      if (d.productivity !== null) uncappedValues.push(d.productivity);
+    }
+
+    const allValues = [...cappedValues, ...uncappedValues];
+    if (allValues.length === 0) return { min: 0, max: 100 };
+
+    const dataMin = Math.min(...allValues);
+    const dataMax = Math.max(...allValues);
+
+    // Add 5-point buffer, then round to nearest 5 (down for min, up for max)
+    // Clamp min to 0 (can't go negative)
+    const yMin = Math.max(0, Math.floor((dataMin - 5) / 5) * 5);
+
+    // For max: if no productivity exceeds 100, cap at 100; otherwise allow higher
+    const maxProductivity =
+      uncappedValues.length > 0 ? Math.max(...uncappedValues) : 0;
+    const effectiveMax =
+      maxProductivity > 100 ? dataMax : Math.min(dataMax, 100);
+    const yMax = Math.ceil((effectiveMax + 5) / 5) * 5;
+
+    return { min: yMin, max: Math.max(yMax, yMin + 10) }; // Ensure at least 10-point range
+  });
+
+  // Y-axis bounds from derived range
+  const yMax = $derived(yRange.max);
+  const yMin = $derived(yRange.min);
 
   // Calculate X position based on timestamp (time-proportional)
   function getX(index: number): number {
@@ -143,7 +192,12 @@
     if (value === null) return null;
     // Clamp to chart bounds
     const clampedValue = Math.max(yMin, Math.min(value, yMax));
-    return padding.top + innerHeight - (clampedValue / yMax) * innerHeight;
+    // Map value from [yMin, yMax] to [innerHeight, 0] (inverted for SVG)
+    const range = yMax - yMin;
+    if (range === 0) return padding.top + innerHeight / 2;
+    return (
+      padding.top + innerHeight - ((clampedValue - yMin) / range) * innerHeight
+    );
   }
 
   // Generate SVG path for a line (monotonic cubic interpolation - prevents overshooting)
@@ -248,13 +302,8 @@
     const endDate = new Date(timeRange.max);
     endDate.setHours(0, 0, 0, 0);
 
-    // Calculate total days in range
-    const msPerDay = 24 * 60 * 60 * 1000;
-    const dataTotalDays =
-      Math.ceil((endDate.getTime() - startDate.getTime()) / msPerDay) + 1;
-
-    // Show labels every 7 days for longer ranges, otherwise adjust for shorter ranges
-    const stepDays = dataTotalDays > 21 ? 7 : dataTotalDays > 7 ? 3 : 1;
+    // Show a label for every day
+    const stepDays = 1;
 
     // Generate labels at regular day intervals
     const labels: { x: number; label: string }[] = [];
@@ -285,9 +334,32 @@
     return labels;
   });
 
-  // Y-axis: major lines (labeled) and minor lines (unlabeled, subtler)
-  const yLabelsMajor = [0, 100];
-  const yLabelsMinor = [25, 50, 75];
+  // Y-axis: generate dynamic tick marks based on range
+  const yAxisTicks = $derived.by(() => {
+    const range = yMax - yMin;
+    // Aim for ~4-6 ticks, step in multiples of 5
+    let step = 5;
+    if (range > 30) step = 10;
+    if (range > 60) step = 20;
+    if (range > 100) step = 25;
+
+    const ticks: number[] = [];
+    // Since yMin and yMax are already multiples of 5, start from yMin
+    for (let v = yMin; v <= yMax; v += step) {
+      ticks.push(v);
+    }
+
+    // Always include max bound if not already included
+    if (!ticks.includes(yMax)) ticks.push(yMax);
+
+    return ticks;
+  });
+
+  // Major ticks are min and max, minor ticks are the intermediate ones
+  const yLabelsMajor = $derived([yMin, yMax]);
+  const yLabelsMinor = $derived(
+    yAxisTicks.filter((t) => t !== yMin && t !== yMax)
+  );
 
   // Hover state
   let hoveredIndex = $state<number | null>(null);
@@ -390,143 +462,151 @@
 </script>
 
 <div class="relative pt-2 pb-1">
-  <!-- Scrollable Chart Container -->
-  <div
-    bind:this={scrollContainer}
-    class="overflow-x-auto scrollbar-thin scrollbar-thumb-neutral-700 scrollbar-track-transparent"
-    style="max-width: 100%;"
-  >
-    <!-- Chart -->
-    <svg
-      width={chartWidth}
-      height={chartHeight}
-      viewBox="0 0 {chartWidth} {chartHeight}"
-      class="cursor-default"
-      role="img"
-      aria-label="Four Pillars metrics trend chart"
-      onmousemove={handleMouseMove}
-      onmouseleave={handleMouseLeave}
+  <!-- Optional title -->
+  {#if title}
+    <div class="mb-2 text-xs font-medium text-neutral-400">{title}</div>
+  {/if}
+
+  <!-- Max-width wrapper to constrain chart and make trends more visible -->
+  <div class="mx-auto" style="max-width: {compact ? '100%' : '900px'};">
+    <!-- Scrollable Chart Container -->
+    <div
+      bind:this={scrollContainer}
+      class="overflow-x-auto scrollbar-thin scrollbar-thumb-neutral-700 scrollbar-track-transparent"
+      style="max-width: 100%;"
     >
-      <!-- Grid lines (minor - subtler) -->
-      <g class="grid-lines-minor">
-        {#each yLabelsMinor as y (y)}
+      <!-- Chart -->
+      <svg
+        width={chartWidth}
+        height={chartHeight}
+        viewBox="0 0 {chartWidth} {chartHeight}"
+        class="cursor-default"
+        role="img"
+        aria-label="Four Pillars metrics trend chart"
+        onmousemove={handleMouseMove}
+        onmouseleave={handleMouseLeave}
+      >
+        <!-- Grid lines (minor - subtler) -->
+        <g class="grid-lines-minor">
+          {#each yLabelsMinor as y (y)}
+            <line
+              x1={padding.left}
+              y1={getY(y)}
+              x2={chartWidth - padding.right}
+              y2={getY(y)}
+              stroke="rgba(255,255,255,0.03)"
+              stroke-width="1"
+            />
+          {/each}
+        </g>
+
+        <!-- Grid lines (major) -->
+        <g class="grid-lines-major">
+          {#each yLabelsMajor as y (y)}
+            <line
+              x1={padding.left}
+              y1={getY(y)}
+              x2={chartWidth - padding.right}
+              y2={getY(y)}
+              stroke="rgba(255,255,255,0.06)"
+              stroke-width="1"
+            />
+          {/each}
+        </g>
+
+        <!-- Y-axis labels (all ticks for dynamic range) -->
+        <g class="y-axis">
+          {#each yAxisTicks as y (y)}
+            <text
+              x={padding.left - 10}
+              y={getY(y) ?? 0}
+              text-anchor="end"
+              dominant-baseline="middle"
+              class="fill-neutral-400 text-[11px] font-medium"
+            >
+              {y}%
+            </text>
+          {/each}
+        </g>
+
+        <!-- X-axis labels -->
+        <g class="x-axis">
+          {#each xLabels as { x, label }, idx (`${x}-${idx}`)}
+            <text
+              {x}
+              y={chartHeight - padding.bottom + 20}
+              text-anchor="middle"
+              class="fill-neutral-400 text-[11px] font-medium"
+            >
+              {label}
+            </text>
+          {/each}
+        </g>
+
+        <!-- Data lines -->
+        {#if normalizedData.length > 0}
+          <!-- WIP Health line -->
+          {#if paths.wipHealth}
+            <path
+              d={paths.wipHealth}
+              fill="none"
+              stroke={colors.wipHealth}
+              stroke-width="1.5"
+              stroke-linecap="round"
+              stroke-linejoin="round"
+            />
+          {/if}
+
+          <!-- Project Health line -->
+          {#if paths.projectHealth}
+            <path
+              d={paths.projectHealth}
+              fill="none"
+              stroke={colors.projectHealth}
+              stroke-width="1.5"
+              stroke-linecap="round"
+              stroke-linejoin="round"
+            />
+          {/if}
+
+          <!-- Productivity line -->
+          {#if paths.productivity}
+            <path
+              d={paths.productivity}
+              fill="none"
+              stroke={colors.productivity}
+              stroke-width="1.5"
+              stroke-linecap="round"
+              stroke-linejoin="round"
+            />
+          {/if}
+
+          <!-- Quality line -->
+          {#if paths.quality}
+            <path
+              d={paths.quality}
+              fill="none"
+              stroke={colors.quality}
+              stroke-width="1.5"
+              stroke-linecap="round"
+              stroke-linejoin="round"
+            />
+          {/if}
+        {/if}
+
+        <!-- Hover indicator line -->
+        {#if hoveredIndex !== null}
           <line
-            x1={padding.left}
-            y1={getY(y)}
-            x2={chartWidth - padding.right}
-            y2={getY(y)}
-            stroke="rgba(255,255,255,0.03)"
+            x1={getX(hoveredIndex)}
+            y1={padding.top}
+            x2={getX(hoveredIndex)}
+            y2={padding.top + innerHeight}
+            stroke="rgba(255,255,255,0.3)"
             stroke-width="1"
           />
-        {/each}
-      </g>
-
-      <!-- Grid lines (major) -->
-      <g class="grid-lines-major">
-        {#each yLabelsMajor as y (y)}
-          <line
-            x1={padding.left}
-            y1={getY(y)}
-            x2={chartWidth - padding.right}
-            y2={getY(y)}
-            stroke="rgba(255,255,255,0.06)"
-            stroke-width="1"
-          />
-        {/each}
-      </g>
-
-      <!-- Y-axis labels (major only) -->
-      <g class="y-axis">
-        {#each yLabelsMajor as y (y)}
-          <text
-            x={padding.left - 10}
-            y={getY(y) ?? 0}
-            text-anchor="end"
-            dominant-baseline="middle"
-            class="fill-neutral-600 text-[9px]"
-          >
-            {y}
-          </text>
-        {/each}
-      </g>
-
-      <!-- X-axis labels -->
-      <g class="x-axis">
-        {#each xLabels as { x, label }, idx (`${x}-${idx}`)}
-          <text
-            {x}
-            y={chartHeight - padding.bottom + 20}
-            text-anchor="middle"
-            class="fill-neutral-600 text-[9px]"
-          >
-            {label}
-          </text>
-        {/each}
-      </g>
-
-      <!-- Data lines -->
-      {#if normalizedData.length > 0}
-        <!-- WIP Health line -->
-        {#if paths.wipHealth}
-          <path
-            d={paths.wipHealth}
-            fill="none"
-            stroke={colors.wipHealth}
-            stroke-width="1.5"
-            stroke-linecap="round"
-            stroke-linejoin="round"
-          />
         {/if}
-
-        <!-- Project Health line -->
-        {#if paths.projectHealth}
-          <path
-            d={paths.projectHealth}
-            fill="none"
-            stroke={colors.projectHealth}
-            stroke-width="1.5"
-            stroke-linecap="round"
-            stroke-linejoin="round"
-          />
-        {/if}
-
-        <!-- Productivity line -->
-        {#if paths.productivity}
-          <path
-            d={paths.productivity}
-            fill="none"
-            stroke={colors.productivity}
-            stroke-width="1.5"
-            stroke-linecap="round"
-            stroke-linejoin="round"
-          />
-        {/if}
-
-        <!-- Quality line -->
-        {#if paths.quality}
-          <path
-            d={paths.quality}
-            fill="none"
-            stroke={colors.quality}
-            stroke-width="1.5"
-            stroke-linecap="round"
-            stroke-linejoin="round"
-          />
-        {/if}
-      {/if}
-
-      <!-- Hover indicator line -->
-      {#if hoveredIndex !== null}
-        <line
-          x1={getX(hoveredIndex)}
-          y1={padding.top}
-          x2={getX(hoveredIndex)}
-          y2={padding.top + innerHeight}
-          stroke="rgba(255,255,255,0.3)"
-          stroke-width="1"
-        />
-      {/if}
-    </svg>
+      </svg>
+    </div>
   </div>
 
   <!-- Hover Card Tooltip -->
@@ -542,7 +622,7 @@
             class="w-2 h-2 rounded-full"
             style="background-color: {colors.wipHealth}"
           ></span>
-          <span class="text-neutral-300">WIP</span>
+          <span class="text-neutral-300">WIP Health</span>
           <span class="ml-auto font-medium text-white"
             >{hoveredData.wipHealth}%</span
           >
@@ -552,7 +632,7 @@
             class="w-2 h-2 rounded-full"
             style="background-color: {colors.projectHealth}"
           ></span>
-          <span class="text-neutral-300">Project</span>
+          <span class="text-neutral-300">Project Health</span>
           <span class="ml-auto font-medium text-white"
             >{hoveredData.projectHealth}%</span
           >
@@ -592,15 +672,19 @@
 
   <!-- Legend (bottom) -->
   <div
-    class="flex flex-wrap gap-6 justify-center pt-4 mt-2 text-xs border-t border-white/5"
+    class="flex flex-wrap justify-center pt-3 mt-2 text-xs border-t border-white/5 {compact
+      ? 'gap-3'
+      : 'gap-6'}"
   >
     {#each legendItems as item (item.key)}
-      <div class="flex gap-2 items-center">
+      <div class="flex gap-1.5 items-center">
         <div
-          class="w-5 h-[2px] rounded-full"
+          class="h-[2px] rounded-full {compact ? 'w-3' : 'w-5'}"
           style="background-color: {item.color}"
         ></div>
-        <span class="text-neutral-400">{item.label}</span>
+        <span class="text-neutral-400 {compact ? 'text-[10px]' : ''}"
+          >{item.label}</span
+        >
       </div>
     {/each}
   </div>

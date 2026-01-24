@@ -326,6 +326,7 @@
             loading={trendLoading}
             title=""
             noMargin
+            domains={organizationDomains}
           />
         </div>
       </div>
