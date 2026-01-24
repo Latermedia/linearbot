@@ -6,56 +6,33 @@
   import { goto } from "$app/navigation";
   import Card from "$lib/components/Card.svelte";
   import Skeleton from "$lib/components/Skeleton.svelte";
-  import Badge from "$lib/components/Badge.svelte";
-  import ProjectsTable from "$lib/components/ProjectsTable.svelte";
-  import GanttChart from "$lib/components/GanttChart.svelte";
-  import ToggleGroupRoot from "$lib/components/ToggleGroupRoot.svelte";
-  import ToggleGroupItem from "$lib/components/ToggleGroupItem.svelte";
   import MetricsHeader from "$lib/components/metrics/MetricsHeader.svelte";
   import PillarCardGrid from "$lib/components/metrics/PillarCardGrid.svelte";
   import TrendsSection from "$lib/components/metrics/TrendsSection.svelte";
-  import MiniPillarRow from "$lib/components/metrics/MiniPillarRow.svelte";
-  import EngineerDetailModal from "$lib/components/EngineerDetailModal.svelte";
-  import { databaseStore, projectsStore } from "$lib/stores/database";
-  import { executiveFocus } from "$lib/stores/dashboard";
-  import {
-    teamFilterStore,
-    teamsMatchFullFilter,
-  } from "$lib/stores/team-filter";
-  import {
-    filterProjectsByMode,
-    groupProjectsByTeams,
-    groupProjectsByDomains,
-  } from "$lib/project-data";
-  import { Star } from "lucide-svelte";
+  import { teamFilterStore } from "$lib/stores/team-filter";
   import type { MetricsSnapshotV1 } from "../../../types/metrics-snapshot";
   import type { LatestMetricsResponse } from "../../../routes/api/metrics/latest/+server";
   import type {
     TrendDataPoint,
     TrendsResponse,
   } from "../../../routes/api/metrics/trends/+server";
-  import type { Issue } from "../../../db/schema";
-  import type { Engineer } from "../../../db/schema";
-  import IssueTable from "$lib/components/IssueTable.svelte";
-  import EngineersTable from "$lib/components/EngineersTable.svelte";
 
-  // Engineer data type for modal
-  interface EngineerData {
-    assignee_id: string;
-    assignee_name: string;
-    avatar_url: string | null;
-    team_ids: string;
-    team_names: string;
-    wip_issue_count: number;
-    wip_total_points: number;
-    wip_limit_violation: number;
-    oldest_wip_age_days: number | null;
-    last_activity_at: string | null;
-    missing_estimate_count: number;
-    missing_priority_count: number;
-    no_recent_comment_count: number;
-    wip_age_violation_count: number;
-    active_issues: string;
+  // Domain/Team structure from API
+  interface TeamMember {
+    id: string;
+    name: string;
+  }
+
+  interface Team {
+    teamKey: string;
+    teamName: string | null;
+    domain: string | null;
+    members?: TeamMember[];
+  }
+
+  interface Domain {
+    name: string;
+    teams: Team[];
   }
 
   // Props
@@ -79,14 +56,17 @@
   >([]);
   let teamNames = $state<Record<string, string>>({});
 
+  // Organization structure state
+  let organizationDomains = $state<Domain[]>([]);
+  let organizationLoading = $state(true);
+
   // Trend data state
   let trendDataPoints = $state<TrendDataPoint[]>([]);
   let trendLoading = $state(true);
   let showTrends = $state(false);
 
-  // Engineer modal state
-  let allEngineers = $state<EngineerData[]>([]);
-  let selectedEngineer = $state<EngineerData | null>(null);
+  // Organization table state - default to collapsed (domains only)
+  let showTeams = $state(false);
 
   // Pillar click handler - navigate to dedicated metric pages
   function handlePillarClick(
@@ -101,74 +81,21 @@
     goto(routes[pillar]);
   }
 
-  // Non-project WIP issues state
-  let nonProjectWipIssues = $state<Issue[]>([]);
-  let nonProjectWipLoading = $state(false);
-
-  // Team engineers state (engineers from ENGINEER_TEAM_MAPPING working on team projects)
-  let teamProjectEngineers = $state<Engineer[]>([]);
-
-  // Fetch engineers for modal
-  async function fetchEngineers() {
-    if (!browser) return;
-    try {
-      const response = await fetch("/api/engineers");
-      const data = await response.json();
-      allEngineers = data.engineers || [];
-    } catch (e) {
-      console.error("Failed to fetch engineers:", e);
+  // Table metric click handler - set filter and navigate
+  function handleTableMetricClick(
+    pillar: "wipHealth" | "projectHealth" | "productivity" | "quality",
+    type: "domain" | "team",
+    id: string
+  ) {
+    // Set the appropriate filter
+    if (type === "domain") {
+      teamFilterStore.setDomain(id);
+    } else {
+      teamFilterStore.setTeam(id);
     }
+    // Navigate to the metric page
+    handlePillarClick(pillar);
   }
-
-  // Fetch non-project WIP issues for a team
-  async function fetchNonProjectWipIssues(teamKey: string) {
-    if (!browser) return;
-    nonProjectWipLoading = true;
-    try {
-      const response = await fetch(`/api/issues/non-project-wip/${teamKey}`);
-      const data = await response.json();
-      nonProjectWipIssues = data.issues || [];
-    } catch (e) {
-      console.error("Failed to fetch non-project WIP issues:", e);
-      nonProjectWipIssues = [];
-    } finally {
-      nonProjectWipLoading = false;
-    }
-  }
-
-  // Fetch engineers working on team projects
-  async function fetchTeamProjectEngineers(teamKey: string) {
-    if (!browser) return;
-    try {
-      const response = await fetch(`/api/engineers/wip-stats/${teamKey}`);
-      const data = await response.json();
-      teamProjectEngineers = data.engineers || [];
-    } catch (e) {
-      console.error("Failed to fetch team project engineers:", e);
-      teamProjectEngineers = [];
-    }
-  }
-
-  // Handle engineer click from PillarCardGrid
-  function handleEngineerClick(engineerId: string) {
-    const engineer = allEngineers.find((e) => e.assignee_id === engineerId);
-    if (engineer) {
-      selectedEngineer = engineer;
-    }
-  }
-
-  function closeEngineerModal() {
-    selectedEngineer = null;
-  }
-
-  // View state
-  let groupBy = $state<"team" | "domain">("team");
-  let viewType = $state<"table" | "gantt">("table");
-  let endDateMode = $state<"predicted" | "target">("predicted");
-  let projectFilter = $state<"planning" | "wip" | "planning-wip" | "all">(
-    "wip"
-  );
-  let ganttViewMode = $state<"quarter" | "quarters">("quarters");
 
   // Fetch metrics data
   async function fetchMetrics() {
@@ -197,6 +124,26 @@
       metricsError = e instanceof Error ? e.message : "Failed to fetch metrics";
     } finally {
       metricsLoading = false;
+    }
+  }
+
+  // Fetch organization structure (domains and teams)
+  async function fetchOrganization() {
+    if (!browser) return;
+
+    organizationLoading = true;
+
+    try {
+      const response = await fetch("/api/teams");
+      const data = await response.json();
+
+      if (data.domains) {
+        organizationDomains = data.domains;
+      }
+    } catch (e) {
+      console.error("Failed to fetch organization structure:", e);
+    } finally {
+      organizationLoading = false;
     }
   }
 
@@ -229,42 +176,7 @@
   onMount(() => {
     fetchMetrics();
     fetchTrendData();
-    fetchEngineers();
-    databaseStore.load();
-  });
-
-  // Derived values from stores
-  const loading = $derived($databaseStore.loading);
-  const error = $derived($databaseStore.error);
-  const projects = $derived($projectsStore);
-  const filter = $derived($teamFilterStore);
-  const selectedTeamKey = $derived(filter.teamKey);
-  const isExecutiveFocus = $derived($executiveFocus);
-
-  // Fetch team-specific data when team filter changes
-  $effect(() => {
-    if (selectedTeamKey) {
-      fetchNonProjectWipIssues(selectedTeamKey);
-      fetchTeamProjectEngineers(selectedTeamKey);
-    } else {
-      nonProjectWipIssues = [];
-      teamProjectEngineers = [];
-    }
-  });
-
-  // Display snapshot: use team filter snapshot or org snapshot
-  const displaySnapshot = $derived.by((): MetricsSnapshotV1 | null => {
-    // If team filter is active, show team snapshot
-    if (selectedTeamKey) {
-      const teamSnapshot = allSnapshots.find(
-        (s) => s.level === "team" && s.levelId === selectedTeamKey
-      );
-      if (teamSnapshot) {
-        return teamSnapshot.snapshot;
-      }
-    }
-
-    return orgSnapshot;
+    fetchOrganization();
   });
 
   // Get team snapshots map for quick lookup
@@ -289,143 +201,97 @@
     return map;
   });
 
-  // Build project health map from org snapshot's projectStatuses
-  const projectHealthMap = $derived.by(() => {
-    const map = new Map<
-      string,
-      {
-        effectiveHealth: string;
-        healthSource: "human" | "velocity";
-        linearHealth: string | null;
-        calculatedHealth: string;
-      }
-    >();
-
-    if (orgSnapshot?.velocityHealth?.projectStatuses) {
-      for (const ps of orgSnapshot.velocityHealth.projectStatuses) {
-        map.set(ps.projectId, {
-          effectiveHealth: ps.effectiveHealth,
-          healthSource: ps.healthSource,
-          linearHealth: ps.linearHealth,
-          calculatedHealth: ps.calculatedHealth,
-        });
-      }
-    }
-
-    return map;
-  });
-
-  // Filter projects based on selected mode, team filter, and executive focus
-  const filteredProjects = $derived.by(() => {
-    const issues = $databaseStore.issues;
-    let filtered = filterProjectsByMode(projects, issues, projectFilter);
-
-    // Apply executive focus filter
-    if (isExecutiveFocus) {
-      filtered = new Map(
-        Array.from(filtered).filter(([_, project]) =>
-          project.labels.includes("Executive Visibility")
-        )
-      );
-    }
-
-    // Apply domain/team filter (uses full filter state for both domain and team filtering)
-    if (filter.domain !== null || filter.teamKey !== null) {
-      filtered = new Map(
-        Array.from(filtered).filter(([_, project]) =>
-          teamsMatchFullFilter(project.teams, filter)
-        )
-      );
-    }
-
-    return filtered;
-  });
-
-  // Group filtered projects by teams
-  const teams = $derived.by(() => {
-    const issues = $databaseStore.issues;
-    let grouped = groupProjectsByTeams(filteredProjects, issues);
-
-    // Filter to specific team if team filter is set
-    if (filter.teamKey !== null) {
-      grouped = grouped.filter((team) => team.teamKey === filter.teamKey);
-    }
-    // Filter to domain's teams if only domain filter is set
-    else if (filter.domain !== null) {
-      grouped = grouped.filter((team) => team.domain === filter.domain);
-    }
-
-    return grouped;
-  });
-
-  // Group filtered projects by domains
-  const domains = $derived(groupProjectsByDomains(teams));
-
   // Get team display name
-  function getTeamDisplayName(teamKey: string): string {
-    const fullName = teamNames[teamKey];
-    if (fullName) {
-      return `${fullName} (${teamKey})`;
+  function getTeamDisplayName(
+    teamKey: string,
+    teamName: string | null
+  ): string {
+    const name = teamName || teamNames[teamKey];
+    if (name) {
+      return `${name} (${teamKey})`;
     }
     return teamKey;
   }
 
-  // Get engineers from ENGINEER_TEAM_MAPPING for the selected team
-  const teamMappedEngineers = $derived.by((): EngineerData[] => {
-    if (!selectedTeamKey || Object.keys(engineerTeamMapping).length === 0) {
-      return [];
+  // Check if we have any organization data to display
+  const hasOrganizationData = $derived(
+    organizationDomains.length > 0 ||
+      domainSnapshotsMap.size > 0 ||
+      teamSnapshotsMap.size > 0
+  );
+
+  // Combined domains list - uses organizationDomains if available, otherwise builds from domainSnapshotsMap
+  const displayDomains = $derived.by((): Domain[] => {
+    // If we have organization domains from the API, use those
+    if (organizationDomains.length > 0) {
+      return organizationDomains;
     }
 
-    // Get engineer names mapped to the selected team
-    const mappedNames = new Set<string>();
-    for (const [name, teamKey] of Object.entries(engineerTeamMapping)) {
-      if (teamKey === selectedTeamKey) {
-        mappedNames.add(name);
-      }
+    // Otherwise, build domains from the snapshot data
+    const domains: Domain[] = [];
+    for (const [domainName] of domainSnapshotsMap) {
+      domains.push({
+        name: domainName,
+        teams: [], // No team info available from snapshots alone
+      });
     }
-
-    // Filter allEngineers to only those mapped to this team
-    return allEngineers.filter((e) => mappedNames.has(e.assignee_name));
+    return domains;
   });
 
-  // Get cross-team collaborators (engineers NOT in team mapping but working on team's projects)
-  const crossTeamCollaborators = $derived.by((): EngineerData[] => {
-    if (!selectedTeamKey || Object.keys(engineerTeamMapping).length === 0) {
-      return [];
+  // Helper to get productivity percentage from a snapshot
+  function getProductivityPercent(
+    snapshot: MetricsSnapshotV1 | undefined
+  ): { pct: number; status: string } | null {
+    const prod = snapshot?.teamProductivity;
+    if (
+      !prod ||
+      !("trueThroughputPerEngineer" in prod) ||
+      prod.trueThroughputPerEngineer === null
+    ) {
+      return null;
     }
+    const weeklyRate = prod.trueThroughputPerEngineer / 2;
+    const pctOfGoal = Math.round((weeklyRate / 3) * 100);
+    return { pct: pctOfGoal, status: prod.status };
+  }
 
-    // Get engineer names mapped to the selected team
-    const mappedNames = new Set<string>();
-    for (const [name, teamKey] of Object.entries(engineerTeamMapping)) {
-      if (teamKey === selectedTeamKey) {
-        mappedNames.add(name);
+  // Helper to get status color class
+  function getStatusColorClass(status: string | undefined): string {
+    switch (status) {
+      case "healthy":
+        return "text-emerald-400";
+      case "warning":
+        return "text-amber-400";
+      case "critical":
+        return "text-red-400";
+      default:
+        return "text-neutral-400";
+    }
+  }
+
+  // Get standalone teams (teams not in any domain)
+  const standaloneTeams = $derived.by(() => {
+    // Collect all teams that are in domains
+    const teamsInDomains = new Set<string>();
+    for (const domain of displayDomains) {
+      for (const team of domain.teams) {
+        teamsInDomains.add(team.teamKey);
       }
     }
 
-    // Filter teamProjectEngineers to only those NOT in the team mapping
-    // Cast to EngineerData since Engineer has compatible fields
-    return teamProjectEngineers
-      .filter((e) => !mappedNames.has(e.assignee_name))
-      .map(
-        (e) =>
-          ({
-            assignee_id: e.assignee_id,
-            assignee_name: e.assignee_name,
-            avatar_url: e.avatar_url,
-            team_ids: e.team_ids,
-            team_names: e.team_names,
-            wip_issue_count: e.wip_issue_count,
-            wip_total_points: e.wip_total_points,
-            wip_limit_violation: e.wip_limit_violation,
-            oldest_wip_age_days: e.oldest_wip_age_days,
-            last_activity_at: e.last_activity_at,
-            missing_estimate_count: e.missing_estimate_count,
-            missing_priority_count: e.missing_priority_count,
-            no_recent_comment_count: e.no_recent_comment_count,
-            wip_age_violation_count: e.wip_age_violation_count,
-            active_issues: e.active_issues,
-          }) as EngineerData
-      );
+    // Find team snapshots that aren't in any domain
+    const standalone: Team[] = [];
+    for (const [teamKey] of teamSnapshotsMap) {
+      if (!teamsInDomains.has(teamKey)) {
+        standalone.push({
+          teamKey,
+          teamName: teamNames[teamKey] || null,
+          domain: null,
+        });
+      }
+    }
+
+    return standalone;
   });
 </script>
 
@@ -440,14 +306,13 @@
   <!-- Org-Level Health Metrics + Trends (grouped to avoid space-y-6 affecting animation) -->
   <div>
     <PillarCardGrid
-      snapshot={displaySnapshot}
+      snapshot={orgSnapshot}
       loading={metricsLoading && !orgSnapshot}
       error={metricsError}
-      productivityUnderConstruction={selectedTeamKey !== null}
+      productivityUnderConstruction={false}
       onPillarClick={handlePillarClick}
-      onEngineerClick={handleEngineerClick}
       {engineerTeamMapping}
-      {selectedTeamKey}
+      variant="hero"
     />
 
     {#if showTrends}
@@ -467,336 +332,423 @@
     {/if}
   </div>
 
-  <!-- View controls -->
-  <div
-    class="flex flex-wrap gap-3 items-center py-2 mt-8 border-t border-white/10 pt-6"
-  >
-    <!-- View type toggle -->
-    <ToggleGroupRoot bind:value={viewType} variant="outline" type="single">
-      <ToggleGroupItem value="table" aria-label="Table view"
-        >Table</ToggleGroupItem
-      >
-      <ToggleGroupItem value="gantt" aria-label="Gantt view"
-        >Gantt</ToggleGroupItem
-      >
-    </ToggleGroupRoot>
-
-    <!-- Group by toggle -->
-    <ToggleGroupRoot bind:value={groupBy} variant="outline" type="single">
-      <ToggleGroupItem value="team" aria-label="Group by teams"
-        >Teams</ToggleGroupItem
-      >
-      <ToggleGroupItem value="domain" aria-label="Group by domains"
-        >Domains</ToggleGroupItem
-      >
-    </ToggleGroupRoot>
-
-    <!-- Project filter toggle -->
-    <ToggleGroupRoot
-      bind:value={projectFilter}
-      variant="outline"
-      type="single"
-      class="min-w-fit"
-    >
-      <ToggleGroupItem
-        value="wip"
-        aria-label="Show WIP projects"
-        class="flex-none!">WIP</ToggleGroupItem
-      >
-      <ToggleGroupItem
-        value="planning"
-        aria-label="Show planned projects"
-        class="flex-none!">Plan</ToggleGroupItem
-      >
-      <ToggleGroupItem
-        value="planning-wip"
-        aria-label="Show planned and WIP projects"
-        class="flex-none!">Plan & WIP</ToggleGroupItem
-      >
-      <ToggleGroupItem
-        value="all"
-        aria-label="Show all projects"
-        class="flex-none!">All</ToggleGroupItem
-      >
-    </ToggleGroupRoot>
-
-    <!-- Gantt-specific controls -->
-    {#if viewType === "gantt"}
-      <ToggleGroupRoot bind:value={endDateMode} variant="outline" type="single">
-        <ToggleGroupItem value="predicted" aria-label="Use predicted end dates"
-          >Predicted</ToggleGroupItem
+  <!-- Organization Metrics Table -->
+  <div class="mt-8 border-t border-white/10 pt-6">
+    <div class="flex items-center justify-between mb-4">
+      <h2 class="text-lg font-semibold text-white">Organization</h2>
+      <div class="flex gap-2 items-center">
+        <span class="text-xs text-neutral-400">Teams</span>
+        <button
+          type="button"
+          role="switch"
+          aria-checked={showTeams}
+          onclick={() => (showTeams = !showTeams)}
+          class="relative inline-flex h-5 w-9 shrink-0 cursor-pointer items-center rounded-full transition-colors duration-200 ease-in-out focus:outline-none focus-visible:ring-2 focus-visible:ring-white/20 {showTeams
+            ? 'bg-violet-600'
+            : 'bg-neutral-700'}"
         >
-        <ToggleGroupItem value="target" aria-label="Use target end dates"
-          >Target</ToggleGroupItem
-        >
-      </ToggleGroupRoot>
-      <ToggleGroupRoot
-        bind:value={ganttViewMode}
-        variant="outline"
-        type="single"
-      >
-        <ToggleGroupItem value="quarter" aria-label="Show current quarter view"
-          >Quarter</ToggleGroupItem
-        >
-        <ToggleGroupItem value="quarters" aria-label="Show 5 quarter view"
-          >5 Quarters</ToggleGroupItem
-        >
-      </ToggleGroupRoot>
-    {/if}
-
-    <!-- Executive Focus indicator -->
-    {#if isExecutiveFocus}
-      <div
-        class="flex items-center gap-1.5 px-2 py-1 text-xs font-medium text-amber-600 dark:text-amber-400 bg-amber-500/10 rounded"
-      >
-        <Star class="w-3.5 h-3.5" />
-        <span>Executive Focus</span>
+          <span class="sr-only">Show teams</span>
+          <span
+            class="pointer-events-none inline-block h-4 w-4 transform rounded-full bg-white shadow ring-0 transition duration-200 ease-in-out {showTeams
+              ? 'translate-x-4'
+              : 'translate-x-0.5'}"
+          ></span>
+        </button>
       </div>
-    {/if}
+    </div>
   </div>
 
-  <!-- Main content -->
-  {#if loading}
-    <div class="space-y-4">
-      <Card>
-        <Skeleton class="mb-4 w-48 h-8" />
-        <div class="space-y-3">
-          <Skeleton class="w-full h-12" />
-          <Skeleton class="w-full h-12" />
-          <Skeleton class="w-full h-12" />
-          <Skeleton class="w-full h-12" />
-        </div>
-      </Card>
-    </div>
-  {:else if error}
-    <Card class="border-red-500/50">
-      <div class="mb-3 text-sm font-medium text-red-600 dark:text-red-400">
-        Error Loading Data
+  {#if metricsLoading || organizationLoading}
+    <Card>
+      <Skeleton class="mb-4 w-48 h-6" />
+      <div class="space-y-3">
+        <Skeleton class="w-full h-10" />
+        <Skeleton class="w-full h-10" />
+        <Skeleton class="w-full h-10" />
       </div>
-      <p class="mb-3 text-neutral-700 dark:text-neutral-400">{error}</p>
-      <p class="text-sm text-neutral-600 dark:text-neutral-500">
-        Make sure the database is synced. Run: <code
-          class="px-2 py-1 font-mono text-xs rounded bg-neutral-100 dark:bg-neutral-800 text-neutral-700 dark:text-neutral-300"
-          >bun run sync</code
-        >
-      </p>
     </Card>
-  {:else if groupBy === "domain"}
-    <!-- Domain View -->
-    {#each domains as domain (domain.domainName)}
-      <Card class="p-0 overflow-hidden">
-        <!-- Domain Header with Mini Pillars -->
-        <div
-          class="flex flex-wrap items-center justify-between gap-4 px-4 py-3 border-b border-white/10 bg-white/5"
-        >
-          <div class="flex items-center gap-3">
-            <h2 class="text-lg font-semibold text-white">
-              {domain.domainName}
-            </h2>
-            <Badge variant="outline">{domain.teams.length} teams</Badge>
-          </div>
-          <MiniPillarRow
-            snapshot={domainSnapshotsMap.get(domain.domainName) || null}
-            productivityUnderConstruction={false}
-            loading={metricsLoading}
-          />
-        </div>
-
-        <!-- Projects -->
-        <div class="p-4">
-          {#if viewType === "table"}
-            {#key `${projectFilter}-${domain.domainName}`}
-              <ProjectsTable
-                teams={domain.teams}
-                domains={[domain]}
-                groupBy="team"
-                {projectHealthMap}
-              />
-            {/key}
-          {:else}
-            {#key `${projectFilter}-${endDateMode}-${ganttViewMode}-${domain.domainName}`}
-              <GanttChart
-                teams={domain.teams}
-                domains={[domain]}
-                groupBy="team"
-                {endDateMode}
-                viewMode={ganttViewMode}
-              />
-            {/key}
-          {/if}
-        </div>
-      </Card>
-    {/each}
-
-    {#if domains.length === 0}
-      <Card>
-        <div class="py-8 text-center">
-          <div class="mb-2 text-neutral-400">No domains found</div>
-          <p class="text-sm text-neutral-500">
-            {selectedTeamKey
-              ? "No projects match the current team filter."
-              : "No projects found with the current filters."}
-          </p>
-        </div>
-      </Card>
-    {/if}
+  {:else if !hasOrganizationData}
+    <Card>
+      <div class="py-8 text-center">
+        <div class="mb-2 text-neutral-400">No organization data available</div>
+        <p class="text-sm text-neutral-500">
+          Configure TEAM_DOMAIN_MAPPINGS to see domain and team metrics.
+        </p>
+      </div>
+    </Card>
   {:else}
-    <!-- Team View -->
-    {#each teams as team (team.teamKey)}
-      <Card class="p-0 overflow-hidden">
-        <!-- Team Header with Mini Pillars -->
-        <div
-          class="flex flex-wrap items-center justify-between gap-4 px-4 py-3 border-b border-white/10 bg-white/5"
-        >
-          <div class="flex items-center gap-3">
-            <h2 class="text-lg font-semibold text-white">
-              {getTeamDisplayName(team.teamKey)}
-            </h2>
-            <Badge variant="outline">{team.projects.length} projects</Badge>
-          </div>
-          <MiniPillarRow
-            snapshot={teamSnapshotsMap.get(team.teamKey) || null}
-            productivityUnderConstruction={true}
-            loading={metricsLoading}
-          />
-        </div>
-
-        <!-- Projects -->
-        <div class="p-4">
-          {#if viewType === "table"}
-            {#key `${projectFilter}-${team.teamKey}`}
-              <ProjectsTable
-                teams={[team]}
-                domains={[]}
-                groupBy="team"
-                embedded={true}
-                {projectHealthMap}
-              />
-            {/key}
-          {:else}
-            {#key `${projectFilter}-${endDateMode}-${ganttViewMode}-${team.teamKey}`}
-              <GanttChart
-                teams={[team]}
-                domains={[]}
-                groupBy="team"
-                embedded={true}
-                {endDateMode}
-                viewMode={ganttViewMode}
-              />
-            {/key}
-          {/if}
-        </div>
-      </Card>
-    {/each}
-
-    {#if teams.length === 0}
-      <Card>
-        <div class="py-8 text-center">
-          <div class="mb-2 text-neutral-400">No teams found</div>
-          <p class="text-sm text-neutral-500">
-            {selectedTeamKey
-              ? "No projects match the current team filter."
-              : "No projects found with the current filters."}
-          </p>
-        </div>
-      </Card>
-    {/if}
-  {/if}
-
-  <!-- Team-specific sections (only shown when a team is selected) -->
-  {#if selectedTeamKey}
-    <!-- Non-Project WIP Issues Section -->
-    {#if nonProjectWipIssues.length > 0 || nonProjectWipLoading}
-      <Card class="p-0 overflow-hidden mt-6">
-        <div
-          class="flex flex-wrap items-center justify-between gap-4 px-4 py-3 border-b border-white/10 bg-white/5"
-        >
-          <div class="flex items-center gap-3">
-            <h2 class="text-lg font-semibold text-white">
-              Non-Project WIP Issues
-            </h2>
-            <Badge variant="outline">{nonProjectWipIssues.length} issues</Badge>
-          </div>
-        </div>
-        <div class="p-4">
-          {#if nonProjectWipLoading}
-            <div class="py-4 text-center text-neutral-400">Loading...</div>
-          {:else}
-            <IssueTable
-              issues={nonProjectWipIssues}
-              showAssignee={true}
-              showTeam={false}
-              groupByState={false}
-              noMaxHeight={true}
-            />
-          {/if}
-        </div>
-      </Card>
-    {/if}
-
-    <!-- Team Engineers Section (from ENGINEER_TEAM_MAPPING) -->
-    {#if teamMappedEngineers.length > 0}
-      <Card class="p-0 overflow-hidden mt-6">
-        <div
-          class="flex flex-wrap items-center justify-between gap-4 px-4 py-3 border-b border-white/10 bg-white/5"
-        >
-          <div class="flex items-center gap-3">
-            <h2 class="text-lg font-semibold text-white">
-              {getTeamDisplayName(selectedTeamKey)} Engineers
-            </h2>
-            <Badge variant="outline"
-              >{teamMappedEngineers.length} engineers</Badge
+    <Card class="p-0 overflow-hidden">
+      <div class="overflow-x-auto">
+        <table class="w-full">
+          <thead>
+            <tr
+              class="text-left text-xs font-medium text-neutral-500 uppercase tracking-wider border-b border-white/10 bg-white/5"
             >
-          </div>
-        </div>
-        <div class="p-4">
-          <EngineersTable
-            engineers={teamMappedEngineers}
-            onEngineerClick={(engineer) => {
-              selectedEngineer = engineer;
-            }}
-          />
-        </div>
-      </Card>
-    {/if}
+              <th class="px-4 py-3">Name</th>
+              <th class="px-4 py-3 text-center whitespace-nowrap">Engineers</th>
+              <th class="px-4 py-3 text-center whitespace-nowrap">WIP Health</th
+              >
+              <th class="px-4 py-3 text-center whitespace-nowrap"
+                >Project Health</th
+              >
+              <th class="px-4 py-3 text-center whitespace-nowrap"
+                >Productivity</th
+              >
+              <th class="px-4 py-3 text-center whitespace-nowrap">Quality</th>
+            </tr>
+          </thead>
+          {#each displayDomains as domain (domain.name)}
+            {@const domainSnapshot = domainSnapshotsMap.get(domain.name)}
+            {@const domainEngineerCount =
+              domainSnapshot?.teamHealth?.totalIcCount ??
+              domain.teams.reduce(
+                (sum, t) => sum + (t.members?.length || 0),
+                0
+              )}
+            <!-- Domain tbody -->
+            <tbody class="divide-y divide-white/5">
+              <!-- Domain row -->
+              <tr class="bg-white/3 hover:bg-white/5 transition-colors">
+                <td class="px-4 py-3">
+                  <span class="text-sm font-semibold text-white"
+                    >{domain.name}</span
+                  >
+                  <span class="ml-2 text-xs text-neutral-500"
+                    >({domain.teams.length} teams)</span
+                  >
+                </td>
+                <td class="px-4 py-3 text-center">
+                  <span class="text-sm font-medium text-neutral-300"
+                    >{domainEngineerCount}</span
+                  >
+                </td>
+                <td class="px-4 py-3 text-center">
+                  {#if domainSnapshotsMap.get(domain.name)?.teamHealth}
+                    {@const wip = domainSnapshotsMap.get(
+                      domain.name
+                    )?.teamHealth}
+                    <button
+                      type="button"
+                      class="text-sm font-medium hover:underline cursor-pointer {wip?.status ===
+                      'healthy'
+                        ? 'text-emerald-400'
+                        : wip?.status === 'warning'
+                          ? 'text-amber-400'
+                          : wip?.status === 'critical'
+                            ? 'text-red-400'
+                            : 'text-neutral-400'}"
+                      onclick={() =>
+                        handleTableMetricClick(
+                          "wipHealth",
+                          "domain",
+                          domain.name
+                        )}
+                    >
+                      {wip?.healthyWorkloadPercent.toFixed(0)}%
+                    </button>
+                  {:else}
+                    <span class="text-sm text-neutral-500">—</span>
+                  {/if}
+                </td>
+                <td class="px-4 py-3 text-center">
+                  {#if domainSnapshotsMap.get(domain.name)?.velocityHealth}
+                    {@const velocity = domainSnapshotsMap.get(
+                      domain.name
+                    )?.velocityHealth}
+                    <button
+                      type="button"
+                      class="text-sm font-medium hover:underline cursor-pointer {velocity?.status ===
+                      'healthy'
+                        ? 'text-emerald-400'
+                        : velocity?.status === 'warning'
+                          ? 'text-amber-400'
+                          : velocity?.status === 'critical'
+                            ? 'text-red-400'
+                            : 'text-neutral-400'}"
+                      onclick={() =>
+                        handleTableMetricClick(
+                          "projectHealth",
+                          "domain",
+                          domain.name
+                        )}
+                    >
+                      {velocity?.onTrackPercent.toFixed(0)}%
+                    </button>
+                  {:else}
+                    <span class="text-sm text-neutral-500">—</span>
+                  {/if}
+                </td>
+                <td class="px-4 py-3 text-center">
+                  {#if getProductivityPercent(domainSnapshotsMap.get(domain.name))}
+                    {@const prodData = getProductivityPercent(
+                      domainSnapshotsMap.get(domain.name)
+                    )}
+                    <button
+                      type="button"
+                      class="text-sm font-medium hover:underline cursor-pointer {getStatusColorClass(
+                        prodData?.status
+                      )}"
+                      onclick={() =>
+                        handleTableMetricClick(
+                          "productivity",
+                          "domain",
+                          domain.name
+                        )}
+                    >
+                      {prodData?.pct}%
+                    </button>
+                  {:else}
+                    <span class="text-sm text-neutral-500">—</span>
+                  {/if}
+                </td>
+                <td class="px-4 py-3 text-center">
+                  {#if domainSnapshotsMap.get(domain.name)?.quality}
+                    {@const quality = domainSnapshotsMap.get(
+                      domain.name
+                    )?.quality}
+                    <button
+                      type="button"
+                      class="text-sm font-medium hover:underline cursor-pointer {quality?.status ===
+                      'healthy'
+                        ? 'text-emerald-400'
+                        : quality?.status === 'warning'
+                          ? 'text-amber-400'
+                          : quality?.status === 'critical'
+                            ? 'text-red-400'
+                            : 'text-neutral-400'}"
+                      onclick={() =>
+                        handleTableMetricClick(
+                          "quality",
+                          "domain",
+                          domain.name
+                        )}
+                    >
+                      {quality?.compositeScore}%
+                    </button>
+                  {:else}
+                    <span class="text-sm text-neutral-500">—</span>
+                  {/if}
+                </td>
+              </tr>
+            </tbody>
 
-    <!-- Cross-Team Collaborators Section -->
-    {#if crossTeamCollaborators.length > 0}
-      <Card class="p-0 overflow-hidden mt-6">
-        <div
-          class="flex flex-wrap items-center justify-between gap-4 px-4 py-3 border-b border-white/10 bg-white/5"
-        >
-          <div class="flex items-center gap-3">
-            <h2 class="text-lg font-semibold text-white">
-              Cross-Team Collaborators
-            </h2>
-            <Badge variant="outline"
-              >{crossTeamCollaborators.length} engineers</Badge
-            >
-          </div>
-          <span class="text-xs text-neutral-400">
-            Engineers from other teams working on {getTeamDisplayName(
-              selectedTeamKey
-            )} projects
-          </span>
-        </div>
-        <div class="p-4">
-          <EngineersTable
-            engineers={crossTeamCollaborators}
-            onEngineerClick={(engineer) => {
-              selectedEngineer = engineer;
-            }}
-          />
-        </div>
-      </Card>
-    {/if}
+            <!-- Team rows tbody -->
+            {#if showTeams && domain.teams.length > 0}
+              <tbody class="divide-y divide-white/5">
+                {#each domain.teams as team (team.teamKey)}
+                  {@const teamSnapshot = teamSnapshotsMap.get(team.teamKey)}
+                  <tr class="hover:bg-white/3 transition-colors">
+                    <td class="px-4 py-2.5 pl-8">
+                      <span class="text-sm text-neutral-300"
+                        >{getTeamDisplayName(team.teamKey, team.teamName)}</span
+                      >
+                    </td>
+                    <td class="px-4 py-2.5 text-center">
+                      <span class="text-sm text-neutral-400"
+                        >{teamSnapshot?.teamHealth?.totalIcCount ??
+                          team.members?.length ??
+                          0}</span
+                      >
+                    </td>
+                    <td class="px-4 py-2.5 text-center">
+                      {#if teamSnapshotsMap.get(team.teamKey)?.teamHealth}
+                        {@const wip = teamSnapshotsMap.get(
+                          team.teamKey
+                        )?.teamHealth}
+                        <button
+                          type="button"
+                          class="text-sm hover:underline cursor-pointer {wip?.status ===
+                          'healthy'
+                            ? 'text-emerald-400'
+                            : wip?.status === 'warning'
+                              ? 'text-amber-400'
+                              : wip?.status === 'critical'
+                                ? 'text-red-400'
+                                : 'text-neutral-400'}"
+                          onclick={() =>
+                            handleTableMetricClick(
+                              "wipHealth",
+                              "team",
+                              team.teamKey
+                            )}
+                        >
+                          {wip?.healthyWorkloadPercent.toFixed(0)}%
+                        </button>
+                      {:else}
+                        <span class="text-sm text-neutral-500">—</span>
+                      {/if}
+                    </td>
+                    <td class="px-4 py-2.5 text-center">
+                      {#if teamSnapshotsMap.get(team.teamKey)?.velocityHealth}
+                        {@const velocity = teamSnapshotsMap.get(
+                          team.teamKey
+                        )?.velocityHealth}
+                        <button
+                          type="button"
+                          class="text-sm hover:underline cursor-pointer {velocity?.status ===
+                          'healthy'
+                            ? 'text-emerald-400'
+                            : velocity?.status === 'warning'
+                              ? 'text-amber-400'
+                              : velocity?.status === 'critical'
+                                ? 'text-red-400'
+                                : 'text-neutral-400'}"
+                          onclick={() =>
+                            handleTableMetricClick(
+                              "projectHealth",
+                              "team",
+                              team.teamKey
+                            )}
+                        >
+                          {velocity?.onTrackPercent.toFixed(0)}%
+                        </button>
+                      {:else}
+                        <span class="text-sm text-neutral-500">—</span>
+                      {/if}
+                    </td>
+                    <td class="px-4 py-2.5 text-center">
+                      <span class="text-sm text-neutral-500 italic">—</span>
+                    </td>
+                    <td class="px-4 py-2.5 text-center">
+                      {#if teamSnapshotsMap.get(team.teamKey)?.quality}
+                        {@const quality = teamSnapshotsMap.get(
+                          team.teamKey
+                        )?.quality}
+                        <button
+                          type="button"
+                          class="text-sm hover:underline cursor-pointer {quality?.status ===
+                          'healthy'
+                            ? 'text-emerald-400'
+                            : quality?.status === 'warning'
+                              ? 'text-amber-400'
+                              : quality?.status === 'critical'
+                                ? 'text-red-400'
+                                : 'text-neutral-400'}"
+                          onclick={() =>
+                            handleTableMetricClick(
+                              "quality",
+                              "team",
+                              team.teamKey
+                            )}
+                        >
+                          {quality?.compositeScore}%
+                        </button>
+                      {:else}
+                        <span class="text-sm text-neutral-500">—</span>
+                      {/if}
+                    </td>
+                  </tr>
+                {/each}
+              </tbody>
+            {/if}
+          {/each}
+
+          <!-- Standalone teams (no domain grouping) - only shown when expanded -->
+          {#if showTeams && standaloneTeams.length > 0}
+            <tbody class="divide-y divide-white/5">
+              {#each standaloneTeams as team (team.teamKey)}
+                <tr class="hover:bg-white/3 transition-colors">
+                  <td class="px-4 py-2.5">
+                    <span class="text-sm text-neutral-300"
+                      >{getTeamDisplayName(team.teamKey, team.teamName)}</span
+                    >
+                  </td>
+                  <td class="px-4 py-2.5 text-center">
+                    <span class="text-sm text-neutral-400">—</span>
+                  </td>
+                  <td class="px-4 py-2.5 text-center">
+                    {#if teamSnapshotsMap.get(team.teamKey)?.teamHealth}
+                      {@const wip = teamSnapshotsMap.get(
+                        team.teamKey
+                      )?.teamHealth}
+                      <button
+                        type="button"
+                        class="text-sm hover:underline cursor-pointer {wip?.status ===
+                        'healthy'
+                          ? 'text-emerald-400'
+                          : wip?.status === 'warning'
+                            ? 'text-amber-400'
+                            : wip?.status === 'critical'
+                              ? 'text-red-400'
+                              : 'text-neutral-400'}"
+                        onclick={() =>
+                          handleTableMetricClick(
+                            "wipHealth",
+                            "team",
+                            team.teamKey
+                          )}
+                      >
+                        {wip?.healthyWorkloadPercent.toFixed(0)}%
+                      </button>
+                    {:else}
+                      <span class="text-sm text-neutral-500">—</span>
+                    {/if}
+                  </td>
+                  <td class="px-4 py-2.5 text-center">
+                    {#if teamSnapshotsMap.get(team.teamKey)?.velocityHealth}
+                      {@const velocity = teamSnapshotsMap.get(
+                        team.teamKey
+                      )?.velocityHealth}
+                      <button
+                        type="button"
+                        class="text-sm hover:underline cursor-pointer {velocity?.status ===
+                        'healthy'
+                          ? 'text-emerald-400'
+                          : velocity?.status === 'warning'
+                            ? 'text-amber-400'
+                            : velocity?.status === 'critical'
+                              ? 'text-red-400'
+                              : 'text-neutral-400'}"
+                        onclick={() =>
+                          handleTableMetricClick(
+                            "projectHealth",
+                            "team",
+                            team.teamKey
+                          )}
+                      >
+                        {velocity?.onTrackPercent.toFixed(0)}%
+                      </button>
+                    {:else}
+                      <span class="text-sm text-neutral-500">—</span>
+                    {/if}
+                  </td>
+                  <td class="px-4 py-2.5 text-center">
+                    <span class="text-sm text-neutral-500 italic">—</span>
+                  </td>
+                  <td class="px-4 py-2.5 text-center">
+                    {#if teamSnapshotsMap.get(team.teamKey)?.quality}
+                      {@const quality = teamSnapshotsMap.get(
+                        team.teamKey
+                      )?.quality}
+                      <button
+                        type="button"
+                        class="text-sm hover:underline cursor-pointer {quality?.status ===
+                        'healthy'
+                          ? 'text-emerald-400'
+                          : quality?.status === 'warning'
+                            ? 'text-amber-400'
+                            : quality?.status === 'critical'
+                              ? 'text-red-400'
+                              : 'text-neutral-400'}"
+                        onclick={() =>
+                          handleTableMetricClick(
+                            "quality",
+                            "team",
+                            team.teamKey
+                          )}
+                      >
+                        {quality?.compositeScore}%
+                      </button>
+                    {:else}
+                      <span class="text-sm text-neutral-500">—</span>
+                    {/if}
+                  </td>
+                </tr>
+              {/each}
+            </tbody>
+          {/if}
+        </table>
+      </div>
+    </Card>
   {/if}
 </div>
-
-<!-- Engineer Detail Modal -->
-{#if selectedEngineer}
-  <EngineerDetailModal
-    engineer={selectedEngineer}
-    onclose={closeEngineerModal}
-  />
-{/if}
