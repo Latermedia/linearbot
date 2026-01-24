@@ -20,6 +20,7 @@ export {
   hasProjectViolation,
   hasProjectWipViolation, // deprecated, use hasProjectViolation
   getProjectEngineersInViolation,
+  type EngineerTeamMapping,
 } from "./team-health.js";
 
 // Velocity Health pillar

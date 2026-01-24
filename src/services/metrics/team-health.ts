@@ -16,6 +16,12 @@ import type { TeamHealthV1 } from "../../types/metrics-snapshot.js";
 import { getPillarStatus } from "../../types/metrics-snapshot.js";
 
 /**
+ * Engineer to team mapping from ENGINEER_TEAM_MAPPING env var
+ * Key: engineer name, Value: team key
+ */
+export type EngineerTeamMapping = Record<string, string>;
+
+/**
  * Check if an engineer has a healthy workload
  * Healthy = ≤5 issues AND working on exactly 1 project
  */
@@ -46,12 +52,14 @@ function buildTeamKeyToNameMap(issues: Issue[]): Map<string, string> {
  * @param engineers - All engineers with WIP data
  * @param projects - All active projects
  * @param projectFilter - Optional filter function to scope to specific projects
+ * @param engineerTeamMapping - Optional mapping from ENGINEER_TEAM_MAPPING to filter engineers
  * @returns TeamHealthV1 metrics object
  */
 export function calculateTeamHealth(
   engineers: Engineer[],
   projects: Project[],
-  projectFilter?: (project: Project) => boolean
+  projectFilter?: (project: Project) => boolean,
+  engineerTeamMapping?: EngineerTeamMapping
 ): TeamHealthV1 {
   // Apply project filter if provided
   const filteredProjects = projectFilter
@@ -64,37 +72,56 @@ export function calculateTeamHealth(
     (p) => p.in_progress_issues > 0
   );
 
-  // Get engineers who are working on the filtered projects
-  const relevantEngineerIds = new Set<string>();
-  for (const project of activeProjects) {
-    try {
-      const projectEngineers = JSON.parse(
-        project.engineers || "[]"
-      ) as string[];
-      for (const engineerName of projectEngineers) {
-        // Find engineer by name (since projects store names, not IDs)
-        const engineer = engineers.find(
-          (e) => e.assignee_name === engineerName
-        );
-        if (engineer) {
-          relevantEngineerIds.add(engineer.assignee_id);
+  // Determine which engineers to analyze based on whether we have a mapping
+  let engineersToAnalyze: Engineer[];
+
+  if (engineerTeamMapping && Object.keys(engineerTeamMapping).length > 0) {
+    // When ENGINEER_TEAM_MAPPING is configured, use it as the source of truth.
+    // The passed-in engineers array is already pre-filtered by domain/team in the caller
+    // (calculateTeamHealthForDomain/calculateTeamHealthForTeam).
+    // Just filter to those with active WIP.
+    const mappedEngineerNames = new Set(Object.keys(engineerTeamMapping));
+    engineersToAnalyze = engineers.filter((e) => {
+      // Must have active WIP
+      if (e.wip_issue_count <= 0) return false;
+      // Must be in the mapping (ensures we don't count cross-collaborators)
+      if (!mappedEngineerNames.has(e.assignee_name)) return false;
+      return true;
+    });
+  } else {
+    // Legacy behavior: no mapping configured, use project-based filtering
+    const relevantEngineerIds = new Set<string>();
+    for (const project of activeProjects) {
+      try {
+        const projectEngineers = JSON.parse(
+          project.engineers || "[]"
+        ) as string[];
+        for (const engineerName of projectEngineers) {
+          // Find engineer by name (since projects store names, not IDs)
+          const engineer = engineers.find(
+            (e) => e.assignee_name === engineerName
+          );
+          if (engineer) {
+            relevantEngineerIds.add(engineer.assignee_id);
+          }
         }
+      } catch {
+        // Invalid JSON, skip
       }
-    } catch {
-      // Invalid JSON, skip
     }
+
+    // Filter engineers to only those working on relevant projects
+    let relevantEngineers = engineers.filter((e) =>
+      relevantEngineerIds.has(e.assignee_id)
+    );
+
+    // If no relevant engineers from projects, use all engineers with WIP
+    if (relevantEngineers.length === 0) {
+      relevantEngineers = engineers.filter((e) => e.wip_issue_count > 0);
+    }
+
+    engineersToAnalyze = relevantEngineers;
   }
-
-  // Filter engineers to only those working on relevant projects
-  const relevantEngineers = engineers.filter((e) =>
-    relevantEngineerIds.has(e.assignee_id)
-  );
-
-  // If no relevant engineers, use all engineers with WIP
-  const engineersToAnalyze =
-    relevantEngineers.length > 0
-      ? relevantEngineers
-      : engineers.filter((e) => e.wip_issue_count > 0);
 
   // Calculate healthy ICs (composite: ≤5 issues AND single project)
   const healthyIcs = engineersToAnalyze.filter(isHealthyWorkload);
@@ -223,39 +250,57 @@ export function getProjectEngineersInViolation(
  * @param teamKey - The team key to filter by
  * @param engineers - All engineers
  * @param projects - All projects
- * @param issues - All issues (used to build team key → name mapping)
+ * @param issues - All issues (used to build team key → name mapping, only used if no engineerTeamMapping)
+ * @param engineerTeamMapping - Optional mapping from ENGINEER_TEAM_MAPPING to filter engineers
  * @returns TeamHealthV1 metrics for the specific team
  */
 export function calculateTeamHealthForTeam(
   teamKey: string,
   engineers: Engineer[],
   projects: Project[],
-  issues: Issue[] = []
+  issues: Issue[] = [],
+  engineerTeamMapping?: EngineerTeamMapping
 ): TeamHealthV1 {
   const teamKeyUpper = teamKey.toUpperCase();
 
-  // Build team key → team name mapping from issues
-  const teamKeyToName = buildTeamKeyToNameMap(issues);
-  const teamName = teamKeyToName.get(teamKeyUpper);
+  // Filter engineers by team
+  let teamEngineers: Engineer[];
 
-  // Filter engineers by team (matching by team name)
-  const teamEngineers = engineers.filter((e) => {
-    try {
-      const teamNames = JSON.parse(e.team_names || "[]") as string[];
-      // Match by exact team name if we have the mapping, otherwise try substring match
-      if (teamName) {
-        return teamNames.some(
-          (name) => name.toUpperCase() === teamName.toUpperCase()
+  if (engineerTeamMapping && Object.keys(engineerTeamMapping).length > 0) {
+    // Use ENGINEER_TEAM_MAPPING as source of truth
+    // Only include engineers explicitly mapped to this team
+    const engineersInTeam = new Set(
+      Object.entries(engineerTeamMapping)
+        .filter(([_, team]) => team.toUpperCase() === teamKeyUpper)
+        .map(([name]) => name)
+    );
+
+    teamEngineers = engineers.filter((e) =>
+      engineersInTeam.has(e.assignee_name)
+    );
+  } else {
+    // Fallback: filter by team_names field from Linear (legacy behavior)
+    const teamKeyToName = buildTeamKeyToNameMap(issues);
+    const teamName = teamKeyToName.get(teamKeyUpper);
+
+    teamEngineers = engineers.filter((e) => {
+      try {
+        const teamNames = JSON.parse(e.team_names || "[]") as string[];
+        // Match by exact team name if we have the mapping, otherwise try substring match
+        if (teamName) {
+          return teamNames.some(
+            (name) => name.toUpperCase() === teamName.toUpperCase()
+          );
+        }
+        // Fallback: try matching by key in name (less accurate)
+        return teamNames.some((name) =>
+          name.toUpperCase().includes(teamKeyUpper)
         );
+      } catch {
+        return false;
       }
-      // Fallback: try matching by key in name (less accurate)
-      return teamNames.some((name) =>
-        name.toUpperCase().includes(teamKeyUpper)
-      );
-    } catch {
-      return false;
-    }
-  });
+    });
+  }
 
   // Filter projects by team (matching by team key)
   const teamProjects = projects.filter((p) => {
@@ -267,7 +312,12 @@ export function calculateTeamHealthForTeam(
     }
   });
 
-  return calculateTeamHealth(teamEngineers, teamProjects);
+  return calculateTeamHealth(
+    teamEngineers,
+    teamProjects,
+    undefined,
+    engineerTeamMapping
+  );
 }
 
 /**
@@ -276,38 +326,58 @@ export function calculateTeamHealthForTeam(
  * @param domainTeamKeys - Array of team keys that belong to the domain
  * @param engineers - All engineers
  * @param projects - All projects
- * @param issues - All issues (used to build team key → name mapping)
+ * @param issues - All issues (used to build team key → name mapping, only used if no engineerTeamMapping)
+ * @param engineerTeamMapping - Optional mapping from ENGINEER_TEAM_MAPPING to filter engineers
  * @returns TeamHealthV1 metrics for the domain
  */
 export function calculateTeamHealthForDomain(
   domainTeamKeys: string[],
   engineers: Engineer[],
   projects: Project[],
-  issues: Issue[] = []
+  issues: Issue[] = [],
+  engineerTeamMapping?: EngineerTeamMapping
 ): TeamHealthV1 {
   const domainKeysUpper = domainTeamKeys.map((k) => k.toUpperCase());
 
-  // Build team key → team name mapping from issues
-  const teamKeyToName = buildTeamKeyToNameMap(issues);
+  // Filter engineers by domain teams
+  let domainEngineers: Engineer[];
 
-  // Get team names that correspond to domain keys
-  const domainTeamNames = new Set<string>();
-  for (const key of domainKeysUpper) {
-    const teamName = teamKeyToName.get(key);
-    if (teamName) {
-      domainTeamNames.add(teamName.toUpperCase());
+  if (engineerTeamMapping && Object.keys(engineerTeamMapping).length > 0) {
+    // Use ENGINEER_TEAM_MAPPING as source of truth
+    // Only include engineers explicitly mapped to teams in this domain
+    const engineersInDomain = new Set(
+      Object.entries(engineerTeamMapping)
+        .filter(([_, team]) => domainKeysUpper.includes(team.toUpperCase()))
+        .map(([name]) => name)
+    );
+
+    domainEngineers = engineers.filter((e) =>
+      engineersInDomain.has(e.assignee_name)
+    );
+  } else {
+    // Fallback: filter by team_names field from Linear (legacy behavior)
+    const teamKeyToName = buildTeamKeyToNameMap(issues);
+
+    // Get team names that correspond to domain keys
+    const domainTeamNames = new Set<string>();
+    for (const key of domainKeysUpper) {
+      const teamName = teamKeyToName.get(key);
+      if (teamName) {
+        domainTeamNames.add(teamName.toUpperCase());
+      }
     }
+
+    domainEngineers = engineers.filter((e) => {
+      try {
+        const teamNames = JSON.parse(e.team_names || "[]") as string[];
+        return teamNames.some((name) =>
+          domainTeamNames.has(name.toUpperCase())
+        );
+      } catch {
+        return false;
+      }
+    });
   }
-
-  // Filter engineers by domain teams (matching by team name)
-  const domainEngineers = engineers.filter((e) => {
-    try {
-      const teamNames = JSON.parse(e.team_names || "[]") as string[];
-      return teamNames.some((name) => domainTeamNames.has(name.toUpperCase()));
-    } catch {
-      return false;
-    }
-  });
 
   // Filter projects by domain teams (matching by team key)
   const domainProjects = projects.filter((p) => {
@@ -319,5 +389,10 @@ export function calculateTeamHealthForDomain(
     }
   });
 
-  return calculateTeamHealth(domainEngineers, domainProjects);
+  return calculateTeamHealth(
+    domainEngineers,
+    domainProjects,
+    undefined,
+    engineerTeamMapping
+  );
 }
