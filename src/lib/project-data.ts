@@ -183,15 +183,17 @@ export function groupProjectsByTeams(
       projectIssues.map((i) => i.team_key)
     );
 
-    // Also get teams from project.teams (in case project has no issues in current filter)
-    // project.teams contains all teams that have ANY issues in the project (not just started)
+    // Also get teams from project.teams (contains all teams associated with the project)
+    // This is essential for team filtering - a project should appear under all its teams,
+    // not just teams that have issues in the current view/filter
     const teamsInProjectFromProject = project.teams || new Set<string>();
 
-    // Combine both sources - prefer teams from issues if available, fallback to project.teams
-    const teamsInProject =
-      teamsInProjectFromIssues.size > 0
-        ? teamsInProjectFromIssues
-        : teamsInProjectFromProject;
+    // Use union of both sources to ensure projects appear under all their teams
+    // This fixes team filtering when a project's issues are from a different team
+    const teamsInProject = new Set([
+      ...teamsInProjectFromIssues,
+      ...teamsInProjectFromProject,
+    ]);
 
     // If no teams found from either source, skip this project
     if (teamsInProject.size === 0) {
