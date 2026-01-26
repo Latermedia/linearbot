@@ -59,14 +59,16 @@
       ? 'justify-center'
       : 'gap-2'}"
   >
-    <div
-      class="w-7 h-7 rounded bg-violet-600 flex items-center justify-center shrink-0"
-    >
-      <span class="text-white font-bold text-sm">L</span>
+    <div class="w-5 h-5 shrink-0">
+      <img
+        src="/logo_icon_knockout_light.svg"
+        alt="Laterbot"
+        class="w-full h-full"
+      />
     </div>
     {#if !isCollapsed}
       <span class="text-white font-semibold text-sm tracking-tight"
-        >LinearBot</span
+        >Laterbot</span
       >
     {/if}
   </div>

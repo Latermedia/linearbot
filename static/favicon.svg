@@ -1,4 +1,7 @@
 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100">
-  <text x="50" y="70" font-size="70" text-anchor="middle" dominant-baseline="central">🚀</text>
+  <rect width="100" height="100" rx="12" fill="#7c3aed"/>
+  <g transform="translate(12, 8) scale(0.38)">
+    <path d="M200 153.612V205.299H63.418L0 132.823V0H60.2197L200 153.612ZM7.24707 7.71777V126.047H128.43V88.8623H52.9736V7.71777H7.24707Z" fill="white"/>
+  </g>
 </svg>
 

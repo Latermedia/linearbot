@@ -56,7 +56,7 @@
   <div class="w-full max-w-md">
     <div class="text-center mb-8">
       <h1 class="text-2xl font-semibold text-neutral-900 dark:text-white mb-2">
-        LinearBot
+        Laterbot
       </h1>
       <p class="text-sm text-neutral-600 dark:text-neutral-400">
         Enter password to access
