@@ -16,14 +16,43 @@ export const CURRENT_SCHEMA_VERSION = 1;
 // Status Enums
 // ============================================================================
 
-export const PillarStatusSchema = z.enum([
+// Core status values (new schema)
+const CorePillarStatusSchema = z.enum([
   "peakFlow",
   "strongRhythm",
   "steadyProgress",
   "earlyTraction",
   "lowTraction",
 ]);
-export type PillarStatus = z.infer<typeof PillarStatusSchema>;
+
+// Legacy status values (old schema) - mapped to new values during parsing
+const LegacyPillarStatusSchema = z.enum(["healthy", "warning", "critical"]);
+
+// Map legacy status to new pillar status
+function mapLegacyStatus(legacy: string): PillarStatus {
+  switch (legacy) {
+    case "healthy":
+      return "peakFlow";
+    case "warning":
+      return "steadyProgress";
+    case "critical":
+      return "lowTraction";
+    default:
+      return "steadyProgress";
+  }
+}
+
+// Combined schema that accepts both old and new values, normalizing to new
+export const PillarStatusSchema = z
+  .union([CorePillarStatusSchema, LegacyPillarStatusSchema])
+  .transform((val): PillarStatus => {
+    if (["healthy", "warning", "critical"].includes(val)) {
+      return mapLegacyStatus(val);
+    }
+    return val as PillarStatus;
+  });
+
+export type PillarStatus = z.infer<typeof CorePillarStatusSchema>;
 
 /** Display labels for pillar statuses */
 export const PillarStatusLabels: Record<PillarStatus, string> = {
@@ -47,30 +76,74 @@ export type ProjectHealth = z.infer<typeof ProjectHealthSchema>;
 // Pillar 1: Team Health
 // ============================================================================
 
-export const TeamHealthSchemaV1 = z.object({
-  /** TOPLINE: Percentage of ICs with healthy workloads (≤5 issues AND single project) */
-  healthyWorkloadPercent: z.number(),
-  /** Number of ICs with healthy workloads */
+// Base schema for teamHealth - all fields optional for backward compat, then transformed
+const TeamHealthBaseSchema = z.object({
+  // New fields (may not exist in old snapshots)
+  healthyWorkloadPercent: z.number().optional(),
+  wipViolationCount: z.number().optional(),
+  multiProjectViolationCount: z.number().optional(),
+  impactedProjectCount: z.number().optional(),
+  // Fields that exist in both old and new
   healthyIcCount: z.number(),
-  /** Total number of ICs */
   totalIcCount: z.number(),
-  /** Number of ICs with 6+ issues (WIP overload) */
-  wipViolationCount: z.number(),
-  /** Number of ICs on 2+ projects (context switching) */
-  multiProjectViolationCount: z.number(),
-  /** Number of projects impacted by any IC violation */
-  impactedProjectCount: z.number(),
-  /** Total number of active projects */
   totalProjectCount: z.number(),
-  /** Overall status for this pillar */
   status: PillarStatusSchema,
-  // Legacy fields for backward compatibility
-  /** @deprecated Use healthyWorkloadPercent instead */
-  icWipViolationPercent: z.number(),
-  /** @deprecated Use impactedProjectCount instead */
-  projectWipViolationPercent: z.number(),
-  /** @deprecated Use totalProjectCount - impactedProjectCount instead */
-  healthyProjectCount: z.number(),
+  // Legacy fields (exist in old snapshots, may be derived in new)
+  icWipViolationPercent: z.number().optional(),
+  projectWipViolationPercent: z.number().optional(),
+  healthyProjectCount: z.number().optional(),
+});
+
+export const TeamHealthSchemaV1 = TeamHealthBaseSchema.transform((data) => {
+  // Compute missing fields from available data for backward compatibility
+  const healthyWorkloadPercent =
+    data.healthyWorkloadPercent ??
+    (data.icWipViolationPercent !== undefined
+      ? 100 - data.icWipViolationPercent
+      : data.totalIcCount > 0
+        ? (data.healthyIcCount / data.totalIcCount) * 100
+        : 100);
+
+  const wipViolationCount =
+    data.wipViolationCount ?? data.totalIcCount - data.healthyIcCount;
+
+  const multiProjectViolationCount = data.multiProjectViolationCount ?? 0;
+
+  const impactedProjectCount =
+    data.impactedProjectCount ??
+    (data.projectWipViolationPercent !== undefined && data.totalProjectCount > 0
+      ? Math.round(
+          (data.projectWipViolationPercent / 100) * data.totalProjectCount
+        )
+      : data.healthyProjectCount !== undefined
+        ? data.totalProjectCount - data.healthyProjectCount
+        : 0);
+
+  const icWipViolationPercent =
+    data.icWipViolationPercent ?? 100 - healthyWorkloadPercent;
+
+  const projectWipViolationPercent =
+    data.projectWipViolationPercent ??
+    (data.totalProjectCount > 0
+      ? (impactedProjectCount / data.totalProjectCount) * 100
+      : 0);
+
+  const healthyProjectCount =
+    data.healthyProjectCount ?? data.totalProjectCount - impactedProjectCount;
+
+  return {
+    healthyWorkloadPercent,
+    healthyIcCount: data.healthyIcCount,
+    totalIcCount: data.totalIcCount,
+    wipViolationCount,
+    multiProjectViolationCount,
+    impactedProjectCount,
+    totalProjectCount: data.totalProjectCount,
+    status: data.status,
+    icWipViolationPercent,
+    projectWipViolationPercent,
+    healthyProjectCount,
+  };
 });
 
 export type TeamHealthV1 = z.infer<typeof TeamHealthSchemaV1>;
@@ -119,7 +192,7 @@ export type VelocityHealthV1 = z.infer<typeof VelocityHealthSchemaV1>;
 // ============================================================================
 
 /** Extended status including "unknown" for unconfigured thresholds */
-export const ProductivityStatusSchema = z.enum([
+const CoreProductivityStatusSchema = z.enum([
   "peakFlow",
   "strongRhythm",
   "steadyProgress",
@@ -128,7 +201,28 @@ export const ProductivityStatusSchema = z.enum([
   "unknown",
   "pending",
 ]);
-export type ProductivityStatus = z.infer<typeof ProductivityStatusSchema>;
+
+// Combined schema that accepts both old and new values, normalizing to new
+export const ProductivityStatusSchema = z
+  .union([CoreProductivityStatusSchema, LegacyPillarStatusSchema])
+  .transform((val): ProductivityStatus => {
+    if (["healthy", "warning", "critical"].includes(val)) {
+      // Map legacy status to productivity status
+      switch (val) {
+        case "healthy":
+          return "peakFlow";
+        case "warning":
+          return "steadyProgress";
+        case "critical":
+          return "lowTraction";
+        default:
+          return "unknown";
+      }
+    }
+    return val as ProductivityStatus;
+  });
+
+export type ProductivityStatus = z.infer<typeof CoreProductivityStatusSchema>;
 
 /** Pending state - for teams or when GetDX is not configured */
 export const TeamProductivityPendingSchemaV1 = z.object({
