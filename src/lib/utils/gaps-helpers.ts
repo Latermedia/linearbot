@@ -1,5 +1,8 @@
 /**
  * Shared utilities for gaps (formerly violations) display
+ *
+ * @deprecated Use getGapsCountStatus + getStatusTextColor from status-colors.ts instead
+ * for consistent 5-tier color system.
  */
 
 /**
@@ -7,6 +10,8 @@
  * - >5: red (critical)
  * - >2: amber (warning)
  * - ≤2: green (healthy)
+ *
+ * @deprecated Use getGapsCountStatus + getStatusTextColor from status-colors.ts instead
  */
 export function getGapsColorClass(count: number): string {
   if (count > 5) return "text-red-500 dark:text-red-400";

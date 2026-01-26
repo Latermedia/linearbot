@@ -18,6 +18,7 @@
   import SidebarItem from "./sidebar/SidebarItem.svelte";
   import SidebarTeamFilter from "./sidebar/SidebarTeamFilter.svelte";
   import SidebarFooter from "./sidebar/SidebarFooter.svelte";
+  import AnimatedLogo from "./AnimatedLogo.svelte";
 
   const isCollapsed = $derived($sidebarCollapsed);
 
@@ -54,23 +55,17 @@
   style="width: {isCollapsed ? '64px' : '240px'}"
 >
   <!-- Logo -->
-  <div
-    class="flex items-center px-3 py-4 border-b border-white/5 {isCollapsed
-      ? 'justify-center'
-      : 'gap-2'}"
-  >
-    <div class="w-5 h-5 shrink-0">
-      <img
-        src="/logo_icon_knockout_light.svg"
-        alt="Laterbot"
-        class="w-full h-full"
-      />
+  <div class="px-2 py-4 border-b border-white/5">
+    <div
+      class="flex items-center px-3 {isCollapsed ? 'justify-center' : 'gap-3'}"
+    >
+      <AnimatedLogo size={20} delay={150} />
+      {#if !isCollapsed}
+        <span class="logo-text text-white font-semibold text-sm tracking-tight"
+          >Laterbot</span
+        >
+      {/if}
     </div>
-    {#if !isCollapsed}
-      <span class="text-white font-semibold text-sm tracking-tight"
-        >Laterbot</span
-      >
-    {/if}
   </div>
 
   <!-- Team Filter -->
@@ -135,3 +130,26 @@
     </button>
   </div>
 </aside>
+
+<style>
+  .logo-text {
+    animation: textBlurIn 0.5s cubic-bezier(0.76, 0, 0.24, 1) 0.15s both;
+  }
+
+  @keyframes textBlurIn {
+    from {
+      opacity: 0;
+      filter: blur(10px);
+    }
+    to {
+      opacity: 1;
+      filter: blur(0px);
+    }
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    .logo-text {
+      animation: none;
+    }
+  }
+</style>

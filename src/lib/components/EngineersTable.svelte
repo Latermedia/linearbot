@@ -1,8 +1,12 @@
 <script lang="ts">
   import Badge from "./Badge.svelte";
   import UserProfile from "./UserProfile.svelte";
-  import { WIP_LIMIT } from "../../constants/thresholds";
-  import { getGapsColorClass } from "../utils/gaps-helpers";
+  import {
+    getWIPCountStatus,
+    getProjectCountStatus,
+    getGapsCountStatus,
+    getStatusTextColor,
+  } from "../utils/status-colors";
 
   interface EngineerData {
     assignee_id: string;
@@ -50,33 +54,6 @@
     if (diffMins < 60) return `${diffMins}m ago`;
     if (diffHours < 24) return `${diffHours}h ago`;
     return `${diffDays}d ago`;
-  }
-
-  function getWIPBadgeVariant(
-    count: number
-  ): "default" | "secondary" | "outline" | "destructive" {
-    return count > WIP_LIMIT ? "destructive" : "outline";
-  }
-
-  function getWIPBadgeClass(count: number): string {
-    return count > WIP_LIMIT
-      ? "bg-red-500/20 text-red-400 border-red-500/30"
-      : "bg-emerald-500/20 text-emerald-400 border-emerald-500/30";
-  }
-
-  function getProjectBadgeVariant(
-    count: number | undefined
-  ): "default" | "secondary" | "outline" | "destructive" {
-    if (count === undefined) return "outline";
-    return count > 1 ? "destructive" : "outline";
-  }
-
-  function getProjectBadgeClass(count: number | undefined): string {
-    if (count === undefined)
-      return "bg-neutral-500/20 text-neutral-400 border-neutral-500/30";
-    return count > 1
-      ? "bg-amber-500/20 text-amber-400 border-amber-500/30"
-      : "bg-emerald-500/20 text-emerald-400 border-emerald-500/30";
   }
 
   function getTotalGaps(engineer: EngineerData): number {
@@ -157,20 +134,22 @@
             </div>
           </td>
           <td class="px-4 py-3 text-center">
-            <Badge
-              variant={getWIPBadgeVariant(engineer.wip_issue_count)}
-              class={getWIPBadgeClass(engineer.wip_issue_count)}
+            <span
+              class="text-sm font-semibold {getStatusTextColor(
+                getWIPCountStatus(engineer.wip_issue_count)
+              )}"
             >
               {engineer.wip_issue_count}
-            </Badge>
+            </span>
           </td>
           <td class="px-4 py-3 text-center">
-            <Badge
-              variant={getProjectBadgeVariant(engineer.active_project_count)}
-              class={getProjectBadgeClass(engineer.active_project_count)}
+            <span
+              class="text-sm font-semibold {getStatusTextColor(
+                getProjectCountStatus(engineer.active_project_count)
+              )}"
             >
               {engineer.active_project_count ?? "—"}
-            </Badge>
+            </span>
           </td>
           <td class="px-4 py-3 text-right text-neutral-300">
             {Math.round(engineer.wip_total_points)}
@@ -179,7 +158,11 @@
             {formatWIPAge(engineer.oldest_wip_age_days)}
           </td>
           <td class="px-4 py-3 text-center">
-            <span class="text-sm font-medium {getGapsColorClass(totalGaps)}">
+            <span
+              class="text-sm font-semibold {getStatusTextColor(
+                getGapsCountStatus(totalGaps)
+              )}"
+            >
               {totalGaps}
             </span>
           </td>

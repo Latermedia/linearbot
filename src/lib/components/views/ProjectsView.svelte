@@ -27,7 +27,10 @@
     hasNoRecentComment,
     hasWIPAgeViolation,
   } from "../../../utils/issue-validators";
-  import { getGapsColorClass } from "$lib/utils/gaps-helpers";
+  import {
+    getGapsCountStatus,
+    getStatusTextColor,
+  } from "$lib/utils/status-colors";
 
   // Props
   interface Props {
@@ -351,8 +354,8 @@
           Gaps
         </div>
         <div
-          class="text-2xl font-semibold {getGapsColorClass(
-            projectViolationsCount + icViolationsCount
+          class="text-2xl font-semibold {getStatusTextColor(
+            getGapsCountStatus(projectViolationsCount + icViolationsCount)
           )}"
         >
           {projectViolationsCount + icViolationsCount}

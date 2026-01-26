@@ -6,7 +6,10 @@
   import EngineersTable from "$lib/components/EngineersTable.svelte";
   import EngineerDetailModal from "$lib/components/EngineerDetailModal.svelte";
   import { WIP_LIMIT } from "../../../constants/thresholds";
-  import { getGapsColorClass } from "$lib/utils/gaps-helpers";
+  import {
+    getGapsCountStatus,
+    getStatusTextColor,
+  } from "$lib/utils/status-colors";
   import { teamsStore } from "$lib/stores/database";
   import { teamFilterStore } from "$lib/stores/team-filter";
   import { getTeamsForDomain } from "../../../utils/domain-mapping";
@@ -185,7 +188,9 @@
           Total Gaps
         </div>
         <div
-          class="text-2xl font-semibold {getGapsColorClass(totalViolations)}"
+          class="text-2xl font-semibold {getStatusTextColor(
+            getGapsCountStatus(totalViolations)
+          )}"
         >
           {totalViolations}
         </div>

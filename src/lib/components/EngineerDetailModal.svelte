@@ -3,8 +3,12 @@
   import IssueTable from "./IssueTable.svelte";
   import UserProfile from "./UserProfile.svelte";
   import Modal from "./Modal.svelte";
-  import { WIP_LIMIT } from "../../constants/thresholds";
-  import { getGapsColorClass } from "../utils/gaps-helpers";
+  import {
+    getWIPCountStatus,
+    getGapsCountStatus,
+    getStatusTextColor,
+    getWIPStatusLabel,
+  } from "../utils/status-colors";
 
   interface IssueSummary {
     id: string;
@@ -86,14 +90,6 @@
     return `${diffDays} days ago`;
   }
 
-  function getWIPStatusText(count: number): string {
-    return count > WIP_LIMIT ? "Over Limit" : "OK";
-  }
-
-  function getWIPStatusClass(count: number): string {
-    return count > WIP_LIMIT ? "text-red-400" : "text-emerald-400";
-  }
-
   const activeIssues = $derived(parseActiveIssues(engineer.active_issues));
   const teamNames = $derived(parseTeamNames(engineer.team_names));
   const totalViolations = $derived(
@@ -171,14 +167,18 @@
       <div class="p-3 rounded-md border bg-neutral-800/50 border-white/5">
         <div class="mb-1 text-xs text-neutral-500">WIP Issues</div>
         <div
-          class="text-2xl font-semibold {getWIPStatusClass(
-            engineer.wip_issue_count
+          class="text-2xl font-semibold {getStatusTextColor(
+            getWIPCountStatus(engineer.wip_issue_count)
           )}"
         >
           {engineer.wip_issue_count}
         </div>
-        <div class="text-xs {getWIPStatusClass(engineer.wip_issue_count)}">
-          {getWIPStatusText(engineer.wip_issue_count)}
+        <div
+          class="text-xs {getStatusTextColor(
+            getWIPCountStatus(engineer.wip_issue_count)
+          )}"
+        >
+          {getWIPStatusLabel(engineer.wip_issue_count)}
         </div>
       </div>
       <div class="p-3 rounded-md border bg-neutral-800/50 border-white/5">
@@ -198,7 +198,9 @@
       <div class="p-3 rounded-md border bg-neutral-800/50 border-white/5">
         <div class="mb-1 text-xs text-neutral-500">Gaps</div>
         <div
-          class="text-2xl font-semibold {getGapsColorClass(totalViolations)}"
+          class="text-2xl font-semibold {getStatusTextColor(
+            getGapsCountStatus(totalViolations)
+          )}"
         >
           {totalViolations}
         </div>

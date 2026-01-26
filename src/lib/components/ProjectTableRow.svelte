@@ -8,7 +8,10 @@
     isHealthUpdateOverdue,
     getDaysSinceHealthUpdate,
   } from "$lib/utils/project-helpers";
-  import { getGapsColorClass } from "$lib/utils/gaps-helpers";
+  import {
+    getGapsCountStatus,
+    getStatusTextColor,
+  } from "$lib/utils/status-colors";
 
   /** Effective health data from metrics snapshot */
   export interface ProjectHealthData {
@@ -68,7 +71,9 @@
     return count;
   });
 
-  const gapsColorClass = $derived(getGapsColorClass(totalViolations));
+  const gapsColorClass = $derived(
+    getStatusTextColor(getGapsCountStatus(totalViolations))
+  );
 </script>
 
 <tr
