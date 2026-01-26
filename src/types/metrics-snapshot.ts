@@ -16,8 +16,16 @@ export const CURRENT_SCHEMA_VERSION = 1;
 // Status Enums
 // ============================================================================
 
-// Core status values (new schema)
-const CorePillarStatusSchema = z.enum([
+/**
+ * 5-tier pillar status values
+ * Thresholds (based on score percentage):
+ * - Peak Flow: > 80%
+ * - Strong Rhythm: > 60%
+ * - Steady Progress: > 40%
+ * - Early Traction: > 20%
+ * - Low Traction: <= 20%
+ */
+export const PillarStatusSchema = z.enum([
   "peakFlow",
   "strongRhythm",
   "steadyProgress",
@@ -25,34 +33,7 @@ const CorePillarStatusSchema = z.enum([
   "lowTraction",
 ]);
 
-// Legacy status values (old schema) - mapped to new values during parsing
-const LegacyPillarStatusSchema = z.enum(["healthy", "warning", "critical"]);
-
-// Map legacy status to new pillar status
-function mapLegacyStatus(legacy: string): PillarStatus {
-  switch (legacy) {
-    case "healthy":
-      return "peakFlow";
-    case "warning":
-      return "steadyProgress";
-    case "critical":
-      return "lowTraction";
-    default:
-      return "steadyProgress";
-  }
-}
-
-// Combined schema that accepts both old and new values, normalizing to new
-export const PillarStatusSchema = z
-  .union([CorePillarStatusSchema, LegacyPillarStatusSchema])
-  .transform((val): PillarStatus => {
-    if (["healthy", "warning", "critical"].includes(val)) {
-      return mapLegacyStatus(val);
-    }
-    return val as PillarStatus;
-  });
-
-export type PillarStatus = z.infer<typeof CorePillarStatusSchema>;
+export type PillarStatus = z.infer<typeof PillarStatusSchema>;
 
 /** Display labels for pillar statuses */
 export const PillarStatusLabels: Record<PillarStatus, string> = {
@@ -191,8 +172,12 @@ export type VelocityHealthV1 = z.infer<typeof VelocityHealthSchemaV1>;
 // Pillar 3: Team Productivity (GetDX TrueThroughput integration)
 // ============================================================================
 
-/** Extended status including "unknown" for unconfigured thresholds */
-const CoreProductivityStatusSchema = z.enum([
+/**
+ * Productivity status - extends pillar status with "unknown" and "pending"
+ * - unknown: for unconfigured thresholds
+ * - pending: for teams without GetDX data
+ */
+export const ProductivityStatusSchema = z.enum([
   "peakFlow",
   "strongRhythm",
   "steadyProgress",
@@ -202,27 +187,7 @@ const CoreProductivityStatusSchema = z.enum([
   "pending",
 ]);
 
-// Combined schema that accepts both old and new values, normalizing to new
-export const ProductivityStatusSchema = z
-  .union([CoreProductivityStatusSchema, LegacyPillarStatusSchema])
-  .transform((val): ProductivityStatus => {
-    if (["healthy", "warning", "critical"].includes(val)) {
-      // Map legacy status to productivity status
-      switch (val) {
-        case "healthy":
-          return "peakFlow";
-        case "warning":
-          return "steadyProgress";
-        case "critical":
-          return "lowTraction";
-        default:
-          return "unknown";
-      }
-    }
-    return val as ProductivityStatus;
-  });
-
-export type ProductivityStatus = z.infer<typeof CoreProductivityStatusSchema>;
+export type ProductivityStatus = z.infer<typeof ProductivityStatusSchema>;
 
 /** Pending state - for teams or when GetDX is not configured */
 export const TeamProductivityPendingSchemaV1 = z.object({
