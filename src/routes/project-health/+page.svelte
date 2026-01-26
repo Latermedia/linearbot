@@ -151,9 +151,11 @@
   $effect(() => {
     if (!browser || loading) return;
 
-    const domain = activeDomainFilter;
-    if (domain) {
-      fetchTrendData("domain", domain);
+    // Team filter takes precedence for trend data
+    if (activeTeamFilter) {
+      fetchTrendData("team", activeTeamFilter);
+    } else if (activeDomainFilter) {
+      fetchTrendData("domain", activeDomainFilter);
     } else {
       fetchTrendData("org", null);
     }
@@ -188,6 +190,9 @@
   // Get current filter state
   const filter = $derived($teamFilterStore);
 
+  // Active team filter (direct team selection)
+  const activeTeamFilter = $derived(filter.teamKey);
+
   // Determine active domain filter (from domain selection or derived from team)
   const activeDomainFilter = $derived.by(() => {
     if (filter.teamKey) {
@@ -196,8 +201,21 @@
     return filter.domain;
   });
 
-  // Get filtered domain snapshot for hero metrics
+  // Get filtered team snapshot for hero metrics (when team filter is active)
+  const filteredTeamVelocity = $derived.by((): VelocityHealthV1 | null => {
+    if (!activeTeamFilter) return null;
+    const teamSnapshot = allSnapshots.find(
+      (s) =>
+        s.level === "team" &&
+        s.levelId?.toUpperCase() === activeTeamFilter.toUpperCase()
+    );
+    return teamSnapshot?.snapshot?.velocityHealth || null;
+  });
+
+  // Get filtered domain snapshot for hero metrics (when domain filter is active but no team filter)
   const filteredDomainVelocity = $derived.by((): VelocityHealthV1 | null => {
+    // Team filter takes precedence
+    if (activeTeamFilter) return null;
     if (!activeDomainFilter) return null;
     const domainSnapshot = allSnapshots.find(
       (s) => s.level === "domain" && s.levelId === activeDomainFilter
@@ -205,8 +223,10 @@
     return domainSnapshot?.snapshot?.velocityHealth || null;
   });
 
-  // Use filtered domain health if filter is active, otherwise org-level
-  const displayVelocity = $derived(filteredDomainVelocity || velocityHealth);
+  // Use filtered team health if team filter is active, then domain, then org-level
+  const displayVelocity = $derived(
+    filteredTeamVelocity || filteredDomainVelocity || velocityHealth
+  );
 
   // Derived counts (from display velocity, which respects filter)
   const projectStatuses = $derived(displayVelocity?.projectStatuses || []);
@@ -270,8 +290,11 @@
     unknown: "text-neutral-400",
   };
 
-  // Extract domain-level project health data for overview table
+  // Extract domain-level project health data for overview table (only shown when no team filter)
   const domainProjectHealthData = $derived.by((): DomainProjectHealth[] => {
+    // Don't show domain breakdown when team filter is active
+    if (activeTeamFilter) return [];
+
     const domainList: DomainProjectHealth[] = [];
 
     for (const snapshot of allSnapshots) {
@@ -416,7 +439,7 @@
   <!-- Page Title -->
   <div class="flex flex-wrap items-center justify-between gap-4">
     <h1 class="text-2xl font-semibold text-white">Project Health</h1>
-    <TeamFilterNotice level="domain" />
+    <TeamFilterNotice level={activeTeamFilter ? "team" : "domain"} />
   </div>
 
   {#if loading}

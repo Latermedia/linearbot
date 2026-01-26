@@ -172,9 +172,11 @@
   $effect(() => {
     if (!browser || loading) return;
 
-    const domain = activeDomainFilter;
-    if (domain) {
-      fetchTrendData("domain", domain);
+    // Team filter takes precedence for trend data
+    if (activeTeamFilter) {
+      fetchTrendData("team", activeTeamFilter);
+    } else if (activeDomainFilter) {
+      fetchTrendData("domain", activeDomainFilter);
     } else {
       fetchTrendData("org", null);
     }
@@ -205,6 +207,9 @@
   // Get current filter state
   const filter = $derived($teamFilterStore);
 
+  // Active team filter (direct team selection)
+  const activeTeamFilter = $derived(filter.teamKey);
+
   // Determine active domain filter (from domain selection or derived from team)
   const activeDomainFilter = $derived.by(() => {
     if (filter.teamKey) {
@@ -233,8 +238,15 @@
       );
     }
 
-    // Filter by domain if active
-    if (activeDomainFilter && hasMappingConfigured) {
+    // Filter by team if team filter is active (more specific)
+    if (activeTeamFilter && hasMappingConfigured) {
+      filtered = filtered.filter((e) => {
+        const teamKey = engineerTeamMapping[e.assignee_name];
+        return teamKey?.toUpperCase() === activeTeamFilter.toUpperCase();
+      });
+    }
+    // Otherwise filter by domain if domain filter is active
+    else if (activeDomainFilter && hasMappingConfigured) {
       filtered = filtered.filter((e) => {
         const teamKey = engineerTeamMapping[e.assignee_name];
         if (!teamKey) return false;
@@ -270,8 +282,15 @@
     // Filter to active projects (with WIP issues)
     filtered = filtered.filter((p) => p.in_progress_issues > 0);
 
-    // Filter by domain if active
-    if (activeDomainFilter) {
+    // Filter by team if team filter is active (more specific)
+    if (activeTeamFilter) {
+      filtered = filtered.filter((p) => {
+        const projectTeams = getProjectTeamKeys(p);
+        return projectTeams.some((t) => t === activeTeamFilter.toUpperCase());
+      });
+    }
+    // Otherwise filter by domain if active
+    else if (activeDomainFilter) {
       const domainTeamKeys = new Set<string>();
       // Get team keys for the domain from engineer mapping
       for (const [, teamKey] of Object.entries(engineerTeamMapping)) {
@@ -300,8 +319,11 @@
     );
   });
 
-  // Extract domain-level hygiene health data for table
+  // Extract domain-level hygiene health data for table (only shown when no team filter)
   const domainHygieneData = $derived.by((): DomainHygieneHealth[] => {
+    // Don't show domain breakdown when team filter is active
+    if (activeTeamFilter) return [];
+
     const domains: DomainHygieneHealth[] = [];
 
     for (const snapshot of allSnapshots) {
@@ -330,8 +352,21 @@
     return domains.sort((a, b) => a.hygieneScore - b.hygieneScore);
   });
 
-  // Get the filtered domain snapshot for hero metrics
+  // Get the filtered team snapshot for hero metrics (when team filter is active)
+  const filteredTeamHygiene = $derived.by((): LinearHygieneV1 | null => {
+    if (!activeTeamFilter) return null;
+    const teamSnapshot = allSnapshots.find(
+      (s) =>
+        s.level === "team" &&
+        s.levelId?.toUpperCase() === activeTeamFilter.toUpperCase()
+    );
+    return teamSnapshot?.snapshot?.linearHygiene || null;
+  });
+
+  // Get the filtered domain snapshot for hero metrics (when domain filter is active but no team filter)
   const filteredDomainHygiene = $derived.by((): LinearHygieneV1 | null => {
+    // Team filter takes precedence
+    if (activeTeamFilter) return null;
     if (!activeDomainFilter) return null;
     const domainSnapshot = allSnapshots.find(
       (s) => s.level === "domain" && s.levelId === activeDomainFilter
@@ -339,8 +374,10 @@
     return domainSnapshot?.snapshot?.linearHygiene || null;
   });
 
-  // Use filtered domain hygiene if filter is active, otherwise org-level
-  const displayHygiene = $derived(filteredDomainHygiene || linearHygiene);
+  // Use filtered team hygiene if team filter is active, then domain, then org-level
+  const displayHygiene = $derived(
+    filteredTeamHygiene || filteredDomainHygiene || linearHygiene
+  );
 
   // Status indicator colors
   const statusColors: Record<string, string> = {
@@ -401,7 +438,7 @@
   <!-- Page Title -->
   <div class="flex flex-wrap items-center justify-between gap-4">
     <h1 class="text-2xl font-semibold text-white">Linear Hygiene</h1>
-    <TeamFilterNotice level="domain" />
+    <TeamFilterNotice level={activeTeamFilter ? "team" : "domain"} />
   </div>
 
   {#if loading}

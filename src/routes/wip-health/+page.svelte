@@ -154,9 +154,11 @@
   $effect(() => {
     if (!browser || loading) return;
 
-    const domain = activeDomainFilter;
-    if (domain) {
-      fetchTrendData("domain", domain);
+    // Team filter takes precedence for trend data
+    if (activeTeamFilter) {
+      fetchTrendData("team", activeTeamFilter);
+    } else if (activeDomainFilter) {
+      fetchTrendData("domain", activeDomainFilter);
     } else {
       fetchTrendData("org", null);
     }
@@ -187,7 +189,10 @@
   // Get current filter state
   const filter = $derived($teamFilterStore);
 
-  // Determine active domain filter (from domain selection or derived from team)
+  // Active team filter (direct team selection)
+  const activeTeamFilter = $derived(filter.teamKey);
+
+  // Active domain filter (from domain selection or derived from team)
   const activeDomainFilter = $derived.by(() => {
     if (filter.teamKey) {
       return getDomainForTeam(filter.teamKey);
@@ -202,7 +207,7 @@
   });
 
   // Filter to only mapped engineers (or all if no mapping configured)
-  // Also filter by domain if active
+  // Filter by team if team filter is active, otherwise by domain
   // IMPORTANT: Only include engineers with active WIP (wip_issue_count > 0) to match snapshot calculation
   const engineers = $derived.by(() => {
     let filtered = allEngineers;
@@ -217,8 +222,15 @@
       );
     }
 
-    // Filter by domain if active
-    if (activeDomainFilter && hasMappingConfigured) {
+    // Filter by team if team filter is active (more specific)
+    if (activeTeamFilter && hasMappingConfigured) {
+      filtered = filtered.filter((e) => {
+        const teamKey = engineerTeamMapping[e.assignee_name];
+        return teamKey?.toUpperCase() === activeTeamFilter.toUpperCase();
+      });
+    }
+    // Otherwise filter by domain if domain filter is active
+    else if (activeDomainFilter && hasMappingConfigured) {
       filtered = filtered.filter((e) => {
         const teamKey = engineerTeamMapping[e.assignee_name];
         if (!teamKey) return false;
@@ -230,8 +242,11 @@
     return filtered;
   });
 
-  // Extract domain-level WIP health data for table (filtered by active domain)
+  // Extract domain-level WIP health data for table (only shown when no team filter)
   const domainWipHealthData = $derived.by((): DomainWipHealth[] => {
+    // Don't show domain breakdown when team filter is active
+    if (activeTeamFilter) return [];
+
     const domains: DomainWipHealth[] = [];
 
     for (const snapshot of allSnapshots) {
@@ -262,8 +277,21 @@
     );
   });
 
-  // Get the filtered domain snapshot for hero metrics (when domain filter is active)
+  // Get the filtered team snapshot for hero metrics (when team filter is active)
+  const filteredTeamHealth = $derived.by((): TeamHealthV1 | null => {
+    if (!activeTeamFilter) return null;
+    const teamSnapshot = allSnapshots.find(
+      (s) =>
+        s.level === "team" &&
+        s.levelId?.toUpperCase() === activeTeamFilter.toUpperCase()
+    );
+    return teamSnapshot?.snapshot?.teamHealth || null;
+  });
+
+  // Get the filtered domain snapshot for hero metrics (when domain filter is active but no team filter)
   const filteredDomainHealth = $derived.by((): TeamHealthV1 | null => {
+    // Team filter takes precedence
+    if (activeTeamFilter) return null;
     if (!activeDomainFilter) return null;
     const domainSnapshot = allSnapshots.find(
       (s) => s.level === "domain" && s.levelId === activeDomainFilter
@@ -271,8 +299,10 @@
     return domainSnapshot?.snapshot?.teamHealth || null;
   });
 
-  // Use filtered domain health if filter is active, otherwise org-level
-  const displayHealth = $derived(filteredDomainHealth || teamHealth);
+  // Use filtered team health if team filter is active, then domain, then org-level
+  const displayHealth = $derived(
+    filteredTeamHealth || filteredDomainHealth || teamHealth
+  );
 
   // Combined: engineers with ANY violation (WIP 6+ issues OR 2+ projects)
   const overloadedEngineers = $derived(
@@ -358,7 +388,7 @@
   <!-- Page Title -->
   <div class="flex flex-wrap items-center justify-between gap-4">
     <h1 class="text-2xl font-semibold text-white">WIP Health</h1>
-    <TeamFilterNotice level="domain" />
+    <TeamFilterNotice level={activeTeamFilter ? "team" : "domain"} />
   </div>
 
   {#if loading}
