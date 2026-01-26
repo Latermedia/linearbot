@@ -53,7 +53,11 @@ function getMimeType(url) {
 }
 
 // Known static files in the output client directory (from /static folder)
-const staticFiles = new Set(["favicon.svg"]);
+const staticFiles = new Set([
+  "favicon.svg",
+  "logo_icon_knockout_dark.svg",
+  "logo_icon_knockout_light.svg",
+]);
 
 /**
  * Adds security headers to a response.
