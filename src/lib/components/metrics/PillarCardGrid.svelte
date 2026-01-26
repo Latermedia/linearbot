@@ -39,7 +39,12 @@
     productivityUnderConstruction?: boolean;
     /** Callback when a pillar card is clicked */
     onPillarClick?: (
-      pillar: "wipHealth" | "projectHealth" | "productivity" | "quality"
+      pillar:
+        | "wipHealth"
+        | "projectHealth"
+        | "productivity"
+        | "quality"
+        | "linearHygiene"
     ) => void;
     /** Callback when an engineer is clicked (to open modal) */
     onEngineerClick?: (engineerId: string) => void;
@@ -118,6 +123,9 @@
   );
   const qualityTrends = $derived(
     calculateMetricTrends(trendDataPoints, metricExtractors.quality)
+  );
+  const linearHygieneTrends = $derived(
+    calculateMetricTrends(trendDataPoints, metricExtractors.linearHygiene)
   );
 
   // Filter engineers by ENGINEER_TEAM_MAPPING when a team is selected
@@ -260,6 +268,7 @@
   const velocityHealth = $derived(snapshot?.velocityHealth);
   const productivity = $derived(snapshot?.teamProductivity);
   const quality = $derived(snapshot?.quality);
+  const linearHygiene = $derived(snapshot?.linearHygiene);
 
   // Derived productivity values
   const hasProductivity = $derived(
@@ -295,8 +304,8 @@
 </script>
 
 {#if loading}
-  <div class="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
-    {#each [1, 2, 3, 4] as i (i)}
+  <div class="grid gap-4 md:grid-cols-2 lg:grid-cols-5">
+    {#each [1, 2, 3, 4, 5] as i (i)}
       <Card>
         <Skeleton class="mb-3 w-24 h-4" />
         <Skeleton class="mb-2 w-16 h-8" />
@@ -316,8 +325,22 @@
     </p>
   </Card>
 {:else if snapshot}
-  <div class="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
-    <!-- Pillar 1: WIP Health -->
+  <div class="grid gap-4 md:grid-cols-2 lg:grid-cols-5">
+    <!-- Pillar 1: Linear Hygiene -->
+    <PillarCard
+      title="Linear Hygiene"
+      value={linearHygiene?.hygieneScore ?? "—"}
+      valueUnit="%"
+      subtitle="Tactical discipline"
+      status={linearHygiene?.status}
+      onClick={() => onPillarClick?.("linearHygiene")}
+      weekTrend={linearHygieneTrends.week}
+      monthTrend={linearHygieneTrends.month}
+      higherIsBetter={true}
+      {variant}
+    />
+
+    <!-- Pillar 2: WIP Health -->
     <PillarCard
       title="WIP Health"
       value={teamHealth?.healthyWorkloadPercent.toFixed(0) || 0}
@@ -331,7 +354,7 @@
       {variant}
     />
 
-    <!-- Pillar 2: Project Health -->
+    <!-- Pillar 3: Project Health -->
     <PillarCard
       title="Project Health"
       value={velocityHealth?.onTrackPercent.toFixed(0) || 0}
@@ -345,7 +368,7 @@
       {variant}
     />
 
-    <!-- Pillar 3: Team Productivity -->
+    <!-- Pillar 4: Team Productivity -->
     <PillarCard
       title="Productivity"
       value={productivityValueNumber}
@@ -360,7 +383,7 @@
       {variant}
     />
 
-    <!-- Pillar 4: Quality -->
+    <!-- Pillar 5: Quality -->
     <PillarCard
       title="Quality"
       value={quality?.compositeScore ?? "—"}

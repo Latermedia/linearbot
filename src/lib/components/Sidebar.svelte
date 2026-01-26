@@ -3,6 +3,7 @@
   import { sidebarCollapsed } from "$lib/stores/sidebar";
   import {
     LayoutDashboard,
+    ClipboardCheck,
     Activity,
     FolderCheck,
     TrendingUp,
@@ -78,6 +79,12 @@
   <!-- Navigation -->
   <nav class="flex-1 px-2 py-4 space-y-1 overflow-y-auto">
     <SidebarItem href="/" icon={LayoutDashboard} label="Overview" />
+    <SidebarItem
+      href="/linear-hygiene"
+      icon={ClipboardCheck}
+      label="Linear Hygiene"
+      indent
+    />
     <SidebarItem href="/wip-health" icon={Activity} label="WIP Health" indent />
     <SidebarItem
       href="/project-health"

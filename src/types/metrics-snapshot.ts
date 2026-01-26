@@ -171,6 +171,56 @@ export const QualityHealthSchemaV1 = z.object({
 export type QualityHealthV1 = z.infer<typeof QualityHealthSchemaV1>;
 
 // ============================================================================
+// Pillar 5: Linear Hygiene (Tactical Discipline)
+// ============================================================================
+
+export const LinearHygieneSchemaV1 = z.object({
+  /** TOPLINE: Hygiene score 0-100 (higher = healthier) */
+  hygieneScore: z.number(),
+  /** Total gaps across all engineers and projects */
+  totalGaps: z.number(),
+  /** Maximum possible gaps (used for score calculation) */
+  maxPossibleGaps: z.number(),
+
+  // Engineer-level gap breakdown
+  /** Issues missing estimates */
+  missingEstimateCount: z.number(),
+  /** Issues missing priority */
+  missingPriorityCount: z.number(),
+  /** Issues without recent comment (3 business days) */
+  noRecentCommentCount: z.number(),
+  /** Issues in progress too long */
+  wipAgeViolationCount: z.number(),
+
+  // Project-level gap breakdown
+  /** Projects without a lead */
+  missingLeadCount: z.number(),
+  /** Projects with stale updates (7+ days) */
+  staleUpdateCount: z.number(),
+  /** Projects with status mismatch */
+  statusMismatchCount: z.number(),
+  /** Projects missing health status */
+  missingHealthCount: z.number(),
+  /** Projects with date discrepancy (target vs predicted >30 days) */
+  dateDiscrepancyCount: z.number(),
+
+  // Summary counts
+  /** Number of engineers with at least one gap */
+  engineersWithGaps: z.number(),
+  /** Total number of engineers */
+  totalEngineers: z.number(),
+  /** Number of projects with at least one gap */
+  projectsWithGaps: z.number(),
+  /** Total number of projects */
+  totalProjects: z.number(),
+
+  /** Overall status for this pillar */
+  status: PillarStatusSchema,
+});
+
+export type LinearHygieneV1 = z.infer<typeof LinearHygieneSchemaV1>;
+
+// ============================================================================
 // Metadata
 // ============================================================================
 
@@ -209,6 +259,9 @@ export const MetricsSnapshotSchemaV1 = z.object({
 
   /** Pillar 4: Quality - Are we building stable or creating debt? */
   quality: QualityHealthSchemaV1,
+
+  /** Pillar 5: Linear Hygiene - Are we following tactical discipline? (optional for backward compat) */
+  linearHygiene: LinearHygieneSchemaV1.optional(),
 
   /** Snapshot metadata */
   metadata: SnapshotMetadataSchemaV1,
@@ -298,6 +351,25 @@ export function createEmptyMetricsSnapshot(
       compositeScore: 100,
       status: "healthy",
     },
+    linearHygiene: {
+      hygieneScore: 100,
+      totalGaps: 0,
+      maxPossibleGaps: 0,
+      missingEstimateCount: 0,
+      missingPriorityCount: 0,
+      noRecentCommentCount: 0,
+      wipAgeViolationCount: 0,
+      missingLeadCount: 0,
+      staleUpdateCount: 0,
+      statusMismatchCount: 0,
+      missingHealthCount: 0,
+      dateDiscrepancyCount: 0,
+      engineersWithGaps: 0,
+      totalEngineers: 0,
+      projectsWithGaps: 0,
+      totalProjects: 0,
+      status: "healthy",
+    },
     metadata: {
       capturedAt,
       syncedAt,
@@ -326,4 +398,16 @@ export function aggregatePillarStatuses(
   if (statuses.includes("critical")) return "critical";
   if (statuses.includes("warning")) return "warning";
   return "healthy";
+}
+
+/**
+ * Determine hygiene pillar status based on score thresholds
+ * - Healthy: Score >= 90%
+ * - Warning: Score 75-90%
+ * - Critical: Score < 75%
+ */
+export function getHygieneStatus(score: number): PillarStatus {
+  if (score >= 90) return "healthy";
+  if (score >= 75) return "warning";
+  return "critical";
 }

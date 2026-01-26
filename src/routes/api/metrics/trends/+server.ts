@@ -85,6 +85,24 @@ export interface TrendDataPoint {
     /** Overall status for this pillar */
     status: PillarStatus;
   };
+
+  /** Pillar 5: Linear Hygiene - Are we following tactical discipline? */
+  linearHygiene?: {
+    /** Hygiene score 0-100 (higher = healthier) */
+    hygieneScore: number;
+    /** Total gaps across all engineers and projects */
+    totalGaps: number;
+    /** Engineers with at least one gap */
+    engineersWithGaps: number;
+    /** Total engineers */
+    totalEngineers: number;
+    /** Projects with at least one gap */
+    projectsWithGaps: number;
+    /** Total projects */
+    totalProjects: number;
+    /** Overall status for this pillar */
+    status: PillarStatus;
+  };
 }
 
 export interface TrendsResponse {
@@ -238,6 +256,21 @@ export const GET: RequestHandler = async ({ url }) => {
           maxBugAgeDays: parsed.quality.maxBugAgeDays,
           status: parsed.quality.status,
         },
+
+        // Pillar 5: Linear Hygiene - complete data (optional for backward compat)
+        ...(parsed.linearHygiene
+          ? {
+              linearHygiene: {
+                hygieneScore: parsed.linearHygiene.hygieneScore,
+                totalGaps: parsed.linearHygiene.totalGaps,
+                engineersWithGaps: parsed.linearHygiene.engineersWithGaps,
+                totalEngineers: parsed.linearHygiene.totalEngineers,
+                projectsWithGaps: parsed.linearHygiene.projectsWithGaps,
+                totalProjects: parsed.linearHygiene.totalProjects,
+                status: parsed.linearHygiene.status,
+              },
+            }
+          : {}),
       });
     }
 

@@ -2,30 +2,54 @@ import type { Issue, Project } from "../db/schema.js";
 import { WIP_AGE_THRESHOLDS } from "../constants/thresholds.js";
 
 /**
- * Get the cutoff date for business day comment checking
- * Monday: check since Thursday (72+ hours ago)
- * Tuesday: check since Friday (72+ hours ago)
- * Wednesday-Friday: check since previous business day (48+ hours ago)
- * Saturday/Sunday: same as Friday (check since Wednesday)
+ * Get the cutoff date for business day comment checking (3 business days)
+ * Excludes weekends from the calculation.
+ *
+ * Examples (3 business days back):
+ * - Thursday: check since Monday (3 calendar days ago)
+ * - Friday: check since Tuesday (3 calendar days ago)
+ * - Saturday: check since Wednesday (3 calendar days ago)
+ * - Sunday: check since Wednesday (4 calendar days ago)
+ * - Monday: check since Wednesday (5 calendar days ago)
+ * - Tuesday: check since Thursday (5 calendar days ago)
+ * - Wednesday: check since Friday (5 calendar days ago)
  */
 function getBusinessDayCutoff(): Date {
   const now = new Date();
   const dayOfWeek = now.getDay(); // 0 = Sunday, 1 = Monday, ..., 6 = Saturday
   const cutoff = new Date(now);
 
-  if (dayOfWeek === 0) {
-    // Sunday: check since Thursday (4 days ago, but only 1 business day, same as Monday)
-    cutoff.setDate(cutoff.getDate() - 4);
-  } else if (dayOfWeek === 1) {
-    // Monday: check since Thursday (4 days ago, but only 1 business day)
-    cutoff.setDate(cutoff.getDate() - 4);
-  } else if (dayOfWeek === 2) {
-    // Tuesday: check since Friday (4 days ago, but only 1 business day)
-    cutoff.setDate(cutoff.getDate() - 4);
-  } else {
-    // Wednesday-Friday, Saturday: check since previous business day (2 days ago)
-    cutoff.setDate(cutoff.getDate() - 2);
+  // Calculate calendar days to subtract for 3 business days
+  // The formula accounts for weekends
+  let daysToSubtract: number;
+
+  switch (dayOfWeek) {
+    case 0: // Sunday: 3 business days ago = Wednesday (4 calendar days)
+      daysToSubtract = 4;
+      break;
+    case 1: // Monday: 3 business days ago = Wednesday (5 calendar days)
+      daysToSubtract = 5;
+      break;
+    case 2: // Tuesday: 3 business days ago = Thursday (5 calendar days)
+      daysToSubtract = 5;
+      break;
+    case 3: // Wednesday: 3 business days ago = Friday (5 calendar days)
+      daysToSubtract = 5;
+      break;
+    case 4: // Thursday: 3 business days ago = Monday (3 calendar days)
+      daysToSubtract = 3;
+      break;
+    case 5: // Friday: 3 business days ago = Tuesday (3 calendar days)
+      daysToSubtract = 3;
+      break;
+    case 6: // Saturday: 3 business days ago = Wednesday (3 calendar days)
+      daysToSubtract = 3;
+      break;
+    default:
+      daysToSubtract = 3;
   }
+
+  cutoff.setDate(cutoff.getDate() - daysToSubtract);
 
   // Set to end of day to be inclusive
   cutoff.setHours(23, 59, 59, 999);
@@ -33,10 +57,8 @@ function getBusinessDayCutoff(): Date {
 }
 
 /**
- * Check if issue has no recent comment (using business days only)
- * Monday: checks for comment since Thursday (72+ hours)
- * Tuesday: checks for comment since Friday (72+ hours)
- * Wednesday-Friday: checks for comment since previous business day (48+ hours)
+ * Check if issue has no recent comment (using 3 business days, excluding weekends)
+ * A comment is considered "stale" if it's older than 3 business days.
  *
  * Only applies to WIP issues (state_type === "started")
  */

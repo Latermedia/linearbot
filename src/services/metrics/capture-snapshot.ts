@@ -47,6 +47,11 @@ import {
   calculateProductivityHealthForTeam,
 } from "./productivity-health.js";
 import {
+  calculateHygieneHealth,
+  calculateHygieneHealthForTeam,
+  calculateHygieneHealthForDomain,
+} from "./hygiene-health.js";
+import {
   fetchProductivityMetrics,
   type ProductivityMetrics,
 } from "../getdx/index.js";
@@ -176,6 +181,7 @@ function buildMetricsSnapshot(
   let teamHealth;
   let velocityHealth;
   let qualityHealth;
+  let hygieneHealth;
   let teamProductivity: TeamProductivityV1;
 
   // Get engineer team mapping (used for filtering engineers in team health)
@@ -201,6 +207,9 @@ function buildMetricsSnapshot(
 
     // Quality health (absolute values, no per-engineer scaling)
     qualityHealth = calculateQualityHealth(issues);
+
+    // Linear Hygiene (tactical discipline)
+    hygieneHealth = calculateHygieneHealth(engineers, projects);
 
     // Calculate org-level productivity from GetDX
     const productivityResult = getdxMetrics
@@ -242,6 +251,14 @@ function buildMetricsSnapshot(
     // Quality health (absolute values, no per-engineer scaling)
     qualityHealth = calculateQualityHealthForDomain(domainTeamKeys, issues);
 
+    // Linear Hygiene (tactical discipline)
+    hygieneHealth = calculateHygieneHealthForDomain(
+      domainTeamKeys,
+      engineers,
+      projects,
+      engineerTeamMapping
+    );
+
     // Calculate domain-level productivity from GetDX
     const productivityResult = getdxMetrics
       ? calculateProductivityHealthForDomain(
@@ -282,6 +299,14 @@ function buildMetricsSnapshot(
     // Quality health (absolute values, no per-engineer scaling)
     qualityHealth = calculateQualityHealthForTeam(levelId, issues);
 
+    // Linear Hygiene (tactical discipline)
+    hygieneHealth = calculateHygieneHealthForTeam(
+      levelId,
+      engineers,
+      projects,
+      engineerTeamMapping
+    );
+
     // Team-level productivity is pending (future work)
     teamProductivity = calculateProductivityHealthForTeam();
   } else {
@@ -301,6 +326,7 @@ function buildMetricsSnapshot(
     }
 
     qualityHealth = calculateQualityHealth(issues);
+    hygieneHealth = calculateHygieneHealth(engineers, projects);
     teamProductivity = {
       status: "pending",
       notes: "Invalid level configuration",
@@ -313,6 +339,7 @@ function buildMetricsSnapshot(
     velocityHealth,
     teamProductivity,
     quality: qualityHealth,
+    linearHygiene: hygieneHealth,
     metadata: {
       capturedAt,
       syncedAt,
@@ -540,7 +567,13 @@ export async function captureOrgSnapshot(): Promise<MetricsSnapshotV1 | null> {
  * Get a summary of the latest org-level metrics for logging
  */
 export function getMetricsSummary(snapshot: MetricsSnapshotV1): string {
-  const { teamHealth, velocityHealth, quality, teamProductivity } = snapshot;
+  const {
+    teamHealth,
+    velocityHealth,
+    quality,
+    teamProductivity,
+    linearHygiene,
+  } = snapshot;
 
   // Format productivity summary based on schema type
   let productivitySummary: string;
@@ -551,11 +584,17 @@ export function getMetricsSummary(snapshot: MetricsSnapshotV1): string {
     productivitySummary = `${teamProductivity.status.toUpperCase()} (${teamProductivity.notes})`;
   }
 
+  // Format hygiene summary
+  const hygieneSummary = linearHygiene
+    ? `${linearHygiene.status.toUpperCase()} (Score: ${linearHygiene.hygieneScore}, ${linearHygiene.totalGaps} gaps, ${linearHygiene.engineersWithGaps}/${linearHygiene.totalEngineers} engineers, ${linearHygiene.projectsWithGaps}/${linearHygiene.totalProjects} projects)`
+    : "N/A";
+
   const lines = [
     `Team Health: ${teamHealth.status.toUpperCase()} (${teamHealth.healthyIcCount}/${teamHealth.totalIcCount} ICs healthy, ${teamHealth.healthyProjectCount}/${teamHealth.totalProjectCount} projects healthy)`,
     `Project Health: ${velocityHealth.status.toUpperCase()} (${velocityHealth.onTrackPercent.toFixed(1)}% on track, ${velocityHealth.atRiskPercent.toFixed(1)}% at risk, ${velocityHealth.offTrackPercent.toFixed(1)}% off track)`,
     `Quality: ${quality.status.toUpperCase()} (Score: ${quality.compositeScore}, ${quality.openBugCount} open bugs, ${quality.netBugChange >= 0 ? "+" : ""}${quality.netBugChange} net)`,
     `Productivity: ${productivitySummary}`,
+    `Hygiene: ${hygieneSummary}`,
   ];
 
   return lines.join("\n");

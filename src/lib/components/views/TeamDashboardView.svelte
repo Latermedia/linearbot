@@ -70,20 +70,31 @@
 
   // Pillar click handler - navigate to dedicated metric pages
   function handlePillarClick(
-    pillar: "wipHealth" | "projectHealth" | "productivity" | "quality"
+    pillar:
+      | "wipHealth"
+      | "projectHealth"
+      | "productivity"
+      | "quality"
+      | "linearHygiene"
   ) {
     const routes: Record<string, string> = {
       wipHealth: "/wip-health",
       projectHealth: "/project-health",
       productivity: "/productivity",
       quality: "/quality",
+      linearHygiene: "/linear-hygiene",
     };
     goto(routes[pillar]);
   }
 
   // Table metric click handler - set filter and navigate
   function handleTableMetricClick(
-    pillar: "wipHealth" | "projectHealth" | "productivity" | "quality",
+    pillar:
+      | "wipHealth"
+      | "projectHealth"
+      | "productivity"
+      | "quality"
+      | "linearHygiene",
     type: "domain" | "team",
     id: string
   ) {
@@ -387,6 +398,7 @@
             >
               <th class="px-4 py-3">Name</th>
               <th class="px-4 py-3 text-center whitespace-nowrap">Engineers</th>
+              <th class="px-4 py-3 text-center whitespace-nowrap">Hygiene</th>
               <th class="px-4 py-3 text-center whitespace-nowrap">WIP Health</th
               >
               <th class="px-4 py-3 text-center whitespace-nowrap"
@@ -422,6 +434,34 @@
                   <span class="text-sm font-medium text-neutral-300"
                     >{domainEngineerCount}</span
                   >
+                </td>
+                <td class="px-4 py-3 text-center">
+                  {#if domainSnapshotsMap.get(domain.name)?.linearHygiene}
+                    {@const hygiene = domainSnapshotsMap.get(
+                      domain.name
+                    )?.linearHygiene}
+                    <button
+                      type="button"
+                      class="text-sm font-medium hover:underline cursor-pointer {hygiene?.status ===
+                      'healthy'
+                        ? 'text-emerald-400'
+                        : hygiene?.status === 'warning'
+                          ? 'text-amber-400'
+                          : hygiene?.status === 'critical'
+                            ? 'text-red-400'
+                            : 'text-neutral-400'}"
+                      onclick={() =>
+                        handleTableMetricClick(
+                          "linearHygiene",
+                          "domain",
+                          domain.name
+                        )}
+                    >
+                      {hygiene?.hygieneScore}%
+                    </button>
+                  {:else}
+                    <span class="text-sm text-neutral-500">—</span>
+                  {/if}
                 </td>
                 <td class="px-4 py-3 text-center">
                   {#if domainSnapshotsMap.get(domain.name)?.teamHealth}
@@ -552,6 +592,34 @@
                       >
                     </td>
                     <td class="px-4 py-2.5 text-center">
+                      {#if teamSnapshotsMap.get(team.teamKey)?.linearHygiene}
+                        {@const hygiene = teamSnapshotsMap.get(
+                          team.teamKey
+                        )?.linearHygiene}
+                        <button
+                          type="button"
+                          class="text-sm hover:underline cursor-pointer {hygiene?.status ===
+                          'healthy'
+                            ? 'text-emerald-400'
+                            : hygiene?.status === 'warning'
+                              ? 'text-amber-400'
+                              : hygiene?.status === 'critical'
+                                ? 'text-red-400'
+                                : 'text-neutral-400'}"
+                          onclick={() =>
+                            handleTableMetricClick(
+                              "linearHygiene",
+                              "team",
+                              team.teamKey
+                            )}
+                        >
+                          {hygiene?.hygieneScore}%
+                        </button>
+                      {:else}
+                        <span class="text-sm text-neutral-500">—</span>
+                      {/if}
+                    </td>
+                    <td class="px-4 py-2.5 text-center">
                       {#if teamSnapshotsMap.get(team.teamKey)?.teamHealth}
                         {@const wip = teamSnapshotsMap.get(
                           team.teamKey
@@ -656,6 +724,34 @@
                   </td>
                   <td class="px-4 py-2.5 text-center">
                     <span class="text-sm text-neutral-400">—</span>
+                  </td>
+                  <td class="px-4 py-2.5 text-center">
+                    {#if teamSnapshotsMap.get(team.teamKey)?.linearHygiene}
+                      {@const hygiene = teamSnapshotsMap.get(
+                        team.teamKey
+                      )?.linearHygiene}
+                      <button
+                        type="button"
+                        class="text-sm hover:underline cursor-pointer {hygiene?.status ===
+                        'healthy'
+                          ? 'text-emerald-400'
+                          : hygiene?.status === 'warning'
+                            ? 'text-amber-400'
+                            : hygiene?.status === 'critical'
+                              ? 'text-red-400'
+                              : 'text-neutral-400'}"
+                        onclick={() =>
+                          handleTableMetricClick(
+                            "linearHygiene",
+                            "team",
+                            team.teamKey
+                          )}
+                      >
+                        {hygiene?.hygieneScore}%
+                      </button>
+                    {:else}
+                      <span class="text-sm text-neutral-500">—</span>
+                    {/if}
                   </td>
                   <td class="px-4 py-2.5 text-center">
                     {#if teamSnapshotsMap.get(team.teamKey)?.teamHealth}

@@ -115,6 +115,7 @@ export const metricExtractors = {
   productivity: (dp: TrendDataPoint) =>
     dp.productivity.trueThroughputPerEngineer,
   quality: (dp: TrendDataPoint) => dp.quality.compositeScore,
+  linearHygiene: (dp: TrendDataPoint) => dp.linearHygiene?.hygieneScore ?? null,
 } as const;
 
 /**
