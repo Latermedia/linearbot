@@ -63,7 +63,8 @@
     | "wipHealth"
     | "projectHealth"
     | "productivity"
-    | "quality";
+    | "quality"
+    | "hygiene";
 
   const metricOptions: { key: MetricKey; label: string }[] = [
     { key: "overall", label: "Overall" },
@@ -71,6 +72,7 @@
     { key: "projectHealth", label: "Project Health" },
     { key: "productivity", label: "Productivity" },
     { key: "quality", label: "Quality" },
+    { key: "hygiene", label: "Hygiene" },
   ];
 
   let selectedMetric = $state<MetricKey>("overall");
@@ -160,7 +162,7 @@
 
   // Extract metric value from a data point
   // Extract and normalize metric value from a data point
-  // WIP, Project, Quality, Overall: capped at 100
+  // WIP, Project, Quality, Hygiene, Overall: capped at 100
   // Productivity: capped at 150 (can exceed 100% of target)
   function getMetricValue(
     point: TrendDataPoint,
@@ -179,16 +181,25 @@
       }
       case "quality":
         return Math.min(point.quality.compositeScore, 100);
+      case "hygiene": {
+        const hygieneScore = point.linearHygiene?.hygieneScore;
+        if (hygieneScore === undefined || hygieneScore === null) return null;
+        return Math.min(hygieneScore, 100);
+      }
       case "overall": {
-        // Average of all 4 pillars, each capped at 100 for fairness
+        // Average of all 5 pillars, each capped at 100 for fairness
         const wip = Math.min(point.teamHealth.healthyWorkloadPercent, 100);
         const proj = Math.min(point.velocityHealth.onTrackPercent, 100);
         const prod = point.productivity.trueThroughputPerEngineer;
         const qual = Math.min(point.quality.compositeScore, 100);
+        const hyg = point.linearHygiene?.hygieneScore;
 
         const values: number[] = [wip, proj, qual];
         if (prod !== null) {
           values.push(Math.min((prod / 6) * 100, 100));
+        }
+        if (hyg !== undefined && hyg !== null) {
+          values.push(Math.min(hyg, 100));
         }
 
         if (values.length === 0) return null;

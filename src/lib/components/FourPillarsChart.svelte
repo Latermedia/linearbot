@@ -97,6 +97,7 @@
     projectHealth: "#8b5cf6", // violet-500
     productivity: "#f59e0b", // amber-500
     quality: "#3b82f6", // blue-500
+    hygiene: "#ec4899", // pink-500
   };
 
   // Target for productivity (3/wk per IC over 2 weeks = 6)
@@ -121,6 +122,7 @@
         point.productivity.trueThroughputPerEngineer
       ),
       quality: point.quality.compositeScore,
+      hygiene: point.linearHygiene?.hygieneScore ?? null,
     }))
   );
 
@@ -143,7 +145,7 @@
     if (normalizedData.length === 0) return { min: 0, max: 100 };
 
     // Collect values separately - capped metrics vs uncapped (productivity)
-    const cappedValues: number[] = []; // WIP, Project, Quality - max 100
+    const cappedValues: number[] = []; // WIP, Project, Quality, Hygiene - max 100
     const uncappedValues: number[] = []; // Productivity - can exceed 100
 
     for (const d of normalizedData) {
@@ -151,6 +153,7 @@
       if (d.projectHealth !== null)
         cappedValues.push(Math.min(d.projectHealth, 100));
       if (d.quality !== null) cappedValues.push(Math.min(d.quality, 100));
+      if (d.hygiene !== null) cappedValues.push(Math.min(d.hygiene, 100));
       if (d.productivity !== null) uncappedValues.push(d.productivity);
     }
 
@@ -274,6 +277,7 @@
     projectHealth: generatePath(normalizedData.map((d) => d.projectHealth)),
     productivity: generatePath(normalizedData.map((d) => d.productivity)),
     quality: generatePath(normalizedData.map((d) => d.quality)),
+    hygiene: generatePath(normalizedData.map((d) => d.hygiene)),
   });
 
   // Format date for display
@@ -384,6 +388,7 @@
       projectHealth: Math.round(norm.projectHealth ?? 0),
       productivity: Math.round(norm.productivity ?? 0),
       quality: Math.round(norm.quality ?? 0),
+      hygiene: norm.hygiene !== null ? Math.round(norm.hygiene) : null,
     };
   });
 
@@ -458,6 +463,7 @@
     },
     { key: "productivity", label: "Productivity", color: colors.productivity },
     { key: "quality", label: "Quality", color: colors.quality },
+    { key: "hygiene", label: "Hygiene", color: colors.hygiene },
   ];
 </script>
 
@@ -592,6 +598,18 @@
               stroke-linejoin="round"
             />
           {/if}
+
+          <!-- Hygiene line -->
+          {#if paths.hygiene}
+            <path
+              d={paths.hygiene}
+              fill="none"
+              stroke={colors.hygiene}
+              stroke-width="1.5"
+              stroke-linecap="round"
+              stroke-linejoin="round"
+            />
+          {/if}
         {/if}
 
         <!-- Hover indicator line -->
@@ -657,6 +675,18 @@
             >{hoveredData.quality}%</span
           >
         </div>
+        {#if hoveredData.hygiene !== null}
+          <div class="flex items-center gap-1.5">
+            <span
+              class="w-2 h-2 rounded-full"
+              style="background-color: {colors.hygiene}"
+            ></span>
+            <span class="text-neutral-300">Hygiene</span>
+            <span class="ml-auto font-medium text-white"
+              >{hoveredData.hygiene}%</span
+            >
+          </div>
+        {/if}
       </div>
     </div>
   {/if}
