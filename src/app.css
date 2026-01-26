@@ -3,6 +3,48 @@
 @import "katex/dist/katex.min.css";
 @custom-variant dark (&:where(.dark, .dark *));
 
+/* Brand color scales for status indicators */
+@theme {
+  /* Success (greens) - peakFlow, strongRhythm */
+  --color-success-50: #edf8f2;
+  --color-success-100: #d7f0e4;
+  --color-success-200: #afe1ca;
+  --color-success-300: #86d1b0;
+  --color-success-400: #55bf8c;
+  --color-success-500: #49aa7c;
+  --color-success-600: #3f956c;
+  --color-success-700: #347d5b;
+  --color-success-800: #296649;
+  --color-success-900: #1e4f38;
+  --color-success-950: #0f4023;
+
+  /* Warning (yellows/ambers) - steadyProgress */
+  --color-warning-50: #fff7e5;
+  --color-warning-100: #ffeec8;
+  --color-warning-200: #ffe09d;
+  --color-warning-300: #ffd271;
+  --color-warning-400: #ffca5a;
+  --color-warning-500: #e7b24f;
+  --color-warning-600: #c69343;
+  --color-warning-700: #a37435;
+  --color-warning-800: #81582a;
+  --color-warning-900: #5f3e1e;
+  --color-warning-950: #53371b;
+
+  /* Danger (reds/roses) - earlyTraction, lowTraction */
+  --color-danger-50: #fdf1f4;
+  --color-danger-100: #f9dfe5;
+  --color-danger-200: #f5b8c5;
+  --color-danger-300: #f196a9;
+  --color-danger-400: #eb7a93;
+  --color-danger-500: #d86982;
+  --color-danger-600: #b6556d;
+  --color-danger-700: #934259;
+  --color-danger-800: #702f44;
+  --color-danger-900: #4e1e30;
+  --color-danger-950: #2e121d;
+}
+
 :root {
   font-family:
     -apple-system, BlinkMacSystemFont, "Segoe UI", "Roboto", "Oxygen", "Ubuntu",

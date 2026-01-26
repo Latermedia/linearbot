@@ -41,7 +41,14 @@
     valueUnit?: string;
     subtitle?: string;
     /** Health status for the indicator dot */
-    status?: "healthy" | "warning" | "critical" | "unknown" | "pending";
+    status?:
+      | "peakFlow"
+      | "strongRhythm"
+      | "steadyProgress"
+      | "earlyTraction"
+      | "lowTraction"
+      | "unknown"
+      | "pending";
     /** Optional info tooltip for the subtitle - shows (i) icon with hover content */
     subtitleInfo?: SubtitleInfo;
     /** Standard list-style details */
@@ -155,7 +162,18 @@
       {:else}
         <div class="text-center">
           <span
-            class="text-5xl lg:text-6xl font-bold text-white tracking-tight"
+            class="text-5xl lg:text-6xl font-bold tracking-tight {status ===
+            'peakFlow'
+              ? 'text-success-400'
+              : status === 'strongRhythm'
+                ? 'text-success-500'
+                : status === 'steadyProgress'
+                  ? 'text-warning-500'
+                  : status === 'earlyTraction'
+                    ? 'text-danger-500'
+                    : status === 'lowTraction'
+                      ? 'text-danger-600'
+                      : 'text-white'}"
           >
             {value}{#if valueUnit}<span
                 class="text-2xl font-normal text-neutral-400">{valueUnit}</span
@@ -209,21 +227,29 @@
           <div class="flex justify-center mt-2">
             <span
               class="text-xs font-medium px-2 py-0.5 rounded {status ===
-              'healthy'
-                ? 'bg-emerald-500/20 text-emerald-400'
-                : status === 'warning'
-                  ? 'bg-amber-500/20 text-amber-400'
-                  : status === 'critical'
-                    ? 'bg-red-500/20 text-red-400'
-                    : 'bg-neutral-500/20 text-neutral-400'}"
+              'peakFlow'
+                ? 'bg-success-400/20 text-success-400'
+                : status === 'strongRhythm'
+                  ? 'bg-success-500/20 text-success-500'
+                  : status === 'steadyProgress'
+                    ? 'bg-warning-500/20 text-warning-500'
+                    : status === 'earlyTraction'
+                      ? 'bg-danger-500/20 text-danger-500'
+                      : status === 'lowTraction'
+                        ? 'bg-danger-600/20 text-danger-600'
+                        : 'bg-neutral-500/20 text-neutral-400'}"
             >
-              {status === "healthy"
-                ? "Healthy"
-                : status === "warning"
-                  ? "Warning"
-                  : status === "critical"
-                    ? "Critical"
-                    : "Unknown"}
+              {status === "peakFlow"
+                ? "Peak Flow"
+                : status === "strongRhythm"
+                  ? "Strong Rhythm"
+                  : status === "steadyProgress"
+                    ? "Steady Progress"
+                    : status === "earlyTraction"
+                      ? "Early Traction"
+                      : status === "lowTraction"
+                        ? "Low Traction"
+                        : "Unknown"}
             </span>
           </div>
         {/if}
@@ -319,21 +345,29 @@
               {#if status && !underConstruction}
                 <span
                   class="text-[10px] font-medium px-1.5 py-0.5 rounded {status ===
-                  'healthy'
-                    ? 'bg-emerald-500/20 text-emerald-400'
-                    : status === 'warning'
-                      ? 'bg-amber-500/20 text-amber-400'
-                      : status === 'critical'
-                        ? 'bg-red-500/20 text-red-400'
-                        : 'bg-neutral-500/20 text-neutral-400'}"
+                  'peakFlow'
+                    ? 'bg-success-400/20 text-success-400'
+                    : status === 'strongRhythm'
+                      ? 'bg-success-500/20 text-success-500'
+                      : status === 'steadyProgress'
+                        ? 'bg-warning-500/20 text-warning-500'
+                        : status === 'earlyTraction'
+                          ? 'bg-danger-500/20 text-danger-500'
+                          : status === 'lowTraction'
+                            ? 'bg-danger-600/20 text-danger-600'
+                            : 'bg-neutral-500/20 text-neutral-400'}"
                 >
-                  {status === "healthy"
-                    ? "Healthy"
-                    : status === "warning"
-                      ? "Warning"
-                      : status === "critical"
-                        ? "Critical"
-                        : "Unknown"}
+                  {status === "peakFlow"
+                    ? "Peak Flow"
+                    : status === "strongRhythm"
+                      ? "Strong Rhythm"
+                      : status === "steadyProgress"
+                        ? "Steady Progress"
+                        : status === "earlyTraction"
+                          ? "Early Traction"
+                          : status === "lowTraction"
+                            ? "Low Traction"
+                            : "Unknown"}
                 </span>
               {/if}
             </div>

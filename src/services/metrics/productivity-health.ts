@@ -7,9 +7,11 @@
  * Target: 3 TrueThroughput per week per IC (6 per 2-week period)
  *
  * Status Thresholds (unified with all pillars):
- * - >= 90% of target = healthy
- * - 75-90% of target = warning
- * - < 75% of target = critical
+ * - > 80% of target = Peak Flow
+ * - > 60% of target = Strong Rhythm
+ * - > 40% of target = Steady Progress
+ * - > 20% of target = Early Traction
+ * - <= 20% of target = Low Traction
  */
 
 import type { ProductivityMetrics } from "../getdx/index.js";
@@ -26,9 +28,11 @@ import { getPillarStatus } from "../../types/metrics-snapshot.js";
  * and "pending" for teams without GetDX data
  */
 export type ProductivityStatus =
-  | "healthy"
-  | "warning"
-  | "critical"
+  | "peakFlow"
+  | "strongRhythm"
+  | "steadyProgress"
+  | "earlyTraction"
+  | "lowTraction"
   | "unknown"
   | "pending";
 
@@ -86,9 +90,11 @@ function getProductivityTarget(): number {
  *
  * Normalizes throughput to a percentage of target, then uses the same
  * threshold logic as all other pillars:
- * - >= 90% of target = healthy
- * - 75-90% of target = warning
- * - < 75% of target = critical
+ * - > 80% of target = Peak Flow
+ * - > 60% of target = Strong Rhythm
+ * - > 40% of target = Steady Progress
+ * - > 20% of target = Early Traction
+ * - <= 20% of target = Low Traction
  */
 function getStatusFromPerICThroughput(
   throughputPerIC: number | null

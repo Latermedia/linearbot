@@ -29,26 +29,40 @@
     dot: string;
   } {
     switch (status) {
-      case "healthy":
+      case "peakFlow":
         return {
-          bg: "bg-emerald-500/5 dark:bg-emerald-500/10",
-          border: "border-emerald-500/20",
-          text: "text-emerald-600 dark:text-emerald-400",
-          dot: "bg-emerald-500",
+          bg: "bg-success-400/5 dark:bg-success-400/10",
+          border: "border-success-400/20",
+          text: "text-success-400",
+          dot: "bg-success-400",
         };
-      case "warning":
+      case "strongRhythm":
         return {
-          bg: "bg-amber-500/5 dark:bg-amber-500/10",
-          border: "border-amber-500/20",
-          text: "text-amber-600 dark:text-amber-400",
-          dot: "bg-amber-500",
+          bg: "bg-success-500/5 dark:bg-success-500/10",
+          border: "border-success-500/20",
+          text: "text-success-500",
+          dot: "bg-success-500",
         };
-      case "critical":
+      case "steadyProgress":
         return {
-          bg: "bg-red-500/5 dark:bg-red-500/10",
-          border: "border-red-500/20",
-          text: "text-red-600 dark:text-red-400",
-          dot: "bg-red-500",
+          bg: "bg-warning-500/5 dark:bg-warning-500/10",
+          border: "border-warning-500/20",
+          text: "text-warning-500",
+          dot: "bg-warning-500",
+        };
+      case "earlyTraction":
+        return {
+          bg: "bg-danger-500/5 dark:bg-danger-500/10",
+          border: "border-danger-500/20",
+          text: "text-danger-500",
+          dot: "bg-danger-500",
+        };
+      case "lowTraction":
+        return {
+          bg: "bg-danger-600/5 dark:bg-danger-600/10",
+          border: "border-danger-600/20",
+          text: "text-danger-600",
+          dot: "bg-danger-600",
         };
       case "unknown":
         return {

@@ -164,16 +164,20 @@
 
   // Status indicator colors
   const statusColors: Record<string, string> = {
-    healthy: "bg-emerald-500",
-    warning: "bg-amber-500",
-    critical: "bg-red-500",
+    peakFlow: "bg-success-400",
+    strongRhythm: "bg-success-500",
+    steadyProgress: "bg-warning-500",
+    earlyTraction: "bg-danger-500",
+    lowTraction: "bg-danger-600",
     unknown: "bg-neutral-500",
   };
 
   const statusLabels: Record<string, string> = {
-    healthy: "Healthy",
-    warning: "Warning",
-    critical: "Critical",
+    peakFlow: "Peak Flow",
+    strongRhythm: "Strong Rhythm",
+    steadyProgress: "Steady Progress",
+    earlyTraction: "Early Traction",
+    lowTraction: "Low Traction",
     unknown: "Unknown",
   };
 
@@ -202,6 +206,16 @@
 
   // Computed status
   const computedStatus = $derived(displayQuality?.status || "unknown");
+
+  // Status text colors for the large metric
+  const statusTextColors: Record<string, string> = {
+    peakFlow: "text-success-400",
+    strongRhythm: "text-success-500",
+    steadyProgress: "text-warning-500",
+    earlyTraction: "text-danger-500",
+    lowTraction: "text-danger-600",
+    unknown: "text-neutral-400",
+  };
 
   // Get teams in active domain for filtering bugs
   const teamsInActiveDomain = $derived.by((): Set<string> | null => {
@@ -286,8 +300,14 @@
     <div class="py-8 border-b border-white/10">
       <!-- Large metric -->
       <div class="flex items-baseline justify-center gap-4 mb-3">
-        <span class="text-8xl lg:text-9xl font-bold text-white tracking-tight">
-          {displayQuality.compositeScore}%
+        <span
+          class="text-8xl lg:text-9xl font-bold tracking-tight {statusTextColors[
+            computedStatus
+          ]}"
+        >
+          {displayQuality.compositeScore}<span
+            class="text-5xl lg:text-6xl font-normal text-neutral-400">%</span
+          >
         </span>
       </div>
 
@@ -336,11 +356,17 @@
         Based on bug count, age, and backlog trend
         <span
           class="ml-2 inline-block text-xs font-medium px-2 py-0.5 rounded {computedStatus ===
-          'healthy'
-            ? 'bg-emerald-500/20 text-emerald-400'
-            : computedStatus === 'warning'
-              ? 'bg-amber-500/20 text-amber-400'
-              : 'bg-red-500/20 text-red-400'}"
+          'peakFlow'
+            ? 'bg-success-400/20 text-success-400'
+            : computedStatus === 'strongRhythm'
+              ? 'bg-success-500/20 text-success-500'
+              : computedStatus === 'steadyProgress'
+                ? 'bg-warning-500/20 text-warning-500'
+                : computedStatus === 'earlyTraction'
+                  ? 'bg-danger-500/20 text-danger-500'
+                  : computedStatus === 'lowTraction'
+                    ? 'bg-danger-600/20 text-danger-600'
+                    : 'bg-neutral-500/20 text-neutral-400'}"
         >
           {statusLabels[computedStatus]}
         </span>

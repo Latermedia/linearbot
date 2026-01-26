@@ -32,7 +32,13 @@
     trueThroughput: number;
     engineerCount: number | null;
     trueThroughputPerEngineer: number | null;
-    status: "healthy" | "warning" | "critical" | "unknown";
+    status:
+      | "peakFlow"
+      | "strongRhythm"
+      | "steadyProgress"
+      | "earlyTraction"
+      | "lowTraction"
+      | "unknown";
   } {
     return "trueThroughput" in p;
   }

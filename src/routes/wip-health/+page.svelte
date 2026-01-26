@@ -283,16 +283,20 @@
 
   // Status indicator colors
   const statusColors: Record<string, string> = {
-    healthy: "bg-emerald-500",
-    warning: "bg-amber-500",
-    critical: "bg-red-500",
+    peakFlow: "bg-success-400",
+    strongRhythm: "bg-success-500",
+    steadyProgress: "bg-warning-500",
+    earlyTraction: "bg-danger-500",
+    lowTraction: "bg-danger-600",
     unknown: "bg-neutral-500",
   };
 
   const statusLabels: Record<string, string> = {
-    healthy: "Healthy",
-    warning: "Warning",
-    critical: "Critical",
+    peakFlow: "Peak Flow",
+    strongRhythm: "Strong Rhythm",
+    steadyProgress: "Steady Progress",
+    earlyTraction: "Early Traction",
+    lowTraction: "Low Traction",
     unknown: "Unknown",
   };
 
@@ -306,23 +310,44 @@
 
   const healthyCount = $derived(displayHealth?.healthyIcCount ?? 0);
 
+  // Status text colors for the large metric
+  const statusTextColors: Record<string, string> = {
+    peakFlow: "text-success-400",
+    strongRhythm: "text-success-500",
+    steadyProgress: "text-warning-500",
+    earlyTraction: "text-danger-500",
+    lowTraction: "text-danger-600",
+    unknown: "text-neutral-400",
+  };
+
   // Determine status from snapshot or compute from percentage
-  const computedStatus = $derived.by((): "healthy" | "warning" | "critical" => {
-    if (displayHealth?.status) {
-      const status = displayHealth.status;
-      if (
-        status === "healthy" ||
-        status === "warning" ||
-        status === "critical"
-      ) {
-        return status;
+  const computedStatus = $derived.by(
+    ():
+      | "peakFlow"
+      | "strongRhythm"
+      | "steadyProgress"
+      | "earlyTraction"
+      | "lowTraction" => {
+      if (displayHealth?.status) {
+        const status = displayHealth.status;
+        if (
+          status === "peakFlow" ||
+          status === "strongRhythm" ||
+          status === "steadyProgress" ||
+          status === "earlyTraction" ||
+          status === "lowTraction"
+        ) {
+          return status;
+        }
       }
+      const pct = parseFloat(healthyPercent);
+      if (pct > 80) return "peakFlow";
+      if (pct > 60) return "strongRhythm";
+      if (pct > 40) return "steadyProgress";
+      if (pct > 20) return "earlyTraction";
+      return "lowTraction";
     }
-    const pct = parseFloat(healthyPercent);
-    if (pct >= 80) return "healthy";
-    if (pct >= 60) return "warning";
-    return "critical";
-  });
+  );
 
   function closeEngineerModal() {
     selectedEngineer = null;
@@ -366,8 +391,14 @@
     <div class="py-8 border-b border-white/10">
       <!-- Large metric -->
       <div class="flex items-baseline justify-center gap-4 mb-3">
-        <span class="text-8xl lg:text-9xl font-bold text-white tracking-tight">
-          {healthyPercent}%
+        <span
+          class="text-8xl lg:text-9xl font-bold tracking-tight {statusTextColors[
+            computedStatus
+          ]}"
+        >
+          {healthyPercent}<span
+            class="text-5xl lg:text-6xl font-normal text-neutral-400">%</span
+          >
         </span>
       </div>
 
@@ -416,11 +447,17 @@
         {healthyCount} of {totalEngineerCount} engineers
         <span
           class="ml-2 inline-block text-xs font-medium px-2 py-0.5 rounded {computedStatus ===
-          'healthy'
-            ? 'bg-emerald-500/20 text-emerald-400'
-            : computedStatus === 'warning'
-              ? 'bg-amber-500/20 text-amber-400'
-              : 'bg-red-500/20 text-red-400'}"
+          'peakFlow'
+            ? 'bg-success-400/20 text-success-400'
+            : computedStatus === 'strongRhythm'
+              ? 'bg-success-500/20 text-success-500'
+              : computedStatus === 'steadyProgress'
+                ? 'bg-warning-500/20 text-warning-500'
+                : computedStatus === 'earlyTraction'
+                  ? 'bg-danger-500/20 text-danger-500'
+                  : computedStatus === 'lowTraction'
+                    ? 'bg-danger-600/20 text-danger-600'
+                    : 'bg-neutral-500/20 text-neutral-400'}"
         >
           {statusLabels[computedStatus]}
         </span>

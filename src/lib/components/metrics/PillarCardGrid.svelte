@@ -258,7 +258,13 @@
     trueThroughput: number;
     engineerCount: number | null;
     trueThroughputPerEngineer: number | null;
-    status: "healthy" | "warning" | "critical" | "unknown";
+    status:
+      | "peakFlow"
+      | "strongRhythm"
+      | "steadyProgress"
+      | "earlyTraction"
+      | "lowTraction"
+      | "unknown";
   } {
     return "trueThroughput" in p;
   }
@@ -331,7 +337,7 @@
       title="Linear Hygiene"
       value={linearHygiene?.hygieneScore ?? "—"}
       valueUnit="%"
-      subtitle="Tactical discipline"
+      subtitle="of tracking best practices met"
       status={linearHygiene?.status}
       onClick={() => onPillarClick?.("linearHygiene")}
       weekTrend={linearHygieneTrends.week}

@@ -179,9 +179,11 @@
 
   // Status labels for computed status badge
   const statusLabels: Record<string, string> = {
-    healthy: "Healthy",
-    warning: "Warning",
-    critical: "Critical",
+    peakFlow: "Peak Flow",
+    strongRhythm: "Strong Rhythm",
+    steadyProgress: "Steady Progress",
+    earlyTraction: "Early Traction",
+    lowTraction: "Low Traction",
     unknown: "Unknown",
   };
 
@@ -243,20 +245,31 @@
     ).length
   );
 
-  // Computed status
-  const computedStatus = $derived.by((): "healthy" | "warning" | "critical" => {
-    const pct = velocityHealth?.onTrackPercent ?? 0;
-    if (pct >= 80) return "healthy";
-    if (pct >= 60) return "warning";
-    return "critical";
-  });
+  // Computed status (uses displayVelocity to respect team filter)
+  const computedStatus = $derived.by(
+    ():
+      | "peakFlow"
+      | "strongRhythm"
+      | "steadyProgress"
+      | "earlyTraction"
+      | "lowTraction" => {
+      const pct = displayVelocity?.onTrackPercent ?? 0;
+      if (pct > 80) return "peakFlow";
+      if (pct > 60) return "strongRhythm";
+      if (pct > 40) return "steadyProgress";
+      if (pct > 20) return "earlyTraction";
+      return "lowTraction";
+    }
+  );
 
-  // Status indicator colors for domain table
-  const statusColors: Record<string, string> = {
-    healthy: "bg-emerald-500",
-    warning: "bg-amber-500",
-    critical: "bg-red-500",
-    unknown: "bg-neutral-500",
+  // Status text colors for the large metric
+  const statusTextColors: Record<string, string> = {
+    peakFlow: "text-success-400",
+    strongRhythm: "text-success-500",
+    steadyProgress: "text-warning-500",
+    earlyTraction: "text-danger-500",
+    lowTraction: "text-danger-600",
+    unknown: "text-neutral-400",
   };
 
   // Extract domain-level project health data for overview table
@@ -448,8 +461,14 @@
     <div class="py-8 border-b border-white/10">
       <!-- Large metric -->
       <div class="flex items-baseline justify-center gap-4 mb-3">
-        <span class="text-8xl lg:text-9xl font-bold text-white tracking-tight">
-          {displayVelocity.onTrackPercent.toFixed(0)}%
+        <span
+          class="text-8xl lg:text-9xl font-bold tracking-tight {statusTextColors[
+            computedStatus
+          ]}"
+        >
+          {displayVelocity.onTrackPercent.toFixed(0)}<span
+            class="text-5xl lg:text-6xl font-normal text-neutral-400">%</span
+          >
         </span>
       </div>
 
@@ -498,11 +517,17 @@
         {onTrackCount} of {totalProjects} projects
         <span
           class="ml-2 inline-block text-xs font-medium px-2 py-0.5 rounded {computedStatus ===
-          'healthy'
-            ? 'bg-emerald-500/20 text-emerald-400'
-            : computedStatus === 'warning'
-              ? 'bg-amber-500/20 text-amber-400'
-              : 'bg-red-500/20 text-red-400'}"
+          'peakFlow'
+            ? 'bg-success-400/20 text-success-400'
+            : computedStatus === 'strongRhythm'
+              ? 'bg-success-500/20 text-success-500'
+              : computedStatus === 'steadyProgress'
+                ? 'bg-warning-500/20 text-warning-500'
+                : computedStatus === 'earlyTraction'
+                  ? 'bg-danger-500/20 text-danger-500'
+                  : computedStatus === 'lowTraction'
+                    ? 'bg-danger-600/20 text-danger-600'
+                    : 'bg-neutral-500/20 text-neutral-400'}"
         >
           {statusLabels[computedStatus]}
         </span>
@@ -636,15 +661,18 @@
                     </td>
                     <td class="py-3 pr-4">
                       <span
-                        class="text-xs font-medium px-2 py-1 rounded {statusColors[
-                          domain.status
-                        ]
-                          ? statusColors[domain.status].replace('bg-', 'bg-') +
-                            '/20 ' +
-                            statusColors[domain.status]
-                              .replace('bg-', 'text-')
-                              .replace('-500', '-400')
-                          : 'bg-neutral-500/20 text-neutral-400'}"
+                        class="text-xs font-medium px-2 py-1 rounded {domain.status ===
+                        'peakFlow'
+                          ? 'bg-success-400/20 text-success-400'
+                          : domain.status === 'strongRhythm'
+                            ? 'bg-success-500/20 text-success-500'
+                            : domain.status === 'steadyProgress'
+                              ? 'bg-warning-500/20 text-warning-500'
+                              : domain.status === 'earlyTraction'
+                                ? 'bg-danger-500/20 text-danger-500'
+                                : domain.status === 'lowTraction'
+                                  ? 'bg-danger-600/20 text-danger-600'
+                                  : 'bg-neutral-500/20 text-neutral-400'}"
                       >
                         {statusLabels[domain.status] || domain.status}
                       </span>

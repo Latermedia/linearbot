@@ -16,8 +16,23 @@ export const CURRENT_SCHEMA_VERSION = 1;
 // Status Enums
 // ============================================================================
 
-export const PillarStatusSchema = z.enum(["healthy", "warning", "critical"]);
+export const PillarStatusSchema = z.enum([
+  "peakFlow",
+  "strongRhythm",
+  "steadyProgress",
+  "earlyTraction",
+  "lowTraction",
+]);
 export type PillarStatus = z.infer<typeof PillarStatusSchema>;
+
+/** Display labels for pillar statuses */
+export const PillarStatusLabels: Record<PillarStatus, string> = {
+  peakFlow: "Peak Flow",
+  strongRhythm: "Strong Rhythm",
+  steadyProgress: "Steady Progress",
+  earlyTraction: "Early Traction",
+  lowTraction: "Low Traction",
+};
 
 export const PendingStatusSchema = z.literal("pending");
 
@@ -105,9 +120,11 @@ export type VelocityHealthV1 = z.infer<typeof VelocityHealthSchemaV1>;
 
 /** Extended status including "unknown" for unconfigured thresholds */
 export const ProductivityStatusSchema = z.enum([
-  "healthy",
-  "warning",
-  "critical",
+  "peakFlow",
+  "strongRhythm",
+  "steadyProgress",
+  "earlyTraction",
+  "lowTraction",
   "unknown",
   "pending",
 ]);
@@ -324,7 +341,7 @@ export function createEmptyMetricsSnapshot(
       multiProjectViolationCount: 0,
       impactedProjectCount: 0,
       totalProjectCount: 0,
-      status: "healthy",
+      status: "peakFlow",
       // Legacy fields
       icWipViolationPercent: 0,
       projectWipViolationPercent: 0,
@@ -335,7 +352,7 @@ export function createEmptyMetricsSnapshot(
       atRiskPercent: 0,
       offTrackPercent: 0,
       projectStatuses: [],
-      status: "healthy",
+      status: "peakFlow",
     },
     teamProductivity: {
       status: "pending",
@@ -349,7 +366,7 @@ export function createEmptyMetricsSnapshot(
       averageBugAgeDays: 0,
       maxBugAgeDays: 0,
       compositeScore: 100,
-      status: "healthy",
+      status: "peakFlow",
     },
     linearHygiene: {
       hygieneScore: 100,
@@ -368,7 +385,7 @@ export function createEmptyMetricsSnapshot(
       totalEngineers: 0,
       projectsWithGaps: 0,
       totalProjects: 0,
-      status: "healthy",
+      status: "peakFlow",
     },
     metadata: {
       capturedAt,
@@ -381,33 +398,50 @@ export function createEmptyMetricsSnapshot(
 
 /**
  * Determine pillar status based on violation percentage thresholds
+ *
+ * Thresholds (score = 100 - violationPercent):
+ * - 81-100% score (0-19% violation) = Peak Flow
+ * - 61-80% score (20-39% violation) = Strong Rhythm
+ * - 41-60% score (40-59% violation) = Steady Progress
+ * - 21-40% score (60-79% violation) = Early Traction
+ * - 0-20% score (80-100% violation) = Low Traction
  */
 export function getPillarStatus(violationPercent: number): PillarStatus {
-  if (violationPercent < 10) return "healthy";
-  if (violationPercent < 25) return "warning";
-  return "critical";
+  if (violationPercent < 20) return "peakFlow";
+  if (violationPercent < 40) return "strongRhythm";
+  if (violationPercent < 60) return "steadyProgress";
+  if (violationPercent < 80) return "earlyTraction";
+  return "lowTraction";
 }
 
 /**
  * Determine overall pillar status from an array of individual statuses
+ * Returns the worst (lowest) status from the array
  */
 export function aggregatePillarStatuses(
   statuses: PillarStatus[]
 ): PillarStatus {
-  if (statuses.length === 0) return "healthy";
-  if (statuses.includes("critical")) return "critical";
-  if (statuses.includes("warning")) return "warning";
-  return "healthy";
+  if (statuses.length === 0) return "peakFlow";
+  // Order from worst to best - return first match (worst status wins)
+  if (statuses.includes("lowTraction")) return "lowTraction";
+  if (statuses.includes("earlyTraction")) return "earlyTraction";
+  if (statuses.includes("steadyProgress")) return "steadyProgress";
+  if (statuses.includes("strongRhythm")) return "strongRhythm";
+  return "peakFlow";
 }
 
 /**
  * Determine hygiene pillar status based on score thresholds
- * - Healthy: Score >= 90%
- * - Warning: Score 75-90%
- * - Critical: Score < 75%
+ * - Peak Flow: Score > 80%
+ * - Strong Rhythm: Score > 60%
+ * - Steady Progress: Score > 40%
+ * - Early Traction: Score > 20%
+ * - Low Traction: Score <= 20%
  */
 export function getHygieneStatus(score: number): PillarStatus {
-  if (score >= 90) return "healthy";
-  if (score >= 75) return "warning";
-  return "critical";
+  if (score > 80) return "peakFlow";
+  if (score > 60) return "strongRhythm";
+  if (score > 40) return "steadyProgress";
+  if (score > 20) return "earlyTraction";
+  return "lowTraction";
 }

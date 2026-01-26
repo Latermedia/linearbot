@@ -344,16 +344,30 @@
 
   // Status indicator colors
   const statusColors: Record<string, string> = {
-    healthy: "bg-emerald-500",
-    warning: "bg-amber-500",
-    critical: "bg-red-500",
+    peakFlow: "bg-success-400",
+    strongRhythm: "bg-success-500",
+    steadyProgress: "bg-warning-500",
+    earlyTraction: "bg-danger-500",
+    lowTraction: "bg-danger-600",
     unknown: "bg-neutral-500",
   };
 
+  // Status text colors for the large metric
+  const statusTextColors: Record<string, string> = {
+    peakFlow: "text-success-400",
+    strongRhythm: "text-success-500",
+    steadyProgress: "text-warning-500",
+    earlyTraction: "text-danger-500",
+    lowTraction: "text-danger-600",
+    unknown: "text-neutral-400",
+  };
+
   const statusLabels: Record<string, string> = {
-    healthy: "Healthy",
-    warning: "Warning",
-    critical: "Critical",
+    peakFlow: "Peak Flow",
+    strongRhythm: "Strong Rhythm",
+    steadyProgress: "Steady Progress",
+    earlyTraction: "Early Traction",
+    lowTraction: "Low Traction",
     unknown: "Unknown",
   };
 
@@ -420,8 +434,14 @@
     <div class="py-8 border-b border-white/10">
       <!-- Large metric -->
       <div class="flex items-baseline justify-center gap-4 mb-3">
-        <span class="text-8xl lg:text-9xl font-bold text-white tracking-tight">
-          {displayHygiene?.hygieneScore ?? 0}%
+        <span
+          class="text-8xl lg:text-9xl font-bold tracking-tight {statusTextColors[
+            displayHygiene?.status ?? 'unknown'
+          ]}"
+        >
+          {displayHygiene?.hygieneScore ?? 0}<span
+            class="text-5xl lg:text-6xl font-normal text-neutral-400">%</span
+          >
         </span>
       </div>
 
@@ -464,17 +484,23 @@
 
       <!-- Subtitle -->
       <p class="text-center text-xl text-neutral-400 mb-2">
-        Tactical discipline score
+        of tracking best practices met
       </p>
       <p class="text-center text-sm text-neutral-500">
         {displayHygiene?.totalGaps ?? 0} gaps found
         <span
           class="ml-2 inline-block text-xs font-medium px-2 py-0.5 rounded {displayHygiene?.status ===
-          'healthy'
-            ? 'bg-emerald-500/20 text-emerald-400'
-            : displayHygiene?.status === 'warning'
-              ? 'bg-amber-500/20 text-amber-400'
-              : 'bg-red-500/20 text-red-400'}"
+          'peakFlow'
+            ? 'bg-success-400/20 text-success-400'
+            : displayHygiene?.status === 'strongRhythm'
+              ? 'bg-success-500/20 text-success-500'
+              : displayHygiene?.status === 'steadyProgress'
+                ? 'bg-warning-500/20 text-warning-500'
+                : displayHygiene?.status === 'earlyTraction'
+                  ? 'bg-danger-500/20 text-danger-500'
+                  : displayHygiene?.status === 'lowTraction'
+                    ? 'bg-danger-600/20 text-danger-600'
+                    : 'bg-neutral-500/20 text-neutral-400'}"
         >
           {statusLabels[displayHygiene?.status ?? "unknown"]}
         </span>

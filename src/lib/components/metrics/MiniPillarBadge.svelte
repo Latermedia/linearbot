@@ -18,12 +18,16 @@
     status: PillarStatus | ProductivityStatus
   ): string {
     switch (status) {
-      case "healthy":
-        return "text-emerald-400";
-      case "warning":
-        return "text-amber-400";
-      case "critical":
-        return "text-red-400";
+      case "peakFlow":
+        return "text-success-400";
+      case "strongRhythm":
+        return "text-success-500";
+      case "steadyProgress":
+        return "text-warning-500";
+      case "earlyTraction":
+        return "text-danger-500";
+      case "lowTraction":
+        return "text-danger-600";
       case "unknown":
         return "text-blue-400";
       case "pending":

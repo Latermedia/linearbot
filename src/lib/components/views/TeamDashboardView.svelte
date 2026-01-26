@@ -269,12 +269,16 @@
   // Helper to get status color class
   function getStatusColorClass(status: string | undefined): string {
     switch (status) {
-      case "healthy":
-        return "text-emerald-400";
-      case "warning":
-        return "text-amber-400";
-      case "critical":
-        return "text-red-400";
+      case "peakFlow":
+        return "text-success-400";
+      case "strongRhythm":
+        return "text-success-500";
+      case "steadyProgress":
+        return "text-warning-500";
+      case "earlyTraction":
+        return "text-danger-500";
+      case "lowTraction":
+        return "text-danger-600";
       default:
         return "text-neutral-400";
     }
@@ -442,14 +446,9 @@
                     )?.linearHygiene}
                     <button
                       type="button"
-                      class="text-sm font-medium hover:underline cursor-pointer {hygiene?.status ===
-                      'healthy'
-                        ? 'text-emerald-400'
-                        : hygiene?.status === 'warning'
-                          ? 'text-amber-400'
-                          : hygiene?.status === 'critical'
-                            ? 'text-red-400'
-                            : 'text-neutral-400'}"
+                      class="text-sm font-medium hover:underline cursor-pointer {getStatusColorClass(
+                        hygiene?.status
+                      )}"
                       onclick={() =>
                         handleTableMetricClick(
                           "linearHygiene",
@@ -470,14 +469,9 @@
                     )?.teamHealth}
                     <button
                       type="button"
-                      class="text-sm font-medium hover:underline cursor-pointer {wip?.status ===
-                      'healthy'
-                        ? 'text-emerald-400'
-                        : wip?.status === 'warning'
-                          ? 'text-amber-400'
-                          : wip?.status === 'critical'
-                            ? 'text-red-400'
-                            : 'text-neutral-400'}"
+                      class="text-sm font-medium hover:underline cursor-pointer {getStatusColorClass(
+                        wip?.status
+                      )}"
                       onclick={() =>
                         handleTableMetricClick(
                           "wipHealth",
@@ -498,14 +492,9 @@
                     )?.velocityHealth}
                     <button
                       type="button"
-                      class="text-sm font-medium hover:underline cursor-pointer {velocity?.status ===
-                      'healthy'
-                        ? 'text-emerald-400'
-                        : velocity?.status === 'warning'
-                          ? 'text-amber-400'
-                          : velocity?.status === 'critical'
-                            ? 'text-red-400'
-                            : 'text-neutral-400'}"
+                      class="text-sm font-medium hover:underline cursor-pointer {getStatusColorClass(
+                        velocity?.status
+                      )}"
                       onclick={() =>
                         handleTableMetricClick(
                           "projectHealth",
@@ -549,14 +538,9 @@
                     )?.quality}
                     <button
                       type="button"
-                      class="text-sm font-medium hover:underline cursor-pointer {quality?.status ===
-                      'healthy'
-                        ? 'text-emerald-400'
-                        : quality?.status === 'warning'
-                          ? 'text-amber-400'
-                          : quality?.status === 'critical'
-                            ? 'text-red-400'
-                            : 'text-neutral-400'}"
+                      class="text-sm font-medium hover:underline cursor-pointer {getStatusColorClass(
+                        quality?.status
+                      )}"
                       onclick={() =>
                         handleTableMetricClick(
                           "quality",
@@ -598,14 +582,9 @@
                         )?.linearHygiene}
                         <button
                           type="button"
-                          class="text-sm hover:underline cursor-pointer {hygiene?.status ===
-                          'healthy'
-                            ? 'text-emerald-400'
-                            : hygiene?.status === 'warning'
-                              ? 'text-amber-400'
-                              : hygiene?.status === 'critical'
-                                ? 'text-red-400'
-                                : 'text-neutral-400'}"
+                          class="text-sm hover:underline cursor-pointer {getStatusColorClass(
+                            hygiene?.status
+                          )}"
                           onclick={() =>
                             handleTableMetricClick(
                               "linearHygiene",
@@ -626,14 +605,9 @@
                         )?.teamHealth}
                         <button
                           type="button"
-                          class="text-sm hover:underline cursor-pointer {wip?.status ===
-                          'healthy'
-                            ? 'text-emerald-400'
-                            : wip?.status === 'warning'
-                              ? 'text-amber-400'
-                              : wip?.status === 'critical'
-                                ? 'text-red-400'
-                                : 'text-neutral-400'}"
+                          class="text-sm hover:underline cursor-pointer {getStatusColorClass(
+                            wip?.status
+                          )}"
                           onclick={() =>
                             handleTableMetricClick(
                               "wipHealth",
@@ -654,14 +628,9 @@
                         )?.velocityHealth}
                         <button
                           type="button"
-                          class="text-sm hover:underline cursor-pointer {velocity?.status ===
-                          'healthy'
-                            ? 'text-emerald-400'
-                            : velocity?.status === 'warning'
-                              ? 'text-amber-400'
-                              : velocity?.status === 'critical'
-                                ? 'text-red-400'
-                                : 'text-neutral-400'}"
+                          class="text-sm hover:underline cursor-pointer {getStatusColorClass(
+                            velocity?.status
+                          )}"
                           onclick={() =>
                             handleTableMetricClick(
                               "projectHealth",
@@ -685,14 +654,9 @@
                         )?.quality}
                         <button
                           type="button"
-                          class="text-sm hover:underline cursor-pointer {quality?.status ===
-                          'healthy'
-                            ? 'text-emerald-400'
-                            : quality?.status === 'warning'
-                              ? 'text-amber-400'
-                              : quality?.status === 'critical'
-                                ? 'text-red-400'
-                                : 'text-neutral-400'}"
+                          class="text-sm hover:underline cursor-pointer {getStatusColorClass(
+                            quality?.status
+                          )}"
                           onclick={() =>
                             handleTableMetricClick(
                               "quality",
@@ -732,14 +696,9 @@
                       )?.linearHygiene}
                       <button
                         type="button"
-                        class="text-sm hover:underline cursor-pointer {hygiene?.status ===
-                        'healthy'
-                          ? 'text-emerald-400'
-                          : hygiene?.status === 'warning'
-                            ? 'text-amber-400'
-                            : hygiene?.status === 'critical'
-                              ? 'text-red-400'
-                              : 'text-neutral-400'}"
+                        class="text-sm hover:underline cursor-pointer {getStatusColorClass(
+                          hygiene?.status
+                        )}"
                         onclick={() =>
                           handleTableMetricClick(
                             "linearHygiene",
@@ -760,14 +719,9 @@
                       )?.teamHealth}
                       <button
                         type="button"
-                        class="text-sm hover:underline cursor-pointer {wip?.status ===
-                        'healthy'
-                          ? 'text-emerald-400'
-                          : wip?.status === 'warning'
-                            ? 'text-amber-400'
-                            : wip?.status === 'critical'
-                              ? 'text-red-400'
-                              : 'text-neutral-400'}"
+                        class="text-sm hover:underline cursor-pointer {getStatusColorClass(
+                          wip?.status
+                        )}"
                         onclick={() =>
                           handleTableMetricClick(
                             "wipHealth",
@@ -788,14 +742,9 @@
                       )?.velocityHealth}
                       <button
                         type="button"
-                        class="text-sm hover:underline cursor-pointer {velocity?.status ===
-                        'healthy'
-                          ? 'text-emerald-400'
-                          : velocity?.status === 'warning'
-                            ? 'text-amber-400'
-                            : velocity?.status === 'critical'
-                              ? 'text-red-400'
-                              : 'text-neutral-400'}"
+                        class="text-sm hover:underline cursor-pointer {getStatusColorClass(
+                          velocity?.status
+                        )}"
                         onclick={() =>
                           handleTableMetricClick(
                             "projectHealth",
@@ -819,14 +768,9 @@
                       )?.quality}
                       <button
                         type="button"
-                        class="text-sm hover:underline cursor-pointer {quality?.status ===
-                        'healthy'
-                          ? 'text-emerald-400'
-                          : quality?.status === 'warning'
-                            ? 'text-amber-400'
-                            : quality?.status === 'critical'
-                              ? 'text-red-400'
-                              : 'text-neutral-400'}"
+                        class="text-sm hover:underline cursor-pointer {getStatusColorClass(
+                          quality?.status
+                        )}"
                         onclick={() =>
                           handleTableMetricClick(
                             "quality",

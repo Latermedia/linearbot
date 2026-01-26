@@ -61,16 +61,20 @@
 
   // Status indicator colors
   const statusColors = {
-    healthy: "bg-emerald-500",
-    warning: "bg-amber-500",
-    critical: "bg-red-500",
+    peakFlow: "bg-success-400",
+    strongRhythm: "bg-success-500",
+    steadyProgress: "bg-warning-500",
+    earlyTraction: "bg-danger-500",
+    lowTraction: "bg-danger-600",
     unknown: "bg-neutral-500",
   };
 
   const statusLabels = {
-    healthy: "Healthy",
-    warning: "Warning",
-    critical: "Critical",
+    peakFlow: "Peak Flow",
+    strongRhythm: "Strong Rhythm",
+    steadyProgress: "Steady Progress",
+    earlyTraction: "Early Traction",
+    lowTraction: "Low Traction",
     unknown: "Unknown",
   };
 
@@ -115,13 +119,17 @@
         </span>
         <span
           class="text-sm font-medium px-2 py-0.5 rounded {teamHealth.status ===
-          'healthy'
-            ? 'bg-emerald-500/20 text-emerald-400'
-            : teamHealth.status === 'warning'
-              ? 'bg-amber-500/20 text-amber-400'
-              : teamHealth.status === 'critical'
-                ? 'bg-red-500/20 text-red-400'
-                : 'bg-neutral-500/20 text-neutral-400'}"
+          'peakFlow'
+            ? 'bg-success-400/20 text-success-400'
+            : teamHealth.status === 'strongRhythm'
+              ? 'bg-success-500/20 text-success-500'
+              : teamHealth.status === 'steadyProgress'
+                ? 'bg-warning-500/20 text-warning-500'
+                : teamHealth.status === 'earlyTraction'
+                  ? 'bg-danger-500/20 text-danger-500'
+                  : teamHealth.status === 'lowTraction'
+                    ? 'bg-danger-600/20 text-danger-600'
+                    : 'bg-neutral-500/20 text-neutral-400'}"
         >
           {statusLabels[teamHealth.status]}
         </span>
