@@ -23,11 +23,13 @@ interface DatabaseState {
 }
 
 // Track if config loading is in progress to avoid duplicate calls
-let configLoadPromise: Promise<void> | null = null;
+let configLoadPromise: Promise<boolean> | null = null;
+// Track if config was successfully loaded (domain mappings initialized)
+let configLoadedSuccessfully = false;
 
-async function loadConfig() {
+async function loadConfig(): Promise<boolean> {
   if (!browser) {
-    return;
+    return false;
   }
 
   // Return existing promise if already loading
@@ -60,14 +62,24 @@ async function loadConfig() {
         } else {
           console.warn("[loadConfig] No teamNameMappings in config");
         }
+        configLoadedSuccessfully = true;
+        return true;
       } else {
         console.error(
           "[loadConfig] Config API returned status:",
           response.status
         );
+        // Reset promise on auth failure so we can retry
+        if (response.status === 401) {
+          configLoadPromise = null;
+        }
+        return false;
       }
     } catch (error) {
       console.error("[loadConfig] Failed to load config:", error);
+      // Reset promise on error so we can retry
+      configLoadPromise = null;
+      return false;
     }
   })();
 
@@ -96,20 +108,13 @@ function createDatabaseStore() {
 
       try {
         // Load config (domain mappings) first
-        await loadConfig();
+        // Always try to load if not yet successful (handles 401 retry after login)
+        if (!configLoadedSuccessfully) {
+          await loadConfig();
+        }
 
         // Then load issues
-        console.log("[databaseStore] Loading issues...");
         const issues = await getIssuesWithProjects();
-        console.log("[databaseStore] Loaded issues count:", issues.length);
-        console.log(
-          "[databaseStore] Sample issues:",
-          issues.slice(0, 3).map((i) => ({
-            id: i.id,
-            project_id: i.project_id,
-            team_key: i.team_key,
-          }))
-        );
         update((state) => ({
           ...state,
           loading: false,
@@ -137,10 +142,8 @@ function createDatabaseStore() {
     async refreshProject(projectId: string) {
       if (!browser) return;
       try {
-        console.log(`[databaseStore] Refreshing project: ${projectId}`);
         const project = await getProjectById(projectId);
         if (!project) {
-          console.warn(`[databaseStore] Project ${projectId} not found`);
           return;
         }
         // Convert Project to ProjectSummary
@@ -151,7 +154,6 @@ function createDatabaseStore() {
           updated.set(projectId, projectSummary);
           return updated;
         });
-        console.log(`[databaseStore] Refreshed project: ${projectId}`);
       } catch (error) {
         console.error(
           `[databaseStore] Error refreshing project ${projectId}:`,
@@ -189,18 +191,15 @@ databaseStore.subscribe(async ($db) => {
 
   // Wait for config to be loaded before processing projects
   // This ensures domain mappings are available
-  if (configLoadPromise) {
+  // If config previously failed (e.g., 401), try again now that we might be authenticated
+  if (!configLoadedSuccessfully) {
+    await loadConfig();
+  } else if (configLoadPromise) {
     await configLoadPromise;
   }
 
-  console.log("[projectsStore] Loading projects from database...");
   try {
     const projects = await processProjects();
-    console.log("[projectsStore] Loaded projects count:", projects.size);
-    console.log(
-      "[projectsStore] Sample project IDs:",
-      Array.from(projects.keys()).slice(0, 5)
-    );
     projectsStore.set(projects);
   } catch (error) {
     console.error("[projectsStore] Error loading projects:", error);
@@ -212,33 +211,11 @@ export const teamsStore = derived(
   [databaseStore, projectsStore],
   ([$db, $projects]) => {
     if (!browser || $db.error || $projects.size === 0) {
-      if ($db.error) {
-        console.log(
-          "[teamsStore] Skipping due to error - browser:",
-          browser,
-          "error:",
-          $db.error,
-          "projects:",
-          $projects.size
-        );
-      }
       return [];
     }
     // Continue computing teams during loading to keep modals open
     // (will use existing projects and issues temporarily)
-    console.log(
-      "[teamsStore] Grouping",
-      $projects.size,
-      "projects into teams...",
-      $db.loading ? "(loading)" : ""
-    );
-    const teams = groupProjectsByTeams($projects, $db.issues);
-    console.log("[teamsStore] Grouped into", teams.length, "teams");
-    console.log(
-      "[teamsStore] Teams:",
-      teams.map((t) => ({ name: t.teamName, projectCount: t.projects.length }))
-    );
-    return teams;
+    return groupProjectsByTeams($projects, $db.issues);
   }
 );
 

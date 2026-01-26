@@ -10,7 +10,6 @@
     teamFilterStore,
     teamsMatchFullFilter,
   } from "$lib/stores/team-filter";
-  import { executiveFocus } from "$lib/stores/dashboard";
 
   interface InitiativeData {
     id: string;
@@ -71,9 +70,8 @@
   // Get stores
   const projects = $derived($projectsStore);
   const filter = $derived($teamFilterStore);
-  const isExecutiveFocus = $derived($executiveFocus);
 
-  // Filter initiatives by team and executive focus
+  // Filter initiatives by team
   const filteredInitiatives = $derived.by(() => {
     let filtered = initiatives;
 
@@ -92,28 +90,6 @@
         for (const projectId of projectIds) {
           const project = projects.get(projectId);
           if (project && teamsMatchFullFilter(project.teams, filter)) {
-            return true;
-          }
-        }
-        return false;
-      });
-    }
-
-    // Filter by executive focus (check if any linked project has Executive Visibility label)
-    if (isExecutiveFocus) {
-      filtered = filtered.filter((initiative) => {
-        let projectIds: string[] = [];
-        try {
-          projectIds = initiative.project_ids
-            ? JSON.parse(initiative.project_ids)
-            : [];
-        } catch {
-          return false;
-        }
-
-        for (const projectId of projectIds) {
-          const project = projects.get(projectId);
-          if (project && project.labels.includes("Executive Visibility")) {
             return true;
           }
         }

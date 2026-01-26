@@ -53,51 +53,6 @@
     return `domain-${group.domainName}`;
   }
 
-  // Log sections when displaying
-  $effect(() => {
-    console.log("[ProjectsTable] groupBy changed:", groupBy);
-    console.log("[ProjectsTable] teams.length:", teams.length);
-    console.log("[ProjectsTable] domains.length:", domains.length);
-    console.log("[ProjectsTable] groups.length:", groups.length);
-
-    if (groups.length > 0) {
-      if (groupBy === "team") {
-        const sections = teams.map((team) => ({
-          title: team.teamName,
-          projects: team.projects.map((p) => ({
-            projectId: p.projectId,
-            projectName: p.projectName,
-          })),
-        }));
-        console.log("[ProjectsTable] Sections (by team):", sections);
-      } else {
-        // Domain grouping format: [{ domain: "Domain Name", projects: [...] }, ...]
-        const sections = domains.map((domain) => ({
-          domain: domain.domainName,
-          projects: domain.projects.map((p) => ({
-            projectId: p.projectId,
-            projectName: p.projectName,
-          })),
-        }));
-        console.log("[ProjectsTable] Sections (by domain):", sections);
-        // Also log with generic "title" abstraction
-        const sectionsWithTitle = domains.map((domain) => ({
-          title: domain.domainName,
-          projects: domain.projects.map((p) => ({
-            projectId: p.projectId,
-            projectName: p.projectName,
-          })),
-        }));
-        console.log(
-          "[ProjectsTable] Sections (by domain, abstracted with title):",
-          sectionsWithTitle
-        );
-      }
-    } else {
-      console.warn("[ProjectsTable] groups is empty! groupBy:", groupBy);
-    }
-  });
-
   function handleRowClick(project: ProjectSummary): void {
     selectedProject = project;
   }

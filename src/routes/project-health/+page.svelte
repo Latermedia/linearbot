@@ -16,7 +16,6 @@
     teamFilterStore,
     teamsMatchFullFilter,
   } from "$lib/stores/team-filter";
-  import { executiveFocus } from "$lib/stores/dashboard";
   import {
     filterProjectsByMode,
     groupProjectsByTeams,
@@ -27,7 +26,6 @@
     calculateMetricTrends,
     metricExtractors,
   } from "$lib/utils/trend-calculation";
-  import { Star } from "lucide-svelte";
   import type {
     VelocityHealthV1,
     MetricsSnapshotV1,
@@ -316,7 +314,6 @@
 
   // Derived values from stores for project list
   const projects = $derived($projectsStore);
-  const isExecutiveFocus = $derived($executiveFocus);
   const selectedTeamKey = $derived(filter.teamKey);
 
   // Get team snapshots map for quick lookup
@@ -368,19 +365,10 @@
     return map;
   });
 
-  // Filter projects based on selected mode, team filter, and executive focus
+  // Filter projects based on selected mode and team filter
   const filteredProjects = $derived.by(() => {
     const issues = $databaseStore.issues;
     let filtered = filterProjectsByMode(projects, issues, projectFilter);
-
-    // Apply executive focus filter
-    if (isExecutiveFocus) {
-      filtered = new Map(
-        Array.from(filtered).filter(([_, project]) =>
-          project.labels.includes("Executive Visibility")
-        )
-      );
-    }
 
     // Apply domain/team filter (uses full filter state for both domain and team filtering)
     if (filter.domain !== null || filter.teamKey !== null) {
@@ -790,16 +778,6 @@
             >5 Quarters</ToggleGroupItem
           >
         </ToggleGroupRoot>
-      {/if}
-
-      <!-- Executive Focus indicator -->
-      {#if isExecutiveFocus}
-        <div
-          class="flex items-center gap-1.5 px-2 py-1 text-xs font-medium text-amber-600 dark:text-amber-400 bg-amber-500/10 rounded"
-        >
-          <Star class="w-3.5 h-3.5" />
-          <span>Executive Focus</span>
-        </div>
       {/if}
     </div>
 

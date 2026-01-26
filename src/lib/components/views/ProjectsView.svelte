@@ -2,7 +2,6 @@
   import { onMount } from "svelte";
   import { browser } from "$app/environment";
   import { databaseStore, projectsStore } from "$lib/stores/database";
-  import { executiveFocus } from "$lib/stores/dashboard";
   import ProjectsTable from "$lib/components/ProjectsTable.svelte";
   import GanttChart from "$lib/components/GanttChart.svelte";
   import IssueTable from "$lib/components/IssueTable.svelte";
@@ -29,7 +28,6 @@
     hasWIPAgeViolation,
   } from "../../../utils/issue-validators";
   import { getGapsColorClass } from "$lib/utils/gaps-helpers";
-  import { Star } from "lucide-svelte";
 
   // Props
   interface Props {
@@ -120,25 +118,15 @@
   const projects = $derived($projectsStore);
   const filter = $derived($teamFilterStore);
   const selectedTeamKey = $derived(filter.teamKey);
-  const isExecutiveFocus = $derived($executiveFocus);
 
   const hasEngineerMapping = $derived(
     Object.keys(engineerTeamMapping).length > 0
   );
 
-  // Filter projects based on selected mode, team filter, and executive focus
+  // Filter projects based on selected mode and team filter
   const filteredProjects = $derived.by(() => {
     const issues = $databaseStore.issues;
     let filtered = filterProjectsByMode(projects, issues, projectFilter);
-
-    // Apply executive focus filter
-    if (isExecutiveFocus) {
-      filtered = new Map(
-        Array.from(filtered).filter(([_, project]) =>
-          project.labels.includes("Executive Visibility")
-        )
-      );
-    }
 
     // Apply domain/team filter (uses full filter state for both domain and team filtering)
     if (filter.domain !== null || filter.teamKey !== null) {
@@ -450,16 +438,6 @@
         >
       </ToggleGroupRoot>
     {/if}
-
-    <!-- Executive Focus indicator -->
-    {#if isExecutiveFocus}
-      <div
-        class="flex items-center gap-1.5 px-2 py-1 text-xs font-medium text-amber-600 dark:text-amber-400 bg-amber-500/10 rounded"
-      >
-        <Star class="w-3.5 h-3.5" />
-        <span>Executive Focus</span>
-      </div>
-    {/if}
   </div>
 
   <!-- Main content -->
@@ -489,11 +467,11 @@
       </p>
     </Card>
   {:else if viewType === "table"}
-    {#key `${projectFilter}-${groupBy}-${selectedTeamKey}-${isExecutiveFocus}`}
+    {#key `${projectFilter}-${groupBy}-${selectedTeamKey}`}
       <ProjectsTable {teams} {domains} {groupBy} />
     {/key}
   {:else}
-    {#key `${projectFilter}-${groupBy}-${endDateMode}-${ganttViewMode}-${selectedTeamKey}-${isExecutiveFocus}`}
+    {#key `${projectFilter}-${groupBy}-${endDateMode}-${ganttViewMode}-${selectedTeamKey}`}
       <GanttChart
         {teams}
         {domains}
