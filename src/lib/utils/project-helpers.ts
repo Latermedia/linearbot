@@ -1,6 +1,9 @@
 import type { ProjectSummary } from "../project-data";
 import type { Issue } from "../../db/schema";
-import { isSubissue } from "../../utils/issue-validators";
+import {
+  isSubissue,
+  isCancelledOrDuplicate,
+} from "../../utils/issue-validators";
 
 /**
  * Format date as "MMM YYYY" (e.g., "Jan 2024")
@@ -263,6 +266,7 @@ export function getDaysSinceHealthUpdate(
 
 /**
  * Calculate total points (sum of estimates) from issues
+ * Excludes cancelled/duplicate issues from the calculation
  */
 export function calculateTotalPoints(issues: Issue[]): {
   total: number;
@@ -271,6 +275,9 @@ export function calculateTotalPoints(issues: Issue[]): {
   let total = 0;
   let missing = 0;
   for (const issue of issues) {
+    // Skip cancelled/duplicate issues
+    if (isCancelledOrDuplicate(issue)) continue;
+
     if (issue.estimate === null || issue.estimate === undefined) {
       missing++;
     } else {
@@ -282,9 +289,12 @@ export function calculateTotalPoints(issues: Issue[]): {
 
 /**
  * Calculate average cycle time (time from started to completed) in days
+ * Excludes cancelled/duplicate issues from the calculation
  */
 export function calculateAverageCycleTime(issues: Issue[]): number | null {
   const completedIssues = issues.filter((issue) => {
+    // Skip cancelled/duplicate issues
+    if (isCancelledOrDuplicate(issue)) return false;
     const stateName = issue.state_name?.toLowerCase() || "";
     return stateName.includes("done") || stateName.includes("completed");
   });
@@ -314,9 +324,12 @@ export function calculateAverageCycleTime(issues: Issue[]): number | null {
 
 /**
  * Calculate average lead time (time from created to completed) in days
+ * Excludes cancelled/duplicate issues from the calculation
  */
 export function calculateAverageLeadTime(issues: Issue[]): number | null {
   const completedIssues = issues.filter((issue) => {
+    // Skip cancelled/duplicate issues
+    if (isCancelledOrDuplicate(issue)) return false;
     const stateName = issue.state_name?.toLowerCase() || "";
     return stateName.includes("done") || stateName.includes("completed");
   });
@@ -372,12 +385,15 @@ export function formatProjectAge(days: number | null): string {
 
 /**
  * Calculate velocity (issues completed per week)
+ * Excludes cancelled/duplicate issues from the calculation
  */
 export function calculateVelocity(
   issues: Issue[],
   startDate: string | null
 ): number {
   const completedIssues = issues.filter((issue) => {
+    // Skip cancelled/duplicate issues
+    if (isCancelledOrDuplicate(issue)) return false;
     const stateName = issue.state_name?.toLowerCase() || "";
     return stateName.includes("done") || stateName.includes("completed");
   });
@@ -421,12 +437,16 @@ export function calculateVelocityByTeam(
 
 /**
  * Calculate Linear progress by points (completed points / total points)
+ * Excludes cancelled/duplicate issues from the calculation
  */
 export function calculateLinearProgress(issues: Issue[]): number | null {
+  // calculateTotalPoints already filters out cancelled/duplicate
   const { total } = calculateTotalPoints(issues);
   if (total === 0) return null;
 
   const completedIssues = issues.filter((issue) => {
+    // Skip cancelled/duplicate issues
+    if (isCancelledOrDuplicate(issue)) return false;
     const stateName = issue.state_name?.toLowerCase() || "";
     return stateName.includes("done") || stateName.includes("completed");
   });
@@ -450,6 +470,7 @@ export function formatPercent(percent: number): string {
 
 /**
  * Calculate estimate accuracy (% of completed issues where actual cycle time was within 20% of estimated time)
+ * Excludes cancelled/duplicate issues from the calculation
  *
  * Linear's `estimate` field is story points (1, 2, 3, 5, 8), not days. To calculate accuracy,
  * we need to convert story points to estimated days. A common conversion is:
@@ -464,6 +485,8 @@ export function formatPercent(percent: number): string {
 export function calculateEstimateAccuracy(issues: Issue[]): number | null {
   const completedIssues = issues
     .filter((issue) => {
+      // Skip cancelled/duplicate issues
+      if (isCancelledOrDuplicate(issue)) return false;
       const stateName = issue.state_name?.toLowerCase() || "";
       return stateName.includes("done") || stateName.includes("completed");
     })
@@ -621,11 +644,14 @@ export function formatWIPAge(days: number | null): string {
  * Calculate estimate accuracy ratio for a single issue
  * Returns ratio (actualDays / estimatedDays) or null if not applicable
  * Examples: 1.0 = perfect match, 1.2 = 20% over, 0.8 = 20% under
+ * Returns null for cancelled/duplicate issues
  */
 export function calculateIssueAccuracyRatio(
   issue: Issue,
   daysPerStoryPoint: number
 ): number | null {
+  // Skip cancelled/duplicate issues
+  if (isCancelledOrDuplicate(issue)) return null;
   if (!issue.estimate) return null;
 
   const stateName = issue.state_name?.toLowerCase() || "";
@@ -669,6 +695,7 @@ export function getAccuracyColorClass(ratio: number | null): string {
 /**
  * Calculate recent progress over the last N days
  * Returns number of issues completed and percentage increase
+ * Excludes cancelled/duplicate issues from the calculation
  */
 export function getRecentProgress(
   project: ProjectSummary,
@@ -678,9 +705,9 @@ export function getRecentProgress(
   const cutoffDate = new Date();
   cutoffDate.setDate(cutoffDate.getDate() - days);
 
-  // Get all issues for this project
+  // Get all issues for this project, excluding cancelled/duplicate
   const projectIssues = issues.filter(
-    (i) => i.project_id === project.projectId
+    (i) => i.project_id === project.projectId && !isCancelledOrDuplicate(i)
   );
 
   // Count issues completed in the date range

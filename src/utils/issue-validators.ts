@@ -80,6 +80,20 @@ export function hasNoRecentComment(
  * Check if issue should have alerts suppressed (cancelled/duplicate states)
  */
 export function shouldSuppressAlerts(issue: Issue): boolean {
+  return isCancelledOrDuplicate(issue);
+}
+
+/**
+ * Check if issue is cancelled or duplicate and should be excluded from progress calculations.
+ * These issues should NOT be counted in:
+ * - Total issue counts
+ * - Progress bar calculations
+ * - Velocity projections
+ *
+ * Linear uses state_type "canceled" for cancelled issues, and state_name may include
+ * "cancel", "cancelled", or "duplicate".
+ */
+export function isCancelledOrDuplicate(issue: Issue): boolean {
   const stateName = issue.state_name?.toLowerCase() || "";
   return (
     stateName.includes("cancel") ||

@@ -19,6 +19,7 @@ import {
   hasWIPAgeViolation,
   hasMissingDescription,
   hasMissingProjectScopedLabels,
+  isCancelledOrDuplicate,
 } from "../../utils/issue-validators.js";
 import {
   calculateTotalPoints,
@@ -108,6 +109,12 @@ export async function computeAndStoreProjects(
     // for planning views and historical views
     activeProjectIds.add(projectId);
 
+    // Filter out cancelled/duplicate issues for progress calculations
+    // These should not count toward total, completed, or velocity metrics
+    const activeIssues = projectIssues.filter(
+      (issue) => !isCancelledOrDuplicate(issue)
+    );
+
     const firstIssue = projectIssues[0];
     const issuesByState = new Map<string, number>();
     const engineers = new Set<string>();
@@ -123,11 +130,14 @@ export async function computeAndStoreProjects(
     let inProgressCount = 0;
 
     for (const issue of projectIssues) {
-      // Track issue states
+      // Track issue states (include all for state breakdown display)
       const stateName = issue.state_name;
       issuesByState.set(stateName, (issuesByState.get(stateName) || 0) + 1);
 
-      // Count completed and in-progress
+      // Skip cancelled/duplicate issues for progress counting
+      if (isCancelledOrDuplicate(issue)) continue;
+
+      // Count completed and in-progress (excluding cancelled/duplicate)
       if (
         stateName.toLowerCase().includes("done") ||
         stateName.toLowerCase().includes("completed")
@@ -204,8 +214,8 @@ export async function computeAndStoreProjects(
       if (hasMissingDescription(issue)) missingDescriptionCount++;
     }
 
-    // Count started issues (state_type === "started")
-    const startedIssuesCount = projectIssues.filter(
+    // Count started issues (state_type === "started"), excluding cancelled/duplicate
+    const startedIssuesCount = activeIssues.filter(
       (i) => i.state_type === "started"
     ).length;
 
@@ -235,19 +245,21 @@ export async function computeAndStoreProjects(
     let missingRICEScopedLabelsFlag = false;
 
     // Calculate metrics using helper functions
-    const totalPoints = calculateTotalPoints(projectIssues);
-    const averageCycleTime = calculateAverageCycleTime(projectIssues);
-    const averageLeadTime = calculateAverageLeadTime(projectIssues);
-    const linearProgress = calculateLinearProgress(projectIssues);
-    const velocity = calculateVelocity(projectIssues, earliestCreatedAt);
+    // Use activeIssues (filtered) for metrics that should exclude cancelled/duplicate
+    const totalPoints = calculateTotalPoints(activeIssues);
+    const averageCycleTime = calculateAverageCycleTime(activeIssues);
+    const averageLeadTime = calculateAverageLeadTime(activeIssues);
+    const linearProgress = calculateLinearProgress(activeIssues);
+    const velocity = calculateVelocity(activeIssues, earliestCreatedAt);
     const velocityByTeam = calculateVelocityByTeam(
-      projectIssues,
+      activeIssues,
       earliestCreatedAt
     );
-    const estimateAccuracy = calculateEstimateAccuracy(projectIssues);
+    const estimateAccuracy = calculateEstimateAccuracy(activeIssues);
 
     // Calculate days per story point for accuracy
-    const completedIssues = projectIssues
+    // Use activeIssues (excludes cancelled/duplicate)
+    const completedIssues = activeIssues
       .filter((issue) => {
         const stateName = issue.state_name?.toLowerCase() || "";
         return stateName.includes("done") || stateName.includes("completed");
@@ -290,9 +302,10 @@ export async function computeAndStoreProjects(
       : null;
 
     // Always calculate velocity-based estimated completion date
+    // Use activeIssues.length (excludes cancelled/duplicate) for accurate projections
     let estimatedEndDate: string | null = null;
     if (earliestCreatedAt) {
-      const remainingIssues = projectIssues.length - completedCount;
+      const remainingIssues = activeIssues.length - completedCount;
       const daysElapsed = Math.max(
         1,
         (Date.now() - new Date(earliestCreatedAt).getTime()) /
@@ -404,7 +417,8 @@ export async function computeAndStoreProjects(
       project_lead_avatar_url: firstIssue.project_lead_avatar_url,
       project_description: projectDescription,
       project_content: projectContent,
-      total_issues: projectIssues.length,
+      // Use activeIssues.length (excludes cancelled/duplicate) for accurate progress tracking
+      total_issues: activeIssues.length,
       completed_issues: completedCount,
       in_progress_issues: inProgressCount,
       engineer_count: engineers.size,
