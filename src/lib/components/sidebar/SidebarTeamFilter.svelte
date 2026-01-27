@@ -75,9 +75,9 @@
 
   // Handle keyboard shortcuts
   function handleKeydown(event: KeyboardEvent) {
-    // Cmd/Ctrl + Shift + F to clear filter (when filter is active)
+    // Cmd/Ctrl + Shift + X to clear filter (when filter is active)
     if (
-      event.key.toLowerCase() === "f" &&
+      event.key.toLowerCase() === "x" &&
       event.shiftKey &&
       (event.metaKey || event.ctrlKey) &&
       isFilterActive
@@ -272,7 +272,7 @@
           <p class="text-[11px] text-center text-black-500">
             <kbd
               class="px-1.5 py-0.5 rounded border bg-ambient-700 dark:bg-black-800 border-black-200 dark:border-black-700 text-black-600 dark:text-black-300"
-              >{isMac ? "Cmd" : "Ctrl"} + Shift + F</kbd
+              >{isMac ? "Cmd" : "Ctrl"} + Shift + X</kbd
             >
             to
             <button
