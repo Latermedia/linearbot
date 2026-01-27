@@ -2,10 +2,16 @@
   import { tick } from "svelte";
   import { slide, fade, scale } from "svelte/transition";
   import { cubicOut } from "svelte/easing";
+  import { browser } from "$app/environment";
   import { sidebarCollapsed } from "$lib/stores/sidebar";
   import { teamFilterStore, hasActiveFilter } from "$lib/stores/team-filter";
   import { domainsStore } from "$lib/stores/database";
-  import { ChevronDown, ListFilter, Building2, Users } from "lucide-svelte";
+  import { ChevronDown, ListFilter, Building2, Users, X } from "lucide-svelte";
+
+  // Detect Mac vs Windows/Linux for keyboard shortcuts
+  const isMac = browser
+    ? navigator.platform.toUpperCase().includes("MAC")
+    : true;
 
   const isCollapsed = $derived($sidebarCollapsed);
   const domains = $derived($domainsStore);
@@ -41,6 +47,11 @@
     isOpen = false;
   }
 
+  function handleClearFilter() {
+    teamFilterStore.clear();
+    isOpen = false;
+  }
+
   async function toggleDropdown() {
     isOpen = !isOpen;
 
@@ -62,10 +73,31 @@
     }
   }
 
+  // Handle keyboard shortcuts
+  function handleKeydown(event: KeyboardEvent) {
+    // Cmd/Ctrl + Shift + F to clear filter (when filter is active)
+    if (
+      event.key.toLowerCase() === "f" &&
+      event.shiftKey &&
+      (event.metaKey || event.ctrlKey) &&
+      isFilterActive
+    ) {
+      event.preventDefault();
+      handleClearFilter();
+    }
+  }
+
   $effect(() => {
     if (isOpen) {
       document.addEventListener("click", handleClickOutside);
       return () => document.removeEventListener("click", handleClickOutside);
+    }
+  });
+
+  $effect(() => {
+    if (browser) {
+      document.addEventListener("keydown", handleKeydown);
+      return () => document.removeEventListener("keydown", handleKeydown);
     }
   });
 </script>
@@ -135,44 +167,68 @@
       class="absolute top-full mt-1 {isCollapsed
         ? 'left-full ml-2 -mt-10'
         : 'left-0 right-0'} 
-        min-w-[220px] max-h-80 overflow-y-auto overflow-x-hidden
+        min-w-[220px] flex flex-col
         bg-ambient-300 dark:bg-black-900 border border-black-200 dark:border-white/10 rounded-md shadow-xl z-50"
     >
-      <div class="py-1" transition:fade={{ duration: 150, delay: 50 }}>
-        <!-- Domain filter section -->
-        <div
-          class="px-3 py-1.5 text-xs font-medium text-black-500 uppercase tracking-wide flex items-center gap-1.5"
-        >
-          <Building2 class="w-3 h-3" />
-          Domains
-        </div>
+      <!-- Scrollable content area -->
+      <div
+        class="py-1 max-h-64 overflow-y-auto overflow-x-hidden"
+        transition:fade={{ duration: 150, delay: 50 }}
+      >
+        <!-- Clear filter header (shown when filter is active) -->
+        {#if isFilterActive}
+          <div
+            class="px-2 pb-2 border-b border-black-200 dark:border-white/10 mb-1"
+          >
+            <button
+              type="button"
+              onclick={handleClearFilter}
+              class="w-full flex items-center gap-1.5 px-2 py-1.5 text-sm rounded-md transition-colors duration-150 cursor-pointer
+                text-black-600 dark:text-black-400 hover:text-black-900 dark:hover:text-white hover:bg-ambient-600 dark:hover:bg-white/5"
+            >
+              <X class="w-3.5 h-3.5" />
+              Clear filter
+            </button>
+          </div>
+        {/if}
 
+        <!-- All Teams option -->
         <button
           type="button"
           onclick={() => handleSelectDomain(null)}
           data-selected={filter.domain === null && filter.teamKey === null}
-          class="w-full px-3 py-2 text-left text-sm transition-colors duration-150 cursor-pointer
+          class="w-full px-3 py-2 text-left text-sm font-medium transition-colors duration-150 cursor-pointer
             {filter.domain === null && filter.teamKey === null
             ? 'text-black-900 dark:text-white bg-ambient-700 dark:bg-white/10'
             : 'text-black-600 dark:text-black-400 hover:text-black-900 dark:hover:text-white hover:bg-ambient-600 dark:hover:bg-white/5'}"
         >
-          All Domains
+          All Teams
         </button>
 
-        {#each domains as domain (domain.domainName)}
-          <button
-            type="button"
-            onclick={() => handleSelectDomain(domain.domainName)}
-            data-selected={filter.domain === domain.domainName &&
-              filter.teamKey === null}
-            class="w-full px-3 py-2 text-left text-sm transition-colors duration-150 cursor-pointer
-              {filter.domain === domain.domainName && filter.teamKey === null
-              ? 'text-black-900 dark:text-white bg-black-100 dark:bg-white/10'
-              : 'text-black-600 dark:text-black-400 hover:text-black-900 dark:hover:text-white hover:bg-black-50 dark:hover:bg-white/5'}"
+        <!-- Domain filter section -->
+        <div class="border-t border-black-200 dark:border-white/10 mt-1 pt-1">
+          <div
+            class="px-3 py-1.5 text-xs font-medium text-black-500 uppercase tracking-wide flex items-center gap-1.5"
           >
-            {domain.domainName}
-          </button>
-        {/each}
+            <Building2 class="w-3 h-3" />
+            Domains
+          </div>
+
+          {#each domains as domain (domain.domainName)}
+            <button
+              type="button"
+              onclick={() => handleSelectDomain(domain.domainName)}
+              data-selected={filter.domain === domain.domainName &&
+                filter.teamKey === null}
+              class="w-full px-3 py-2 text-left text-sm transition-colors duration-150 cursor-pointer
+                {filter.domain === domain.domainName && filter.teamKey === null
+                ? 'text-black-900 dark:text-white bg-black-100 dark:bg-white/10'
+                : 'text-black-600 dark:text-black-400 hover:text-black-900 dark:hover:text-white hover:bg-black-50 dark:hover:bg-white/5'}"
+            >
+              {domain.domainName}
+            </button>
+          {/each}
+        </div>
 
         <!-- Teams section - grouped by domain -->
         <div class="border-t border-black-200 dark:border-white/10 mt-1 pt-1">
@@ -209,6 +265,25 @@
           {/each}
         </div>
       </div>
+
+      <!-- Footer with keyboard shortcut hint -->
+      {#if isFilterActive}
+        <div class="px-3 py-2 border-t border-black-200 dark:border-white/10">
+          <p class="text-[11px] text-center text-black-500">
+            <kbd
+              class="px-1.5 py-0.5 rounded border bg-ambient-700 dark:bg-black-800 border-black-200 dark:border-black-700 text-black-600 dark:text-black-300"
+              >{isMac ? "Cmd" : "Ctrl"} + Shift + F</kbd
+            >
+            to
+            <button
+              type="button"
+              onclick={handleClearFilter}
+              class="underline hover:text-black-700 dark:hover:text-black-300 transition-colors cursor-pointer"
+              >clear</button
+            >
+          </p>
+        </div>
+      {/if}
     </div>
   {/if}
 </div>
