@@ -451,7 +451,7 @@
       <!-- Large metric -->
       <div class="flex items-baseline justify-center gap-4 mb-3">
         <span
-          class="text-8xl lg:text-9xl font-bold tracking-tight {getStatusTextColor(
+          class="text-8xl lg:text-9xl font-bold tracking-tight drop-shadow-sm dark:drop-shadow-none {getStatusTextColor(
             displayHygiene?.status ?? 'unknown'
           )}"
         >

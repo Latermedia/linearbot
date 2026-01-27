@@ -162,7 +162,7 @@
       {:else}
         <div class="text-center">
           <span
-            class="text-5xl lg:text-6xl font-bold tracking-tight {status ===
+            class="text-5xl lg:text-6xl font-bold tracking-tight drop-shadow-sm dark:drop-shadow-none {status ===
             'peakFlow'
               ? 'text-success-400'
               : status === 'strongRhythm'

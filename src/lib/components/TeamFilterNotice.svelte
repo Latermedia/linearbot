@@ -29,11 +29,11 @@
 
 {#if isFilterActive && filterDisplayName}
   <div
-    class="inline-flex items-center gap-2 px-3 py-1.5 rounded-md bg-blue-500/10 border border-blue-500/20 text-xs text-blue-400"
+    class="inline-flex items-center gap-2 px-3 py-1.5 rounded-md bg-blue-500/10 dark:bg-blue-500/10 border border-blue-500/30 dark:border-blue-500/20 text-xs text-blue-700 dark:text-blue-400"
   >
     <Info class="w-3.5 h-3.5 shrink-0" />
     <span>
-      Filtering by <span class="font-medium text-blue-300"
+      Filtering by <span class="font-medium text-blue-800 dark:text-blue-300"
         >{filterDisplayName}</span
       >
       — this view shows {level}-level data only
