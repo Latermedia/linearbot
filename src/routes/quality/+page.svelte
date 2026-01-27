@@ -3,7 +3,7 @@
   import { browser } from "$app/environment";
   import Card from "$lib/components/Card.svelte";
   import IssueTable from "$lib/components/IssueTable.svelte";
-  import Skeleton from "$lib/components/Skeleton.svelte";
+  import { pageLoading } from "$lib/stores/page-loading";
   import TeamFilterNotice from "$lib/components/TeamFilterNotice.svelte";
   import TrendChip from "$lib/components/metrics/TrendChip.svelte";
   import Badge from "$lib/components/Badge.svelte";
@@ -87,6 +87,7 @@
   // Fetch data on mount
   onMount(async () => {
     if (!browser) return;
+    pageLoading.startLoading("/quality");
 
     // Load KaTeX (non-blocking)
     import("katex").then((k) => {
@@ -119,6 +120,7 @@
       error = e instanceof Error ? e.message : "Failed to load data";
     } finally {
       loading = false;
+      pageLoading.stopLoading("/quality");
     }
 
     // Fetch bugs (org-level)
@@ -255,22 +257,7 @@
   </div>
 
   {#if loading}
-    <!-- Loading state -->
-    <Card class="p-6">
-      <div class="space-y-6">
-        <div class="text-center py-4">
-          <Skeleton class="w-32 h-12 mx-auto mb-2" />
-          <Skeleton class="w-48 h-4 mx-auto" />
-        </div>
-        <Skeleton class="w-full h-24" />
-        <Skeleton class="w-full h-32" />
-        <div class="grid grid-cols-3 gap-4">
-          <Skeleton class="h-24" />
-          <Skeleton class="h-24" />
-          <Skeleton class="h-24" />
-        </div>
-      </div>
-    </Card>
+    <div class="py-24"></div>
   {:else if error}
     <!-- Error state -->
     <Card class="border-danger-500/50">

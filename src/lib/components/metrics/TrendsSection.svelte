@@ -1,6 +1,5 @@
 <script lang="ts">
   import Card from "$lib/components/Card.svelte";
-  import Skeleton from "$lib/components/Skeleton.svelte";
   import FourPillarsChart from "$lib/components/FourPillarsChart.svelte";
   import DomainTrendsChart from "$lib/components/DomainTrendsChart.svelte";
   import ProjectStatusStackChart from "$lib/components/ProjectStatusStackChart.svelte";
@@ -42,9 +41,7 @@
 
   {#if loading}
     <Card>
-      <div class="flex justify-center items-center h-[220px]">
-        <Skeleton class="w-full h-40" />
-      </div>
+      <div class="flex justify-center items-center h-[220px]"></div>
     </Card>
   {:else if dataPoints.length > 0}
     <!-- 3-column grid layout for charts -->

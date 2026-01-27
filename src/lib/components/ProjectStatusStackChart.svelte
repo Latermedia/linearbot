@@ -13,8 +13,8 @@
   let container: HTMLDivElement | undefined = $state();
   let containerWidth = $state(300);
 
-  // Chart dimensions
-  const padding = { top: 16, right: 24, bottom: 32, left: 48 };
+  // Chart dimensions (increased bottom for rotated x-axis labels)
+  const padding = { top: 16, right: 24, bottom: 48, left: 48 };
   const chartHeight = height;
   const innerHeight = chartHeight - padding.top - padding.bottom;
 
@@ -155,7 +155,7 @@
   // Y-axis ticks - fixed at 25% increments for percentage display
   const yAxisTicks = [0, 25, 50, 75, 100];
 
-  // X-axis labels
+  // X-axis labels - only Mondays and 1st of month
   const xLabels = $derived.by(() => {
     if (stackData.length === 0) return [];
 
@@ -169,9 +169,6 @@
       ];
     }
 
-    // Show a label for every day
-    const stepDays = 1;
-
     const startDate = new Date(timeRange.min);
     startDate.setHours(0, 0, 0, 0);
     const endDate = new Date(timeRange.max);
@@ -179,10 +176,12 @@
 
     const labels: { x: number; label: string }[] = [];
     const currentDate = new Date(startDate);
-    let dayIndex = 0;
 
     while (currentDate <= endDate) {
-      if (dayIndex % stepDays === 0) {
+      const isMonday = currentDate.getDay() === 1;
+      const isFirstOfMonth = currentDate.getDate() === 1;
+
+      if (isMonday || isFirstOfMonth) {
         const noonTimestamp = new Date(currentDate).setHours(12, 0, 0, 0);
         const x =
           padding.left + ((noonTimestamp - timeRange.min) / range) * innerWidth;
@@ -192,7 +191,6 @@
         }
       }
       currentDate.setDate(currentDate.getDate() + 1);
-      dayIndex++;
     }
 
     return labels;
@@ -319,7 +317,7 @@
           y1={getY(y)}
           x2={chartWidth - padding.right}
           y2={getY(y)}
-          stroke="rgba(255,255,255,0.05)"
+          class="stroke-black-200 dark:stroke-white/5"
           stroke-width="1"
         />
       {/each}
@@ -340,14 +338,15 @@
       {/each}
     </g>
 
-    <!-- X-axis labels -->
+    <!-- X-axis labels (rotated for readability) -->
     <g class="x-axis">
       {#each xLabels as { x, label }, idx (`${x}-${idx}`)}
         <text
           {x}
-          y={chartHeight - padding.bottom + 20}
-          text-anchor="middle"
-          class="fill-black-400 text-[11px] font-medium"
+          y={chartHeight - padding.bottom + 12}
+          text-anchor="end"
+          transform="rotate(-45, {x}, {chartHeight - padding.bottom + 12})"
+          class="fill-black-400 text-[10px] font-medium"
         >
           {label}
         </text>
@@ -356,9 +355,9 @@
 
     <!-- Stacked areas (bottom to top: onTrack, atRisk, offTrack) -->
     {#if stackData.length > 0}
-      <path d={areaPaths.onTrack} fill={colors.onTrack} opacity="0.7" />
-      <path d={areaPaths.atRisk} fill={colors.atRisk} opacity="0.7" />
-      <path d={areaPaths.offTrack} fill={colors.offTrack} opacity="0.7" />
+      <path d={areaPaths.onTrack} fill={colors.onTrack} />
+      <path d={areaPaths.atRisk} fill={colors.atRisk} />
+      <path d={areaPaths.offTrack} fill={colors.offTrack} />
     {/if}
 
     <!-- Hover indicator line -->
@@ -453,7 +452,7 @@
       <div class="flex gap-1.5 items-center">
         <div
           class="w-3 h-3 rounded-sm"
-          style="background-color: {item.color}; opacity: 0.7;"
+          style="background-color: {item.color};"
         ></div>
         <span class="text-black-600 dark:text-black-400">{item.label}</span>
       </div>

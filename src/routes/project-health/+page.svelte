@@ -2,8 +2,8 @@
   import { onMount } from "svelte";
   import { browser } from "$app/environment";
   import Card from "$lib/components/Card.svelte";
-  import Skeleton from "$lib/components/Skeleton.svelte";
   import Badge from "$lib/components/Badge.svelte";
+  import { pageLoading } from "$lib/stores/page-loading";
   import TeamFilterNotice from "$lib/components/TeamFilterNotice.svelte";
   import ProjectsTable from "$lib/components/ProjectsTable.svelte";
   import GanttChart from "$lib/components/GanttChart.svelte";
@@ -109,6 +109,9 @@
   onMount(async () => {
     if (!browser) return;
 
+    // Signal loading to sidebar
+    pageLoading.startLoading("/project-health");
+
     // Load database store for project details modal and project list
     databaseStore.load();
 
@@ -144,6 +147,7 @@
       error = e instanceof Error ? e.message : "Failed to load data";
     } finally {
       loading = false;
+      pageLoading.stopLoading("/project-health");
     }
   });
 
@@ -435,22 +439,8 @@
   </div>
 
   {#if loading}
-    <!-- Loading state -->
-    <Card class="p-6">
-      <div class="space-y-6">
-        <div class="text-center py-4">
-          <Skeleton class="w-32 h-12 mx-auto mb-2" />
-          <Skeleton class="w-48 h-4 mx-auto" />
-        </div>
-        <Skeleton class="w-full h-24" />
-        <Skeleton class="w-full h-32" />
-        <div class="grid grid-cols-3 gap-4">
-          <Skeleton class="h-24" />
-          <Skeleton class="h-24" />
-          <Skeleton class="h-24" />
-        </div>
-      </div>
-    </Card>
+    <!-- Loading handled by sidebar icon animation -->
+    <div class="py-24"></div>
   {:else if error}
     <!-- Error state -->
     <Card class="border-danger-500/50">
@@ -791,17 +781,8 @@
 
     <!-- Project List -->
     {#if $databaseStore.loading}
-      <div class="space-y-4">
-        <Card>
-          <Skeleton class="mb-4 w-48 h-8" />
-          <div class="space-y-3">
-            <Skeleton class="w-full h-12" />
-            <Skeleton class="w-full h-12" />
-            <Skeleton class="w-full h-12" />
-            <Skeleton class="w-full h-12" />
-          </div>
-        </Card>
-      </div>
+      <!-- Loading handled by sidebar icon animation -->
+      <div class="py-12"></div>
     {:else if $databaseStore.error}
       <Card class="border-danger-500/50">
         <div

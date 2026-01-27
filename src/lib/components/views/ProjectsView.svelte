@@ -10,7 +10,6 @@
   import ToggleGroupRoot from "$lib/components/ToggleGroupRoot.svelte";
   import ToggleGroupItem from "$lib/components/ToggleGroupItem.svelte";
   import Card from "$lib/components/Card.svelte";
-  import Skeleton from "$lib/components/Skeleton.svelte";
   import {
     filterProjectsByMode,
     groupProjectsByTeams,
@@ -443,17 +442,7 @@
 
   <!-- Main content -->
   {#if loading}
-    <div class="space-y-4">
-      <Card>
-        <Skeleton class="mb-4 w-48 h-8" />
-        <div class="space-y-3">
-          <Skeleton class="w-full h-12" />
-          <Skeleton class="w-full h-12" />
-          <Skeleton class="w-full h-12" />
-          <Skeleton class="w-full h-12" />
-        </div>
-      </Card>
-    </div>
+    <div class="py-24"></div>
   {:else if error}
     <Card class="border-danger-500/50">
       <div

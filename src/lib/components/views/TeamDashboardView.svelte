@@ -5,11 +5,11 @@
   import { browser } from "$app/environment";
   import { goto } from "$app/navigation";
   import Card from "$lib/components/Card.svelte";
-  import Skeleton from "$lib/components/Skeleton.svelte";
   import MetricsHeader from "$lib/components/metrics/MetricsHeader.svelte";
   import PillarCardGrid from "$lib/components/metrics/PillarCardGrid.svelte";
   import TrendsSection from "$lib/components/metrics/TrendsSection.svelte";
   import { teamFilterStore } from "$lib/stores/team-filter";
+  import { pageLoading } from "$lib/stores/page-loading";
   import type { MetricsSnapshotV1 } from "../../../types/metrics-snapshot";
   import type { LatestMetricsResponse } from "../../../routes/api/metrics/latest/+server";
   import type {
@@ -185,9 +185,20 @@
 
   // Load on mount
   onMount(() => {
+    pageLoading.startLoading("/");
     fetchMetrics();
     fetchTrendData();
     fetchOrganization();
+  });
+
+  // Track when all loading completes
+  let wasLoading = $state(true);
+  $effect(() => {
+    const isLoading = metricsLoading || organizationLoading;
+    if (wasLoading && !isLoading) {
+      pageLoading.stopLoading("/");
+    }
+    wasLoading = isLoading;
   });
 
   // Get team snapshots map for quick lookup
@@ -377,14 +388,7 @@
   </div>
 
   {#if metricsLoading || organizationLoading}
-    <Card>
-      <Skeleton class="mb-4 w-48 h-6" />
-      <div class="space-y-3">
-        <Skeleton class="w-full h-10" />
-        <Skeleton class="w-full h-10" />
-        <Skeleton class="w-full h-10" />
-      </div>
-    </Card>
+    <div class="py-16"></div>
   {:else if !hasOrganizationData}
     <Card>
       <div class="py-8 text-center">

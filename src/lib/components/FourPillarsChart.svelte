@@ -27,8 +27,8 @@
   // Measured container width (responsive)
   let containerWidth = $state(800); // Default fallback
 
-  // Chart dimensions - balanced padding for clean look (increased left for larger labels)
-  const padding = { top: 16, right: 24, bottom: 32, left: 48 };
+  // Chart dimensions - balanced padding for clean look (increased left for larger labels, bottom for rotated x-axis)
+  const padding = { top: 16, right: 24, bottom: 48, left: 48 };
   const chartHeight = height;
   const innerHeight = chartHeight - padding.top - padding.bottom;
 
@@ -138,9 +138,7 @@
   });
 
   // Calculate dynamic Y-axis range based on data
-  // +/- 5 buffer, rounded to nearest 5 (down for min, up for max)
-  // Min clamped to 0 (can't go negative)
-  // Max: WIP/Project/Quality clamp at 100, only Productivity can exceed 100
+  // Snap to 25% increments for clean labels
   const yRange = $derived.by(() => {
     if (normalizedData.length === 0) return { min: 0, max: 100 };
 
@@ -163,18 +161,17 @@
     const dataMin = Math.min(...allValues);
     const dataMax = Math.max(...allValues);
 
-    // Add 5-point buffer, then round to nearest 5 (down for min, up for max)
-    // Clamp min to 0 (can't go negative)
-    const yMin = Math.max(0, Math.floor((dataMin - 5) / 5) * 5);
+    // Snap to 25% increments (down for min, up for max)
+    const yMin = Math.max(0, Math.floor(dataMin / 25) * 25);
 
     // For max: if no productivity exceeds 100, cap at 100; otherwise allow higher
     const maxProductivity =
       uncappedValues.length > 0 ? Math.max(...uncappedValues) : 0;
     const effectiveMax =
       maxProductivity > 100 ? dataMax : Math.min(dataMax, 100);
-    const yMax = Math.ceil((effectiveMax + 5) / 5) * 5;
+    const yMax = Math.ceil(effectiveMax / 25) * 25;
 
-    return { min: yMin, max: Math.max(yMax, yMin + 10) }; // Ensure at least 10-point range
+    return { min: yMin, max: Math.max(yMax, yMin + 25) }; // Ensure at least 25-point range
   });
 
   // Y-axis bounds from derived range
@@ -286,7 +283,7 @@
     return date.toLocaleDateString("en-US", { month: "short", day: "numeric" });
   }
 
-  // Generate X-axis labels at weekly intervals (every 7 days)
+  // Generate X-axis labels only for Mondays and 1st of month
   const xLabels = $derived.by(() => {
     if (normalizedData.length === 0) return [];
 
@@ -306,16 +303,15 @@
     const endDate = new Date(timeRange.max);
     endDate.setHours(0, 0, 0, 0);
 
-    // Show a label for every day
-    const stepDays = 1;
-
-    // Generate labels at regular day intervals
+    // Generate labels only for Mondays (day 1) or 1st of month
     const labels: { x: number; label: string }[] = [];
     const currentDate = new Date(startDate);
-    let dayIndex = 0;
 
     while (currentDate <= endDate) {
-      if (dayIndex % stepDays === 0) {
+      const isMonday = currentDate.getDay() === 1;
+      const isFirstOfMonth = currentDate.getDate() === 1;
+
+      if (isMonday || isFirstOfMonth) {
         // Position at noon of each day for centering
         const noonTimestamp = new Date(currentDate).setHours(12, 0, 0, 0);
         const x =
@@ -323,39 +319,37 @@
 
         // Only add if within chart bounds
         if (x >= padding.left && x <= chartWidth - padding.right) {
-          labels.push({
-            x,
-            label: formatDate(currentDate.toISOString()),
-          });
+          // Show month name on 1st of month, otherwise just day
+          const label = isFirstOfMonth
+            ? currentDate.toLocaleDateString("en-US", {
+                month: "short",
+                day: "numeric",
+              })
+            : currentDate.toLocaleDateString("en-US", {
+                month: "short",
+                day: "numeric",
+              });
+          labels.push({ x, label });
         }
       }
 
       // Move to next day
       currentDate.setDate(currentDate.getDate() + 1);
-      dayIndex++;
     }
 
     return labels;
   });
 
-  // Y-axis: generate dynamic tick marks based on range
+  // Y-axis: snap to 25% increments for clean labels
   const yAxisTicks = $derived.by(() => {
-    const range = yMax - yMin;
-    // Aim for ~4-6 ticks, step in multiples of 5
-    let step = 5;
-    if (range > 30) step = 10;
-    if (range > 60) step = 20;
-    if (range > 100) step = 25;
+    // Round min down and max up to nearest 25%
+    const snappedMin = Math.floor(yMin / 25) * 25;
+    const snappedMax = Math.ceil(yMax / 25) * 25;
 
     const ticks: number[] = [];
-    // Since yMin and yMax are already multiples of 5, start from yMin
-    for (let v = yMin; v <= yMax; v += step) {
+    for (let v = snappedMin; v <= snappedMax; v += 25) {
       ticks.push(v);
     }
-
-    // Always include max bound if not already included
-    if (!ticks.includes(yMax)) ticks.push(yMax);
-
     return ticks;
   });
 
@@ -500,7 +494,7 @@
               y1={getY(y)}
               x2={chartWidth - padding.right}
               y2={getY(y)}
-              stroke="rgba(255,255,255,0.03)"
+              class="stroke-black-200 dark:stroke-white/3"
               stroke-width="1"
             />
           {/each}
@@ -514,7 +508,7 @@
               y1={getY(y)}
               x2={chartWidth - padding.right}
               y2={getY(y)}
-              stroke="rgba(255,255,255,0.06)"
+              class="stroke-black-300 dark:stroke-white/6"
               stroke-width="1"
             />
           {/each}
@@ -535,14 +529,15 @@
           {/each}
         </g>
 
-        <!-- X-axis labels -->
+        <!-- X-axis labels (rotated for readability) -->
         <g class="x-axis">
           {#each xLabels as { x, label }, idx (`${x}-${idx}`)}
             <text
               {x}
-              y={chartHeight - padding.bottom + 20}
-              text-anchor="middle"
-              class="fill-black-400 text-[11px] font-medium"
+              y={chartHeight - padding.bottom + 12}
+              text-anchor="end"
+              transform="rotate(-45, {x}, {chartHeight - padding.bottom + 12})"
+              class="fill-black-400 text-[10px] font-medium"
             >
               {label}
             </text>

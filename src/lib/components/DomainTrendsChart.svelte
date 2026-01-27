@@ -1,7 +1,6 @@
 <script lang="ts">
   import { onMount } from "svelte";
   import { browser } from "$app/environment";
-  import Skeleton from "./Skeleton.svelte";
   import type {
     TrendDataPoint,
     TrendsResponse,
@@ -86,8 +85,8 @@
   let container: HTMLDivElement | undefined = $state();
   let containerWidth = $state(300);
 
-  // Chart dimensions
-  const padding = { top: 16, right: 24, bottom: 32, left: 48 };
+  // Chart dimensions (increased bottom for rotated x-axis labels)
+  const padding = { top: 16, right: 24, bottom: 48, left: 48 };
   const chartHeight = height;
   const innerHeight = chartHeight - padding.top - padding.bottom;
 
@@ -230,7 +229,7 @@
   });
 
   // Calculate Y-axis range based on all visible data
-  // WIP, Project, Quality, and Overall are capped at 100; only Productivity can exceed
+  // Snap to 25% increments for clean labels
   const yRange = $derived.by(() => {
     const allValues: number[] = [];
 
@@ -246,18 +245,18 @@
     const dataMin = Math.min(...allValues);
     const dataMax = Math.max(...allValues);
 
-    // +/- 5, round to nearest 5
-    const yMin = Math.max(0, Math.floor((dataMin - 5) / 5) * 5);
+    // Snap to 25% increments (down for min, up for max)
+    const yMin = Math.max(0, Math.floor(dataMin / 25) * 25);
 
     // Only Productivity can exceed 100; all other metrics cap at 100
     const canExceed100 = selectedMetric === "productivity";
     const effectiveMax = canExceed100 ? dataMax : Math.min(dataMax, 100);
-    const yMax = Math.ceil((effectiveMax + 5) / 5) * 5;
+    const yMax = Math.ceil(effectiveMax / 25) * 25;
 
-    // Ensure the max doesn't exceed 100 for capped metrics (even after +5 buffer)
+    // Ensure the max doesn't exceed 100 for capped metrics
     const clampedMax = canExceed100 ? yMax : Math.min(yMax, 100);
 
-    return { min: yMin, max: Math.max(clampedMax, yMin + 10) }; // Ensure at least 10-point range
+    return { min: yMin, max: Math.max(clampedMax, yMin + 25) }; // Ensure at least 25-point range
   });
 
   const yMin = $derived(yRange.min);
@@ -324,31 +323,25 @@
     return lines;
   });
 
-  // Y-axis ticks
+  // Y-axis ticks - snap to 25% increments
   const yAxisTicks = $derived.by(() => {
-    const range = yMax - yMin;
-    let step = 5;
-    if (range > 30) step = 10;
-    if (range > 60) step = 20;
-    if (range > 100) step = 25;
+    // Round min down and max up to nearest 25%
+    const snappedMin = Math.floor(yMin / 25) * 25;
+    const snappedMax = Math.ceil(yMax / 25) * 25;
 
     const ticks: number[] = [];
-    for (let v = yMin; v <= yMax; v += step) {
+    for (let v = snappedMin; v <= snappedMax; v += 25) {
       ticks.push(v);
     }
-    if (!ticks.includes(yMax)) ticks.push(yMax);
     return ticks;
   });
 
-  // X-axis labels
+  // X-axis labels - only Mondays and 1st of month
   const xLabels = $derived.by(() => {
     if (allTimestamps.length === 0) return [];
 
     const range = timeRange.max - timeRange.min;
     if (range === 0) return [];
-
-    // Show a label for every day
-    const stepDays = 1;
 
     const startDate = new Date(timeRange.min);
     startDate.setHours(0, 0, 0, 0);
@@ -357,10 +350,12 @@
 
     const labels: { x: number; label: string }[] = [];
     const currentDate = new Date(startDate);
-    let dayIndex = 0;
 
     while (currentDate <= endDate) {
-      if (dayIndex % stepDays === 0) {
+      const isMonday = currentDate.getDay() === 1;
+      const isFirstOfMonth = currentDate.getDate() === 1;
+
+      if (isMonday || isFirstOfMonth) {
         const noonTimestamp = new Date(currentDate).setHours(12, 0, 0, 0);
         const x =
           padding.left + ((noonTimestamp - timeRange.min) / range) * innerWidth;
@@ -376,7 +371,6 @@
         }
       }
       currentDate.setDate(currentDate.getDate() + 1);
-      dayIndex++;
     }
 
     return labels;
@@ -456,9 +450,7 @@
     <div
       class="flex justify-center items-center"
       style="height: {height + 60}px;"
-    >
-      <Skeleton class="w-full h-40" />
-    </div>
+    ></div>
   {:else if error}
     <div
       class="flex justify-center items-center text-sm text-red-400"
@@ -486,7 +478,7 @@
             y1={getY(y)}
             x2={chartWidth - padding.right}
             y2={getY(y)}
-            stroke="rgba(255,255,255,0.05)"
+            class="stroke-black-200 dark:stroke-white/5"
             stroke-width="1"
           />
         {/each}
@@ -507,14 +499,15 @@
         {/each}
       </g>
 
-      <!-- X-axis labels -->
+      <!-- X-axis labels (rotated for readability) -->
       <g class="x-axis">
         {#each xLabels as { x, label }, idx (`${x}-${idx}`)}
           <text
             {x}
-            y={chartHeight - padding.bottom + 20}
-            text-anchor="middle"
-            class="fill-black-400 text-[11px] font-medium"
+            y={chartHeight - padding.bottom + 12}
+            text-anchor="end"
+            transform="rotate(-45, {x}, {chartHeight - padding.bottom + 12})"
+            class="fill-black-400 text-[10px] font-medium"
           >
             {label}
           </text>

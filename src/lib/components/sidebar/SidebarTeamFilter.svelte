@@ -70,22 +70,28 @@
   });
 </script>
 
-<div class="relative" data-team-filter>
+<div class="relative group" data-team-filter>
   <div
-    class="w-full flex items-center gap-2 px-3 py-2 text-sm rounded transition-colors duration-150
-      text-black-600 dark:text-black-400 hover:text-black-900 dark:hover:text-white hover:bg-ambient-700 dark:hover:bg-white/5 overflow-hidden
-      {isCollapsed ? 'justify-center' : ''}"
+    class="w-full flex items-center py-2 text-sm rounded transition-colors duration-150
+      text-black-600 dark:text-black-400 hover:text-black-900 dark:hover:text-white hover:bg-ambient-700 dark:hover:bg-white/5 overflow-hidden"
   >
     <button
       type="button"
       onclick={toggleDropdown}
-      class="flex-1 min-w-0 flex items-center gap-2 cursor-pointer"
+      class="flex items-center cursor-pointer w-full"
       title={filterDisplayText}
     >
-      <Users class="w-4 h-4 shrink-0" />
-      {#if !isCollapsed}
+      <div class="w-16 flex justify-center shrink-0">
+        <Users class="w-4 h-4" />
+      </div>
+      <div
+        class="flex-1 min-w-0 flex items-center gap-2 overflow-hidden transition-all duration-250 ease-quart-out"
+        style="width: {isCollapsed ? '0' : '152px'}; opacity: {isCollapsed
+          ? 0
+          : 1}"
+      >
         <span
-          class="flex-1 min-w-0 text-left truncate text-black-700 dark:text-black-300"
+          class="flex-1 min-w-0 text-left truncate text-black-700 dark:text-black-300 whitespace-nowrap"
         >
           {filterDisplayText}
         </span>
@@ -94,7 +100,7 @@
             ? 'rotate-180'
             : ''}"
         />
-      {/if}
+      </div>
     </button>
     {#if !isCollapsed && isFilterActive}
       <button
@@ -103,13 +109,23 @@
           e.stopPropagation();
           handleReset();
         }}
-        class="p-0.5 shrink-0 rounded hover:bg-black-200 dark:hover:bg-white/10 text-black-500 dark:text-black-400 hover:text-black-900 dark:hover:text-white cursor-pointer"
+        class="p-0.5 mr-2 shrink-0 rounded hover:bg-black-200 dark:hover:bg-white/10 text-black-500 dark:text-black-400 hover:text-black-900 dark:hover:text-white cursor-pointer transition-opacity duration-250"
         title="Clear filter"
       >
         <X class="w-3 h-3" />
       </button>
     {/if}
   </div>
+
+  <!-- Tooltip when collapsed -->
+  {#if isCollapsed}
+    <div
+      class="absolute left-full top-1/2 -translate-y-1/2 ml-2 px-2 py-1 text-xs font-medium text-white bg-black-800 rounded shadow-lg
+        opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all duration-150 whitespace-nowrap z-50"
+    >
+      {filterDisplayText}
+    </div>
+  {/if}
 
   <!-- Dropdown -->
   {#if isOpen}
@@ -190,3 +206,12 @@
     </div>
   {/if}
 </div>
+
+<style>
+  .duration-250 {
+    transition-duration: 250ms;
+  }
+  .ease-quart-out {
+    transition-timing-function: cubic-bezier(0.25, 1, 0.5, 1);
+  }
+</style>

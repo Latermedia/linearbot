@@ -2,7 +2,6 @@
   import { onMount } from "svelte";
   import { browser } from "$app/environment";
   import Card from "$lib/components/Card.svelte";
-  import Skeleton from "$lib/components/Skeleton.svelte";
   import PillarCard from "./PillarCard.svelte";
   import EngineerListPopover, {
     type EngineerItem,
@@ -310,15 +309,7 @@
 </script>
 
 {#if loading}
-  <div class="grid gap-4 md:grid-cols-2 lg:grid-cols-5">
-    {#each [1, 2, 3, 4, 5] as i (i)}
-      <Card>
-        <Skeleton class="mb-3 w-24 h-4" />
-        <Skeleton class="mb-2 w-16 h-8" />
-        <Skeleton class="w-full h-2" />
-      </Card>
-    {/each}
-  </div>
+  <div class="py-16"></div>
 {:else if error}
   <Card class="border-danger-500/30">
     <div class="mb-2 text-sm font-medium text-danger-400">

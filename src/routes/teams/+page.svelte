@@ -2,7 +2,7 @@
   import { onMount } from "svelte";
   import { browser } from "$app/environment";
   import Card from "$lib/components/Card.svelte";
-  import Skeleton from "$lib/components/Skeleton.svelte";
+  import { pageLoading } from "$lib/stores/page-loading";
   import Badge from "$lib/components/Badge.svelte";
   import Button from "$lib/components/Button.svelte";
   import Modal from "$lib/components/Modal.svelte";
@@ -69,6 +69,7 @@
 
   async function loadTeams() {
     if (!browser) return;
+    pageLoading.startLoading("/teams");
     try {
       loading = true;
       error = null;
@@ -83,6 +84,7 @@
       error = e instanceof Error ? e.message : "Unknown error";
     } finally {
       loading = false;
+      pageLoading.stopLoading("/teams");
     }
   }
 
@@ -413,15 +415,7 @@
 
   <!-- Main content -->
   {#if loading}
-    <div class="space-y-4">
-      <Card>
-        <Skeleton class="mb-4 w-48 h-8" />
-        <div class="space-y-3">
-          <Skeleton class="w-full h-24" />
-          <Skeleton class="w-full h-24" />
-        </div>
-      </Card>
-    </div>
+    <div class="py-24"></div>
   {:else if error}
     <Card class="border-danger-500/50">
       <div

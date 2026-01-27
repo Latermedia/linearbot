@@ -10,7 +10,7 @@
   } from "$lib/stores/database";
   import { presentationMode } from "$lib/stores/presentation";
   import Card from "$lib/components/Card.svelte";
-  import Skeleton from "$lib/components/Skeleton.svelte";
+  import { pageLoading } from "$lib/stores/page-loading";
   import Badge from "$lib/components/Badge.svelte";
   import ProgressBar from "$lib/components/ProgressBar.svelte";
   import ProjectDetailModal from "$lib/components/ProjectDetailModal.svelte";
@@ -39,7 +39,18 @@
 
   // Load data on mount
   onMount(() => {
+    pageLoading.startLoading("/executive");
     databaseStore.load();
+  });
+
+  // Track when database loading completes
+  let wasLoading = $state(true);
+  $effect(() => {
+    const isLoading = $databaseStore.loading;
+    if (wasLoading && !isLoading) {
+      pageLoading.stopLoading("/executive");
+    }
+    wasLoading = isLoading;
   });
 
   // Secret executive view shortcut: Ctrl+Shift+E (Windows/Linux) or Cmd+Shift+E (Mac)
@@ -321,16 +332,7 @@
 
   <!-- Main content -->
   {#if loading}
-    <div class="space-y-4">
-      <Card>
-        <Skeleton class="mb-4 w-48 h-8" />
-        <div class="space-y-3">
-          <Skeleton class="w-full h-32" />
-          <Skeleton class="w-full h-32" />
-          <Skeleton class="w-full h-32" />
-        </div>
-      </Card>
-    </div>
+    <div class="py-24"></div>
   {:else if error}
     <Card class="border-danger-500/50">
       <div

@@ -2,7 +2,6 @@
   import { onMount } from "svelte";
   import { browser } from "$app/environment";
   import Card from "$lib/components/Card.svelte";
-  import Skeleton from "$lib/components/Skeleton.svelte";
   import EngineersTable from "$lib/components/EngineersTable.svelte";
   import EngineerDetailModal from "$lib/components/EngineerDetailModal.svelte";
   import { WIP_LIMIT } from "../../../constants/thresholds";
@@ -207,15 +206,7 @@
 
   <!-- Main content -->
   {#if loading}
-    <Card>
-      <Skeleton class="mb-4 w-48 h-8" />
-      <div class="space-y-3">
-        <Skeleton class="w-full h-12" />
-        <Skeleton class="w-full h-12" />
-        <Skeleton class="w-full h-12" />
-        <Skeleton class="w-full h-12" />
-      </div>
-    </Card>
+    <div class="py-24"></div>
   {:else if error}
     <Card class="border-danger-500/50">
       <div

@@ -6,13 +6,13 @@
   import SyncModal from "./SyncModal.svelte";
   import { isAuthenticated } from "$lib/stores/auth";
   import { syncStatusStore } from "$lib/stores/sync-status";
-  import { sidebarCollapsed } from "$lib/stores/sidebar";
 
-  let {
-    projectId,
-  }: {
+  interface Props {
     projectId?: string;
-  } = $props();
+    isCollapsed?: boolean;
+  }
+
+  let { projectId, isCollapsed = false }: Props = $props();
 
   let showSyncModal = $state(false);
 
@@ -25,8 +25,6 @@
     null
   );
   let syncingProjectId = $state<string | null>(null);
-
-  const isCollapsed = $derived($sidebarCollapsed);
 
   // Keyboard shortcut: Cmd+Shift+S (Mac) or Ctrl+Shift+S (Windows/Linux)
   $effect(() => {
@@ -144,13 +142,12 @@
   <!-- Sync button styled like other nav items -->
   <button
     type="button"
-    class="group relative w-full flex items-center gap-3 px-3 py-2 text-sm font-medium rounded transition-colors duration-150 cursor-pointer overflow-hidden
+    class="group relative w-full flex items-center py-2 text-sm font-medium rounded transition-colors duration-150 cursor-pointer overflow-hidden
       {hasError
       ? 'text-danger-400 hover:text-danger-300 hover:bg-danger-500/10 border border-danger-500/30'
       : isSyncing
         ? 'text-black-600 dark:text-black-400'
-        : 'text-black-600 dark:text-black-400 hover:text-black-900 dark:hover:text-white hover:bg-ambient-700 dark:hover:bg-white/5'}
-      {isCollapsed ? 'justify-center' : ''}"
+        : 'text-black-600 dark:text-black-400 hover:text-black-900 dark:hover:text-white hover:bg-ambient-700 dark:hover:bg-white/5'}"
     title={isCollapsed
       ? tooltipText() ||
         (isSyncing ? "Syncing..." : hasError ? "Sync error" : "Sync (⌘⇧S)")
@@ -169,8 +166,8 @@
       ></div>
     {/if}
 
-    <!-- Icon -->
-    <div class="relative shrink-0">
+    <!-- Icon in fixed-width container -->
+    <div class="w-16 flex justify-center shrink-0 relative">
       {#if isSyncing || hasError}
         <!-- 3x3 grid animation (Linear-style) -->
         <div class="grid grid-cols-3 gap-0.5 w-5 h-5">
@@ -202,11 +199,14 @@
       {/if}
     </div>
 
-    <!-- Label (hidden when collapsed) -->
-    {#if !isCollapsed}
-      <span
-        class="relative whitespace-nowrap {hasError ? 'text-danger-400' : ''}"
-      >
+    <!-- Label with animated width -->
+    <div
+      class="overflow-hidden transition-all duration-250 ease-quart-out relative text-left"
+      style="width: {isCollapsed ? '0' : '176px'}; opacity: {isCollapsed
+        ? 0
+        : 1}"
+    >
+      <span class="whitespace-nowrap {hasError ? 'text-danger-400' : ''}">
         {hasError
           ? hasPartialSync
             ? "Partial sync"
@@ -215,7 +215,7 @@
             ? "Syncing..."
             : "Sync"}
       </span>
-    {/if}
+    </div>
 
     <!-- Tooltip when collapsed -->
     {#if isCollapsed}
@@ -240,6 +240,13 @@
 {/if}
 
 <style>
+  .duration-250 {
+    transition-duration: 250ms;
+  }
+  .ease-quart-out {
+    transition-timing-function: cubic-bezier(0.25, 1, 0.5, 1);
+  }
+
   @keyframes sync-pulse {
     0% {
       opacity: 0.2;
