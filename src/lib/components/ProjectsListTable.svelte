@@ -28,8 +28,13 @@
           <td colspan="10" class="p-0">
             <div class="flex justify-center items-center min-h-[33vh]">
               <div class="flex flex-col gap-3 items-center text-center">
-                <FolderOpen class="w-8 h-8 text-neutral-500 dark:text-neutral-600" strokeWidth={1.5} />
-                <div class="text-sm text-neutral-400 dark:text-neutral-500">No projects found</div>
+                <FolderOpen
+                  class="w-8 h-8 text-black-500 dark:text-black-600"
+                  strokeWidth={1.5}
+                />
+                <div class="text-sm text-black-400 dark:text-black-500">
+                  No projects found
+                </div>
               </div>
             </div>
           </td>
@@ -46,4 +51,3 @@
     </tbody>
   </table>
 </div>
-

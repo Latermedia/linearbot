@@ -20,17 +20,17 @@
     return (parts[0][0] + parts[parts.length - 1][0]).toUpperCase();
   }
 
-  // Generate a consistent color from name
+  // Generate a consistent color from name (using design system palette)
   function getColorFromName(name: string): string {
     const colors = [
-      "from-violet-500 to-fuchsia-500",
-      "from-cyan-500 to-blue-500",
-      "from-emerald-500 to-teal-500",
-      "from-amber-500 to-orange-500",
-      "from-rose-500 to-pink-500",
-      "from-indigo-500 to-purple-500",
-      "from-lime-500 to-green-500",
-      "from-sky-500 to-indigo-500",
+      "from-brand-500 to-fuchsia-500",
+      "from-sky-500 to-blue-500",
+      "from-success-500 to-teal-500",
+      "from-warning-500 to-hot-take-500",
+      "from-danger-400 to-pink-500",
+      "from-purple-500 to-brand-500",
+      "from-lime-500 to-success-500",
+      "from-sky-500 to-purple-500",
     ];
     let hash = 0;
     for (let i = 0; i < name.length; i++) {
@@ -46,25 +46,25 @@
     xs: {
       avatar: "w-5 h-5",
       text: "text-[8px]",
-      nameText: "text-xs text-neutral-400",
+      nameText: "text-xs text-black-400",
       gap: "gap-1.5",
     },
     sm: {
       avatar: "w-6 h-6",
       text: "text-[10px]",
-      nameText: "text-sm text-white",
+      nameText: "text-sm text-black-900 dark:text-white",
       gap: "gap-2",
     },
     md: {
       avatar: "w-8 h-8",
       text: "text-xs",
-      nameText: "text-sm text-white",
+      nameText: "text-sm text-black-900 dark:text-white",
       gap: "gap-2.5",
     },
     lg: {
       avatar: "w-10 h-10",
       text: "text-sm",
-      nameText: "text-base text-white",
+      nameText: "text-base text-black-900 dark:text-white",
       gap: "gap-3",
     },
   };
@@ -87,7 +87,9 @@
       <div
         class="{classes.avatar} rounded-full bg-linear-to-br {gradientClass} flex items-center justify-center"
       >
-        <span class="{classes.text} font-medium text-white">{initials}</span>
+        <span class="{classes.text} font-medium text-black-900 dark:text-white"
+          >{initials}</span
+        >
       </div>
     {/if}
   </div>

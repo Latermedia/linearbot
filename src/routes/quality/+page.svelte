@@ -169,7 +169,7 @@
     steadyProgress: "bg-warning-500",
     earlyTraction: "bg-danger-500",
     lowTraction: "bg-danger-600",
-    unknown: "bg-neutral-500",
+    unknown: "bg-black-500",
   };
 
   const statusLabels: Record<string, string> = {
@@ -214,7 +214,7 @@
     steadyProgress: "text-warning-500",
     earlyTraction: "text-danger-500",
     lowTraction: "text-danger-600",
-    unknown: "text-neutral-400",
+    unknown: "text-black-400",
   };
 
   // Get teams in active domain for filtering bugs
@@ -266,7 +266,9 @@
 <div class="space-y-6">
   <!-- Page Title -->
   <div class="flex flex-wrap items-center justify-between gap-4">
-    <h1 class="text-2xl font-semibold text-white">Quality</h1>
+    <h1 class="text-2xl font-semibold text-black-900 dark:text-white">
+      Quality
+    </h1>
     <TeamFilterNotice level="domain" />
   </div>
 
@@ -289,15 +291,17 @@
     </Card>
   {:else if error}
     <!-- Error state -->
-    <Card class="border-red-500/50">
-      <div class="mb-3 text-sm font-medium text-red-600 dark:text-red-400">
+    <Card class="border-danger-500/50">
+      <div
+        class="mb-3 text-sm font-medium text-danger-600 dark:text-danger-400"
+      >
         Error Loading Data
       </div>
-      <p class="text-neutral-700 dark:text-neutral-400">{error}</p>
+      <p class="text-black-700 dark:text-black-400">{error}</p>
     </Card>
   {:else if displayQuality}
     <!-- Marquee Hero Section -->
-    <div class="py-8 border-b border-white/10">
+    <div class="py-8 border-b border-black-200 dark:border-white/10">
       <!-- Large metric -->
       <div class="flex items-baseline justify-center gap-4 mb-3">
         <span
@@ -306,7 +310,7 @@
           ]}"
         >
           {displayQuality.compositeScore}<span
-            class="text-5xl lg:text-6xl font-normal text-neutral-400">%</span
+            class="text-5xl lg:text-6xl font-normal text-black-400">%</span
           >
         </span>
       </div>
@@ -343,16 +347,16 @@
         {/if}
       </div>
       {#if hasLimitedTrendData}
-        <p class="text-center text-[10px] text-neutral-500 mb-2">
+        <p class="text-center text-[10px] text-black-500 mb-2">
           * Based on available historical data
         </p>
       {/if}
 
       <!-- Subtitle -->
-      <p class="text-center text-xl text-neutral-400 mb-2">
+      <p class="text-center text-xl text-black-400 mb-2">
         Composite quality score
       </p>
-      <p class="text-center text-sm text-neutral-500">
+      <p class="text-center text-sm text-black-500">
         Based on bug count, age, and backlog trend
         <span
           class="ml-2 inline-block text-xs font-medium px-2 py-0.5 rounded {computedStatus ===
@@ -366,7 +370,7 @@
                   ? 'bg-danger-500/20 text-danger-500'
                   : computedStatus === 'lowTraction'
                     ? 'bg-danger-600/20 text-danger-600'
-                    : 'bg-neutral-500/20 text-neutral-400'}"
+                    : 'bg-black-500/20 text-black-400'}"
         >
           {statusLabels[computedStatus]}
         </span>
@@ -376,51 +380,59 @@
       <div class="flex items-center justify-center gap-8 lg:gap-16 mt-8">
         <!-- Open bugs -->
         <div class="text-center">
-          <div class="text-4xl lg:text-5xl font-bold text-white">
+          <div
+            class="text-4xl lg:text-5xl font-bold text-black-900 dark:text-white"
+          >
             {displayQuality.openBugCount}
           </div>
-          <div class="text-sm text-neutral-400 mt-1">Open Bugs</div>
-          <div class="text-xs text-neutral-500">total backlog</div>
+          <div class="text-sm text-black-400 mt-1">Open Bugs</div>
+          <div class="text-xs text-black-500">total backlog</div>
         </div>
 
         <!-- Divider -->
-        <div class="h-12 w-px bg-white/10"></div>
+        <div class="h-12 w-px bg-black-100 dark:bg-white/10"></div>
 
         <!-- Average age -->
         <div class="text-center">
-          <div class="text-4xl lg:text-5xl font-bold text-white">
+          <div
+            class="text-4xl lg:text-5xl font-bold text-black-900 dark:text-white"
+          >
             {displayQuality.averageBugAgeDays.toFixed(0)}
           </div>
-          <div class="text-sm text-neutral-400 mt-1">Avg Age (days)</div>
-          <div class="text-xs text-neutral-500">
+          <div class="text-sm text-black-400 mt-1">Avg Age (days)</div>
+          <div class="text-xs text-black-500">
             max: {displayQuality.maxBugAgeDays.toFixed(0)}d
           </div>
         </div>
 
         <!-- Divider -->
-        <div class="h-12 w-px bg-white/10"></div>
+        <div class="h-12 w-px bg-black-100 dark:bg-white/10"></div>
 
         <!-- Net change -->
         <div class="text-center">
-          <div class="text-4xl lg:text-5xl font-bold text-white">
+          <div
+            class="text-4xl lg:text-5xl font-bold text-black-900 dark:text-white"
+          >
             {displayQuality.netBugChange > 0
               ? "+"
               : ""}{displayQuality.netBugChange}
           </div>
-          <div class="text-sm text-neutral-400 mt-1">Net Change</div>
-          <div class="text-xs text-neutral-500">in 14 days</div>
+          <div class="text-sm text-black-400 mt-1">Net Change</div>
+          <div class="text-xs text-black-500">in 14 days</div>
         </div>
 
         <!-- Divider -->
-        <div class="h-12 w-px bg-white/10"></div>
+        <div class="h-12 w-px bg-black-100 dark:bg-white/10"></div>
 
         <!-- Opened vs Closed -->
         <div class="text-center opacity-70">
-          <div class="text-3xl lg:text-4xl font-bold text-white">
+          <div
+            class="text-3xl lg:text-4xl font-bold text-black-900 dark:text-white"
+          >
             {displayQuality.bugsOpenedInPeriod} / {displayQuality.bugsClosedInPeriod}
           </div>
-          <div class="text-sm text-neutral-400 mt-1">Opened / Closed</div>
-          <div class="text-xs text-neutral-500">in 14 days</div>
+          <div class="text-sm text-black-400 mt-1">Opened / Closed</div>
+          <div class="text-xs text-black-500">in 14 days</div>
         </div>
       </div>
     </div>
@@ -429,12 +441,10 @@
     <div class="grid grid-cols-1 lg:grid-cols-2 gap-6 pt-6">
       <!-- Why this matters -->
       <div class="space-y-2">
-        <h3
-          class="text-xs font-medium text-neutral-500 uppercase tracking-wider"
-        >
+        <h3 class="text-xs font-medium text-black-500 uppercase tracking-wider">
           Why this matters
         </h3>
-        <p class="text-sm text-neutral-400 leading-relaxed">
+        <p class="text-sm text-black-400 leading-relaxed">
           Bug debt compounds over time. A growing backlog indicates we're
           creating bugs faster than fixing them. Old bugs tend to get harder to
           fix as context fades. Tracking the trend helps catch quality
@@ -444,24 +454,22 @@
 
       <!-- How it's calculated -->
       <div class="space-y-2">
-        <h3
-          class="text-xs font-medium text-neutral-500 uppercase tracking-wider"
-        >
+        <h3 class="text-xs font-medium text-black-500 uppercase tracking-wider">
           How it's calculated
         </h3>
-        <p class="text-sm text-neutral-400">
-          Three components: <strong class="text-neutral-300">bug count</strong>
+        <p class="text-sm text-black-400">
+          Three components: <strong class="text-black-300">bug count</strong>
           (0 at 100+ bugs),
-          <strong class="text-neutral-300">net change</strong> (rewards closing
+          <strong class="text-black-300">net change</strong> (rewards closing
           bugs, 0 at +10 net new), and
-          <strong class="text-neutral-300">average age</strong> (0 at 200+ days).
-          100% = zero bugs.
+          <strong class="text-black-300">average age</strong> (0 at 200+ days). 100%
+          = zero bugs.
         </p>
 
         <!-- Formula -->
         {#if formulaHtml}
           <div
-            class="py-3 px-4 rounded-md bg-neutral-800/50 border border-white/5 formula-container overflow-x-auto mt-3"
+            class="py-3 px-4 rounded-md bg-black-800/50 border border-white/5 formula-container overflow-x-auto mt-3"
           >
             <!-- eslint-disable-next-line svelte/no-at-html-tags -->
             {@html formulaHtml}
@@ -474,20 +482,19 @@
     {#if domainQualityData.length > 0}
       <Card class="p-0 overflow-hidden">
         <div
-          class="flex items-center justify-between px-4 py-3 border-b border-white/10 bg-white/5"
+          class="flex items-center justify-between px-4 py-3 border-b border-white/10 bg-black-50 dark:bg-white/5"
         >
-          <h3 class="text-sm font-medium text-white">
+          <h3 class="text-sm font-medium text-black-900 dark:text-white">
             Domain Breakdown ({domainQualityData.length})
           </h3>
-          <span class="text-xs text-neutral-500">Quality metrics by domain</span
-          >
+          <span class="text-xs text-black-500">Quality metrics by domain</span>
         </div>
         <div class="p-4">
           <div class="overflow-x-auto">
             <table class="w-full">
               <thead>
                 <tr
-                  class="text-left text-xs font-medium text-neutral-500 uppercase tracking-wider border-b border-white/10"
+                  class="text-left text-xs font-medium text-black-500 uppercase tracking-wider border-b border-black-200 dark:border-white/10"
                 >
                   <th class="pb-3 pr-4">Domain</th>
                   <th class="pb-3 pr-4">Status</th>
@@ -515,28 +522,30 @@
                             statusColors[domain.status]
                               .replace('bg-', 'text-')
                               .replace('-500', '-400')
-                          : 'bg-neutral-500/20 text-neutral-400'}"
+                          : 'bg-black-500/20 text-black-400'}"
                       >
                         {statusLabels[domain.status] || domain.status}
                       </span>
                     </td>
                     <td class="py-3 pr-4 text-right">
-                      <span class="text-sm font-semibold text-white">
+                      <span
+                        class="text-sm font-semibold text-black-900 dark:text-white"
+                      >
                         {domain.compositeScore}%
                       </span>
                     </td>
                     <td class="py-3 pr-4 text-right">
-                      <span class="text-sm text-neutral-300">
+                      <span class="text-sm text-black-300">
                         {domain.openBugCount}
                       </span>
                     </td>
                     <td class="py-3 pr-4 text-right">
-                      <span class="text-sm text-neutral-400">
+                      <span class="text-sm text-black-400">
                         {domain.averageBugAgeDays.toFixed(0)}d
                       </span>
                     </td>
                     <td class="py-3 pr-4 text-right">
-                      <span class="text-sm text-neutral-300">
+                      <span class="text-sm text-black-300">
                         {domain.netBugChange > 0
                           ? "+"
                           : ""}{domain.netBugChange}
@@ -554,15 +563,15 @@
     <!-- Open Bugs Table -->
     <Card class="p-0 overflow-hidden">
       <div
-        class="flex items-center justify-between px-4 py-3 border-b border-white/10 bg-white/5"
+        class="flex items-center justify-between px-4 py-3 border-b border-white/10 bg-black-50 dark:bg-white/5"
       >
-        <h3 class="text-sm font-medium text-white">
+        <h3 class="text-sm font-medium text-black-900 dark:text-white">
           Open Bugs {#if !bugsLoading}({openBugs.length}){/if}
         </h3>
       </div>
       <div class="p-4">
         {#if bugsLoading}
-          <div class="py-8 text-center text-neutral-500">Loading bugs...</div>
+          <div class="py-8 text-center text-black-500">Loading bugs...</div>
         {:else if openBugs.length > 0}
           <IssueTable
             issues={openBugs}
@@ -573,7 +582,7 @@
             noMaxHeight={true}
           />
         {:else}
-          <div class="py-8 text-center text-neutral-500">
+          <div class="py-8 text-center text-black-500">
             No open bugs in the backlog — great job!
           </div>
         {/if}
@@ -583,8 +592,8 @@
     <!-- No data state -->
     <Card>
       <div class="py-8 text-center">
-        <div class="mb-2 text-neutral-400">No metrics data available</div>
-        <p class="text-sm text-neutral-500">
+        <div class="mb-2 text-black-400">No metrics data available</div>
+        <p class="text-sm text-black-500">
           Run a sync to capture metrics data.
         </p>
       </div>

@@ -35,7 +35,7 @@
     type="button"
     onclick={toggleTheme}
     class="w-full flex items-center gap-3 px-3 py-2 text-sm rounded transition-colors duration-150 cursor-pointer
-      text-neutral-400 hover:text-white hover:bg-white/5
+      text-black-600 dark:text-black-400 hover:text-black-900 dark:hover:text-white hover:bg-black-100 dark:hover:bg-white/5
       {isCollapsed ? 'justify-center' : ''}"
     title={isCollapsed
       ? $theme === "dark"
@@ -59,7 +59,7 @@
       type="button"
       onclick={handleLogout}
       class="w-full flex items-center gap-3 px-3 py-2 text-sm rounded transition-colors duration-150 cursor-pointer
-        text-neutral-400 hover:text-white hover:bg-white/5
+        text-black-600 dark:text-black-400 hover:text-black-900 dark:hover:text-white hover:bg-black-100 dark:hover:bg-white/5
         {isCollapsed ? 'justify-center' : ''}"
       title={isCollapsed ? "Logout" : undefined}
     >

@@ -139,40 +139,48 @@
   {#if !loading && !error && filteredInitiatives.length > 0}
     <div class="flex flex-wrap gap-4">
       <Card class="max-w-[180px]">
-        <div class="mb-1 text-xs text-neutral-500 dark:text-neutral-300">
+        <div class="mb-1 text-xs text-black-500 dark:text-black-300">
           Total Initiatives
         </div>
-        <div class="text-2xl font-semibold text-neutral-900 dark:text-white">
+        <div
+          class="text-2xl font-semibold text-black-900 dark:text-black-900 dark:text-white"
+        >
           {totalInitiatives}
         </div>
-        <div class="text-xs text-neutral-500">in Linear</div>
+        <div class="text-xs text-black-500">in Linear</div>
       </Card>
       <Card class="max-w-[180px]">
-        <div class="mb-1 text-xs text-neutral-500 dark:text-neutral-300">
+        <div class="mb-1 text-xs text-black-500 dark:text-black-300">
           Active
         </div>
-        <div class="text-2xl font-semibold text-neutral-900 dark:text-white">
+        <div
+          class="text-2xl font-semibold text-black-900 dark:text-black-900 dark:text-white"
+        >
           {activeInitiatives}
         </div>
-        <div class="text-xs text-neutral-500">in progress</div>
+        <div class="text-xs text-black-500">in progress</div>
       </Card>
       <Card class="max-w-[180px]">
-        <div class="mb-1 text-xs text-neutral-500 dark:text-neutral-300">
+        <div class="mb-1 text-xs text-black-500 dark:text-black-300">
           Completed
         </div>
-        <div class="text-2xl font-semibold text-neutral-900 dark:text-white">
+        <div
+          class="text-2xl font-semibold text-black-900 dark:text-black-900 dark:text-white"
+        >
           {completedInitiatives}
         </div>
-        <div class="text-xs text-neutral-500">finished</div>
+        <div class="text-xs text-black-500">finished</div>
       </Card>
       <Card class="max-w-[180px]">
-        <div class="mb-1 text-xs text-neutral-500 dark:text-neutral-300">
+        <div class="mb-1 text-xs text-black-500 dark:text-black-300">
           With Projects
         </div>
-        <div class="text-2xl font-semibold text-neutral-900 dark:text-white">
+        <div
+          class="text-2xl font-semibold text-black-900 dark:text-black-900 dark:text-white"
+        >
           {initiativesWithProjects}
         </div>
-        <div class="text-xs text-neutral-500">linked to projects</div>
+        <div class="text-xs text-black-500">linked to projects</div>
       </Card>
     </div>
   {/if}
@@ -189,26 +197,30 @@
       </div>
     </Card>
   {:else if error}
-    <Card class="border-red-500/50">
-      <div class="mb-3 text-sm font-medium text-red-600 dark:text-red-400">
+    <Card class="border-danger-500/50">
+      <div
+        class="mb-3 text-sm font-medium text-danger-600 dark:text-danger-400"
+      >
         Error Loading Data
       </div>
-      <p class="mb-3 text-neutral-700 dark:text-neutral-400">{error}</p>
-      <p class="text-sm text-neutral-600 dark:text-neutral-500">
+      <p class="mb-3 text-black-700 dark:text-black-400">{error}</p>
+      <p class="text-sm text-black-600 dark:text-black-500">
         Make sure the database is synced. Run: <code
-          class="px-2 py-1 font-mono text-xs rounded bg-neutral-100 dark:bg-neutral-800 text-neutral-700 dark:text-neutral-300"
+          class="px-2 py-1 font-mono text-xs rounded bg-black-100 dark:bg-black-800 text-black-700 dark:text-black-300"
           >bun run sync</code
         >
       </p>
     </Card>
   {:else if filteredInitiatives.length === 0}
     <Card>
-      <div class="mb-3 text-sm font-medium text-neutral-900 dark:text-white">
+      <div
+        class="mb-3 text-sm font-medium text-black-900 dark:text-black-900 dark:text-white"
+      >
         {filter.domain || filter.teamKey
           ? "No Initiatives for Selected Filter"
           : "No Initiatives Found"}
       </div>
-      <p class="text-neutral-700 dark:text-neutral-400">
+      <p class="text-black-700 dark:text-black-400">
         {filter.domain || filter.teamKey
           ? "No initiatives have projects linked to the selected domain/team."
           : "No initiatives found in the database. Sync the database to load data from Linear."}

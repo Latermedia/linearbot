@@ -386,7 +386,7 @@
     steadyProgress: "bg-warning-500",
     earlyTraction: "bg-danger-500",
     lowTraction: "bg-danger-600",
-    unknown: "bg-neutral-500",
+    unknown: "bg-black-500",
   };
 
   // Status text colors for the large metric
@@ -396,7 +396,7 @@
     steadyProgress: "text-warning-500",
     earlyTraction: "text-danger-500",
     lowTraction: "text-danger-600",
-    unknown: "text-neutral-400",
+    unknown: "text-black-400",
   };
 
   const statusLabels: Record<string, string> = {
@@ -437,7 +437,11 @@
 <div class="space-y-6">
   <!-- Page Title -->
   <div class="flex flex-wrap items-center justify-between gap-4">
-    <h1 class="text-2xl font-semibold text-white">Linear Hygiene</h1>
+    <h1
+      class="text-2xl font-semibold text-black-900 dark:text-black-900 dark:text-white"
+    >
+      Linear Hygiene
+    </h1>
     <TeamFilterNotice level={activeTeamFilter ? "team" : "domain"} />
   </div>
 
@@ -460,15 +464,17 @@
     </Card>
   {:else if error}
     <!-- Error state -->
-    <Card class="border-red-500/50">
-      <div class="mb-3 text-sm font-medium text-red-600 dark:text-red-400">
+    <Card class="border-danger-500/50">
+      <div
+        class="mb-3 text-sm font-medium text-danger-600 dark:text-danger-400"
+      >
         Error Loading Data
       </div>
-      <p class="text-neutral-700 dark:text-neutral-400">{error}</p>
+      <p class="text-black-700 dark:text-black-400">{error}</p>
     </Card>
   {:else if linearHygiene}
     <!-- Marquee Hero Section -->
-    <div class="py-8 border-b border-white/10">
+    <div class="py-8 border-b border-black-200 dark:border-white/10">
       <!-- Large metric -->
       <div class="flex items-baseline justify-center gap-4 mb-3">
         <span
@@ -477,7 +483,7 @@
           ]}"
         >
           {displayHygiene?.hygieneScore ?? 0}<span
-            class="text-5xl lg:text-6xl font-normal text-neutral-400">%</span
+            class="text-5xl lg:text-6xl font-normal text-black-400">%</span
           >
         </span>
       </div>
@@ -514,16 +520,16 @@
         {/if}
       </div>
       {#if hasLimitedTrendData}
-        <p class="text-center text-[10px] text-neutral-500 mb-2">
+        <p class="text-center text-[10px] text-black-500 mb-2">
           * Based on available historical data
         </p>
       {/if}
 
       <!-- Subtitle -->
-      <p class="text-center text-xl text-neutral-400 mb-2">
+      <p class="text-center text-xl text-black-400 mb-2">
         of tracking best practices met
       </p>
-      <p class="text-center text-sm text-neutral-500">
+      <p class="text-center text-sm text-black-500">
         {displayHygiene?.totalGaps ?? 0} gaps found
         <span
           class="ml-2 inline-block text-xs font-medium px-2 py-0.5 rounded {displayHygiene?.status ===
@@ -537,7 +543,7 @@
                   ? 'bg-danger-500/20 text-danger-500'
                   : displayHygiene?.status === 'lowTraction'
                     ? 'bg-danger-600/20 text-danger-600'
-                    : 'bg-neutral-500/20 text-neutral-400'}"
+                    : 'bg-black-500/20 text-black-400'}"
         >
           {statusLabels[displayHygiene?.status ?? "unknown"]}
         </span>
@@ -547,39 +553,51 @@
       <div class="flex items-center justify-center gap-8 lg:gap-16 mt-8">
         <!-- Engineers with gaps -->
         <div class="text-center">
-          <div class="text-4xl lg:text-5xl font-bold text-white">
+          <div
+            class="text-4xl lg:text-5xl font-bold text-black-900 dark:text-black-900 dark:text-white"
+          >
             {displayHygiene?.engineersWithGaps ?? 0}
           </div>
-          <div class="text-sm text-neutral-400 mt-1">Engineers</div>
-          <div class="text-xs text-neutral-500">
+          <div class="text-sm text-black-500 dark:text-black-400 mt-1">
+            Engineers
+          </div>
+          <div class="text-xs text-black-500">
             of {displayHygiene?.totalEngineers ?? 0} with gaps
           </div>
         </div>
 
         <!-- Divider -->
-        <div class="h-12 w-px bg-white/10"></div>
+        <div class="h-12 w-px bg-black-100 dark:bg-white/10"></div>
 
         <!-- Projects with gaps -->
         <div class="text-center">
-          <div class="text-4xl lg:text-5xl font-bold text-white">
+          <div
+            class="text-4xl lg:text-5xl font-bold text-black-900 dark:text-black-900 dark:text-white"
+          >
             {displayHygiene?.projectsWithGaps ?? 0}
           </div>
-          <div class="text-sm text-neutral-400 mt-1">Projects</div>
-          <div class="text-xs text-neutral-500">
+          <div class="text-sm text-black-500 dark:text-black-400 mt-1">
+            Projects
+          </div>
+          <div class="text-xs text-black-500">
             of {displayHygiene?.totalProjects ?? 0} with gaps
           </div>
         </div>
 
         <!-- Divider -->
-        <div class="h-12 w-px bg-white/10"></div>
+        <div class="h-12 w-px bg-black-100 dark:bg-white/10"></div>
 
         <!-- Total gaps -->
         <div class="text-center">
-          <div class="text-4xl lg:text-5xl font-bold text-white">
+          <div
+            class="text-4xl lg:text-5xl font-bold text-black-900 dark:text-black-900 dark:text-white"
+          >
             {displayHygiene?.totalGaps ?? 0}
           </div>
-          <div class="text-sm text-neutral-400 mt-1">Total Gaps</div>
-          <div class="text-xs text-neutral-500">across all items</div>
+          <div class="text-sm text-black-500 dark:text-black-400 mt-1">
+            Total Gaps
+          </div>
+          <div class="text-xs text-black-500">across all items</div>
         </div>
       </div>
 
@@ -589,63 +607,81 @@
       >
         <!-- Engineer gap types -->
         <div class="text-center opacity-70">
-          <div class="text-2xl font-bold text-white">
+          <div
+            class="text-2xl font-bold text-black-800 dark:text-black-900 dark:text-white"
+          >
             {displayHygiene?.missingEstimateCount ?? 0}
           </div>
-          <div class="text-xs text-neutral-500">Missing estimate</div>
+          <div class="text-xs text-black-500">Missing estimate</div>
         </div>
         <div class="text-center opacity-70">
-          <div class="text-2xl font-bold text-white">
+          <div
+            class="text-2xl font-bold text-black-800 dark:text-black-900 dark:text-white"
+          >
             {displayHygiene?.missingPriorityCount ?? 0}
           </div>
-          <div class="text-xs text-neutral-500">Missing priority</div>
+          <div class="text-xs text-black-500">Missing priority</div>
         </div>
         <div class="text-center opacity-70">
-          <div class="text-2xl font-bold text-white">
+          <div
+            class="text-2xl font-bold text-black-800 dark:text-black-900 dark:text-white"
+          >
             {displayHygiene?.noRecentCommentCount ?? 0}
           </div>
-          <div class="text-xs text-neutral-500">No recent comment</div>
+          <div class="text-xs text-black-500">No recent comment</div>
         </div>
         <div class="text-center opacity-70">
-          <div class="text-2xl font-bold text-white">
+          <div
+            class="text-2xl font-bold text-black-800 dark:text-black-900 dark:text-white"
+          >
             {displayHygiene?.wipAgeViolationCount ?? 0}
           </div>
-          <div class="text-xs text-neutral-500">WIP age violation</div>
+          <div class="text-xs text-black-500">WIP age violation</div>
         </div>
 
         <!-- Divider -->
-        <div class="h-8 w-px bg-white/10"></div>
+        <div class="h-8 w-px bg-black-100 dark:bg-white/10"></div>
 
         <!-- Project gap types -->
         <div class="text-center opacity-70">
-          <div class="text-2xl font-bold text-white">
+          <div
+            class="text-2xl font-bold text-black-800 dark:text-black-900 dark:text-white"
+          >
             {displayHygiene?.missingLeadCount ?? 0}
           </div>
-          <div class="text-xs text-neutral-500">Missing lead</div>
+          <div class="text-xs text-black-500">Missing lead</div>
         </div>
         <div class="text-center opacity-70">
-          <div class="text-2xl font-bold text-white">
+          <div
+            class="text-2xl font-bold text-black-800 dark:text-black-900 dark:text-white"
+          >
             {displayHygiene?.staleUpdateCount ?? 0}
           </div>
-          <div class="text-xs text-neutral-500">Stale update</div>
+          <div class="text-xs text-black-500">Stale update</div>
         </div>
         <div class="text-center opacity-70">
-          <div class="text-2xl font-bold text-white">
+          <div
+            class="text-2xl font-bold text-black-800 dark:text-black-900 dark:text-white"
+          >
             {displayHygiene?.statusMismatchCount ?? 0}
           </div>
-          <div class="text-xs text-neutral-500">Status mismatch</div>
+          <div class="text-xs text-black-500">Status mismatch</div>
         </div>
         <div class="text-center opacity-70">
-          <div class="text-2xl font-bold text-white">
+          <div
+            class="text-2xl font-bold text-black-800 dark:text-black-900 dark:text-white"
+          >
             {displayHygiene?.missingHealthCount ?? 0}
           </div>
-          <div class="text-xs text-neutral-500">Missing health</div>
+          <div class="text-xs text-black-500">Missing health</div>
         </div>
         <div class="text-center opacity-70">
-          <div class="text-2xl font-bold text-white">
+          <div
+            class="text-2xl font-bold text-black-800 dark:text-black-900 dark:text-white"
+          >
             {displayHygiene?.dateDiscrepancyCount ?? 0}
           </div>
-          <div class="text-xs text-neutral-500">Date discrepancy</div>
+          <div class="text-xs text-black-500">Date discrepancy</div>
         </div>
       </div>
     </div>
@@ -654,12 +690,10 @@
     <div class="grid grid-cols-1 lg:grid-cols-2 gap-6 pt-6">
       <!-- Why this matters -->
       <div class="space-y-2">
-        <h3
-          class="text-xs font-medium text-neutral-500 uppercase tracking-wider"
-        >
+        <h3 class="text-xs font-medium text-black-500 uppercase tracking-wider">
           Why this matters
         </h3>
-        <p class="text-sm text-neutral-400 leading-relaxed">
+        <p class="text-sm text-black-400 leading-relaxed">
           Linear hygiene reflects tactical discipline: estimates enable
           forecasting, priorities drive focus, comments surface blockers, and
           project metadata keeps stakeholders informed. Gaps compound and erode
@@ -669,22 +703,20 @@
 
       <!-- How it's calculated -->
       <div class="space-y-2">
-        <h3
-          class="text-xs font-medium text-neutral-500 uppercase tracking-wider"
-        >
+        <h3 class="text-xs font-medium text-black-500 uppercase tracking-wider">
           How it's calculated
         </h3>
-        <p class="text-sm text-neutral-400">
-          Gaps are counted across <strong class="text-neutral-300">4</strong>
+        <p class="text-sm text-black-400">
+          Gaps are counted across <strong class="text-black-300">4</strong>
           engineer issue types (estimates, priority, comments, WIP age) and
-          <strong class="text-neutral-300">5</strong>
+          <strong class="text-black-300">5</strong>
           project types (lead, update, status, health, dates).
         </p>
 
         <!-- Formula -->
         {#if formulaHtml}
           <div
-            class="py-3 px-4 rounded-md bg-neutral-800/50 border border-white/5 formula-container overflow-x-auto mt-3"
+            class="py-3 px-4 rounded-md bg-black-800/50 border border-white/5 formula-container overflow-x-auto mt-3"
           >
             <!-- eslint-disable-next-line svelte/no-at-html-tags -->
             {@html formulaHtml}
@@ -697,19 +729,21 @@
     {#if domainHygieneData.length > 0}
       <Card class="p-0 overflow-hidden">
         <div
-          class="flex items-center justify-between px-4 py-3 border-b border-white/10 bg-white/5"
+          class="flex items-center justify-between px-4 py-3 border-b border-black-200 dark:border-white/10 bg-black-50 dark:bg-black-50 dark:bg-white/5"
         >
-          <h3 class="text-sm font-medium text-white">
+          <h3
+            class="text-sm font-medium text-black-900 dark:text-black-900 dark:text-white"
+          >
             Domain Breakdown ({domainHygieneData.length})
           </h3>
-          <span class="text-xs text-neutral-500">Hygiene by domain</span>
+          <span class="text-xs text-black-500">Hygiene by domain</span>
         </div>
         <div class="p-4">
           <div class="overflow-x-auto">
             <table class="w-full">
               <thead>
                 <tr
-                  class="text-left text-xs font-medium text-neutral-500 uppercase tracking-wider border-b border-white/10"
+                  class="text-left text-xs font-medium text-black-500 uppercase tracking-wider border-b border-black-200 dark:border-white/10"
                 >
                   <th class="pb-3 pr-4">Domain</th>
                   <th class="pb-3 pr-4">Status</th>
@@ -721,9 +755,13 @@
               </thead>
               <tbody class="divide-y divide-white/5">
                 {#each domainHygieneData as domain (domain.domainName)}
-                  <tr class="hover:bg-white/5 transition-colors">
+                  <tr
+                    class="hover:bg-black-50 dark:hover:bg-white/5 transition-colors"
+                  >
                     <td class="py-3 pr-4">
-                      <span class="text-sm text-white font-medium">
+                      <span
+                        class="text-sm text-black-900 dark:text-white font-medium"
+                      >
                         {domain.domainName}
                       </span>
                     </td>
@@ -737,34 +775,36 @@
                             statusColors[domain.status]
                               .replace('bg-', 'text-')
                               .replace('-500', '-400')
-                          : 'bg-neutral-500/20 text-neutral-400'}"
+                          : 'bg-black-500/20 text-black-400'}"
                       >
                         {statusLabels[domain.status] || domain.status}
                       </span>
                     </td>
                     <td class="py-3 pr-4 text-right">
-                      <span class="text-sm font-semibold text-white">
+                      <span
+                        class="text-sm font-semibold text-black-900 dark:text-black-900 dark:text-white"
+                      >
                         {domain.hygieneScore}%
                       </span>
                     </td>
                     <td class="py-3 pr-4 text-right">
-                      <span class="text-sm text-neutral-300">
+                      <span class="text-sm text-black-300">
                         {domain.totalGaps}
                       </span>
                     </td>
                     <td class="py-3 pr-4 text-right">
-                      <span class="text-sm text-neutral-300">
+                      <span class="text-sm text-black-300">
                         {domain.engineersWithGaps}
                       </span>
-                      <span class="text-xs text-neutral-500">
+                      <span class="text-xs text-black-500">
                         /{domain.totalEngineers}
                       </span>
                     </td>
                     <td class="py-3 pr-4 text-right">
-                      <span class="text-sm text-neutral-300">
+                      <span class="text-sm text-black-300">
                         {domain.projectsWithGaps}
                       </span>
-                      <span class="text-xs text-neutral-500">
+                      <span class="text-xs text-black-500">
                         /{domain.totalProjects}
                       </span>
                     </td>
@@ -780,12 +820,14 @@
     <!-- Engineers with Gaps Table -->
     <Card class="p-0 overflow-hidden">
       <div
-        class="flex items-center justify-between px-4 py-3 border-b border-white/10 bg-white/5"
+        class="flex items-center justify-between px-4 py-3 border-b border-black-200 dark:border-white/10 bg-black-50 dark:bg-black-50 dark:bg-white/5"
       >
-        <h3 class="text-sm font-medium text-white">
+        <h3
+          class="text-sm font-medium text-black-900 dark:text-black-900 dark:text-white"
+        >
           Engineers with Gaps ({engineersWithGaps.length})
         </h3>
-        <span class="text-xs text-neutral-500">
+        <span class="text-xs text-black-500">
           Missing estimates, priority, comments, or WIP age
         </span>
       </div>
@@ -798,7 +840,7 @@
             }}
           />
         {:else}
-          <div class="py-8 text-center text-neutral-500">
+          <div class="py-8 text-center text-black-500">
             No engineers with hygiene gaps — great job!
           </div>
         {/if}
@@ -808,12 +850,14 @@
     <!-- Projects with Gaps Table -->
     <Card class="p-0 overflow-hidden">
       <div
-        class="flex items-center justify-between px-4 py-3 border-b border-white/10 bg-white/5"
+        class="flex items-center justify-between px-4 py-3 border-b border-black-200 dark:border-white/10 bg-black-50 dark:bg-black-50 dark:bg-white/5"
       >
-        <h3 class="text-sm font-medium text-white">
+        <h3
+          class="text-sm font-medium text-black-900 dark:text-black-900 dark:text-white"
+        >
           Projects with Gaps ({projectsWithGaps.length})
         </h3>
-        <span class="text-xs text-neutral-500">
+        <span class="text-xs text-black-500">
           Missing lead, stale update, status mismatch, etc.
         </span>
       </div>
@@ -823,7 +867,7 @@
             <table class="w-full">
               <thead>
                 <tr
-                  class="text-left text-xs font-medium text-neutral-500 uppercase tracking-wider border-b border-white/10"
+                  class="text-left text-xs font-medium text-black-500 uppercase tracking-wider border-b border-black-200 dark:border-white/10"
                 >
                   <th class="pb-3 pr-4">Project</th>
                   <th class="pb-3 pr-4">Lead</th>
@@ -833,9 +877,13 @@
               </thead>
               <tbody class="divide-y divide-white/5">
                 {#each projectsWithGaps.sort((a, b) => getProjectTotalGaps(b) - getProjectTotalGaps(a)) as project (project.project_id)}
-                  <tr class="hover:bg-white/5 transition-colors">
+                  <tr
+                    class="hover:bg-black-50 dark:hover:bg-white/5 transition-colors"
+                  >
                     <td class="py-3 pr-4">
-                      <span class="text-sm text-white font-medium">
+                      <span
+                        class="text-sm text-black-900 dark:text-white font-medium"
+                      >
                         {project.project_name}
                       </span>
                     </td>
@@ -849,16 +897,16 @@
                               class="w-6 h-6 rounded-full"
                             />
                           {/if}
-                          <span class="text-sm text-neutral-300">
+                          <span class="text-sm text-black-300">
                             {project.project_lead_name}
                           </span>
                         </div>
                       {:else}
-                        <span class="text-sm text-red-400">No lead</span>
+                        <span class="text-sm text-danger-400">No lead</span>
                       {/if}
                     </td>
                     <td class="py-3 pr-4 text-center">
-                      <span class="text-sm text-neutral-400">
+                      <span class="text-sm text-black-400">
                         {project.in_progress_issues}
                       </span>
                     </td>
@@ -866,7 +914,7 @@
                       <div class="flex items-center justify-center gap-1">
                         {#if project.missing_lead === 1}
                           <span
-                            class="text-xs px-1.5 py-0.5 rounded bg-red-500/20 text-red-400"
+                            class="text-xs px-1.5 py-0.5 rounded bg-danger-500/20 text-danger-400"
                             title="Missing lead"
                           >
                             Lead
@@ -874,7 +922,7 @@
                         {/if}
                         {#if project.is_stale_update === 1}
                           <span
-                            class="text-xs px-1.5 py-0.5 rounded bg-amber-500/20 text-amber-400"
+                            class="text-xs px-1.5 py-0.5 rounded bg-warning-500/20 text-warning-400"
                             title="Stale update (7+ days)"
                           >
                             Stale
@@ -882,7 +930,7 @@
                         {/if}
                         {#if project.has_status_mismatch === 1}
                           <span
-                            class="text-xs px-1.5 py-0.5 rounded bg-amber-500/20 text-amber-400"
+                            class="text-xs px-1.5 py-0.5 rounded bg-warning-500/20 text-warning-400"
                             title="Status mismatch"
                           >
                             Status
@@ -890,7 +938,7 @@
                         {/if}
                         {#if project.missing_health === 1}
                           <span
-                            class="text-xs px-1.5 py-0.5 rounded bg-amber-500/20 text-amber-400"
+                            class="text-xs px-1.5 py-0.5 rounded bg-warning-500/20 text-warning-400"
                             title="Missing health status"
                           >
                             Health
@@ -898,7 +946,7 @@
                         {/if}
                         {#if project.has_date_discrepancy === 1}
                           <span
-                            class="text-xs px-1.5 py-0.5 rounded bg-amber-500/20 text-amber-400"
+                            class="text-xs px-1.5 py-0.5 rounded bg-warning-500/20 text-warning-400"
                             title="Date discrepancy (>30 days)"
                           >
                             Date
@@ -912,7 +960,7 @@
             </table>
           </div>
         {:else}
-          <div class="py-8 text-center text-neutral-500">
+          <div class="py-8 text-center text-black-500">
             No projects with hygiene gaps — great job!
           </div>
         {/if}
@@ -922,8 +970,8 @@
     <!-- No data state -->
     <Card>
       <div class="py-8 text-center">
-        <div class="mb-2 text-neutral-400">No metrics data available</div>
-        <p class="text-sm text-neutral-500">
+        <div class="mb-2 text-black-400">No metrics data available</div>
+        <p class="text-sm text-black-500">
           Run a sync to capture metrics data.
         </p>
       </div>

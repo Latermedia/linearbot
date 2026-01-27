@@ -67,7 +67,7 @@
       <div
         class="flex items-center gap-1.5 px-2 py-1 rounded bg-white/5 animate-pulse"
       >
-        <div class="w-12 h-3 rounded bg-neutral-700"></div>
+        <div class="w-12 h-3 rounded bg-black-700"></div>
       </div>
     {/each}
   {:else if snapshot}
@@ -100,6 +100,6 @@
       value={quality?.compositeScore ?? "—"}
     />
   {:else}
-    <span class="text-xs text-neutral-500 italic">No metrics available</span>
+    <span class="text-xs text-black-500 italic">No metrics available</span>
   {/if}
 </div>

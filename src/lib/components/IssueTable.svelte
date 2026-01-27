@@ -213,7 +213,7 @@
 </script>
 
 {#if issues.length === 0}
-  <div class="text-sm text-neutral-400">No issues found</div>
+  <div class="text-sm text-black-400">No issues found</div>
 {:else}
   {@const columnCount =
     (showAssignee ? 1 : 0) +
@@ -224,13 +224,13 @@
     <!-- Group by selector (hidden when groupByState is true) -->
     {#if !groupByState}
       <div class="flex justify-end items-center gap-2">
-        <label for="group-by-select" class="text-xs text-neutral-400"
+        <label for="group-by-select" class="text-xs text-black-400"
           >Group by:</label
         >
         <select
           id="group-by-select"
           bind:value={groupBy}
-          class="px-2 py-1 text-xs text-white rounded border transition-colors duration-150 bg-neutral-900 border-white/10 focus:border-violet-500 focus:ring-1 focus:ring-violet-500/50 focus:outline-none"
+          class="px-2 py-1 text-xs text-white rounded border transition-colors duration-150 bg-black-900 border-white/10 focus:border-brand-500 focus:ring-1 focus:ring-brand-500/50 focus:outline-none"
         >
           <option value="none">None</option>
           <option value="assignee">Assignee</option>
@@ -245,45 +245,45 @@
         : 'max-h-[70vh] overflow-y-auto'}"
     >
       <table class="w-full text-xs min-w-[680px]">
-        <thead class="sticky top-0 z-10 bg-neutral-900">
-          <tr class="border-b border-white/10">
+        <thead class="sticky top-0 z-10 bg-black-900">
+          <tr class="border-b border-black-200 dark:border-white/10">
             <th
-              class="px-2 py-1.5 font-medium text-left text-neutral-400 w-[310px] min-w-[310px]"
+              class="px-2 py-1.5 font-medium text-left text-black-400 w-[310px] min-w-[310px]"
               >Title</th
             >
             {#if showAssignee}
               <th
-                class="px-2 py-1.5 font-medium text-left text-neutral-400 w-[120px] min-w-[120px]"
+                class="px-2 py-1.5 font-medium text-left text-black-400 w-[120px] min-w-[120px]"
                 >Assignee</th
               >
             {/if}
             <th
-              class="px-2 py-1.5 font-medium text-left text-neutral-400 w-[120px] min-w-[120px]"
+              class="px-2 py-1.5 font-medium text-left text-black-400 w-[120px] min-w-[120px]"
               >Status</th
             >
             <th
-              class="px-2 py-1.5 font-medium text-right text-neutral-400 w-[70px] min-w-[70px]"
+              class="px-2 py-1.5 font-medium text-right text-black-400 w-[70px] min-w-[70px]"
               >Points</th
             >
             <th
-              class="px-2 py-1.5 font-medium text-right text-neutral-400 w-[80px] min-w-[80px]"
+              class="px-2 py-1.5 font-medium text-right text-black-400 w-[80px] min-w-[80px]"
               >Priority</th
             >
             <th
-              class="px-2 py-1.5 font-medium text-right text-neutral-400 w-[110px] min-w-[110px]"
+              class="px-2 py-1.5 font-medium text-right text-black-400 w-[110px] min-w-[110px]"
               title="Time since last comment">Last Comment</th
             >
             <th
-              class="px-2 py-1.5 font-medium text-right text-neutral-400 w-[80px] min-w-[80px]"
+              class="px-2 py-1.5 font-medium text-right text-black-400 w-[80px] min-w-[80px]"
               title="Total number of comments">Comments</th
             >
             <th
-              class="px-2 py-1.5 font-medium text-right text-neutral-400 w-[70px] min-w-[70px]"
+              class="px-2 py-1.5 font-medium text-right text-black-400 w-[70px] min-w-[70px]"
               >WIP Age</th
             >
             {#if showEstimateAccuracy}
               <th
-                class="px-2 py-1.5 font-medium text-right text-neutral-400 w-[120px] min-w-[120px]"
+                class="px-2 py-1.5 font-medium text-right text-black-400 w-[120px] min-w-[120px]"
                 title="Ratio of actual time to estimated time. 1.0x = perfect match. < 1.0x = faster than estimated, > 1.0x = slower than estimated. Green = within 30%, Yellow = 30-70% off, Red = 70%+ off."
                 >Estimate Accuracy</th
               >
@@ -296,7 +296,7 @@
               <!-- Group header (State divider or other grouping) -->
               <tr>
                 <td colspan={columnCount} class="px-2 py-2.5">
-                  <span class="-ml-1 text-xs font-semibold text-neutral-400">
+                  <span class="-ml-1 text-xs font-semibold text-black-400">
                     {group.key} ({group.issues.reduce(
                       (count, gi) =>
                         count + ("parent" in gi ? 1 + gi.subissues.length : 1),
@@ -355,20 +355,20 @@
                   }}
                 >
                   <td
-                    class="px-2 py-1.5 text-neutral-200 w-[310px] min-w-[310px] max-w-[310px]"
+                    class="px-2 py-1.5 text-black-200 w-[310px] min-w-[310px] max-w-[310px]"
                   >
                     <div
                       class="overflow-hidden truncate whitespace-nowrap text-ellipsis"
                       title={parent.title}
                     >
                       {#if showIdentifier && parent.identifier}
-                        <span class="text-neutral-500 font-mono text-xs mr-1.5"
+                        <span class="text-black-500 font-mono text-xs mr-1.5"
                           >{parent.identifier}</span
                         >
                       {/if}
                       {parent.title}
                       {#if subissues.length > 0}
-                        <span class="ml-1 text-xs text-neutral-500"
+                        <span class="ml-1 text-xs text-black-500"
                           >({subissues.length})</span
                         >
                       {/if}
@@ -385,7 +385,7 @@
                           size="xs"
                         />
                       {:else}
-                        <span class="text-xs text-neutral-500">Unassigned</span>
+                        <span class="text-xs text-black-500">Unassigned</span>
                       {/if}
                     </td>
                   {/if}
@@ -406,17 +406,17 @@
                     />
                   </td>
                   <td
-                    class="px-2 py-1.5 text-right text-neutral-300 w-[70px] min-w-[70px]"
+                    class="px-2 py-1.5 text-right text-black-300 w-[70px] min-w-[70px]"
                   >
                     <div class="flex gap-1.5 justify-end items-center">
                       {#if parent.estimate !== null && parent.estimate !== undefined}
                         {Math.round(parent.estimate)}
                       {:else if !hideWarnings && missingEstimate}
-                        <span class="text-amber-400" title="Missing estimate"
+                        <span class="text-warning-400" title="Missing estimate"
                           >⚠️</span
                         >
                       {:else}
-                        <span class="text-neutral-500">—</span>
+                        <span class="text-black-500">—</span>
                       {/if}
                     </div>
                   </td>
@@ -429,24 +429,24 @@
                     <div class="flex gap-1.5 justify-end items-center">
                       {#if !hideWarnings && hasOldComment}
                         <span
-                          class="text-amber-400 shrink-0"
+                          class="text-warning-400 shrink-0"
                           title="No comment since last business day">⚠️</span
                         >
                       {/if}
                       <span
                         class={!hideWarnings && hasOldComment
-                          ? "text-amber-400"
-                          : "text-neutral-300"}>{commentRecency}</span
+                          ? "text-warning-400"
+                          : "text-black-300"}>{commentRecency}</span
                       >
                     </div>
                   </td>
                   <td
-                    class="px-2 py-1.5 text-right text-neutral-300 w-[80px] min-w-[80px]"
+                    class="px-2 py-1.5 text-right text-black-300 w-[80px] min-w-[80px]"
                   >
                     {formatCommentCount(parent.comment_count)}
                   </td>
                   <td
-                    class="px-2 py-1.5 text-right text-neutral-300 w-[70px] min-w-[70px]"
+                    class="px-2 py-1.5 text-right text-black-300 w-[70px] min-w-[70px]"
                   >
                     {formatWIPAge(wipAge)}
                   </td>
@@ -464,7 +464,7 @@
                           {formatAccuracyRatio(issueAccuracyRatio)}
                         </span>
                       {:else}
-                        <span class="text-neutral-500">—</span>
+                        <span class="text-black-500">—</span>
                       {/if}
                     </td>
                   {/if}
@@ -519,16 +519,15 @@
                     }}
                   >
                     <td
-                      class="px-2 py-1.5 text-neutral-200 w-[310px] min-w-[310px] max-w-[310px]"
+                      class="px-2 py-1.5 text-black-200 w-[310px] min-w-[310px] max-w-[310px]"
                     >
                       <div
                         class="overflow-hidden pl-6 truncate whitespace-nowrap text-ellipsis"
                         title={subissue.title}
                       >
-                        <span class="mr-1 text-neutral-400 shrink-0">↳</span>
+                        <span class="mr-1 text-black-400 shrink-0">↳</span>
                         {#if showIdentifier && subissue.identifier}
-                          <span
-                            class="text-neutral-500 font-mono text-xs mr-1.5"
+                          <span class="text-black-500 font-mono text-xs mr-1.5"
                             >{subissue.identifier}</span
                           >
                         {/if}
@@ -546,9 +545,7 @@
                             size="xs"
                           />
                         {:else}
-                          <span class="text-xs text-neutral-500"
-                            >Unassigned</span
-                          >
+                          <span class="text-xs text-black-500">Unassigned</span>
                         {/if}
                       </td>
                     {/if}
@@ -561,17 +558,18 @@
                       />
                     </td>
                     <td
-                      class="px-2 py-1.5 text-right text-neutral-300 w-[70px] min-w-[70px]"
+                      class="px-2 py-1.5 text-right text-black-300 w-[70px] min-w-[70px]"
                     >
                       <div class="flex gap-1.5 justify-end items-center">
                         {#if subissue.estimate !== null && subissue.estimate !== undefined}
                           {Math.round(subissue.estimate)}
                         {:else if !hideWarnings && subMissingEstimate}
-                          <span class="text-amber-400" title="Missing estimate"
-                            >⚠️</span
+                          <span
+                            class="text-warning-400"
+                            title="Missing estimate">⚠️</span
                           >
                         {:else}
-                          <span class="text-neutral-500">—</span>
+                          <span class="text-black-500">—</span>
                         {/if}
                       </div>
                     </td>
@@ -584,24 +582,24 @@
                       <div class="flex gap-1.5 justify-end items-center">
                         {#if !hideWarnings && subHasOldComment}
                           <span
-                            class="text-amber-400 shrink-0"
+                            class="text-warning-400 shrink-0"
                             title="No comment since last business day">⚠️</span
                           >
                         {/if}
                         <span
                           class={!hideWarnings && subHasOldComment
-                            ? "text-amber-400"
-                            : "text-neutral-300"}>{subCommentRecency}</span
+                            ? "text-warning-400"
+                            : "text-black-300"}>{subCommentRecency}</span
                         >
                       </div>
                     </td>
                     <td
-                      class="px-2 py-1.5 text-right text-neutral-300 w-[80px] min-w-[80px]"
+                      class="px-2 py-1.5 text-right text-black-300 w-[80px] min-w-[80px]"
                     >
                       {formatCommentCount(subissue.comment_count)}
                     </td>
                     <td
-                      class="px-2 py-1.5 text-right text-neutral-300 w-[70px] min-w-[70px]"
+                      class="px-2 py-1.5 text-right text-black-300 w-[70px] min-w-[70px]"
                     >
                       {formatWIPAge(subWipAge)}
                     </td>
@@ -621,7 +619,7 @@
                             {formatAccuracyRatio(subIssueAccuracyRatio)}
                           </span>
                         {:else}
-                          <span class="text-neutral-500">—</span>
+                          <span class="text-black-500">—</span>
                         {/if}
                       </td>
                     {/if}
@@ -669,14 +667,14 @@
                   }}
                 >
                   <td
-                    class="px-2 py-1.5 text-neutral-200 w-[310px] min-w-[310px] max-w-[310px]"
+                    class="px-2 py-1.5 text-black-200 w-[310px] min-w-[310px] max-w-[310px]"
                   >
                     <div
                       class="overflow-hidden truncate whitespace-nowrap text-ellipsis"
                       title={issue.title}
                     >
                       {#if showIdentifier && issue.identifier}
-                        <span class="text-neutral-500 font-mono text-xs mr-1.5"
+                        <span class="text-black-500 font-mono text-xs mr-1.5"
                           >{issue.identifier}</span
                         >
                       {/if}
@@ -694,7 +692,7 @@
                           size="xs"
                         />
                       {:else}
-                        <span class="text-xs text-neutral-500">Unassigned</span>
+                        <span class="text-xs text-black-500">Unassigned</span>
                       {/if}
                     </td>
                   {/if}
@@ -707,17 +705,17 @@
                     />
                   </td>
                   <td
-                    class="px-2 py-1.5 text-right text-neutral-300 w-[70px] min-w-[70px]"
+                    class="px-2 py-1.5 text-right text-black-300 w-[70px] min-w-[70px]"
                   >
                     <div class="flex gap-1.5 justify-end items-center">
                       {#if issue.estimate !== null && issue.estimate !== undefined}
                         {Math.round(issue.estimate)}
                       {:else if !hideWarnings && missingEstimate}
-                        <span class="text-amber-400" title="Missing estimate"
+                        <span class="text-warning-400" title="Missing estimate"
                           >⚠️</span
                         >
                       {:else}
-                        <span class="text-neutral-500">—</span>
+                        <span class="text-black-500">—</span>
                       {/if}
                     </div>
                   </td>
@@ -730,24 +728,24 @@
                     <div class="flex gap-1.5 justify-end items-center">
                       {#if !hideWarnings && hasOldComment}
                         <span
-                          class="text-amber-400 shrink-0"
+                          class="text-warning-400 shrink-0"
                           title="No comment since last business day">⚠️</span
                         >
                       {/if}
                       <span
                         class={!hideWarnings && hasOldComment
-                          ? "text-amber-400"
-                          : "text-neutral-300"}>{commentRecency}</span
+                          ? "text-warning-400"
+                          : "text-black-300"}>{commentRecency}</span
                       >
                     </div>
                   </td>
                   <td
-                    class="px-2 py-1.5 text-right text-neutral-300 w-[80px] min-w-[80px]"
+                    class="px-2 py-1.5 text-right text-black-300 w-[80px] min-w-[80px]"
                   >
                     {formatCommentCount(issue.comment_count)}
                   </td>
                   <td
-                    class="px-2 py-1.5 text-right text-neutral-300 w-[70px] min-w-[70px]"
+                    class="px-2 py-1.5 text-right text-black-300 w-[70px] min-w-[70px]"
                   >
                     {formatWIPAge(wipAge)}
                   </td>
@@ -765,7 +763,7 @@
                           {formatAccuracyRatio(issueAccuracyRatio)}
                         </span>
                       {:else}
-                        <span class="text-neutral-500">—</span>
+                        <span class="text-black-500">—</span>
                       {/if}
                     </td>
                   {/if}

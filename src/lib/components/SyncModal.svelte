@@ -288,8 +288,8 @@
     {#if !hasInitialStatus}
       <!-- Loading state while checking initial sync status -->
       <div class="flex justify-center items-center py-8">
-        <div class="flex gap-2 items-center text-sm text-neutral-400">
-          <div class="w-2 h-2 bg-violet-500 rounded-full animate-pulse"></div>
+        <div class="flex gap-2 items-center text-sm text-black-400">
+          <div class="w-2 h-2 bg-brand-500 rounded-full animate-pulse"></div>
           <span>Checking sync status...</span>
         </div>
       </div>
@@ -299,18 +299,20 @@
         <!-- Status Message -->
         <div class="space-y-2">
           <div class="flex gap-2 items-center">
-            <div class="w-2 h-2 bg-violet-500 rounded-full animate-pulse"></div>
-            <span class="text-sm font-medium text-white">Sync in progress</span>
+            <div class="w-2 h-2 bg-brand-500 rounded-full animate-pulse"></div>
+            <span class="text-sm font-medium text-black-900 dark:text-white"
+              >Sync in progress</span
+            >
           </div>
           {#if statusMessage}
-            <p class="pl-4 text-sm text-neutral-300">{statusMessage}</p>
+            <p class="pl-4 text-sm text-black-300">{statusMessage}</p>
           {/if}
         </div>
 
         <!-- Progress Bar -->
         {#if syncProgressPercent !== null}
           <div class="space-y-1.5">
-            <div class="flex justify-between text-xs text-neutral-400">
+            <div class="flex justify-between text-xs text-black-400">
               <span>Progress</span>
               <span class="tabular-nums"
                 >{syncProgressPercent !== null
@@ -318,9 +320,9 @@
                   : "0.00"}%</span
               >
             </div>
-            <div class="overflow-hidden h-2 rounded-full bg-neutral-800">
+            <div class="overflow-hidden h-2 rounded-full bg-black-800">
               <div
-                class="h-full bg-violet-500 transition-all duration-300 ease-out"
+                class="h-full bg-brand-500 transition-all duration-300 ease-out"
                 style="width: {syncProgressPercent}%"
               ></div>
             </div>
@@ -330,27 +332,26 @@
         <!-- Phase Indicators -->
         {#if phases.length > 0}
           <div class="pt-2 space-y-2">
-            <h4 class="text-xs font-medium text-neutral-400">Phases</h4>
+            <h4 class="text-xs font-medium text-black-400">Phases</h4>
             <div class="grid grid-cols-2 gap-2">
               {#each phases as phase (phase.phase)}
                 <div class="flex gap-2 items-center text-xs">
                   {#if phase.status === "complete"}
                     <div
-                      class="w-1.5 h-1.5 bg-green-500 rounded-full shrink-0"
+                      class="w-1.5 h-1.5 bg-success-500 rounded-full shrink-0"
                     ></div>
-                    <span class="text-neutral-400">{phase.label}</span>
+                    <span class="text-black-400">{phase.label}</span>
                   {:else if phase.status === "in_progress"}
                     <div
-                      class="w-1.5 h-1.5 bg-violet-500 rounded-full animate-pulse shrink-0"
+                      class="w-1.5 h-1.5 bg-brand-500 rounded-full animate-pulse shrink-0"
                     ></div>
-                    <span class="font-medium text-violet-400"
-                      >{phase.label}</span
+                    <span class="font-medium text-brand-400">{phase.label}</span
                     >
                   {:else}
                     <div
-                      class="w-1.5 h-1.5 rounded-full bg-neutral-600 shrink-0"
+                      class="w-1.5 h-1.5 rounded-full bg-black-600 shrink-0"
                     ></div>
-                    <span class="text-neutral-500">{phase.label}</span>
+                    <span class="text-black-500">{phase.label}</span>
                   {/if}
                 </div>
               {/each}
@@ -360,9 +361,9 @@
 
         <!-- API Query Count -->
         {#if apiQueryCount !== null}
-          <div class="pt-2 border-t border-neutral-800">
-            <p class="text-xs text-neutral-500">
-              API Queries: <span class="tabular-nums text-neutral-300"
+          <div class="pt-2 border-t border-black-800">
+            <p class="text-xs text-black-500">
+              API Queries: <span class="tabular-nums text-black-300"
                 >{apiQueryCount}</span
               >
             </p>
@@ -374,10 +375,10 @@
 
       <!-- Last Sync Info -->
       {#if serverLastSyncTime}
-        <div class="text-xs text-neutral-500">
+        <div class="text-xs text-black-500">
           Last synced {formatLastSync(serverLastSyncTime)}
           {#if apiQueryCount !== null}
-            <span class="text-neutral-400">
+            <span class="text-black-400">
               · {apiQueryCount.toLocaleString()} queries</span
             >
           {/if}
@@ -386,14 +387,16 @@
 
       <!-- Error from previous sync -->
       {#if syncErrorMessage && syncStatus === "error"}
-        <div class="p-3 rounded-md border bg-red-900/20 border-red-800/50">
-          <p class="text-sm text-red-400">{syncErrorMessage}</p>
+        <div
+          class="p-3 rounded-md border bg-danger-900/20 border-danger-800/50"
+        >
+          <p class="text-sm text-danger-400">{syncErrorMessage}</p>
         </div>
       {/if}
 
       <!-- Full Sync Toggle -->
       <div
-        class="flex gap-3 items-start p-4 rounded-lg border transition-colors cursor-pointer border-neutral-700 bg-neutral-800/50 hover:bg-neutral-800/70"
+        class="flex gap-3 items-start p-4 rounded-lg border transition-colors cursor-pointer border-black-700 bg-black-800/50 hover:bg-black-800/70"
         onclick={toggleFullSync}
         role="button"
         tabindex="0"
@@ -409,7 +412,7 @@
           id="fullSync"
           checked={isFullSync}
           onchange={toggleFullSync}
-          class="mt-1 w-4 h-4 text-blue-600 rounded pointer-events-none border-neutral-600 bg-neutral-700 focus:ring-2 focus:ring-blue-500 focus:ring-offset-0 focus:ring-offset-neutral-900"
+          class="mt-1 w-4 h-4 text-blue-600 rounded pointer-events-none border-black-600 bg-black-700 focus:ring-2 focus:ring-blue-500 focus:ring-offset-0 focus:ring-offset-black-900"
         />
         <div class="flex-1">
           <label
@@ -418,7 +421,7 @@
           >
             Full Sync
           </label>
-          <p class="mt-1 text-xs text-neutral-400">
+          <p class="mt-1 text-xs text-black-400">
             Run all sync phases ({phaseOptions.length} phases). Uncheck to select
             specific phases.
           </p>
@@ -427,11 +430,13 @@
 
       <!-- Sync Mode Options -->
       <div class="space-y-2">
-        <h3 class="text-sm font-medium text-white">Sync Mode</h3>
+        <h3 class="text-sm font-medium text-black-900 dark:text-white">
+          Sync Mode
+        </h3>
 
         <!-- Incremental Sync Toggle -->
         <div
-          class="flex gap-3 items-start p-4 rounded-lg border transition-colors cursor-pointer border-green-800/50 bg-green-900/20 hover:bg-green-900/30"
+          class="flex gap-3 items-start p-4 rounded-lg border transition-colors cursor-pointer border-success-800/50 bg-success-900/20 hover:bg-success-900/30"
           onclick={() => {
             incrementalSync = !incrementalSync;
             if (incrementalSync) deepHistorySync = false;
@@ -454,18 +459,18 @@
               incrementalSync = !incrementalSync;
               if (incrementalSync) deepHistorySync = false;
             }}
-            class="mt-1 w-4 h-4 text-green-600 rounded pointer-events-none border-neutral-600 bg-neutral-700 focus:ring-2 focus:ring-green-500 focus:ring-offset-0 focus:ring-offset-neutral-900"
+            class="mt-1 w-4 h-4 text-success-600 rounded pointer-events-none border-black-600 bg-black-700 focus:ring-2 focus:ring-success-500 focus:ring-offset-0 focus:ring-offset-black-900"
           />
           <div class="flex-1">
             <label
               for="incrementalSync"
-              class="block text-sm font-medium text-green-300 cursor-pointer"
+              class="block text-sm font-medium text-success-300 cursor-pointer"
             >
               Incremental Sync
             </label>
-            <p class="mt-1 text-xs text-green-200/70">
+            <p class="mt-1 text-xs text-success-200/70">
               Only fetch issues updated since the last successful sync.
-              <span class="font-medium text-green-400"
+              <span class="font-medium text-success-400"
                 >Fastest option - uses fewest API calls.</span
               >
             </p>
@@ -474,7 +479,7 @@
 
         <!-- Deep History Sync Toggle -->
         <div
-          class="flex gap-3 items-start p-4 rounded-lg border transition-colors cursor-pointer border-amber-800/50 bg-amber-900/20 hover:bg-amber-900/30"
+          class="flex gap-3 items-start p-4 rounded-lg border transition-colors cursor-pointer border-warning-800/50 bg-warning-900/20 hover:bg-warning-900/30"
           onclick={() => {
             deepHistorySync = !deepHistorySync;
             if (deepHistorySync) incrementalSync = false;
@@ -497,19 +502,19 @@
               deepHistorySync = !deepHistorySync;
               if (deepHistorySync) incrementalSync = false;
             }}
-            class="mt-1 w-4 h-4 text-amber-600 rounded pointer-events-none border-neutral-600 bg-neutral-700 focus:ring-2 focus:ring-amber-500 focus:ring-offset-0 focus:ring-offset-neutral-900"
+            class="mt-1 w-4 h-4 text-warning-600 rounded pointer-events-none border-black-600 bg-black-700 focus:ring-2 focus:ring-warning-500 focus:ring-offset-0 focus:ring-offset-black-900"
           />
           <div class="flex-1">
             <label
               for="deepHistorySync"
-              class="block text-sm font-medium text-amber-300 cursor-pointer"
+              class="block text-sm font-medium text-warning-300 cursor-pointer"
             >
               Deep History Sync
             </label>
-            <p class="mt-1 text-xs text-amber-200/70">
+            <p class="mt-1 text-xs text-warning-200/70">
               Fetch issues updated in the last year (365 days) instead of 14
               days.
-              <span class="font-medium text-amber-400"
+              <span class="font-medium text-warning-400"
                 >Slowest option - uses most API calls.</span
               >
             </p>
@@ -520,9 +525,11 @@
       <!-- Phase Options -->
       <div class="space-y-2">
         <div class="flex justify-between items-center">
-          <h3 class="text-sm font-medium text-white">Sync Phases</h3>
+          <h3 class="text-sm font-medium text-black-900 dark:text-white">
+            Sync Phases
+          </h3>
           {#if !isFullSync}
-            <span class="text-xs text-neutral-400">
+            <span class="text-xs text-black-400">
               {selectedPhases.size} of {phaseOptions.length} selected
             </span>
           {/if}
@@ -531,11 +538,11 @@
           {#each phaseOptions as option (option.phase)}
             {@const isRequired = option.phase === REQUIRED_PHASE}
             <div
-              class="flex items-start gap-3 p-3 rounded-lg border border-neutral-700 bg-neutral-800/30 {isRequired
+              class="flex items-start gap-3 p-3 rounded-lg border border-black-700 bg-black-800/30 {isRequired
                 ? 'opacity-75 cursor-not-allowed'
                 : isFullSync
                   ? ''
-                  : 'hover:bg-neutral-800/50 cursor-pointer'} transition-colors"
+                  : 'hover:bg-black-800/50 cursor-pointer'} transition-colors"
               onclick={() => {
                 if (!isFullSync && !isRequired) {
                   handlePhaseToggle(option.phase);
@@ -561,7 +568,7 @@
                 checked={selectedPhases.has(option.phase)}
                 onchange={() => handlePhaseToggle(option.phase)}
                 disabled={isFullSync || isRequired}
-                class="mt-0.5 w-4 h-4 text-blue-600 rounded pointer-events-none border-neutral-600 bg-neutral-700 focus:ring-2 focus:ring-blue-500 focus:ring-offset-0 focus:ring-offset-neutral-900 disabled:opacity-50 disabled:cursor-not-allowed"
+                class="mt-0.5 w-4 h-4 text-blue-600 rounded pointer-events-none border-black-600 bg-black-700 focus:ring-2 focus:ring-blue-500 focus:ring-offset-0 focus:ring-offset-black-900 disabled:opacity-50 disabled:cursor-not-allowed"
               />
               <div class="flex-1 min-w-0">
                 <label
@@ -573,7 +580,7 @@
                 >
                   {option.label}
                 </label>
-                <p class="mt-1 text-xs text-neutral-400">
+                <p class="mt-1 text-xs text-black-400">
                   {option.description}
                 </p>
               </div>
@@ -584,15 +591,18 @@
 
       <!-- Admin Password -->
       <div class="space-y-2">
-        <label for="adminPassword" class="block text-sm font-medium text-white">
-          Admin Password <span class="text-red-400">*</span>
+        <label
+          for="adminPassword"
+          class="block text-sm font-medium text-black-900 dark:text-white"
+        >
+          Admin Password <span class="text-danger-400">*</span>
         </label>
         <input
           type="password"
           id="adminPassword"
           bind:value={adminPassword}
           placeholder="Enter admin password"
-          class="px-3 py-2 w-full text-sm text-white rounded-md border border-neutral-600 bg-neutral-800 placeholder-neutral-500 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+          class="px-3 py-2 w-full text-sm text-white rounded-md border border-black-600 bg-black-800 placeholder-black-500 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
           disabled={isSubmitting}
           autocomplete="off"
         />
@@ -600,8 +610,10 @@
 
       <!-- Form Error Message -->
       {#if error}
-        <div class="p-3 rounded-md border bg-red-900/20 border-red-800/50">
-          <p class="text-sm text-red-400">{error}</p>
+        <div
+          class="p-3 rounded-md border bg-danger-900/20 border-danger-800/50"
+        >
+          <p class="text-sm text-danger-400">{error}</p>
         </div>
       {/if}
 
@@ -636,17 +648,17 @@
     {/if}
 
     <!-- Footer hint -->
-    <div class="pt-4 border-t border-neutral-800">
-      <p class="text-xs text-center text-neutral-500">
+    <div class="pt-4 border-t border-black-800">
+      <p class="text-xs text-center text-black-500">
         <kbd
-          class="px-1.5 py-0.5 rounded border bg-neutral-800 border-neutral-700 text-neutral-300"
+          class="px-1.5 py-0.5 rounded border bg-black-800 border-black-700 text-black-300"
           >Esc</kbd
         >
         to close
         {#if !isSyncing}
           <span class="mx-1.5">·</span>
           <kbd
-            class="px-1.5 py-0.5 rounded border bg-neutral-800 border-neutral-700 text-neutral-300"
+            class="px-1.5 py-0.5 rounded border bg-black-800 border-black-700 text-black-300"
             >Cmd+Enter</kbd
           >
           to start

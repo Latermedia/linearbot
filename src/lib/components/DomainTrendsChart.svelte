@@ -19,18 +19,18 @@
 
   let { domains, height = 180 }: Props = $props();
 
-  // 10 carefully selected colors that work well together on dark backgrounds
+  // 10 carefully selected colors from the design system palette
   const baseColors = [
-    "#8b5cf6", // violet-500
-    "#10b981", // emerald-500
-    "#f59e0b", // amber-500
-    "#3b82f6", // blue-500
-    "#ec4899", // pink-500
-    "#06b6d4", // cyan-500
-    "#f97316", // orange-500
-    "#84cc16", // lime-500
-    "#a855f7", // purple-500
-    "#14b8a6", // teal-500
+    "#8661D2", // brand-500
+    "#49AA7C", // success-500
+    "#E7B24F", // warning-500
+    "#2563EB", // blue-600
+    "#EC4899", // pink-500
+    "#0EA5E9", // sky-500
+    "#FE6030", // hot-take-600
+    "#84CC16", // lime-500
+    "#9333EA", // purple-600
+    "#14B8A6", // teal-500
   ];
 
   // Generate color for domain index - cycles through base colors with slight hue shift
@@ -439,11 +439,11 @@
 <div class="relative" bind:this={container}>
   <!-- Header with metric selector -->
   <div class="flex items-center justify-between mb-2">
-    <span class="text-xs font-medium text-neutral-400">Domain Trends</span>
+    <span class="text-xs font-medium text-black-400">Domain Trends</span>
 
     <select
       bind:value={selectedMetric}
-      class="text-xs bg-neutral-800 border border-white/10 rounded px-2 py-1 text-neutral-300 focus:outline-none focus:ring-1 focus:ring-violet-500/50 cursor-pointer"
+      class="text-xs bg-black-800 border border-white/10 rounded px-2 py-1 text-black-300 focus:outline-none focus:ring-1 focus:ring-violet-500/50 cursor-pointer"
     >
       {#each metricOptions as option (option.key)}
         <option value={option.key}>{option.label}</option>
@@ -500,7 +500,7 @@
             y={getY(y) ?? 0}
             text-anchor="end"
             dominant-baseline="middle"
-            class="fill-neutral-400 text-[11px] font-medium"
+            class="fill-black-400 text-[11px] font-medium"
           >
             {y}%
           </text>
@@ -514,7 +514,7 @@
             {x}
             y={chartHeight - padding.bottom + 20}
             text-anchor="middle"
-            class="fill-neutral-400 text-[11px] font-medium"
+            class="fill-black-400 text-[11px] font-medium"
           >
             {label}
           </text>
@@ -544,7 +544,7 @@
     <!-- Hover Tooltip -->
     {#if hoveredData}
       <div
-        class="absolute z-10 px-3 py-2 text-xs bg-neutral-900 border border-white/10 rounded-lg shadow-xl pointer-events-none"
+        class="absolute z-10 px-3 py-2 text-xs bg-black-900 border border-white/10 rounded-lg shadow-xl pointer-events-none"
         style="left: {tooltipPosition.x}px; top: {tooltipPosition.y}px;"
       >
         <div class="flex items-center gap-2">
@@ -552,9 +552,9 @@
             class="w-2 h-2 rounded-full"
             style="background-color: {hoveredData.color}"
           ></span>
-          <span class="text-neutral-300">{hoveredData.domain}</span>
+          <span class="text-black-300">{hoveredData.domain}</span>
           {#if hoveredData.value !== null}
-            <span class="ml-auto font-medium text-white"
+            <span class="ml-auto font-medium text-black-900 dark:text-white"
               >{hoveredData.value}%</span
             >
           {/if}
@@ -580,20 +580,20 @@
             class="w-3 h-[2px] rounded-full"
             style="background-color: {line.color}"
           ></div>
-          <span class="text-neutral-400 text-[10px]">{line.name}</span>
+          <span class="text-black-400 text-[10px]">{line.name}</span>
         </button>
       {/each}
     </div>
   {:else if domains.length === 0}
     <div
-      class="flex justify-center items-center text-sm text-neutral-500"
+      class="flex justify-center items-center text-sm text-black-500"
       style="height: {height + 60}px;"
     >
       No domains configured
     </div>
   {:else}
     <div
-      class="flex justify-center items-center text-sm text-neutral-500"
+      class="flex justify-center items-center text-sm text-black-500"
       style="height: {height + 60}px;"
     >
       No trend data available

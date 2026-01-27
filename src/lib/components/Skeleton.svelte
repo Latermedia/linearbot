@@ -13,7 +13,7 @@
   bind:this={ref}
   data-slot="skeleton"
   class={cn(
-    "bg-neutral-200 dark:bg-neutral-800 animate-pulse rounded-md",
+    "bg-black-200 dark:bg-black-800 animate-pulse rounded-md",
     className
   )}
   {...restProps}

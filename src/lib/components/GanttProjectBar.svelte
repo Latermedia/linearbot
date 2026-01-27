@@ -82,8 +82,8 @@
   <div
     class={cn(
       "absolute h-10 rounded-md flex items-center px-6 cursor-pointer transition-all duration-150",
-      "bg-neutral-600 dark:bg-neutral-700 text-white text-xs font-medium overflow-hidden",
-      "hover:bg-neutral-500 dark:hover:bg-neutral-600 hover:shadow-sm"
+      "bg-black-600 dark:bg-black-700 text-white text-xs font-medium overflow-hidden",
+      "hover:bg-black-500 dark:hover:bg-black-600 hover:shadow-sm"
     )}
     style={`
       left: ${position.startPercent}%; 
@@ -105,7 +105,7 @@
   >
     <!-- Progress fill background -->
     <div
-      class="absolute inset-0 rounded-md bg-violet-500/40 dark:bg-violet-500/50"
+      class="absolute inset-0 rounded-md bg-brand-500/40 dark:bg-brand-500/50"
       style={`width: ${progress}%;`}
     ></div>
     <!-- Target date marker (shows when in predicted mode) -->
@@ -116,17 +116,17 @@
         title={`Target: ${new Date(project.targetDate!).toLocaleDateString("en-US", { month: "short", day: "numeric" })}`}
       >
         <!-- Vertical line -->
-        <div class="w-0.5 h-full bg-amber-400/80"></div>
+        <div class="w-0.5 h-full bg-warning-400/80"></div>
         <!-- Diamond marker at top -->
         <div
-          class="absolute -top-1 w-2.5 h-2.5 bg-amber-400 rotate-45 border border-amber-500"
+          class="absolute -top-1 w-2.5 h-2.5 bg-warning-400 rotate-45 border border-warning-500"
         ></div>
       </div>
     {/if}
     <!-- Project name overlay -->
     <span class="flex relative z-10 gap-1.5 items-center truncate">
       {#if !hideWarnings && hasWarnings}
-        <span class="text-sm text-amber-400 shrink-0">⚠️</span>
+        <span class="text-sm text-warning-400 shrink-0">⚠️</span>
       {/if}
       {project.projectName}
     </span>

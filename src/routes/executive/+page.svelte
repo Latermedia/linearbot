@@ -187,15 +187,17 @@
 <div class="space-y-6">
   <!-- Header -->
   <div>
-    <h1 class="text-3xl font-bold text-neutral-900 dark:text-white">
+    <h1
+      class="text-3xl font-bold text-black-900 dark:text-black-900 dark:text-white"
+    >
       Executive Focus
     </h1>
     <div class="flex gap-2 items-center mt-2">
-      <p class="text-sm text-neutral-600 dark:text-neutral-400">
+      <p class="text-sm text-black-600 dark:text-black-400">
         High-level progress overview for projects with
       </p>
       <Badge variant="outline">Executive Visibility</Badge>
-      <p class="text-sm text-neutral-600 dark:text-neutral-400">label</p>
+      <p class="text-sm text-black-600 dark:text-black-400">label</p>
     </div>
   </div>
 
@@ -203,26 +205,32 @@
   {#if !loading && !error && executiveProjects.length > 0}
     <div class="flex flex-wrap gap-4">
       <Card class="max-w-[200px]">
-        <div class="mb-1 text-xs text-neutral-500 dark:text-neutral-300">
+        <div class="mb-1 text-xs text-black-500 dark:text-black-300">
           Active Projects
         </div>
-        <div class="text-2xl font-semibold text-neutral-900 dark:text-white">
+        <div
+          class="text-2xl font-semibold text-black-900 dark:text-black-900 dark:text-white"
+        >
           {executiveProjects.length}
         </div>
       </Card>
       <Card class="max-w-[200px]">
-        <div class="mb-1 text-xs text-neutral-500 dark:text-neutral-300">
+        <div class="mb-1 text-xs text-black-500 dark:text-black-300">
           Total Issues
         </div>
-        <div class="text-2xl font-semibold text-neutral-900 dark:text-white">
+        <div
+          class="text-2xl font-semibold text-black-900 dark:text-black-900 dark:text-white"
+        >
           {executiveProjects.reduce((sum, p) => sum + p.totalIssues, 0)}
         </div>
       </Card>
       <Card class="max-w-[200px]">
-        <div class="mb-1 text-xs text-neutral-500 dark:text-neutral-300">
+        <div class="mb-1 text-xs text-black-500 dark:text-black-300">
           Overall Progress
         </div>
-        <div class="text-2xl font-semibold text-neutral-900 dark:text-white">
+        <div
+          class="text-2xl font-semibold text-black-900 dark:text-black-900 dark:text-white"
+        >
           {Math.round(
             (executiveProjects.reduce((sum, p) => sum + p.completedIssues, 0) /
               Math.max(
@@ -234,29 +242,35 @@
         </div>
       </Card>
       <Card class="max-w-[200px]">
-        <div class="mb-1 text-xs text-neutral-500 dark:text-neutral-300">
+        <div class="mb-1 text-xs text-black-500 dark:text-black-300">
           Issues Completed (Last 2 Weeks)
         </div>
-        <div class="text-2xl font-semibold text-neutral-900 dark:text-white">
+        <div
+          class="text-2xl font-semibold text-black-900 dark:text-black-900 dark:text-white"
+        >
           {executiveStats.totalCompleted}
         </div>
       </Card>
       <Card class="max-w-[200px]">
-        <div class="mb-1 text-xs text-neutral-500 dark:text-neutral-300">
+        <div class="mb-1 text-xs text-black-500 dark:text-black-300">
           Recent Velocity
         </div>
-        <div class="text-2xl font-semibold text-neutral-900 dark:text-white">
+        <div
+          class="text-2xl font-semibold text-black-900 dark:text-black-900 dark:text-white"
+        >
           {executiveStats.recentVelocity.toFixed(1)}
         </div>
-        <div class="text-xs text-neutral-600 dark:text-neutral-400">
+        <div class="text-xs text-black-600 dark:text-black-400">
           issues/week
         </div>
       </Card>
       <Card class="max-w-[200px]">
-        <div class="mb-1 text-xs text-neutral-500 dark:text-neutral-300">
+        <div class="mb-1 text-xs text-black-500 dark:text-black-300">
           Active Engineers
         </div>
-        <div class="text-2xl font-semibold text-neutral-900 dark:text-white">
+        <div
+          class="text-2xl font-semibold text-black-900 dark:text-black-900 dark:text-white"
+        >
           {executiveStats.activeEngineers}
         </div>
       </Card>
@@ -265,7 +279,7 @@
 
   <!-- Sticky controls wrapper -->
   <div
-    class="sticky top-[60px] z-30 backdrop-blur-sm bg-white/95 dark:bg-neutral-950/95 -mx-4 sm:-mx-6 lg:-mx-8 px-4 sm:px-6 lg:px-8 pt-1 -mt-1"
+    class="sticky top-[60px] z-30 backdrop-blur-sm bg-white/95 dark:bg-black-950/95 -mx-4 sm:-mx-6 lg:-mx-8 px-4 sm:px-6 lg:px-8 pt-1 -mt-1"
   >
     <!-- View controls -->
     <div
@@ -318,27 +332,31 @@
       </Card>
     </div>
   {:else if error}
-    <Card class="border-red-500/50">
-      <div class="mb-3 text-sm font-medium text-red-600 dark:text-red-400">
+    <Card class="border-danger-500/50">
+      <div
+        class="mb-3 text-sm font-medium text-danger-600 dark:text-danger-400"
+      >
         Error Loading Data
       </div>
-      <p class="mb-3 text-neutral-700 dark:text-neutral-400">{error}</p>
-      <p class="text-sm text-neutral-600 dark:text-neutral-500">
+      <p class="mb-3 text-black-700 dark:text-black-400">{error}</p>
+      <p class="text-sm text-black-600 dark:text-black-500">
         Make sure the database is synced. Run: <code
-          class="px-2 py-1 font-mono text-xs rounded bg-neutral-100 dark:bg-neutral-800 text-neutral-700 dark:text-neutral-300"
+          class="px-2 py-1 font-mono text-xs rounded bg-black-100 dark:bg-black-800 text-black-700 dark:text-black-300"
           >bun run sync</code
         >
       </p>
-      <p class="mt-2 text-sm text-neutral-500 dark:text-neutral-500">
+      <p class="mt-2 text-sm text-black-500 dark:text-black-500">
         No Linear API key? Mock data will be generated automatically.
       </p>
     </Card>
   {:else if executiveProjects.length === 0}
     <Card>
-      <div class="mb-3 text-sm font-medium text-neutral-900 dark:text-white">
+      <div
+        class="mb-3 text-sm font-medium text-black-900 dark:text-black-900 dark:text-white"
+      >
         No Executive Projects Found
       </div>
-      <p class="text-neutral-700 dark:text-neutral-400">
+      <p class="text-black-700 dark:text-black-400">
         No projects found with "Executive Visibility" label that are currently
         in progress.
       </p>
@@ -351,13 +369,13 @@
         {@const engineersArray = Array.from(project.engineers)}
 
         <Card
-          class="p-6 cursor-pointer hover:bg-neutral-50 dark:hover:bg-neutral-900 transition-colors"
+          class="p-6 cursor-pointer hover:bg-black-50 dark:hover:bg-black-900 transition-colors"
           onclick={() => handleProjectClick(project)}
         >
           <!-- Project Header -->
           <div class="mb-4">
             <h3
-              class="mb-1 text-lg font-semibold text-neutral-900 dark:text-white"
+              class="mb-1 text-lg font-semibold text-black-900 dark:text-black-900 dark:text-white"
             >
               {project.projectName}
             </h3>
@@ -371,16 +389,16 @@
           <!-- Recent Progress (Last 2 Weeks) -->
           {#if recentProgress}
             <div class="mb-4">
-              <div class="mb-1 text-xs text-neutral-500 dark:text-neutral-400">
+              <div class="mb-1 text-xs text-black-500 dark:text-black-400">
                 Progress (Last 2 Weeks)
               </div>
               <div class="flex gap-2 items-baseline">
                 <span
-                  class="text-xl font-semibold text-neutral-900 dark:text-white"
+                  class="text-xl font-semibold text-black-900 dark:text-black-900 dark:text-white"
                 >
                   {recentProgress.completed}
                 </span>
-                <span class="text-sm text-neutral-600 dark:text-neutral-400">
+                <span class="text-sm text-black-600 dark:text-black-400">
                   issues completed
                 </span>
               </div>
@@ -391,22 +409,22 @@
           <div class="grid grid-cols-2 gap-3 mb-4">
             <!-- Velocity -->
             <div>
-              <div class="mb-1 text-xs text-neutral-500 dark:text-neutral-400">
+              <div class="mb-1 text-xs text-black-500 dark:text-black-400">
                 Velocity
               </div>
               <div
-                class="text-lg font-semibold text-neutral-900 dark:text-white"
+                class="text-lg font-semibold text-black-900 dark:text-black-900 dark:text-white"
               >
                 {project.velocity.toFixed(1)}
               </div>
-              <div class="text-xs text-neutral-600 dark:text-neutral-400">
+              <div class="text-xs text-black-600 dark:text-black-400">
                 issues/week
               </div>
             </div>
 
             <!-- Health Status -->
             <div>
-              <div class="mb-1 text-xs text-neutral-500 dark:text-neutral-400">
+              <div class="mb-1 text-xs text-black-500 dark:text-black-400">
                 Health
               </div>
               <div class="text-lg font-semibold {healthDisplay.colorClass}">
@@ -416,11 +434,11 @@
 
             <!-- Teams -->
             <div>
-              <div class="mb-1 text-xs text-neutral-500 dark:text-neutral-400">
+              <div class="mb-1 text-xs text-black-500 dark:text-black-400">
                 Teams
               </div>
               <div
-                class="text-lg font-semibold text-neutral-900 dark:text-white"
+                class="text-lg font-semibold text-black-900 dark:text-black-900 dark:text-white"
               >
                 {teamsArray.length}
               </div>
@@ -428,11 +446,11 @@
 
             <!-- Engineers -->
             <div>
-              <div class="mb-1 text-xs text-neutral-500 dark:text-neutral-400">
+              <div class="mb-1 text-xs text-black-500 dark:text-black-400">
                 Engineers
               </div>
               <div
-                class="text-lg font-semibold text-neutral-900 dark:text-white"
+                class="text-lg font-semibold text-black-900 dark:text-black-900 dark:text-white"
               >
                 {engineersArray.length}
               </div>
@@ -441,13 +459,13 @@
 
           <!-- Timeline -->
           {#if project.estimatedEndDate}
-            <div
-              class="pt-4 border-t border-neutral-200 dark:border-neutral-800"
-            >
-              <div class="mb-1 text-xs text-neutral-500 dark:text-neutral-400">
+            <div class="pt-4 border-t border-black-200 dark:border-black-800">
+              <div class="mb-1 text-xs text-black-500 dark:text-black-400">
                 Estimated Completion
               </div>
-              <div class="text-sm font-medium text-neutral-900 dark:text-white">
+              <div
+                class="text-sm font-medium text-black-900 dark:text-black-900 dark:text-white"
+              >
                 {formatDateFull(project.estimatedEndDate)}
               </div>
             </div>

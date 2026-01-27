@@ -26,7 +26,7 @@
     <select
       value={filter.teamKey ?? ""}
       onchange={handleTeamChange}
-      class="appearance-none bg-neutral-100 dark:bg-white/5 text-neutral-900 dark:text-white text-sm font-medium rounded-md pl-3 pr-8 py-1.5 cursor-pointer hover:bg-neutral-200 dark:hover:bg-white/10 transition-colors focus:outline-none focus:ring-2 focus:ring-blue-500/50 min-w-[180px]"
+      class="appearance-none bg-black-100 dark:bg-white/5 text-black-900 dark:text-white text-sm font-medium rounded-md pl-3 pr-8 py-1.5 cursor-pointer hover:bg-black-200 dark:hover:bg-white/10 transition-colors focus:outline-none focus:ring-2 focus:ring-blue-500/50 min-w-[180px]"
       aria-label="Filter by team"
     >
       <option value="">All Teams</option>
@@ -41,7 +41,7 @@
       {/each}
     </select>
     <ChevronDown
-      class="absolute right-2 top-1/2 -translate-y-1/2 w-4 h-4 text-neutral-500 dark:text-neutral-400 pointer-events-none"
+      class="absolute right-2 top-1/2 -translate-y-1/2 w-4 h-4 text-black-500 dark:text-black-400 pointer-events-none"
     />
   </div>
 
@@ -49,7 +49,7 @@
     <button
       type="button"
       onclick={handleReset}
-      class="inline-flex items-center gap-1 px-2 py-1.5 text-sm text-neutral-500 dark:text-neutral-400 hover:text-neutral-700 dark:hover:text-white rounded hover:bg-neutral-200 dark:hover:bg-white/10 transition-colors cursor-pointer"
+      class="inline-flex items-center gap-1 px-2 py-1.5 text-sm text-black-500 dark:text-black-400 hover:text-black-700 dark:hover:text-white rounded hover:bg-black-200 dark:hover:bg-white/10 transition-colors cursor-pointer"
       title="Reset filter"
     >
       <X class="w-3 h-3" />

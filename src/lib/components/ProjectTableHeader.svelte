@@ -13,7 +13,9 @@
 </script>
 
 <div class="flex items-center justify-between mb-4">
-  <div class="text-lg font-medium text-neutral-900 dark:text-white">
+  <div
+    class="text-lg font-medium text-black-900 dark:text-black-900 dark:text-white"
+  >
     {groupName}
   </div>
   <Badge variant="outline">{projectCount} projects</Badge>

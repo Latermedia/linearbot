@@ -34,9 +34,9 @@
 
     const variants = {
       default:
-        "hover:bg-neutral-100 dark:hover:bg-white/10 data-[state=on]:bg-neutral-100 dark:data-[state=on]:bg-white/10 data-[state=on]:text-neutral-900 dark:data-[state=on]:text-white text-neutral-600 dark:text-neutral-400 bg-transparent rounded",
+        "hover:bg-black-100 dark:hover:bg-white/10 data-[state=on]:bg-black-100 dark:data-[state=on]:bg-white/10 data-[state=on]:text-black-900 dark:data-[state=on]:text-white text-black-600 dark:text-black-400 bg-transparent rounded",
       outline:
-        "hover:bg-neutral-50 dark:hover:bg-white/5 data-[state=on]:bg-transparent data-[state=on]:text-neutral-950 dark:data-[state=on]:text-white text-neutral-600 dark:text-neutral-400 bg-transparent rounded-md",
+        "hover:bg-black-50 dark:hover:bg-white/5 data-[state=on]:bg-transparent data-[state=on]:text-black-950 dark:data-[state=on]:text-white text-black-600 dark:text-black-400 bg-transparent rounded-md",
     };
 
     const sizes = {

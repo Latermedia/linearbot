@@ -110,7 +110,7 @@
   class={cn(
     "group/toggle-group relative flex w-fit items-center",
     variant === "outline" &&
-      "bg-neutral-100 dark:bg-white/5 rounded-md p-1 gap-1",
+      "bg-black-100 dark:bg-white/5 rounded-md p-1 gap-1",
     className
   )}
   role="group"

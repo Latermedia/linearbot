@@ -1,7 +1,11 @@
 <script lang="ts">
   import Badge from "./Badge.svelte";
   import UserProfile from "./UserProfile.svelte";
-  import { formatDate, formatRelativeDate, getHealthDisplay } from "$lib/utils/project-helpers";
+  import {
+    formatDate,
+    formatRelativeDate,
+    getHealthDisplay,
+  } from "$lib/utils/project-helpers";
 
   interface InitiativeData {
     id: string;
@@ -73,24 +77,23 @@
 <div class="overflow-x-auto">
   <table class="w-full text-sm">
     <thead>
-      <tr class="border-b border-white/10">
-        <th
-          class="px-4 py-3 font-medium text-left text-neutral-400 min-w-[200px]"
+      <tr class="border-b border-black-200 dark:border-white/10">
+        <th class="px-4 py-3 font-medium text-left text-black-400 min-w-[200px]"
           >Name</th
         >
-        <th class="px-4 py-3 font-medium text-left text-neutral-400 w-[120px]"
+        <th class="px-4 py-3 font-medium text-left text-black-400 w-[120px]"
           >Status</th
         >
-        <th class="px-4 py-3 font-medium text-left text-neutral-400 w-[120px]"
+        <th class="px-4 py-3 font-medium text-left text-black-400 w-[120px]"
           >Health</th
         >
-        <th class="px-4 py-3 font-medium text-center text-neutral-400 w-[100px]"
+        <th class="px-4 py-3 font-medium text-center text-black-400 w-[100px]"
           >Projects</th
         >
-        <th class="px-4 py-3 font-medium text-left text-neutral-400 w-[140px]"
+        <th class="px-4 py-3 font-medium text-left text-black-400 w-[140px]"
           >Target/Completed</th
         >
-        <th class="px-4 py-3 font-medium text-right text-neutral-400 w-[120px]"
+        <th class="px-4 py-3 font-medium text-right text-black-400 w-[120px]"
           >Updated</th
         >
       </tr>
@@ -100,7 +103,7 @@
         {@const projectIds = parseProjectIds(initiative.project_ids)}
         {@const healthDisplay = getHealthBadgeDisplay(initiative.health)}
         <tr
-          class="border-b transition-colors cursor-pointer border-white/5 hover:bg-white/5"
+          class="border-b transition-colors cursor-pointer border-white/5 hover:bg-black-100 dark:hover:bg-black-50 dark:bg-white/5"
           onclick={() => onInitiativeClick(initiative)}
           role="button"
           tabindex="0"
@@ -113,7 +116,9 @@
         >
           <td class="px-4 py-3">
             <div class="flex flex-col gap-1">
-              <div class="text-sm font-medium text-neutral-900 dark:text-white">
+              <div
+                class="text-sm font-medium text-black-900 dark:text-black-900 dark:text-white"
+              >
                 {initiative.name}
               </div>
               {#if initiative.owner_name}
@@ -123,7 +128,7 @@
                     avatarUrl={null}
                     size="xs"
                   />
-                  <span class="text-xs text-neutral-500 dark:text-neutral-400"
+                  <span class="text-xs text-black-500 dark:text-black-400"
                     >Owner</span
                   >
                 </div>
@@ -147,7 +152,7 @@
                     : initiative.status || "—"}
               </Badge>
             {:else}
-              <span class="text-sm text-neutral-400 dark:text-neutral-600">—</span>
+              <span class="text-sm text-black-400 dark:text-black-600">—</span>
             {/if}
           </td>
           <td class="px-4 py-3">
@@ -164,13 +169,15 @@
                 {projectIds.length}
               </Badge>
             {:else}
-              <span class="text-sm text-neutral-400 dark:text-neutral-600">—</span>
+              <span class="text-sm text-black-400 dark:text-black-600">—</span>
             {/if}
           </td>
-          <td class="px-4 py-3 text-sm text-neutral-600 dark:text-neutral-400">
+          <td class="px-4 py-3 text-sm text-black-600 dark:text-black-400">
             {getDisplayDate(initiative)}
           </td>
-          <td class="px-4 py-3 text-right text-sm text-neutral-400 dark:text-neutral-500">
+          <td
+            class="px-4 py-3 text-right text-sm text-black-400 dark:text-black-500"
+          >
             {formatRelativeDate(initiative.updated_at)}
           </td>
         </tr>
@@ -178,4 +185,3 @@
     </tbody>
   </table>
 </div>
-

@@ -11,16 +11,16 @@
     variants: {
       variant: {
         default:
-          "bg-violet-600 text-white hover:bg-violet-500 active:bg-violet-700 rounded focus:outline-none focus:ring-1 focus:ring-violet-500/50 focus:border-violet-500",
+          "bg-brand-600 text-white hover:bg-brand-500 active:bg-brand-700 rounded focus:outline-none focus:ring-1 focus:ring-brand-500/50 focus:border-brand-500",
         destructive:
-          "bg-red-600/80 text-white hover:bg-red-600 rounded focus:outline-none focus:ring-1 focus:ring-red-500/50",
+          "bg-danger-600/80 text-white hover:bg-danger-600 rounded focus:outline-none focus:ring-1 focus:ring-danger-500/50",
         outline:
-          "bg-transparent border border-neutral-300 dark:border-white/10 text-neutral-700 dark:text-neutral-300 hover:bg-neutral-100 dark:hover:bg-white/10 active:bg-neutral-200 dark:active:bg-white/15 hover:text-neutral-900 dark:hover:text-white rounded focus:outline-none focus:ring-1 focus:ring-violet-500/50 focus:border-violet-500",
+          "bg-transparent border border-black-300 dark:border-white/10 text-black-700 dark:text-black-300 hover:bg-black-100 dark:hover:bg-white/10 active:bg-black-200 dark:active:bg-white/15 hover:text-black-900 dark:hover:text-white rounded focus:outline-none focus:ring-1 focus:ring-brand-500/50 focus:border-brand-500",
         secondary:
-          "bg-neutral-100 dark:bg-white/5 text-neutral-700 dark:text-neutral-300 hover:bg-neutral-200 dark:hover:bg-white/10 active:bg-neutral-300 dark:active:bg-white/15 hover:text-neutral-900 dark:hover:text-white rounded focus:outline-none focus:ring-1 focus:ring-violet-500/50",
+          "bg-black-100 dark:bg-white/5 text-black-700 dark:text-black-300 hover:bg-black-200 dark:hover:bg-white/10 active:bg-black-300 dark:active:bg-white/15 hover:text-black-900 dark:hover:text-white rounded focus:outline-none focus:ring-1 focus:ring-brand-500/50",
         ghost:
-          "text-neutral-600 dark:text-neutral-400 hover:bg-neutral-100 dark:hover:bg-white/5 active:bg-neutral-200 dark:active:bg-white/10 hover:text-neutral-900 dark:hover:text-white rounded focus:outline-none focus:ring-1 focus:ring-violet-500/50",
-        link: "text-violet-500 underline-offset-4 hover:text-violet-400 hover:underline focus:outline-none focus:ring-1 focus:ring-violet-500/50",
+          "text-black-600 dark:text-black-400 hover:bg-black-100 dark:hover:bg-white/5 active:bg-black-200 dark:active:bg-white/10 hover:text-black-900 dark:hover:text-white rounded focus:outline-none focus:ring-1 focus:ring-brand-500/50",
+        link: "text-brand-500 underline-offset-4 hover:text-brand-400 hover:underline focus:outline-none focus:ring-1 focus:ring-brand-500/50",
       },
       size: {
         default: "h-8 px-3 py-1.5",

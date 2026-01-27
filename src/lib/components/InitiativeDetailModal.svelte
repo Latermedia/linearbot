@@ -209,12 +209,12 @@
 >
   {#snippet headerSnippet()}
     <div
-      class="flex justify-between items-start p-6 pb-4 border-b shrink-0 border-white/10"
+      class="flex justify-between items-start p-6 pb-4 border-b shrink-0 border-black-200 dark:border-white/10"
     >
       <div class="flex-1 min-w-0">
         <h2
           id="modal-title"
-          class="flex gap-2 items-center text-xl font-medium text-white"
+          class="flex gap-2 items-center text-xl font-medium text-black-900 dark:text-white"
         >
           {initiative.name}
           {#if initiativeUrl}
@@ -222,14 +222,14 @@
               href={initiativeUrl}
               target="_blank"
               rel="noopener noreferrer"
-              class="ml-2 text-sm text-violet-400 underline transition-colors duration-150 hover:text-violet-300"
+              class="ml-2 text-sm text-brand-400 underline transition-colors duration-150 hover:text-brand-300"
             >
               Open in Linear →
             </a>
           {/if}
         </h2>
         {#if initiative.description}
-          <div class="mt-1.5 text-sm text-neutral-400">
+          <div class="mt-1.5 text-sm text-black-400">
             {initiative.description}
           </div>
         {/if}
@@ -259,7 +259,7 @@
         </div>
       </div>
       <button
-        class="inline-flex justify-center items-center p-1.5 rounded transition-colors duration-150 cursor-pointer text-neutral-400 hover:text-white hover:bg-white/10"
+        class="inline-flex justify-center items-center p-1.5 rounded transition-colors duration-150 cursor-pointer text-black-400 hover:text-white hover:bg-black-100 dark:bg-white/10"
         onclick={onclose}
         aria-label="Close modal"
         title="Close (ESC)"
@@ -286,7 +286,7 @@
     <div class="grid grid-cols-2 gap-6 mb-6 sm:grid-cols-3">
       {#if initiative.owner_name}
         <div>
-          <div class="mb-1 text-xs text-neutral-500">Owner</div>
+          <div class="mb-1 text-xs text-black-500">Owner</div>
           <div class="flex gap-2 items-center">
             <UserProfile
               name={initiative.owner_name}
@@ -298,7 +298,7 @@
       {/if}
       {#if initiative.creator_name}
         <div>
-          <div class="mb-1 text-xs text-neutral-500">Creator</div>
+          <div class="mb-1 text-xs text-black-500">Creator</div>
           <div class="flex gap-2 items-center">
             <UserProfile
               name={initiative.creator_name}
@@ -310,57 +310,59 @@
       {/if}
       {#if projectIds.length > 0}
         <div>
-          <div class="mb-1 text-xs text-neutral-500">Linked Projects</div>
-          <div class="text-sm font-medium text-white">{projectIds.length}</div>
+          <div class="mb-1 text-xs text-black-500">Linked Projects</div>
+          <div class="text-sm font-medium text-black-900 dark:text-white">
+            {projectIds.length}
+          </div>
         </div>
       {/if}
     </div>
 
     <!-- Dates -->
     <div class="mb-6">
-      <div class="mb-3 text-sm font-medium text-neutral-300">Dates</div>
+      <div class="mb-3 text-sm font-medium text-black-300">Dates</div>
       <div class="grid grid-cols-2 gap-4 sm:grid-cols-3">
         {#if initiative.target_date}
           <div>
-            <div class="mb-1 text-xs text-neutral-500">Target Date</div>
-            <div class="text-sm text-white">
+            <div class="mb-1 text-xs text-black-500">Target Date</div>
+            <div class="text-sm text-black-900 dark:text-white">
               {formatDateFull(initiative.target_date)}
             </div>
           </div>
         {/if}
         {#if initiative.completed_at}
           <div>
-            <div class="mb-1 text-xs text-neutral-500">Completed</div>
-            <div class="text-sm text-white">
+            <div class="mb-1 text-xs text-black-500">Completed</div>
+            <div class="text-sm text-black-900 dark:text-white">
               {formatDateFull(initiative.completed_at)}
             </div>
           </div>
         {/if}
         {#if initiative.started_at}
           <div>
-            <div class="mb-1 text-xs text-neutral-500">Started</div>
-            <div class="text-sm text-white">
+            <div class="mb-1 text-xs text-black-500">Started</div>
+            <div class="text-sm text-black-900 dark:text-white">
               {formatDateFull(initiative.started_at)}
             </div>
           </div>
         {/if}
         {#if initiative.archived_at}
           <div>
-            <div class="mb-1 text-xs text-neutral-500">Archived</div>
-            <div class="text-sm text-white">
+            <div class="mb-1 text-xs text-black-500">Archived</div>
+            <div class="text-sm text-black-900 dark:text-white">
               {formatDateFull(initiative.archived_at)}
             </div>
           </div>
         {/if}
         <div>
-          <div class="mb-1 text-xs text-neutral-500">Created</div>
-          <div class="text-sm text-white">
+          <div class="mb-1 text-xs text-black-500">Created</div>
+          <div class="text-sm text-black-900 dark:text-white">
             {formatDateFull(initiative.created_at)}
           </div>
         </div>
         <div>
-          <div class="mb-1 text-xs text-neutral-500">Updated</div>
-          <div class="text-sm text-white">
+          <div class="mb-1 text-xs text-black-500">Updated</div>
+          <div class="text-sm text-black-900 dark:text-white">
             {formatRelativeDate(initiative.updated_at)}
           </div>
         </div>
@@ -369,7 +371,7 @@
 
     <!-- Health -->
     <div class="mb-6">
-      <div class="mb-2 text-xs text-neutral-500">Health</div>
+      <div class="mb-2 text-xs text-black-500">Health</div>
       {#if healthUpdates.length > 0}
         {@const latestUpdate = healthUpdates[0]}
         {@const updateHealthDisplay = latestUpdate.health
@@ -382,7 +384,7 @@
         {@const isStaleHealth = daysSinceUpdate > 7}
 
         {#if isStaleHealth}
-          <div class="flex gap-2 items-center mb-2 text-xs text-amber-500">
+          <div class="flex gap-2 items-center mb-2 text-xs text-warning-500">
             <span>⚠️</span>
             <span>Health update is {daysSinceUpdate} days old</span>
           </div>
@@ -394,9 +396,7 @@
               {@const currentUpdateHealthDisplay = update.health
                 ? getHealthDisplay(update.health)
                 : null}
-              <div
-                class="p-3 rounded-md border bg-neutral-800/50 border-white/5"
-              >
+              <div class="p-3 rounded-md border bg-black-800/50 border-white/5">
                 <div class="flex gap-2 items-center mb-2">
                   {#if currentUpdateHealthDisplay}
                     <Badge
@@ -406,11 +406,11 @@
                       {currentUpdateHealthDisplay.text}
                     </Badge>
                   {/if}
-                  <span class="text-xs text-neutral-500">
+                  <span class="text-xs text-black-500">
                     {formatRelativeDate(update.createdAt)}
                   </span>
                   {#if update.userName}
-                    <span class="text-neutral-600">•</span>
+                    <span class="text-black-600">•</span>
                     <UserProfile
                       name={update.userName}
                       avatarUrl={update.userAvatarUrl}
@@ -419,7 +419,7 @@
                   {/if}
                 </div>
                 <div
-                  class="text-sm leading-relaxed whitespace-pre-wrap text-neutral-200"
+                  class="text-sm leading-relaxed whitespace-pre-wrap text-black-200"
                 >
                   {update.body}
                 </div>
@@ -427,13 +427,13 @@
             {/each}
             <button
               onclick={() => (showAllHealthUpdates = false)}
-              class="mt-2 text-xs text-violet-400 underline transition-colors duration-150 cursor-pointer hover:text-violet-300"
+              class="mt-2 text-xs text-brand-400 underline transition-colors duration-150 cursor-pointer hover:text-brand-300"
             >
               Show only latest update
             </button>
           </div>
         {:else}
-          <div class="p-3 rounded-md border bg-neutral-800/50 border-white/5">
+          <div class="p-3 rounded-md border bg-black-800/50 border-white/5">
             <div class="flex gap-2 items-center mb-2">
               {#if updateHealthDisplay}
                 <Badge
@@ -443,11 +443,11 @@
                   {updateHealthDisplay.text}
                 </Badge>
               {/if}
-              <span class="text-xs text-neutral-500">
+              <span class="text-xs text-black-500">
                 {formatRelativeDate(latestUpdate.createdAt)}
               </span>
               {#if latestUpdate.userName}
-                <span class="text-neutral-600">•</span>
+                <span class="text-black-600">•</span>
                 <UserProfile
                   name={latestUpdate.userName}
                   avatarUrl={latestUpdate.userAvatarUrl}
@@ -456,14 +456,14 @@
               {/if}
             </div>
             <div
-              class="text-sm leading-relaxed whitespace-pre-wrap text-neutral-200"
+              class="text-sm leading-relaxed whitespace-pre-wrap text-black-200"
             >
               {latestUpdate.body}
             </div>
             {#if healthUpdates.length > 1}
               <button
                 onclick={() => (showAllHealthUpdates = true)}
-                class="mt-2 text-xs text-violet-400 underline transition-colors duration-150 cursor-pointer hover:text-violet-300"
+                class="mt-2 text-xs text-brand-400 underline transition-colors duration-150 cursor-pointer hover:text-brand-300"
               >
                 +{healthUpdates.length - 1} more update{healthUpdates.length -
                   1 ===
@@ -475,7 +475,7 @@
           </div>
         {/if}
       {:else if initiative.health_updated_at}
-        <div class="p-3 rounded-md border bg-neutral-800/50 border-white/5">
+        <div class="p-3 rounded-md border bg-black-800/50 border-white/5">
           <div class="flex gap-2 items-center">
             <Badge
               variant={healthDisplay.variant}
@@ -483,38 +483,38 @@
             >
               {healthDisplay.text}
             </Badge>
-            <span class="text-xs text-neutral-500">
+            <span class="text-xs text-black-500">
               Updated {formatRelativeDate(initiative.health_updated_at)}
             </span>
           </div>
         </div>
       {:else}
-        <div class="p-3 rounded-md border bg-neutral-800/50 border-white/5">
-          <p class="text-sm text-neutral-400">No health updates available</p>
+        <div class="p-3 rounded-md border bg-black-800/50 border-white/5">
+          <p class="text-sm text-black-400">No health updates available</p>
         </div>
       {/if}
     </div>
 
     <!-- Content -->
     <div class="mb-6">
-      <div class="mb-3 text-sm font-medium text-neutral-300">Content</div>
+      <div class="mb-3 text-sm font-medium text-black-300">Content</div>
       {#if initiative.content}
-        <div class="markdown-content text-sm leading-relaxed text-neutral-200">
+        <div class="markdown-content text-sm leading-relaxed text-black-200">
           <!-- eslint-disable-next-line svelte/no-at-html-tags -->
           {@html renderedContent}
         </div>
       {:else}
-        <div class="p-3 rounded-md border bg-neutral-800/50 border-white/5">
-          <p class="text-sm text-neutral-400">No content available</p>
+        <div class="p-3 rounded-md border bg-black-800/50 border-white/5">
+          <p class="text-sm text-black-400">No content available</p>
         </div>
       {/if}
     </div>
 
     <!-- Projects Table -->
     <div class="mb-6">
-      <div class="mb-2 text-xs text-neutral-500">Projects</div>
+      <div class="mb-2 text-xs text-black-500">Projects</div>
       {#if projectsLoading}
-        <div class="text-sm text-neutral-400">Loading projects...</div>
+        <div class="text-sm text-black-400">Loading projects...</div>
       {:else}
         <ProjectsListTable projects={linkedProjects} hideWarnings={false} />
       {/if}

@@ -35,7 +35,9 @@
 
 <div class={noMargin ? "" : "mt-8"}>
   {#if title}
-    <h2 class="mb-4 text-lg font-medium text-white">{title}</h2>
+    <h2 class="mb-4 text-lg font-medium text-black-900 dark:text-white">
+      {title}
+    </h2>
   {/if}
 
   {#if loading}
@@ -70,7 +72,7 @@
   {:else}
     <Card>
       <div
-        class="flex justify-center items-center h-[220px] text-sm text-neutral-500"
+        class="flex justify-center items-center h-[220px] text-sm text-black-500"
       >
         No trend data available yet. Metrics are captured hourly after each
         sync.

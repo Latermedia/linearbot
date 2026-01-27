@@ -75,10 +75,10 @@
                 <div class="flex justify-center items-center min-h-[20vh]">
                   <div class="flex flex-col gap-3 items-center text-center">
                     <FolderOpen
-                      class="w-8 h-8 text-neutral-500 dark:text-neutral-600"
+                      class="w-8 h-8 text-black-500 dark:text-black-600"
                       strokeWidth={1.5}
                     />
-                    <div class="text-sm text-neutral-400 dark:text-neutral-500">
+                    <div class="text-sm text-black-400 dark:text-black-500">
                       No projects found
                     </div>
                   </div>
@@ -100,12 +100,10 @@
                   <div class="flex justify-center items-center min-h-[33vh]">
                     <div class="flex flex-col gap-3 items-center text-center">
                       <FolderOpen
-                        class="w-8 h-8 text-neutral-500 dark:text-neutral-600"
+                        class="w-8 h-8 text-black-500 dark:text-black-600"
                         strokeWidth={1.5}
                       />
-                      <div
-                        class="text-sm text-neutral-400 dark:text-neutral-500"
-                      >
+                      <div class="text-sm text-black-400 dark:text-black-500">
                         No projects found
                       </div>
                     </div>

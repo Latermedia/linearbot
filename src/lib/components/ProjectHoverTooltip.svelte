@@ -80,12 +80,14 @@
 </script>
 
 <div
-  class="fixed z-50 px-4 py-3 text-xs rounded-lg border shadow-lg pointer-events-none bg-white dark:bg-neutral-900 border-neutral-200 dark:border-neutral-800 max-w-[280px]"
+  class="fixed z-50 px-4 py-3 text-xs rounded-lg border shadow-lg pointer-events-none bg-white dark:bg-black-900 border-black-200 dark:border-black-800 max-w-[280px]"
   style={`left: ${position.x + 10}px; top: ${position.y + 10}px;`}
 >
   <!-- Project Header -->
   <div class="mb-3">
-    <h3 class="text-sm font-semibold text-neutral-900 dark:text-white">
+    <h3
+      class="text-sm font-semibold text-black-900 dark:text-black-900 dark:text-white"
+    >
       {project.projectName}
     </h3>
   </div>
@@ -99,20 +101,22 @@
   <div class="grid grid-cols-2 gap-2 mb-3">
     <!-- Velocity -->
     <div>
-      <div class="mb-0.5 text-[10px] text-neutral-500 dark:text-neutral-400">
+      <div class="mb-0.5 text-[10px] text-black-500 dark:text-black-400">
         Velocity
       </div>
-      <div class="text-sm font-semibold text-neutral-900 dark:text-white">
+      <div
+        class="text-sm font-semibold text-black-900 dark:text-black-900 dark:text-white"
+      >
         {project.velocity.toFixed(1)}
       </div>
-      <div class="text-[10px] text-neutral-600 dark:text-neutral-400">
+      <div class="text-[10px] text-black-600 dark:text-black-400">
         issues/week
       </div>
     </div>
 
     <!-- Health Status -->
     <div>
-      <div class="mb-0.5 text-[10px] text-neutral-500 dark:text-neutral-400">
+      <div class="mb-0.5 text-[10px] text-black-500 dark:text-black-400">
         Health
       </div>
       <div class="text-sm font-semibold {healthDisplay.colorClass}">
@@ -122,20 +126,24 @@
 
     <!-- Teams -->
     <div>
-      <div class="mb-0.5 text-[10px] text-neutral-500 dark:text-neutral-400">
+      <div class="mb-0.5 text-[10px] text-black-500 dark:text-black-400">
         Teams
       </div>
-      <div class="text-sm font-semibold text-neutral-900 dark:text-white">
+      <div
+        class="text-sm font-semibold text-black-900 dark:text-black-900 dark:text-white"
+      >
         {teamsArray.length}
       </div>
     </div>
 
     <!-- Engineers -->
     <div>
-      <div class="mb-0.5 text-[10px] text-neutral-500 dark:text-neutral-400">
+      <div class="mb-0.5 text-[10px] text-black-500 dark:text-black-400">
         Engineers
       </div>
-      <div class="text-sm font-semibold text-neutral-900 dark:text-white">
+      <div
+        class="text-sm font-semibold text-black-900 dark:text-black-900 dark:text-white"
+      >
         {engineersArray.length}
       </div>
     </div>
@@ -143,9 +151,11 @@
 
   <!-- Dates -->
   {#if project.targetDate || project.estimatedEndDate}
-    <div class="pt-2 mb-3 border-t border-neutral-200 dark:border-neutral-800">
+    <div class="pt-2 mb-3 border-t border-black-200 dark:border-black-800">
       {#if !hideWarnings && project.hasDateDiscrepancy}
-        <div class="flex gap-1 items-center mb-1.5 text-[10px] text-amber-500">
+        <div
+          class="flex gap-1 items-center mb-1.5 text-[10px] text-warning-500"
+        >
           <span>⚠️</span>
           <span>Dates differ by 30+ days</span>
         </div>
@@ -154,16 +164,16 @@
         {#if project.targetDate}
           <div>
             <div
-              class="mb-0.5 text-[10px] text-neutral-500 dark:text-neutral-400"
+              class="mb-0.5 text-[10px] text-black-500 dark:text-black-400"
               title="Linear's project target date"
             >
               Target
             </div>
             <div
               class="text-xs font-medium"
-              class:text-amber-500={!hideWarnings && project.hasDateDiscrepancy}
-              class:text-neutral-900={hideWarnings ||
-                !project.hasDateDiscrepancy}
+              class:text-warning-500={!hideWarnings &&
+                project.hasDateDiscrepancy}
+              class:text-black-900={hideWarnings || !project.hasDateDiscrepancy}
               class:dark:text-white={hideWarnings ||
                 !project.hasDateDiscrepancy}
             >
@@ -174,16 +184,16 @@
         {#if project.estimatedEndDate}
           <div>
             <div
-              class="mb-0.5 text-[10px] text-neutral-500 dark:text-neutral-400"
+              class="mb-0.5 text-[10px] text-black-500 dark:text-black-400"
               title="Velocity-predicted completion date"
             >
               Predicted
             </div>
             <div
               class="text-xs font-medium"
-              class:text-amber-500={!hideWarnings && project.hasDateDiscrepancy}
-              class:text-neutral-900={hideWarnings ||
-                !project.hasDateDiscrepancy}
+              class:text-warning-500={!hideWarnings &&
+                project.hasDateDiscrepancy}
+              class:text-black-900={hideWarnings || !project.hasDateDiscrepancy}
               class:dark:text-white={hideWarnings ||
                 !project.hasDateDiscrepancy}
             >
@@ -197,18 +207,18 @@
 
   <!-- Warnings -->
   {#if warnings.length > 0}
-    <div class="pt-2 border-t border-neutral-200 dark:border-neutral-800">
+    <div class="pt-2 border-t border-black-200 dark:border-black-800">
       <div
-        class="mb-1.5 text-[10px] font-medium text-neutral-500 dark:text-neutral-400"
+        class="mb-1.5 text-[10px] font-medium text-black-500 dark:text-black-400"
       >
         Warnings
       </div>
       <div class="space-y-1">
         {#each warnings as warning}
           <div
-            class="flex gap-1.5 items-center text-xs text-neutral-700 dark:text-neutral-300"
+            class="flex gap-1.5 items-center text-xs text-black-700 dark:text-black-300"
           >
-            <span class="text-amber-400 shrink-0">⚠️</span>
+            <span class="text-warning-400 shrink-0">⚠️</span>
             <span class="flex-1">{warning.label}: {warning.count}</span>
           </div>
         {/each}

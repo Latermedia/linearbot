@@ -397,7 +397,7 @@
   <!-- Timeline header (sticky, outside scroll container) -->
   {#if showScale}
     <div
-      class="sticky top-[116px] z-30 px-4 pb-2 -mx-4 sm:-mx-6 lg:-mx-8 sm:px-6 lg:px-8 backdrop-blur-sm bg-white/95 dark:bg-neutral-950/95 border-b border-neutral-200 dark:border-white/10 pt-1 -mt-1"
+      class="sticky top-[116px] z-30 px-4 pb-2 -mx-4 sm:-mx-6 lg:-mx-8 sm:px-6 lg:px-8 backdrop-blur-sm bg-white/95 dark:bg-black-950/95 border-b border-black-200 dark:border-white/10 pt-1 -mt-1"
     >
       <div class="overflow-x-auto px-4 -mx-4 sm:-mx-6 lg:-mx-8 sm:px-6 lg:px-8">
         <div style="min-width: {viewMode === 'quarters' ? '1400px' : '100%'};">
@@ -418,7 +418,7 @@
             <div class="absolute inset-0 z-30">
               {#each monthLabels as month, _i}
                 <div
-                  class="flex absolute top-0 bottom-0 items-center text-xs font-medium text-neutral-600 dark:text-neutral-400"
+                  class="flex absolute top-0 bottom-0 items-center text-xs font-medium text-black-600 dark:text-black-400"
                   style="left: {month.startPercent}%; width: {month.endPercent -
                     month.startPercent}%;"
                 >
@@ -430,7 +430,7 @@
             <div class="absolute inset-0 z-30">
               {#each monthLabels as month}
                 <div
-                  class="absolute top-0 bottom-0 w-px border-l border-neutral-300 dark:border-white/20"
+                  class="absolute top-0 bottom-0 w-px border-l border-black-300 dark:border-white/20"
                   style="left: {month.startPercent}%;"
                 ></div>
               {/each}
@@ -438,11 +438,11 @@
             <!-- Current day indicator -->
             {#if currentDayPercent !== null}
               <div
-                class="absolute top-0 bottom-0 z-30 w-0.5 bg-violet-500 dark:bg-violet-500"
+                class="absolute top-0 bottom-0 z-30 w-0.5 bg-brand-500 dark:bg-brand-500"
                 style="left: {currentDayPercent}%;"
               >
                 <div
-                  class="absolute -top-1 left-1/2 w-2 h-2 bg-violet-500 rounded-full -translate-x-1/2 dark:bg-violet-500"
+                  class="absolute -top-1 left-1/2 w-2 h-2 bg-brand-500 rounded-full -translate-x-1/2 dark:bg-brand-500"
                 ></div>
               </div>
             {/if}
@@ -475,7 +475,7 @@
         <!-- Current date background indicator -->
         {#if currentDayPercent !== null}
           <div
-            class="absolute -top-32 bottom-0 z-0 pointer-events-none w-0.5 bg-violet-500/30 dark:bg-violet-500/40"
+            class="absolute -top-32 bottom-0 z-0 pointer-events-none w-0.5 bg-brand-500/30 dark:bg-brand-500/40"
             style="left: {currentDayPercent}%;"
           ></div>
         {/if}

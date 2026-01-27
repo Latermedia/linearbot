@@ -24,7 +24,7 @@
 <div class="flex relative gap-2 items-center mb-3">
   <h3
     class={cn(
-      "text-lg font-medium text-neutral-900 dark:text-white",
+      "text-lg font-medium text-black-900 dark:text-black-900 dark:text-white",
       !isTeam && "flex gap-2 items-center"
     )}
   >

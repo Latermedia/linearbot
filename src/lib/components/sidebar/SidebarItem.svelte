@@ -32,8 +32,8 @@
   class="group relative flex items-center gap-3 py-2 text-sm font-medium rounded transition-colors duration-150
     {indent && !isCollapsed ? 'pl-9 pr-3' : 'px-3'}
     {isActive
-    ? 'text-white bg-white/10 border-l-2 border-violet-500 -ml-[2px] pl-[14px]'
-    : 'text-neutral-400 hover:text-white hover:bg-white/5'}
+    ? 'text-brand-800 dark:text-white bg-brand-100 dark:bg-white/10 border-l-2 border-brand-500 -ml-[2px] pl-[14px]'
+    : 'text-black-600 dark:text-black-400 hover:text-black-900 dark:hover:text-white hover:bg-black-100 dark:hover:bg-white/5'}
     {isActive && indent && !isCollapsed ? 'pl-[34px]' : ''}"
   title={isCollapsed ? label : undefined}
 >
@@ -45,7 +45,7 @@
   <!-- Tooltip when collapsed -->
   {#if isCollapsed}
     <div
-      class="absolute left-full ml-2 px-2 py-1 text-xs font-medium text-white bg-neutral-800 rounded shadow-lg
+      class="absolute left-full ml-2 px-2 py-1 text-xs font-medium text-white bg-black-800 rounded shadow-lg
         opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all duration-150 whitespace-nowrap z-50"
     >
       {label}

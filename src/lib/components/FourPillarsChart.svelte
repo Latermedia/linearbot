@@ -91,13 +91,13 @@
     }, 0);
   });
 
-  // Pillar colors (Linear-style muted colors)
+  // Pillar colors (using new design system palette)
   const colors = {
-    wipHealth: "#10b981", // emerald-500
-    projectHealth: "#8b5cf6", // violet-500
-    productivity: "#f59e0b", // amber-500
-    quality: "#3b82f6", // blue-500
-    hygiene: "#ec4899", // pink-500
+    wipHealth: "#49AA7C", // success-500
+    projectHealth: "#8661D2", // brand-500
+    productivity: "#FFCA5A", // warning-400
+    quality: "#2563EB", // blue-600
+    hygiene: "#EC4899", // pink-500
   };
 
   // Target for productivity (3/wk per IC over 2 weeks = 6)
@@ -470,7 +470,7 @@
 <div class="relative pt-2 pb-1">
   <!-- Optional title -->
   {#if title}
-    <div class="mb-2 text-xs font-medium text-neutral-400">{title}</div>
+    <div class="mb-2 text-xs font-medium text-black-400">{title}</div>
   {/if}
 
   <!-- Max-width wrapper to constrain chart and make trends more visible -->
@@ -478,7 +478,7 @@
     <!-- Scrollable Chart Container -->
     <div
       bind:this={scrollContainer}
-      class="overflow-x-auto scrollbar-thin scrollbar-thumb-neutral-700 scrollbar-track-transparent"
+      class="overflow-x-auto scrollbar-thin scrollbar-thumb-black-700 scrollbar-track-transparent"
       style="max-width: 100%;"
     >
       <!-- Chart -->
@@ -528,7 +528,7 @@
               y={getY(y) ?? 0}
               text-anchor="end"
               dominant-baseline="middle"
-              class="fill-neutral-400 text-[11px] font-medium"
+              class="fill-black-400 text-[11px] font-medium"
             >
               {y}%
             </text>
@@ -542,7 +542,7 @@
               {x}
               y={chartHeight - padding.bottom + 20}
               text-anchor="middle"
-              class="fill-neutral-400 text-[11px] font-medium"
+              class="fill-black-400 text-[11px] font-medium"
             >
               {label}
             </text>
@@ -630,18 +630,18 @@
   <!-- Hover Card Tooltip -->
   {#if hoveredData}
     <div
-      class="absolute z-10 px-3 py-2 text-xs bg-neutral-900 border border-white/10 rounded-lg shadow-xl pointer-events-none"
+      class="absolute z-10 px-3 py-2 text-xs bg-black-900 border border-white/10 rounded-lg shadow-xl pointer-events-none"
       style="left: {tooltipPosition.x}px; top: {tooltipPosition.y}px;"
     >
-      <div class="mb-1.5 text-neutral-400">{hoveredData.date}</div>
+      <div class="mb-1.5 text-black-400">{hoveredData.date}</div>
       <div class="grid grid-cols-2 gap-x-4 gap-y-1">
         <div class="flex items-center gap-1.5">
           <span
             class="w-2 h-2 rounded-full"
             style="background-color: {colors.wipHealth}"
           ></span>
-          <span class="text-neutral-300">WIP Health</span>
-          <span class="ml-auto font-medium text-white"
+          <span class="text-black-300">WIP Health</span>
+          <span class="ml-auto font-medium text-black-900 dark:text-white"
             >{hoveredData.wipHealth}%</span
           >
         </div>
@@ -650,8 +650,8 @@
             class="w-2 h-2 rounded-full"
             style="background-color: {colors.projectHealth}"
           ></span>
-          <span class="text-neutral-300">Project Health</span>
-          <span class="ml-auto font-medium text-white"
+          <span class="text-black-300">Project Health</span>
+          <span class="ml-auto font-medium text-black-900 dark:text-white"
             >{hoveredData.projectHealth}%</span
           >
         </div>
@@ -660,8 +660,8 @@
             class="w-2 h-2 rounded-full"
             style="background-color: {colors.productivity}"
           ></span>
-          <span class="text-neutral-300">Velocity</span>
-          <span class="ml-auto font-medium text-white"
+          <span class="text-black-300">Velocity</span>
+          <span class="ml-auto font-medium text-black-900 dark:text-white"
             >{hoveredData.productivity}%</span
           >
         </div>
@@ -670,8 +670,8 @@
             class="w-2 h-2 rounded-full"
             style="background-color: {colors.quality}"
           ></span>
-          <span class="text-neutral-300">Quality</span>
-          <span class="ml-auto font-medium text-white"
+          <span class="text-black-300">Quality</span>
+          <span class="ml-auto font-medium text-black-900 dark:text-white"
             >{hoveredData.quality}%</span
           >
         </div>
@@ -681,8 +681,8 @@
               class="w-2 h-2 rounded-full"
               style="background-color: {colors.hygiene}"
             ></span>
-            <span class="text-neutral-300">Hygiene</span>
-            <span class="ml-auto font-medium text-white"
+            <span class="text-black-300">Hygiene</span>
+            <span class="ml-auto font-medium text-black-900 dark:text-white"
               >{hoveredData.hygiene}%</span
             >
           </div>
@@ -694,7 +694,7 @@
   <!-- Empty state -->
   {#if normalizedData.length === 0}
     <div
-      class="flex absolute inset-0 justify-center items-center text-sm text-neutral-500"
+      class="flex absolute inset-0 justify-center items-center text-sm text-black-500"
     >
       No trend data available
     </div>
@@ -712,7 +712,7 @@
           class="h-[2px] rounded-full {compact ? 'w-3' : 'w-5'}"
           style="background-color: {item.color}"
         ></div>
-        <span class="text-neutral-400 {compact ? 'text-[10px]' : ''}"
+        <span class="text-black-400 {compact ? 'text-[10px]' : ''}"
           >{item.label}</span
         >
       </div>

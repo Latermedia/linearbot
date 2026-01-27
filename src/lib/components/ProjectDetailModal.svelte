@@ -199,16 +199,16 @@
 
 {#snippet headerSnippet()}
   <div
-    class="flex justify-between items-start p-6 pb-4 border-b shrink-0 border-white/10"
+    class="flex justify-between items-start p-6 pb-4 border-b shrink-0 border-black-200 dark:border-white/10"
   >
     <div class="flex-1 min-w-0">
       <h2
         id="modal-title"
-        class="flex gap-2 items-center text-xl font-medium text-white"
+        class="flex gap-2 items-center text-xl font-medium text-black-900 dark:text-white"
       >
         {project.projectName}
         <button
-          class="inline-flex justify-center items-center p-1.5 ml-2 rounded transition-colors duration-150 cursor-pointer text-neutral-400 hover:text-white hover:bg-white/10 disabled:opacity-50 disabled:cursor-not-allowed"
+          class="inline-flex justify-center items-center p-1.5 ml-2 rounded transition-colors duration-150 cursor-pointer text-black-400 hover:text-white hover:bg-white/10 disabled:opacity-50 disabled:cursor-not-allowed"
           onclick={syncProject}
           disabled={isSyncingProject}
           aria-label="Sync project"
@@ -221,28 +221,28 @@
             href={projectUrl}
             target="_blank"
             rel="noopener noreferrer"
-            class="ml-2 text-sm text-violet-400 underline transition-colors duration-150 hover:text-violet-300"
+            class="ml-2 text-sm text-brand-400 underline transition-colors duration-150 hover:text-brand-300"
           >
             Open in Linear →
           </a>
         {/if}
       </h2>
       {#if project.projectDescription}
-        <div class="mt-1.5 text-sm text-neutral-400">
+        <div class="mt-1.5 text-sm text-black-400">
           {project.projectDescription}
         </div>
       {/if}
       {#if project.lastSyncedAt}
-        <div class="mt-1.5 text-xs text-neutral-500">
+        <div class="mt-1.5 text-xs text-black-500">
           Last synced: {formatRelativeDate(project.lastSyncedAt)}
         </div>
       {:else}
-        <div class="mt-1.5 text-xs text-neutral-500">Never synced</div>
+        <div class="mt-1.5 text-xs text-black-500">Never synced</div>
       {/if}
     </div>
     <div class="flex gap-2 items-center">
       <button
-        class="inline-flex justify-center items-center p-1.5 rounded transition-colors duration-150 cursor-pointer text-neutral-400 hover:text-white hover:bg-white/10"
+        class="inline-flex justify-center items-center p-1.5 rounded transition-colors duration-150 cursor-pointer text-black-400 hover:text-white hover:bg-black-100 dark:bg-white/10"
         onclick={onclose}
         aria-label="Close modal"
         title="Close (ESC)"
@@ -270,26 +270,28 @@
   <div class="flex flex-wrap gap-6 mb-6">
     <!-- Status -->
     <div>
-      <div class="mb-1 text-xs text-neutral-500">Status</div>
-      <div class="flex gap-2 items-center text-sm text-white">
+      <div class="mb-1 text-xs text-black-500">Status</div>
+      <div
+        class="flex gap-2 items-center text-sm text-black-900 dark:text-white"
+      >
         {#if project.projectStatus || project.projectStateCategory}
           {project.projectStatus || project.projectStateCategory}
           {#if !hideWarnings && project.hasStatusMismatch}
             <span
-              class="text-amber-500"
+              class="text-warning-500"
               title="Status Mismatch: Project status doesn't match active work"
               >⚠️</span
             >
           {/if}
         {:else}
-          <span class="text-sm text-neutral-400 dark:text-neutral-600">—</span>
+          <span class="text-sm text-black-400 dark:text-black-600">—</span>
         {/if}
       </div>
     </div>
 
     <!-- Teams -->
     <div>
-      <div class="mb-1 text-xs text-neutral-500">Teams</div>
+      <div class="mb-1 text-xs text-black-500">Teams</div>
       <div class="flex flex-wrap gap-2">
         {#each Array.from(project.teams) as team}
           <Badge variant="outline">{team}</Badge>
@@ -299,15 +301,15 @@
 
     <!-- Lead -->
     <div>
-      <div class="mb-1 text-xs text-neutral-500">Project Lead</div>
-      <div class="text-sm text-white">
+      <div class="mb-1 text-xs text-black-500">Project Lead</div>
+      <div class="text-sm text-black-900 dark:text-white">
         {project.projectLeadName || "Not assigned"}
       </div>
     </div>
 
     <!-- Engineers -->
     <div>
-      <div class="mb-1 text-xs text-neutral-500">
+      <div class="mb-1 text-xs text-black-500">
         Engineers ({project.engineerCount})
       </div>
       <div class="flex flex-wrap gap-2">
@@ -315,23 +317,23 @@
           <Badge variant="secondary">{engineer}</Badge>
         {/each}
         {#if project.engineerCount === 0}
-          <span class="text-xs text-neutral-500">No engineers assigned</span>
+          <span class="text-xs text-black-500">No engineers assigned</span>
         {/if}
       </div>
     </div>
 
     <!-- Last Activity -->
     <div>
-      <div class="mb-1 text-xs text-neutral-500">Last Activity</div>
-      <div class="text-sm text-white">
+      <div class="mb-1 text-xs text-black-500">Last Activity</div>
+      <div class="text-sm text-black-900 dark:text-white">
         {formatDateFull(project.lastActivityDate)}
       </div>
     </div>
 
     <!-- Start Date -->
     <div>
-      <div class="mb-1 text-xs text-neutral-500">Start Date</div>
-      <div class="text-sm text-white">
+      <div class="mb-1 text-xs text-black-500">Start Date</div>
+      <div class="text-sm text-black-900 dark:text-white">
         {formatDateFull(project.startDate)}
       </div>
     </div>
@@ -339,18 +341,18 @@
     <!-- Target Date -->
     <div>
       <div
-        class="flex gap-1 items-center mb-1 text-xs text-neutral-500"
+        class="flex gap-1 items-center mb-1 text-xs text-black-500"
         title="Linear's explicit target date for the project"
       >
         Target Date
         {#if !hideWarnings && project.hasDateDiscrepancy}
           <span
-            class="text-amber-400"
+            class="text-warning-400"
             title="Differs from predicted by 30+ days">⚠️</span
           >
         {/if}
       </div>
-      <div class="text-sm text-white">
+      <div class="text-sm text-black-900 dark:text-white">
         {formatDateFull(project.targetDate)}
       </div>
     </div>
@@ -358,17 +360,17 @@
     <!-- Predicted Completion -->
     <div>
       <div
-        class="flex gap-1 items-center mb-1 text-xs text-neutral-500"
+        class="flex gap-1 items-center mb-1 text-xs text-black-500"
         title="Velocity-predicted completion date"
       >
         Predicted Completion
         {#if !hideWarnings && project.hasDateDiscrepancy}
-          <span class="text-amber-400" title="Differs from target by 30+ days"
+          <span class="text-warning-400" title="Differs from target by 30+ days"
             >⚠️</span
           >
         {/if}
       </div>
-      <div class="text-sm text-white">
+      <div class="text-sm text-black-900 dark:text-white">
         {formatDateFull(project.estimatedEndDate)}
       </div>
     </div>
@@ -377,7 +379,7 @@
   <!-- Progress Section -->
   <div class="mb-6">
     <div class="mb-2">
-      <span class="text-sm font-medium text-neutral-300">Progress</span>
+      <span class="text-sm font-medium text-black-300">Progress</span>
     </div>
     <ProgressBar {project} />
   </div>
@@ -410,22 +412,22 @@
     (project.noRecentCommentCount || 0) +
     (project.wipAgeViolationCount || 0)}
   {#if allGaps.length > 0}
-    <div class="p-4 mb-6 rounded-md ring-1 ring-red-400 bg-neutral-800/50">
+    <div class="p-4 mb-6 rounded-md ring-1 ring-danger-400 bg-black-800/50">
       <div
-        class="flex gap-2 items-center mb-3 text-sm font-medium text-neutral-300"
+        class="flex gap-2 items-center mb-3 text-sm font-medium text-black-300"
       >
         Gaps
         <span
           class={totalGaps > 5
-            ? "text-red-400"
+            ? "text-danger-400"
             : totalGaps > 2
-              ? "text-amber-400"
-              : "text-green-400"}>({totalGaps})</span
+              ? "text-warning-400"
+              : "text-success-400"}>({totalGaps})</span
         >
       </div>
       <ul class="space-y-1 text-sm">
         {#each allGaps as gap}
-          <li class="flex gap-2 items-center text-neutral-400">
+          <li class="flex gap-2 items-center text-black-400">
             <span>•</span>
             <span>{gap}</span>
           </li>
@@ -435,27 +437,27 @@
   {/if}
 
   <!-- Metrics Section -->
-  <div class="p-4 mb-6 rounded-md border bg-neutral-800/50 border-white/5">
-    <div class="mb-3 text-sm font-medium text-neutral-300">Metrics</div>
+  <div class="p-4 mb-6 rounded-md border bg-black-800/50 border-white/5">
+    <div class="mb-3 text-sm font-medium text-black-300">Metrics</div>
     <div class="grid grid-cols-2 gap-4">
       <!-- Left Column -->
       <div>
         <div
-          class="flex gap-1 items-center mb-1 text-xs text-neutral-500"
+          class="flex gap-1 items-center mb-1 text-xs text-black-500"
           title="Sum of all issue estimates (story points) in the project"
         >
           Total Points
           {#if !hideWarnings && project.missingPoints > 0}
             <span
-              class="text-amber-400"
+              class="text-warning-400"
               title="{project.missingPoints} issues missing estimates">⚠️</span
             >
           {/if}
         </div>
-        <div class="text-sm text-white">
+        <div class="text-sm text-black-900 dark:text-white">
           {Math.round(project.totalPoints)}
           {#if !hideWarnings && project.missingPoints > 0}
-            <span class="ml-1 text-xs text-amber-400">
+            <span class="ml-1 text-xs text-warning-400">
               ({project.missingPoints} missing)
             </span>
           {/if}
@@ -463,25 +465,27 @@
       </div>
       <div>
         <div
-          class="mb-1 text-xs text-neutral-500"
+          class="mb-1 text-xs text-black-500"
           title="Average number of issues completed per week"
         >
           Velocity
         </div>
-        <div class="flex gap-2 items-center text-sm text-white">
+        <div
+          class="flex gap-2 items-center text-sm text-black-900 dark:text-white"
+        >
           {formatVelocity(project.velocity)} issues/week
-          <span class="text-green-500">→</span>
+          <span class="text-success-500">→</span>
         </div>
       </div>
       {#if project.averageCycleTime !== null}
         <div>
           <div
-            class="mb-1 text-xs text-neutral-500"
+            class="mb-1 text-xs text-black-500"
             title="Average time from when an issue was started to when it was completed"
           >
             Avg Cycle Time
           </div>
-          <div class="text-sm text-white">
+          <div class="text-sm text-black-900 dark:text-white">
             {formatTimeDays(project.averageCycleTime)}
           </div>
         </div>
@@ -489,38 +493,38 @@
       {#if project.averageLeadTime !== null}
         <div>
           <div
-            class="mb-1 text-xs text-neutral-500"
+            class="mb-1 text-xs text-black-500"
             title="Average time from when an issue was created to when it was completed"
           >
             Avg Lead Time
           </div>
-          <div class="text-sm text-white">
+          <div class="text-sm text-black-900 dark:text-white">
             {formatTimeDays(project.averageLeadTime)}
           </div>
         </div>
       {/if}
       <div>
         <div
-          class="mb-1 text-xs text-neutral-500"
+          class="mb-1 text-xs text-black-500"
           title="Number of days since the project started"
         >
           Project Age
         </div>
-        <div class="text-sm text-white">
+        <div class="text-sm text-black-900 dark:text-white">
           {formatProjectAge(projectAge)}
         </div>
       </div>
       {#if project.estimateAccuracy !== null}
         <div>
           <div
-            class="mb-1 text-xs text-neutral-500"
+            class="mb-1 text-xs text-black-500"
             title="Percentage of completed issues where actual cycle time (started → completed) was within 20% of estimated time. Story points are converted to days using your team's average velocity{project.daysPerStoryPoint
               ? ` (${project.daysPerStoryPoint.toFixed(1)} days per point)`
               : ''}. Accuracy measures how well estimates predict actual completion time."
           >
             Estimate Accuracy
           </div>
-          <div class="text-sm text-white">
+          <div class="text-sm text-black-900 dark:text-white">
             {formatPercent(project.estimateAccuracy)}
           </div>
         </div>
@@ -528,13 +532,13 @@
       {#if project.linearProgress !== null}
         <div>
           <div
-            class="mb-1 text-xs text-neutral-500"
+            class="mb-1 text-xs text-black-500"
             title="Linear's calculated progress based on completed story points divided by total story points"
           >
             Linear Progress
-            <span class="text-neutral-600">(by points)</span>
+            <span class="text-black-600">(by points)</span>
           </div>
-          <div class="text-sm text-white">
+          <div class="text-sm text-black-900 dark:text-white">
             {formatPercent(project.linearProgress * 100)}
           </div>
         </div>
@@ -543,7 +547,7 @@
     {#if project.velocityByTeam.size > 0}
       <div class="pt-3 mt-3 border-t border-white/5">
         <div
-          class="mb-2 text-xs text-neutral-500"
+          class="mb-2 text-xs text-black-500"
           title="Issues completed per week, broken down by team within this project"
         >
           Velocity by Team
@@ -551,8 +555,8 @@
         <div class="space-y-1">
           {#each Array.from(project.velocityByTeam.entries()) as [team, velocity]}
             <div class="flex justify-between items-center text-xs">
-              <span class="text-neutral-400">{team}</span>
-              <span class="text-neutral-300"
+              <span class="text-black-400">{team}</span>
+              <span class="text-black-300"
                 >{formatVelocity(velocity)} issues/week</span
               >
             </div>
@@ -564,7 +568,7 @@
 
   <!-- Health -->
   <div class="mb-6">
-    <div class="mb-2 text-xs text-neutral-500">Health</div>
+    <div class="mb-2 text-xs text-black-500">Health</div>
     {#if project.projectUpdates && project.projectUpdates.length > 0}
       {@const latestUpdate = project.projectUpdates[0]}
       {@const updateHealthDisplay = latestUpdate.health
@@ -577,7 +581,7 @@
       {@const isStaleHealth = daysSinceUpdate > 7}
 
       {#if isStaleHealth && !hideWarnings}
-        <div class="flex gap-2 items-center mb-2 text-xs text-amber-500">
+        <div class="flex gap-2 items-center mb-2 text-xs text-warning-500">
           <span>⚠️</span>
           <span>Health update is {daysSinceUpdate} days old</span>
         </div>
@@ -589,7 +593,7 @@
             {@const currentUpdateHealthDisplay = update.health
               ? getHealthDisplay(update.health)
               : null}
-            <div class="p-3 rounded-md border bg-neutral-800/50 border-white/5">
+            <div class="p-3 rounded-md border bg-black-800/50 border-white/5">
               <div class="flex gap-2 items-center mb-2">
                 {#if currentUpdateHealthDisplay}
                   <Badge
@@ -599,11 +603,11 @@
                     {currentUpdateHealthDisplay.text}
                   </Badge>
                 {/if}
-                <span class="text-xs text-neutral-500">
+                <span class="text-xs text-black-500">
                   {formatRelativeDate(update.createdAt)}
                 </span>
                 {#if update.userName}
-                  <span class="text-neutral-600">•</span>
+                  <span class="text-black-600">•</span>
                   <UserProfile
                     name={update.userName}
                     avatarUrl={update.userAvatarUrl}
@@ -612,7 +616,7 @@
                 {/if}
               </div>
               <div
-                class="text-sm leading-relaxed whitespace-pre-wrap text-neutral-200"
+                class="text-sm leading-relaxed whitespace-pre-wrap text-black-200"
               >
                 {update.body}
               </div>
@@ -620,13 +624,13 @@
           {/each}
           <button
             onclick={() => (showAllHealthUpdates = false)}
-            class="mt-2 text-xs text-violet-400 underline transition-colors duration-150 cursor-pointer hover:text-violet-300"
+            class="mt-2 text-xs text-brand-400 underline transition-colors duration-150 cursor-pointer hover:text-brand-300"
           >
             Show only latest update
           </button>
         </div>
       {:else}
-        <div class="p-3 rounded-md border bg-neutral-800/50 border-white/5">
+        <div class="p-3 rounded-md border bg-black-800/50 border-white/5">
           <div class="flex gap-2 items-center mb-2">
             {#if updateHealthDisplay}
               <Badge
@@ -636,11 +640,11 @@
                 {updateHealthDisplay.text}
               </Badge>
             {/if}
-            <span class="text-xs text-neutral-500">
+            <span class="text-xs text-black-500">
               {formatRelativeDate(latestUpdate.createdAt)}
             </span>
             {#if latestUpdate.userName}
-              <span class="text-neutral-600">•</span>
+              <span class="text-black-600">•</span>
               <UserProfile
                 name={latestUpdate.userName}
                 avatarUrl={latestUpdate.userAvatarUrl}
@@ -649,14 +653,14 @@
             {/if}
           </div>
           <div
-            class="text-sm leading-relaxed whitespace-pre-wrap text-neutral-200"
+            class="text-sm leading-relaxed whitespace-pre-wrap text-black-200"
           >
             {latestUpdate.body}
           </div>
           {#if project.projectUpdates.length > 1}
             <button
               onclick={() => (showAllHealthUpdates = true)}
-              class="mt-2 text-xs text-violet-400 underline transition-colors duration-150 cursor-pointer hover:text-violet-300"
+              class="mt-2 text-xs text-brand-400 underline transition-colors duration-150 cursor-pointer hover:text-brand-300"
             >
               +{project.projectUpdates.length - 1} more update{project
                 .projectUpdates.length -
@@ -669,19 +673,19 @@
         </div>
       {/if}
     {:else}
-      <div class="p-3 rounded-md border bg-neutral-800/50 border-white/5">
-        <p class="text-sm text-neutral-400">No health updates available</p>
+      <div class="p-3 rounded-md border bg-black-800/50 border-white/5">
+        <p class="text-sm text-black-400">No health updates available</p>
       </div>
     {/if}
   </div>
 
   <!-- Issues Table -->
   <div class="mb-6">
-    <div class="mb-2 text-xs text-neutral-500">Issues</div>
+    <div class="mb-2 text-xs text-black-500">Issues</div>
     {#if issuesLoading}
-      <div class="text-sm text-neutral-400">Loading...</div>
+      <div class="text-sm text-black-400">Loading...</div>
     {:else if projectIssues.length === 0}
-      <div class="text-sm text-neutral-400">No issues found</div>
+      <div class="text-sm text-black-400">No issues found</div>
     {:else}
       {@const issuesByState = (() => {
         const map = new Map();
@@ -715,43 +719,43 @@
       {@const columnCount = project.daysPerStoryPoint !== null ? 9 : 8}
       <div class="overflow-x-auto max-h-[60vh] overflow-y-auto">
         <table class="w-full text-xs min-w-[680px]">
-          <thead class="sticky top-0 z-10 bg-neutral-900">
-            <tr class="border-b border-white/10">
+          <thead class="sticky top-0 z-10 bg-black-900">
+            <tr class="border-b border-black-200 dark:border-white/10">
               <th
-                class="px-2 py-1.5 font-medium text-left text-neutral-400 w-[310px] min-w-[310px]"
+                class="px-2 py-1.5 font-medium text-left text-black-400 w-[310px] min-w-[310px]"
                 >Title</th
               >
               <th
-                class="px-2 py-1.5 font-medium text-left text-neutral-400 w-[120px] min-w-[120px]"
+                class="px-2 py-1.5 font-medium text-left text-black-400 w-[120px] min-w-[120px]"
                 >Assignee</th
               >
               <th
-                class="px-2 py-1.5 font-medium text-left text-neutral-400 w-[120px] min-w-[120px]"
+                class="px-2 py-1.5 font-medium text-left text-black-400 w-[120px] min-w-[120px]"
                 >Status</th
               >
               <th
-                class="px-2 py-1.5 font-medium text-right text-neutral-400 w-[70px] min-w-[70px]"
+                class="px-2 py-1.5 font-medium text-right text-black-400 w-[70px] min-w-[70px]"
                 >Points</th
               >
               <th
-                class="px-2 py-1.5 font-medium text-right text-neutral-400 w-[80px] min-w-[80px]"
+                class="px-2 py-1.5 font-medium text-right text-black-400 w-[80px] min-w-[80px]"
                 >Priority</th
               >
               <th
-                class="px-2 py-1.5 font-medium text-right text-neutral-400 w-[110px] min-w-[110px]"
+                class="px-2 py-1.5 font-medium text-right text-black-400 w-[110px] min-w-[110px]"
                 title="Time since last comment">Last Comment</th
               >
               <th
-                class="px-2 py-1.5 font-medium text-right text-neutral-400 w-[80px] min-w-[80px]"
+                class="px-2 py-1.5 font-medium text-right text-black-400 w-[80px] min-w-[80px]"
                 title="Total number of comments">Comments</th
               >
               <th
-                class="px-2 py-1.5 font-medium text-right text-neutral-400 w-[70px] min-w-[70px]"
+                class="px-2 py-1.5 font-medium text-right text-black-400 w-[70px] min-w-[70px]"
                 >WIP Age</th
               >
               {#if project.daysPerStoryPoint !== null}
                 <th
-                  class="px-2 py-1.5 font-medium text-right text-neutral-400 w-[120px] min-w-[120px]"
+                  class="px-2 py-1.5 font-medium text-right text-black-400 w-[120px] min-w-[120px]"
                   title="Ratio of actual time to estimated time. 1.0x = perfect match. < 1.0x = faster than estimated, > 1.0x = slower than estimated. Green = within 30%, Yellow = 30-70% off, Red = 70%+ off."
                   >Estimate Accuracy</th
                 >
@@ -763,7 +767,7 @@
               <!-- Status Divider Row -->
               <tr>
                 <td colspan={columnCount} class="px-2 py-2.5">
-                  <span class="-ml-1 text-xs font-semibold text-neutral-400">
+                  <span class="-ml-1 text-xs font-semibold text-black-400">
                     {state} ({issues.length})
                   </span>
                 </td>
@@ -828,7 +832,7 @@
                     }}
                   >
                     <td
-                      class="px-2 py-1.5 text-neutral-200 w-[310px] min-w-[310px] max-w-[310px]"
+                      class="px-2 py-1.5 text-black-200 w-[310px] min-w-[310px] max-w-[310px]"
                     >
                       <div
                         class="overflow-hidden truncate whitespace-nowrap text-ellipsis"
@@ -836,7 +840,7 @@
                       >
                         {parent.title}
                         {#if subissues.length > 0}
-                          <span class="ml-1 text-xs text-neutral-500"
+                          <span class="ml-1 text-xs text-black-500"
                             >({subissues.length})</span
                           >
                         {/if}
@@ -852,7 +856,7 @@
                           size="xs"
                         />
                       {:else}
-                        <span class="text-xs text-neutral-500">Unassigned</span>
+                        <span class="text-xs text-black-500">Unassigned</span>
                       {/if}
                     </td>
                     <td class="px-2 py-1.5">
@@ -872,17 +876,18 @@
                       />
                     </td>
                     <td
-                      class="px-2 py-1.5 text-right text-neutral-300 w-[70px] min-w-[70px]"
+                      class="px-2 py-1.5 text-right text-black-300 w-[70px] min-w-[70px]"
                     >
                       <div class="flex gap-1.5 justify-end items-center">
                         {#if parent.estimate !== null && parent.estimate !== undefined}
                           {Math.round(parent.estimate)}
                         {:else if !hideWarnings && missingEstimate}
-                          <span class="text-amber-400" title="Missing estimate"
-                            >⚠️</span
+                          <span
+                            class="text-warning-400"
+                            title="Missing estimate">⚠️</span
                           >
                         {:else}
-                          <span class="text-neutral-500">—</span>
+                          <span class="text-black-500">—</span>
                         {/if}
                       </div>
                     </td>
@@ -895,29 +900,29 @@
                       <div class="flex gap-1.5 justify-end items-center">
                         {#if !hideWarnings && hasOldComment}
                           <span
-                            class="text-amber-400 shrink-0"
+                            class="text-warning-400 shrink-0"
                             title="No comment since last business day">⚠️</span
                           >
                         {/if}
                         <span
                           class={!hideWarnings && hasOldComment
-                            ? "text-amber-400"
-                            : "text-neutral-300"}>{commentRecency}</span
+                            ? "text-warning-400"
+                            : "text-black-300"}>{commentRecency}</span
                         >
                       </div>
                     </td>
                     <td
-                      class="px-2 py-1.5 text-right text-neutral-300 w-[80px] min-w-[80px]"
+                      class="px-2 py-1.5 text-right text-black-300 w-[80px] min-w-[80px]"
                     >
                       {formatCommentCount(parent.comment_count)}
                     </td>
                     <td
-                      class="px-2 py-1.5 text-right text-neutral-300 w-[70px] min-w-[70px]"
+                      class="px-2 py-1.5 text-right text-black-300 w-[70px] min-w-[70px]"
                     >
                       <div class="flex gap-1 justify-end items-center">
                         {#if hasWIPAgeViolation(parent)}
                           <span
-                            class="text-amber-400"
+                            class="text-warning-400"
                             title="WIP age exceeds 14 days">⚠️</span
                           >
                         {/if}
@@ -940,7 +945,7 @@
                             {formatAccuracyRatio(issueAccuracyRatio)}
                           </span>
                         {:else}
-                          <span class="text-neutral-500">—</span>
+                          <span class="text-black-500">—</span>
                         {/if}
                       </td>
                     {/if}
@@ -1000,13 +1005,13 @@
                       }}
                     >
                       <td
-                        class="px-2 py-1.5 text-neutral-200 w-[310px] min-w-[310px] max-w-[310px]"
+                        class="px-2 py-1.5 text-black-200 w-[310px] min-w-[310px] max-w-[310px]"
                       >
                         <div
                           class="overflow-hidden pl-6 truncate whitespace-nowrap text-ellipsis"
                           title={subissue.title}
                         >
-                          <span class="mr-1 text-neutral-400 shrink-0">↳</span>
+                          <span class="mr-1 text-black-400 shrink-0">↳</span>
                           {subissue.title}
                         </div>
                       </td>
@@ -1020,9 +1025,7 @@
                             size="xs"
                           />
                         {:else}
-                          <span class="text-xs text-neutral-500"
-                            >Unassigned</span
-                          >
+                          <span class="text-xs text-black-500">Unassigned</span>
                         {/if}
                       </td>
                       <td class="px-2 py-1.5">
@@ -1034,18 +1037,18 @@
                         />
                       </td>
                       <td
-                        class="px-2 py-1.5 text-right text-neutral-300 w-[70px] min-w-[70px]"
+                        class="px-2 py-1.5 text-right text-black-300 w-[70px] min-w-[70px]"
                       >
                         <div class="flex gap-1.5 justify-end items-center">
                           {#if subissue.estimate !== null && subissue.estimate !== undefined}
                             {Math.round(subissue.estimate)}
                           {:else if !hideWarnings && subMissingEstimate}
                             <span
-                              class="text-amber-400"
+                              class="text-warning-400"
                               title="Missing estimate">⚠️</span
                             >
                           {:else}
-                            <span class="text-neutral-500">—</span>
+                            <span class="text-black-500">—</span>
                           {/if}
                         </div>
                       </td>
@@ -1060,30 +1063,30 @@
                         <div class="flex gap-1.5 justify-end items-center">
                           {#if !hideWarnings && subHasOldComment}
                             <span
-                              class="text-amber-400 shrink-0"
+                              class="text-warning-400 shrink-0"
                               title="No comment since last business day"
                               >⚠️</span
                             >
                           {/if}
                           <span
                             class={!hideWarnings && subHasOldComment
-                              ? "text-amber-400"
-                              : "text-neutral-300"}>{subCommentRecency}</span
+                              ? "text-warning-400"
+                              : "text-black-300"}>{subCommentRecency}</span
                           >
                         </div>
                       </td>
                       <td
-                        class="px-2 py-1.5 text-right text-neutral-300 w-[80px] min-w-[80px]"
+                        class="px-2 py-1.5 text-right text-black-300 w-[80px] min-w-[80px]"
                       >
                         {formatCommentCount(subissue.comment_count)}
                       </td>
                       <td
-                        class="px-2 py-1.5 text-right text-neutral-300 w-[70px] min-w-[70px]"
+                        class="px-2 py-1.5 text-right text-black-300 w-[70px] min-w-[70px]"
                       >
                         <div class="flex gap-1 justify-end items-center">
                           {#if hasWIPAgeViolation(subissue)}
                             <span
-                              class="text-amber-400"
+                              class="text-warning-400"
                               title="WIP age exceeds 14 days">⚠️</span
                             >
                           {/if}
@@ -1108,7 +1111,7 @@
                               {formatAccuracyRatio(subIssueAccuracyRatio)}
                             </span>
                           {:else}
-                            <span class="text-neutral-500">—</span>
+                            <span class="text-black-500">—</span>
                           {/if}
                         </td>
                       {/if}
@@ -1157,7 +1160,7 @@
                     }}
                   >
                     <td
-                      class="px-2 py-1.5 text-neutral-200 w-[310px] min-w-[310px] max-w-[310px]"
+                      class="px-2 py-1.5 text-black-200 w-[310px] min-w-[310px] max-w-[310px]"
                     >
                       <div
                         class="overflow-hidden truncate whitespace-nowrap text-ellipsis"
@@ -1176,7 +1179,7 @@
                           size="xs"
                         />
                       {:else}
-                        <span class="text-xs text-neutral-500">Unassigned</span>
+                        <span class="text-xs text-black-500">Unassigned</span>
                       {/if}
                     </td>
                     <td class="px-2 py-1.5">
@@ -1188,17 +1191,18 @@
                       />
                     </td>
                     <td
-                      class="px-2 py-1.5 text-right text-neutral-300 w-[70px] min-w-[70px]"
+                      class="px-2 py-1.5 text-right text-black-300 w-[70px] min-w-[70px]"
                     >
                       <div class="flex gap-1.5 justify-end items-center">
                         {#if issue.estimate !== null && issue.estimate !== undefined}
                           {Math.round(issue.estimate)}
                         {:else if !hideWarnings && missingEstimate}
-                          <span class="text-amber-400" title="Missing estimate"
-                            >⚠️</span
+                          <span
+                            class="text-warning-400"
+                            title="Missing estimate">⚠️</span
                           >
                         {:else}
-                          <span class="text-neutral-500">—</span>
+                          <span class="text-black-500">—</span>
                         {/if}
                       </div>
                     </td>
@@ -1211,29 +1215,29 @@
                       <div class="flex gap-1.5 justify-end items-center">
                         {#if !hideWarnings && hasOldComment}
                           <span
-                            class="text-amber-400 shrink-0"
+                            class="text-warning-400 shrink-0"
                             title="No comment since last business day">⚠️</span
                           >
                         {/if}
                         <span
                           class={!hideWarnings && hasOldComment
-                            ? "text-amber-400"
-                            : "text-neutral-300"}>{commentRecency}</span
+                            ? "text-warning-400"
+                            : "text-black-300"}>{commentRecency}</span
                         >
                       </div>
                     </td>
                     <td
-                      class="px-2 py-1.5 text-right text-neutral-300 w-[80px] min-w-[80px]"
+                      class="px-2 py-1.5 text-right text-black-300 w-[80px] min-w-[80px]"
                     >
                       {formatCommentCount(issue.comment_count)}
                     </td>
                     <td
-                      class="px-2 py-1.5 text-right text-neutral-300 w-[70px] min-w-[70px]"
+                      class="px-2 py-1.5 text-right text-black-300 w-[70px] min-w-[70px]"
                     >
                       <div class="flex gap-1 justify-end items-center">
                         {#if hasWIPAgeViolation(issue)}
                           <span
-                            class="text-amber-400"
+                            class="text-warning-400"
                             title="WIP age exceeds 14 days">⚠️</span
                           >
                         {/if}
@@ -1256,7 +1260,7 @@
                             {formatAccuracyRatio(issueAccuracyRatio)}
                           </span>
                         {:else}
-                          <span class="text-neutral-500">—</span>
+                          <span class="text-black-500">—</span>
                         {/if}
                       </td>
                     {/if}

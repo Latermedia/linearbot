@@ -51,17 +51,18 @@
 </script>
 
 <aside
-  class="flex flex-col h-full bg-[#0d0d0d] border-r border-white/10 transition-all duration-200 ease-out shrink-0"
+  class="flex flex-col h-full bg-ambient-900 dark:bg-[#0d0d0d] border-r border-black-200 dark:border-white/10 transition-all duration-200 ease-out shrink-0"
   style="width: {isCollapsed ? '64px' : '240px'}"
 >
   <!-- Logo -->
-  <div class="px-2 py-4 border-b border-white/5">
+  <div class="px-2 py-4 border-b border-black-100 dark:border-white/5">
     <div
       class="flex items-center px-3 {isCollapsed ? 'justify-center' : 'gap-3'}"
     >
       <AnimatedLogo size={20} delay={150} />
       {#if !isCollapsed}
-        <span class="logo-text text-white font-semibold text-sm tracking-tight"
+        <span
+          class="logo-text text-black-900 dark:text-white font-semibold text-sm tracking-tight"
           >Laterbot</span
         >
       {/if}
@@ -69,7 +70,7 @@
   </div>
 
   <!-- Team Filter -->
-  <div class="px-2 py-3 border-b border-white/5">
+  <div class="px-2 py-3 border-b border-black-100 dark:border-white/5">
     <SidebarTeamFilter />
   </div>
 
@@ -102,22 +103,22 @@
   </nav>
 
   <!-- Settings -->
-  <div class="px-2 py-2 border-t border-white/5">
+  <div class="px-2 py-2 border-t border-black-100 dark:border-white/5">
     <SidebarItem href="/organization" icon={Settings} label="Settings" />
   </div>
 
   <!-- Footer: Sync, Theme, Logout -->
-  <div class="px-2 py-3 border-t border-white/5">
+  <div class="px-2 py-3 border-t border-black-100 dark:border-white/5">
     <SidebarFooter />
   </div>
 
   <!-- Collapse Toggle - at bottom -->
-  <div class="px-2 py-3 border-t border-white/5">
+  <div class="px-2 py-3 border-t border-black-100 dark:border-white/5">
     <button
       type="button"
       onclick={toggleSidebar}
       class="w-full flex items-center gap-3 px-3 py-2 text-sm font-medium rounded transition-colors duration-150 cursor-pointer
-        text-neutral-400 hover:text-white hover:bg-white/5
+        text-black-600 dark:text-black-400 hover:text-black-900 dark:hover:text-white hover:bg-black-100 dark:hover:bg-white/5
         {isCollapsed ? 'justify-center' : ''}"
       title={isCollapsed ? "Expand sidebar (⌘B)" : "Collapse sidebar (⌘B)"}
     >

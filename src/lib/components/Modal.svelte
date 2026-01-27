@@ -15,7 +15,7 @@
     topAligned = false,
     header,
     children,
-    background = "bg-neutral-900",
+    background = "bg-black-900",
   }: {
     title?: string;
     onclose: () => void;
@@ -129,11 +129,14 @@
       >
         {#if hasTitle}
           <div class="flex justify-between items-center mb-5 shrink-0">
-            <h2 id="modal-title" class="text-sm font-medium text-white">
+            <h2
+              id="modal-title"
+              class="text-sm font-medium text-black-900 dark:text-white"
+            >
               {title}
             </h2>
             <button
-              class="inline-flex justify-center items-center p-1.5 rounded transition-colors duration-150 cursor-pointer text-neutral-500 hover:text-white hover:bg-white/10"
+              class="inline-flex justify-center items-center p-1.5 rounded transition-colors duration-150 cursor-pointer text-black-500 hover:text-white hover:bg-black-100 dark:bg-white/10"
               onclick={onclose}
               aria-label="Close modal"
             >

@@ -320,12 +320,12 @@
     {/each}
   </div>
 {:else if error}
-  <Card class="border-red-500/30">
-    <div class="mb-2 text-sm font-medium text-red-400">
+  <Card class="border-danger-500/30">
+    <div class="mb-2 text-sm font-medium text-danger-400">
       Failed to load metrics
     </div>
-    <p class="text-sm text-neutral-400">{error}</p>
-    <p class="mt-2 text-xs text-neutral-500">
+    <p class="text-sm text-black-400">{error}</p>
+    <p class="mt-2 text-xs text-black-500">
       Metrics are captured hourly after each sync. If you haven't synced yet,
       run a sync first or trigger a manual capture.
     </p>
@@ -406,8 +406,8 @@
 {:else}
   <Card>
     <div class="py-8 text-center">
-      <div class="mb-2 text-neutral-400">No metrics data available</div>
-      <p class="text-sm text-neutral-500">
+      <div class="mb-2 text-black-400">No metrics data available</div>
+      <p class="text-sm text-black-500">
         Metrics snapshots are captured automatically after each sync. Run a sync
         or wait for the next scheduled sync.
       </p>

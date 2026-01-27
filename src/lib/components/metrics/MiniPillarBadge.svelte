@@ -32,7 +32,7 @@
         return "text-blue-400";
       case "pending":
       default:
-        return "text-neutral-400";
+        return "text-black-400";
     }
   }
 
@@ -44,9 +44,9 @@
     ? 'opacity-50'
     : ''}"
 >
-  <span class="text-neutral-400 font-medium">{title}:</span>
+  <span class="text-black-400 font-medium">{title}:</span>
   {#if underConstruction}
-    <span class="text-neutral-500 italic">TBD</span>
+    <span class="text-black-500 italic">TBD</span>
   {:else}
     <span class="font-semibold {textClass}">{value}</span>
   {/if}

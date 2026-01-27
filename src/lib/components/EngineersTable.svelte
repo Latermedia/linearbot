@@ -77,28 +77,27 @@
 <div class="overflow-x-auto">
   <table class="w-full text-sm">
     <thead>
-      <tr class="border-b border-white/10">
-        <th
-          class="px-4 py-3 font-medium text-left text-neutral-400 min-w-[180px]"
+      <tr class="border-b border-black-200 dark:border-white/10">
+        <th class="px-4 py-3 font-medium text-left text-black-400 min-w-[180px]"
           >Engineer</th
         >
-        <th class="px-4 py-3 font-medium text-left text-neutral-400">Teams</th>
-        <th class="px-4 py-3 font-medium text-center text-neutral-400 w-[100px]"
+        <th class="px-4 py-3 font-medium text-left text-black-400">Teams</th>
+        <th class="px-4 py-3 font-medium text-center text-black-400 w-[100px]"
           >WIP Count</th
         >
-        <th class="px-4 py-3 font-medium text-center text-neutral-400 w-[100px]"
+        <th class="px-4 py-3 font-medium text-center text-black-400 w-[100px]"
           >Projects</th
         >
-        <th class="px-4 py-3 font-medium text-right text-neutral-400 w-[100px]"
+        <th class="px-4 py-3 font-medium text-right text-black-400 w-[100px]"
           >Total Points</th
         >
-        <th class="px-4 py-3 font-medium text-right text-neutral-400 w-[100px]"
+        <th class="px-4 py-3 font-medium text-right text-black-400 w-[100px]"
           >Oldest WIP</th
         >
-        <th class="px-4 py-3 font-medium text-center text-neutral-400 w-[100px]"
+        <th class="px-4 py-3 font-medium text-center text-black-400 w-[100px]"
           >Gaps</th
         >
-        <th class="px-4 py-3 font-medium text-right text-neutral-400 w-[120px]"
+        <th class="px-4 py-3 font-medium text-right text-black-400 w-[120px]"
           >Last Activity</th
         >
       </tr>
@@ -108,7 +107,7 @@
         {@const teamNames = parseTeamNames(engineer.team_names)}
         {@const totalGaps = getTotalGaps(engineer)}
         <tr
-          class="border-b transition-colors cursor-pointer border-white/5 hover:bg-white/5"
+          class="border-b transition-colors cursor-pointer border-white/5 hover:bg-black-100 dark:hover:bg-black-50 dark:bg-white/5"
           onclick={() => onEngineerClick(engineer)}
           role="button"
           tabindex="0"
@@ -151,10 +150,10 @@
               {engineer.active_project_count ?? "—"}
             </span>
           </td>
-          <td class="px-4 py-3 text-right text-neutral-300">
+          <td class="px-4 py-3 text-right text-black-300">
             {Math.round(engineer.wip_total_points)}
           </td>
-          <td class="px-4 py-3 text-right text-neutral-300">
+          <td class="px-4 py-3 text-right text-black-300">
             {formatWIPAge(engineer.oldest_wip_age_days)}
           </td>
           <td class="px-4 py-3 text-center">
@@ -166,7 +165,7 @@
               {totalGaps}
             </span>
           </td>
-          <td class="px-4 py-3 text-right text-neutral-400">
+          <td class="px-4 py-3 text-right text-black-400">
             {formatRelativeTime(engineer.last_activity_at)}
           </td>
         </tr>

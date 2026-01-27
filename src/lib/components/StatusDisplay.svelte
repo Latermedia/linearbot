@@ -32,8 +32,8 @@
     ) {
       return {
         iconType: "completed" as const,
-        color: "text-green-400",
-        bgColor: "bg-green-400/10",
+        color: "text-success-400",
+        bgColor: "bg-success-400/10",
       };
     }
     if (
@@ -43,22 +43,22 @@
     ) {
       return {
         iconType: "started" as const,
-        color: "text-violet-400",
-        bgColor: "bg-violet-400/10",
+        color: "text-brand-400",
+        bgColor: "bg-brand-400/10",
       };
     }
     if (name.includes("cancel") || type === "canceled") {
       return {
         iconType: "canceled" as const,
-        color: "text-neutral-500",
-        bgColor: "bg-neutral-500/10",
+        color: "text-black-500",
+        bgColor: "bg-black-500/10",
       };
     }
     // Default/unstarted
     return {
       iconType: "default" as const,
-      color: "text-neutral-400",
-      bgColor: "bg-neutral-400/10",
+      color: "text-black-400",
+      bgColor: "bg-black-400/10",
     };
   });
 </script>
@@ -68,7 +68,7 @@
     {#if config.iconType === "started"}
       <!-- Partial pie chart icon for in-progress -->
       <svg
-        class="text-violet-400 shrink-0"
+        class="text-brand-400 shrink-0"
         width="14"
         height="14"
         viewBox="0 0 24 24"
@@ -92,7 +92,7 @@
     {:else}
       <Circle class={config.color + " shrink-0"} size={14} />
     {/if}
-    <span class="text-neutral-300 text-xs truncate max-w-[100px]">
+    <span class="text-black-300 text-xs truncate max-w-[100px]">
       {stateName}
     </span>
   </div>
@@ -103,7 +103,7 @@
     {#if statusMismatchWarning}
       <div class="flex gap-0.5 items-center">
         <span
-          class="text-amber-400 shrink-0"
+          class="text-warning-400 shrink-0"
           title={statusMismatchWarning.message}>⚠️</span
         >
       </div>

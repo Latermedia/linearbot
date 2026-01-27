@@ -74,10 +74,10 @@
       case "pending":
       default:
         return {
-          bg: "bg-neutral-500/5 dark:bg-neutral-500/10",
-          border: "border-neutral-500/20",
-          text: "text-neutral-600 dark:text-neutral-400",
-          dot: "bg-neutral-500",
+          bg: "bg-black-500/5 dark:bg-black-500/10",
+          border: "border-black-500/20",
+          text: "text-black-600 dark:text-black-400",
+          dot: "bg-black-500",
         };
     }
   }
@@ -91,22 +91,22 @@
   class="flex flex-col p-4 rounded-md border transition-all duration-150 text-left min-w-[140px] cursor-pointer
     {classes.bg} {classes.border}
     hover:scale-[1.02] hover:shadow-md
-    focus:outline-none focus:ring-2 focus:ring-violet-500/50"
+    focus:outline-none focus:ring-2 focus:ring-brand-500/50"
 >
   <div class="flex items-center gap-2 mb-2">
     <div class="w-2 h-2 rounded-full {classes.dot}"></div>
     <span
-      class="text-xs font-medium text-neutral-600 dark:text-neutral-400 uppercase tracking-wider"
+      class="text-xs font-medium text-black-600 dark:text-black-400 uppercase tracking-wider"
     >
       {title}
     </span>
   </div>
 
   {#if notAvailable}
-    <span class="text-lg font-semibold text-neutral-400 dark:text-neutral-500">
+    <span class="text-lg font-semibold text-black-400 dark:text-black-500">
       N/A
     </span>
-    <span class="text-xs text-neutral-500 dark:text-neutral-500 mt-1">
+    <span class="text-xs text-black-500 dark:text-black-500 mt-1">
       Not available
     </span>
   {:else}
@@ -114,7 +114,7 @@
       {value}
     </span>
     {#if subtitle}
-      <span class="text-xs text-neutral-500 dark:text-neutral-500 mt-1">
+      <span class="text-xs text-black-500 dark:text-black-500 mt-1">
         {subtitle}
       </span>
     {/if}

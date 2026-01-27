@@ -110,7 +110,7 @@
 >
   {#snippet headerSnippet()}
     <div
-      class="flex justify-between items-start p-6 pb-4 border-b shrink-0 border-white/10"
+      class="flex justify-between items-start p-6 pb-4 border-b shrink-0 border-black-200 dark:border-white/10"
     >
       <div class="flex-1 min-w-0">
         <div class="flex gap-3 items-center">
@@ -123,11 +123,11 @@
           <div>
             <h2
               id="modal-title"
-              class="flex gap-2 items-center text-xl font-medium text-white"
+              class="flex gap-2 items-center text-xl font-medium text-black-900 dark:text-white"
             >
               {engineer.assignee_name}
               {#if engineer.wip_limit_violation}
-                <span class="text-amber-500" title="Over WIP limit">⚠️</span>
+                <span class="text-warning-500" title="Over WIP limit">⚠️</span>
               {/if}
             </h2>
             <div class="flex flex-wrap gap-1 mt-1">
@@ -139,7 +139,7 @@
         </div>
       </div>
       <button
-        class="inline-flex justify-center items-center p-1.5 rounded transition-colors duration-150 cursor-pointer text-neutral-400 hover:text-white hover:bg-white/10"
+        class="inline-flex justify-center items-center p-1.5 rounded transition-colors duration-150 cursor-pointer text-black-400 hover:text-white hover:bg-black-100 dark:bg-white/10"
         onclick={onclose}
         aria-label="Close modal"
         title="Close (ESC)"
@@ -164,8 +164,8 @@
   {#snippet childrenSnippet()}
     <!-- Summary Stats -->
     <div class="grid grid-cols-2 gap-4 mb-6 sm:grid-cols-5">
-      <div class="p-3 rounded-md border bg-neutral-800/50 border-white/5">
-        <div class="mb-1 text-xs text-neutral-500">WIP Issues</div>
+      <div class="p-3 rounded-md border bg-black-800/50 border-white/5">
+        <div class="mb-1 text-xs text-black-500">WIP Issues</div>
         <div
           class="text-2xl font-semibold {getStatusTextColor(
             getWIPCountStatus(engineer.wip_issue_count)
@@ -181,22 +181,22 @@
           {getWIPStatusLabel(engineer.wip_issue_count)}
         </div>
       </div>
-      <div class="p-3 rounded-md border bg-neutral-800/50 border-white/5">
-        <div class="mb-1 text-xs text-neutral-500">Total Points</div>
-        <div class="text-2xl font-semibold text-white">
+      <div class="p-3 rounded-md border bg-black-800/50 border-white/5">
+        <div class="mb-1 text-xs text-black-500">Total Points</div>
+        <div class="text-2xl font-semibold text-black-900 dark:text-white">
           {Math.round(engineer.wip_total_points)}
         </div>
-        <div class="text-xs text-neutral-500">in progress</div>
+        <div class="text-xs text-black-500">in progress</div>
       </div>
-      <div class="p-3 rounded-md border bg-neutral-800/50 border-white/5">
-        <div class="mb-1 text-xs text-neutral-500">Oldest Issue</div>
-        <div class="text-2xl font-semibold text-white">
+      <div class="p-3 rounded-md border bg-black-800/50 border-white/5">
+        <div class="mb-1 text-xs text-black-500">Oldest Issue</div>
+        <div class="text-2xl font-semibold text-black-900 dark:text-white">
           {formatWIPAge(engineer.oldest_wip_age_days)}
         </div>
-        <div class="text-xs text-neutral-500">in WIP</div>
+        <div class="text-xs text-black-500">in WIP</div>
       </div>
-      <div class="p-3 rounded-md border bg-neutral-800/50 border-white/5">
-        <div class="mb-1 text-xs text-neutral-500">Gaps</div>
+      <div class="p-3 rounded-md border bg-black-800/50 border-white/5">
+        <div class="mb-1 text-xs text-black-500">Gaps</div>
         <div
           class="text-2xl font-semibold {getStatusTextColor(
             getGapsCountStatus(totalViolations)
@@ -204,11 +204,11 @@
         >
           {totalViolations}
         </div>
-        <div class="text-xs text-neutral-500">issues</div>
+        <div class="text-xs text-black-500">issues</div>
       </div>
-      <div class="p-3 rounded-md border bg-neutral-800/50 border-white/5">
-        <div class="mb-1 text-xs text-neutral-500">Last Activity</div>
-        <div class="text-lg font-semibold text-white">
+      <div class="p-3 rounded-md border bg-black-800/50 border-white/5">
+        <div class="mb-1 text-xs text-black-500">Last Activity</div>
+        <div class="text-lg font-semibold text-black-900 dark:text-white">
           {formatRelativeTime(engineer.last_activity_at)}
         </div>
       </div>
@@ -216,7 +216,7 @@
 
     <!-- Active Issues Table -->
     <div>
-      <div class="mb-3 text-sm font-medium text-neutral-300">
+      <div class="mb-3 text-sm font-medium text-black-300">
         Active Issues ({activeIssues.length})
       </div>
       <IssueTable issues={activeIssues} />

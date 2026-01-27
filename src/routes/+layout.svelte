@@ -125,7 +125,7 @@
     </div>
   </AppShell>
 {:else}
-  <div class="min-h-screen bg-neutral-950">
+  <div class="min-h-screen bg-black-950">
     {@render children()}
   </div>
 {/if}

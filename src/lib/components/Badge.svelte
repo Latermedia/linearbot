@@ -6,17 +6,17 @@
     variants: {
       variant: {
         default:
-          "bg-neutral-100 dark:bg-white/10 text-neutral-700 dark:text-neutral-300",
+          "bg-black-100 dark:bg-white/10 text-black-700 dark:text-black-300",
         secondary:
-          "bg-neutral-200 dark:bg-neutral-800 text-neutral-600 dark:text-neutral-400",
+          "bg-black-200 dark:bg-black-800 text-black-600 dark:text-black-400",
         destructive:
-          "bg-red-100 dark:bg-red-500/10 text-red-700 dark:text-red-400",
+          "bg-danger-100 dark:bg-danger-500/10 text-danger-700 dark:text-danger-400",
         success:
-          "bg-emerald-100 dark:bg-emerald-500/10 text-emerald-700 dark:text-emerald-400",
+          "bg-success-100 dark:bg-success-500/10 text-success-700 dark:text-success-400",
         warning:
-          "bg-amber-100 dark:bg-amber-500/10 text-amber-700 dark:text-amber-400",
+          "bg-warning-100 dark:bg-warning-500/10 text-warning-700 dark:text-warning-400",
         outline:
-          "bg-transparent border border-neutral-300 dark:border-white/10 text-neutral-700 dark:text-neutral-300",
+          "bg-transparent border border-black-300 dark:border-white/10 text-black-700 dark:text-black-300",
       },
     },
     defaultVariants: {

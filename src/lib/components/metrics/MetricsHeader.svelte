@@ -54,20 +54,22 @@
 
 <div class="relative">
   <div class="flex justify-between items-center">
-    <h1 class="text-2xl font-semibold tracking-tight text-white">
+    <h1
+      class="text-2xl font-semibold tracking-tight text-black-900 dark:text-white"
+    >
       {title}
     </h1>
     {#if onToggleTrends}
       <div class="flex gap-2 items-center">
-        <span class="text-xs text-neutral-400">Trends</span>
+        <span class="text-xs text-black-400">Trends</span>
         <button
           type="button"
           role="switch"
           aria-checked={showTrends}
           onclick={onToggleTrends}
           class="relative inline-flex h-5 w-9 shrink-0 cursor-pointer items-center rounded-full transition-colors duration-200 ease-in-out focus:outline-none focus-visible:ring-2 focus-visible:ring-white/20 {showTrends
-            ? 'bg-violet-600'
-            : 'bg-neutral-700'}"
+            ? 'bg-brand-600'
+            : 'bg-black-700'}"
         >
           <span class="sr-only">Show trends</span>
           <span
@@ -81,7 +83,7 @@
   </div>
   <div class="relative mt-1 h-6">
     <p
-      class="absolute left-0 right-0 top-0 z-50 text-sm text-neutral-400 italic pointer-events-none principle-text {isAnimating
+      class="absolute left-0 right-0 top-0 z-50 text-sm text-black-400 italic pointer-events-none principle-text {isAnimating
         ? 'principle-exit'
         : 'principle-enter'}"
     >

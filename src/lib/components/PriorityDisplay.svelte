@@ -15,37 +15,37 @@
         return {
           icon: Minus,
           label: "No priority",
-          color: "text-neutral-300",
+          color: "text-black-300",
         };
       case 1:
         return {
           icon: CircleAlert,
           label: "Urgent",
-          color: "text-neutral-300",
+          color: "text-black-300",
         };
       case 2:
         return {
           icon: SignalHigh,
           label: "High",
-          color: "text-neutral-300",
+          color: "text-black-300",
         };
       case 3:
         return {
           icon: SignalMedium,
           label: "Medium",
-          color: "text-neutral-300",
+          color: "text-black-300",
         };
       case 4:
         return {
           icon: SignalLow,
           label: "Low",
-          color: "text-neutral-300",
+          color: "text-black-300",
         };
       default:
         return {
           icon: Minus,
           label: "No priority",
-          color: "text-neutral-300",
+          color: "text-black-300",
         };
     }
   });

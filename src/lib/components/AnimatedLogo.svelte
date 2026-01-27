@@ -1,5 +1,6 @@
 <script lang="ts">
   import { onMount } from "svelte";
+  import { theme } from "$lib/stores/theme";
 
   interface Props {
     size?: number;
@@ -11,6 +12,8 @@
 
   let mounted = $state(false);
   let animationStarted = $state(false);
+
+  const isDark = $derived($theme === "dark");
 
   onMount(() => {
     mounted = true;
@@ -29,19 +32,15 @@
   style="width: {size}px; height: {size}px;"
   class:animate={mounted && animationStarted}
 >
-  <svg
+  <img
+    src={isDark
+      ? "/logo_icon_knockout_light.svg"
+      : "/logo_icon_knockout_dark.svg"}
+    alt="Laterbot logo"
     width={size}
     height={size}
-    viewBox="0 0 200 206"
-    fill="none"
-    xmlns="http://www.w3.org/2000/svg"
     class="logo-svg"
-  >
-    <path
-      d="M200 153.612V205.299H63.418L0 132.823V0H60.2197L200 153.612ZM7.24707 7.71777V126.047H128.43V88.8623H52.9736V7.71777H7.24707Z"
-      fill="#F8F2EA"
-    />
-  </svg>
+  />
 </div>
 
 <style>

@@ -114,7 +114,7 @@
   <!-- Hero/Marquee variant - larger centered display -->
   <Card
     class="transition-colors duration-150 border {underConstruction
-      ? 'border-neutral-700/50 opacity-60 cursor-not-allowed'
+      ? 'border-black-700/50 opacity-60 cursor-not-allowed'
       : 'hover:bg-white/5 border-white/10'}"
   >
     <button
@@ -125,7 +125,7 @@
     >
       <!-- Title label -->
       <div
-        class="text-xs font-medium tracking-wide uppercase text-neutral-400 text-center mb-3"
+        class="text-xs font-medium tracking-wide uppercase text-black-400 text-center mb-3"
       >
         {title}
         {#if underConstruction}
@@ -152,11 +152,11 @@
       <!-- Large metric value -->
       {#if underConstruction}
         <div
-          class="text-5xl lg:text-6xl font-bold text-neutral-500 text-center tracking-tight"
+          class="text-5xl lg:text-6xl font-bold text-black-500 text-center tracking-tight"
         >
           —
         </div>
-        <div class="text-sm text-neutral-500 text-center mt-2">
+        <div class="text-sm text-black-500 text-center mt-2">
           GetDX mapping pending
         </div>
       {:else}
@@ -176,7 +176,7 @@
                       : 'text-white'}"
           >
             {value}{#if valueUnit}<span
-                class="text-2xl font-normal text-neutral-400">{valueUnit}</span
+                class="text-2xl font-normal text-black-400">{valueUnit}</span
               >{/if}
           </span>
         </div>
@@ -217,7 +217,7 @@
 
         <!-- Subtitle -->
         {#if subtitle}
-          <p class="text-sm text-neutral-400 text-center mt-2">
+          <p class="text-sm text-black-400 text-center mt-2">
             {subtitle}
           </p>
         {/if}
@@ -237,7 +237,7 @@
                       ? 'bg-danger-500/20 text-danger-500'
                       : status === 'lowTraction'
                         ? 'bg-danger-600/20 text-danger-600'
-                        : 'bg-neutral-500/20 text-neutral-400'}"
+                        : 'bg-black-500/20 text-black-400'}"
             >
               {status === "peakFlow"
                 ? "Peak Flow"
@@ -260,7 +260,7 @@
   <!-- Default card variant -->
   <Card
     class="transition-colors duration-150 border {underConstruction
-      ? 'border-neutral-700/50 opacity-60 cursor-not-allowed'
+      ? 'border-black-700/50 opacity-60 cursor-not-allowed'
       : 'hover:bg-white/5 border-white/10'}"
   >
     <button
@@ -271,7 +271,7 @@
     >
       <div class="flex justify-between items-start mb-3">
         <div
-          class="flex items-center gap-2 text-xs font-medium tracking-wide uppercase text-neutral-400"
+          class="flex items-center gap-2 text-xs font-medium tracking-wide uppercase text-black-400"
         >
           {title}
         </div>
@@ -299,14 +299,13 @@
       <div class="space-y-3">
         <div>
           {#if underConstruction}
-            <div class="text-2xl font-semibold text-neutral-500">—</div>
-            <div class="text-xs text-neutral-500">GetDX mapping pending</div>
+            <div class="text-2xl font-semibold text-black-500">—</div>
+            <div class="text-xs text-black-500">GetDX mapping pending</div>
           {:else}
             <div class="flex items-center gap-2">
-              <span class="text-2xl font-semibold text-neutral-200">
+              <span class="text-2xl font-semibold text-black-200">
                 {value}{#if valueUnit}<span
-                    class="text-sm font-normal text-neutral-400"
-                    >{valueUnit}</span
+                    class="text-sm font-normal text-black-400">{valueUnit}</span
                   >{/if}
               </span>
               {#if weekTrend?.hasEnoughData}
@@ -340,7 +339,7 @@
             </div>
             <div class="flex items-center gap-2">
               {#if subtitle}
-                <span class="text-xs text-neutral-500">{subtitle}</span>
+                <span class="text-xs text-black-500">{subtitle}</span>
               {/if}
               {#if status && !underConstruction}
                 <span
@@ -355,7 +354,7 @@
                           ? 'bg-danger-500/20 text-danger-500'
                           : status === 'lowTraction'
                             ? 'bg-danger-600/20 text-danger-600'
-                            : 'bg-neutral-500/20 text-neutral-400'}"
+                            : 'bg-black-500/20 text-black-400'}"
                 >
                   {status === "peakFlow"
                     ? "Peak Flow"
@@ -381,16 +380,16 @@
               {#if twoColumnDetails.left && twoColumnDetails.left.items.length > 0}
                 <div class="space-y-0.5">
                   <div
-                    class="text-neutral-500 text-[10px] uppercase tracking-wider"
+                    class="text-black-500 text-[10px] uppercase tracking-wider"
                   >
                     {twoColumnDetails.left.header}
                   </div>
                   {#each twoColumnDetails.left.items as item (item.label)}
                     <div>
-                      <span class="font-semibold text-neutral-400"
+                      <span class="font-semibold text-black-400"
                         >{item.value}</span
                       >
-                      <span class="text-neutral-500">{item.label}</span>
+                      <span class="text-black-500">{item.label}</span>
                     </div>
                   {/each}
                 </div>
@@ -398,23 +397,23 @@
               {#if twoColumnDetails.right && twoColumnDetails.right.items.length > 0}
                 <div class="space-y-0.5">
                   <div
-                    class="text-neutral-500 text-[10px] uppercase tracking-wider"
+                    class="text-black-500 text-[10px] uppercase tracking-wider"
                   >
                     {twoColumnDetails.right.header}
                   </div>
                   {#each twoColumnDetails.right.items as item (item.label)}
                     <div>
-                      <span class="font-semibold text-neutral-400"
+                      <span class="font-semibold text-black-400"
                         >{item.value}</span
                       >
-                      <span class="text-neutral-500">{item.label}</span>
+                      <span class="text-black-500">{item.label}</span>
                     </div>
                   {/each}
                 </div>
               {/if}
             </div>
           {:else if noIssuesMessage}
-            <div class="text-xs text-neutral-500">{noIssuesMessage}</div>
+            <div class="text-xs text-black-500">{noIssuesMessage}</div>
           {/if}
         {:else if details.length > 0 && !underConstruction}
           <!-- Standard list layout for details -->
@@ -423,16 +422,15 @@
               <!-- svelte-ignore a11y_no_static_element_interactions -->
               <div
                 class={detail.id && onDetailHover
-                  ? "cursor-pointer hover:text-neutral-300 transition-colors"
+                  ? "cursor-pointer hover:text-black-300 transition-colors"
                   : ""}
                 onmouseenter={(e) => handleDetailMouseEnter(detail.id, e)}
                 onmouseleave={handleDetailMouseLeave}
               >
-                <span class="font-semibold text-neutral-400"
-                  >{detail.value}</span
-                >{#if detail.secondaryValue}<span class="text-neutral-400/50"
+                <span class="font-semibold text-black-400">{detail.value}</span
+                >{#if detail.secondaryValue}<span class="text-black-400/50"
                     >{detail.secondaryValue}</span
-                  >{/if}<span class="text-neutral-500">{detail.label}</span>
+                  >{/if}<span class="text-black-500">{detail.label}</span>
               </div>
             {/each}
           </div>

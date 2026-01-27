@@ -73,7 +73,7 @@
 <div class="relative" data-team-filter>
   <div
     class="w-full flex items-center gap-2 px-3 py-2 text-sm rounded transition-colors duration-150
-      text-neutral-400 hover:text-white hover:bg-white/5 overflow-hidden
+      text-black-600 dark:text-black-400 hover:text-black-900 dark:hover:text-white hover:bg-black-100 dark:hover:bg-white/5 overflow-hidden
       {isCollapsed ? 'justify-center' : ''}"
   >
     <button
@@ -84,7 +84,9 @@
     >
       <Users class="w-4 h-4 shrink-0" />
       {#if !isCollapsed}
-        <span class="flex-1 min-w-0 text-left truncate text-neutral-300">
+        <span
+          class="flex-1 min-w-0 text-left truncate text-black-700 dark:text-black-300"
+        >
           {filterDisplayText}
         </span>
         <ChevronDown
@@ -101,7 +103,7 @@
           e.stopPropagation();
           handleReset();
         }}
-        class="p-0.5 shrink-0 rounded hover:bg-white/10 text-neutral-400 hover:text-white cursor-pointer"
+        class="p-0.5 shrink-0 rounded hover:bg-black-200 dark:hover:bg-white/10 text-black-500 dark:text-black-400 hover:text-black-900 dark:hover:text-white cursor-pointer"
         title="Clear filter"
       >
         <X class="w-3 h-3" />
@@ -116,12 +118,12 @@
         ? 'left-full ml-2 -mt-10'
         : 'left-0 right-0'} 
         min-w-[220px] max-h-80 overflow-y-auto
-        bg-neutral-900 border border-white/10 rounded shadow-xl z-50"
+        bg-white dark:bg-black-900 border border-black-200 dark:border-white/10 rounded shadow-xl z-50"
     >
       <div class="py-1">
         <!-- Domain filter section -->
         <div
-          class="px-3 py-1.5 text-xs font-medium text-neutral-500 uppercase tracking-wide flex items-center gap-1.5"
+          class="px-3 py-1.5 text-xs font-medium text-black-500 uppercase tracking-wide flex items-center gap-1.5"
         >
           <Building2 class="w-3 h-3" />
           Domains
@@ -132,8 +134,8 @@
           onclick={() => handleSelectDomain(null)}
           class="w-full px-3 py-2 text-left text-sm transition-colors duration-150 cursor-pointer
             {filter.domain === null && filter.teamKey === null
-            ? 'text-white bg-white/10'
-            : 'text-neutral-400 hover:text-white hover:bg-white/5'}"
+            ? 'text-black-900 dark:text-white bg-black-100 dark:bg-white/10'
+            : 'text-black-600 dark:text-black-400 hover:text-black-900 dark:hover:text-white hover:bg-black-50 dark:hover:bg-white/5'}"
         >
           All Domains
         </button>
@@ -144,17 +146,17 @@
             onclick={() => handleSelectDomain(domain.domainName)}
             class="w-full px-3 py-2 text-left text-sm transition-colors duration-150 cursor-pointer
               {filter.domain === domain.domainName && filter.teamKey === null
-              ? 'text-white bg-white/10'
-              : 'text-neutral-400 hover:text-white hover:bg-white/5'}"
+              ? 'text-black-900 dark:text-white bg-black-100 dark:bg-white/10'
+              : 'text-black-600 dark:text-black-400 hover:text-black-900 dark:hover:text-white hover:bg-black-50 dark:hover:bg-white/5'}"
           >
             {domain.domainName}
           </button>
         {/each}
 
         <!-- Teams section - grouped by domain -->
-        <div class="border-t border-white/10 mt-1 pt-1">
+        <div class="border-t border-black-200 dark:border-white/10 mt-1 pt-1">
           <div
-            class="px-3 py-1.5 text-xs font-medium text-neutral-500 uppercase tracking-wide flex items-center gap-1.5"
+            class="px-3 py-1.5 text-xs font-medium text-black-500 uppercase tracking-wide flex items-center gap-1.5"
           >
             <Users class="w-3 h-3" />
             Teams
@@ -163,7 +165,9 @@
           {#each filteredDomains as domain (domain.domainName)}
             {#if domain.teams.length > 0}
               <!-- Domain group header -->
-              <div class="px-3 py-1 text-xs text-neutral-500 bg-white/2">
+              <div
+                class="px-3 py-1 text-xs text-black-500 bg-black-50 dark:bg-white/2"
+              >
                 {domain.domainName}
               </div>
 
@@ -173,8 +177,8 @@
                   onclick={() => handleSelectTeam(team.teamKey)}
                   class="w-full px-3 py-2 pl-5 text-left text-sm transition-colors duration-150 cursor-pointer
                     {filter.teamKey === team.teamKey
-                    ? 'text-white bg-white/10'
-                    : 'text-neutral-400 hover:text-white hover:bg-white/5'}"
+                    ? 'text-black-900 dark:text-white bg-black-100 dark:bg-white/10'
+                    : 'text-black-600 dark:text-black-400 hover:text-black-900 dark:hover:text-white hover:bg-black-50 dark:hover:bg-white/5'}"
                 >
                   {team.teamName}
                 </button>

@@ -149,15 +149,15 @@
     {/if}
   </Button>
   {#if syncStatus === "syncing" && progressPercent !== null}
-    <div class="text-xs text-neutral-500 dark:text-neutral-500">
+    <div class="text-xs text-black-500 dark:text-black-500">
       {progressPercent.toFixed(2)}%
     </div>
   {:else if syncStatus === "error" && errorMessage}
-    <div class="text-xs text-red-600 dark:text-red-400">
+    <div class="text-xs text-danger-600 dark:text-danger-400">
       {errorMessage}
     </div>
   {:else}
-    <div class="text-xs text-neutral-500 dark:text-neutral-500">
+    <div class="text-xs text-black-500 dark:text-black-500">
       Last sync: {formatLastSync(lastSyncDate)}
     </div>
   {/if}

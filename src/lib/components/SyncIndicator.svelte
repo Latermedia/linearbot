@@ -146,10 +146,10 @@
     type="button"
     class="group relative w-full flex items-center gap-3 px-3 py-2 text-sm font-medium rounded transition-colors duration-150 cursor-pointer overflow-hidden
       {hasError
-      ? 'text-red-400 hover:text-red-300 hover:bg-red-500/10 border border-red-500/30'
+      ? 'text-danger-400 hover:text-danger-300 hover:bg-danger-500/10 border border-danger-500/30'
       : isSyncing
-        ? 'text-neutral-400'
-        : 'text-neutral-400 hover:text-white hover:bg-white/5'}
+        ? 'text-black-600 dark:text-black-400'
+        : 'text-black-600 dark:text-black-400 hover:text-black-900 dark:hover:text-white hover:bg-black-100 dark:hover:bg-white/5'}
       {isCollapsed ? 'justify-center' : ''}"
     title={isCollapsed
       ? tooltipText() ||
@@ -163,7 +163,7 @@
     {#if isSyncing || hasError}
       <div
         class="absolute inset-0 rounded transition-all duration-300 ease-out {hasError
-          ? 'bg-red-500/10'
+          ? 'bg-danger-500/10'
           : 'bg-white/5'}"
         style="width: {displayProgress}%;"
       ></div>
@@ -177,7 +177,7 @@
           {#each Array(9) as _, i}
             <div
               class="sync-block w-full h-full rounded-[1px] {hasError
-                ? 'bg-red-500'
+                ? 'bg-danger-500'
                 : 'bg-current'}"
               style="animation-delay: {delays[i]}s;"
             ></div>
@@ -204,7 +204,9 @@
 
     <!-- Label (hidden when collapsed) -->
     {#if !isCollapsed}
-      <span class="relative whitespace-nowrap {hasError ? 'text-red-400' : ''}">
+      <span
+        class="relative whitespace-nowrap {hasError ? 'text-danger-400' : ''}"
+      >
         {hasError
           ? hasPartialSync
             ? "Partial sync"
@@ -218,7 +220,7 @@
     <!-- Tooltip when collapsed -->
     {#if isCollapsed}
       <div
-        class="absolute left-full ml-2 px-2 py-1 text-xs font-medium text-white bg-neutral-800 rounded shadow-lg
+        class="absolute left-full ml-2 px-2 py-1 text-xs font-medium text-white bg-black-800 rounded shadow-lg
           opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all duration-150 whitespace-nowrap z-50"
       >
         {hasError

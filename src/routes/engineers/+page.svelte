@@ -237,10 +237,12 @@
     class="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between"
   >
     <div>
-      <h1 class="text-3xl font-bold text-neutral-900 dark:text-white">
+      <h1
+        class="text-3xl font-bold text-black-900 dark:text-black-900 dark:text-white"
+      >
         Engineer WIP
       </h1>
-      <p class="mt-2 text-sm text-neutral-600 dark:text-neutral-400">
+      <p class="mt-2 text-sm text-black-600 dark:text-black-400">
         Work-in-progress tracking and gaps by engineer
       </p>
     </div>
@@ -250,51 +252,57 @@
   {#if !loading && !error && engineers.length > 0}
     <div class="flex flex-wrap gap-4">
       <Card class="max-w-[180px]">
-        <div class="mb-1 text-xs text-neutral-500 dark:text-neutral-300">
+        <div class="mb-1 text-xs text-black-500 dark:text-black-300">
           Engineers
         </div>
-        <div class="text-2xl font-semibold text-neutral-900 dark:text-white">
+        <div
+          class="text-2xl font-semibold text-black-900 dark:text-black-900 dark:text-white"
+        >
           {totalEngineers}
         </div>
-        <div class="text-xs text-neutral-500">with active WIP</div>
+        <div class="text-xs text-black-500">with active WIP</div>
       </Card>
       <Card class="max-w-[180px]">
-        <div class="mb-1 text-xs text-neutral-500 dark:text-neutral-300">
+        <div class="mb-1 text-xs text-black-500 dark:text-black-300">
           Total WIP Issues
         </div>
-        <div class="text-2xl font-semibold text-neutral-900 dark:text-white">
+        <div
+          class="text-2xl font-semibold text-black-900 dark:text-black-900 dark:text-white"
+        >
           {totalWIPIssues}
         </div>
-        <div class="text-xs text-neutral-500">in progress</div>
+        <div class="text-xs text-black-500">in progress</div>
       </Card>
       <Card class="max-w-[180px]">
-        <div class="mb-1 text-xs text-neutral-500 dark:text-neutral-300">
+        <div class="mb-1 text-xs text-black-500 dark:text-black-300">
           Avg WIP/Engineer
         </div>
-        <div class="text-2xl font-semibold text-neutral-900 dark:text-white">
+        <div
+          class="text-2xl font-semibold text-black-900 dark:text-black-900 dark:text-white"
+        >
           {avgWIPPerEngineer}
         </div>
-        <div class="text-xs text-neutral-500">
+        <div class="text-xs text-black-500">
           limit: {WIP_LIMIT}
         </div>
       </Card>
       <Card class="max-w-[180px]">
-        <div class="mb-1 text-xs text-neutral-500 dark:text-neutral-300">
+        <div class="mb-1 text-xs text-black-500 dark:text-black-300">
           Over WIP Limit
         </div>
         <div
           class="text-2xl font-semibold {engineersOverLimit > 0
-            ? 'text-amber-500'
-            : 'text-emerald-500'}"
+            ? 'text-warning-500'
+            : 'text-success-500'}"
         >
           {engineersOverLimit}
         </div>
-        <div class="text-xs text-neutral-500">
+        <div class="text-xs text-black-500">
           engineers (>{WIP_LIMIT})
         </div>
       </Card>
       <Card class="max-w-[180px]">
-        <div class="mb-1 text-xs text-neutral-500 dark:text-neutral-300">
+        <div class="mb-1 text-xs text-black-500 dark:text-black-300">
           Total Gaps
         </div>
         <div
@@ -304,7 +312,7 @@
         >
           {totalViolations}
         </div>
-        <div class="text-xs text-neutral-500">across all engineers</div>
+        <div class="text-xs text-black-500">across all engineers</div>
       </Card>
     </div>
   {/if}
@@ -321,24 +329,28 @@
       </div>
     </Card>
   {:else if error}
-    <Card class="border-red-500/50">
-      <div class="mb-3 text-sm font-medium text-red-600 dark:text-red-400">
+    <Card class="border-danger-500/50">
+      <div
+        class="mb-3 text-sm font-medium text-danger-600 dark:text-danger-400"
+      >
         Error Loading Data
       </div>
-      <p class="mb-3 text-neutral-700 dark:text-neutral-400">{error}</p>
-      <p class="text-sm text-neutral-600 dark:text-neutral-500">
+      <p class="mb-3 text-black-700 dark:text-black-400">{error}</p>
+      <p class="text-sm text-black-600 dark:text-black-500">
         Make sure the database is synced. Run: <code
-          class="px-2 py-1 font-mono text-xs rounded bg-neutral-100 dark:bg-neutral-800 text-neutral-700 dark:text-neutral-300"
+          class="px-2 py-1 font-mono text-xs rounded bg-black-100 dark:bg-black-800 text-black-700 dark:text-black-300"
           >bun run sync</code
         >
       </p>
     </Card>
   {:else if engineers.length === 0}
     <Card>
-      <div class="mb-3 text-sm font-medium text-neutral-900 dark:text-white">
+      <div
+        class="mb-3 text-sm font-medium text-black-900 dark:text-black-900 dark:text-white"
+      >
         No Engineers with Active WIP
       </div>
-      <p class="text-neutral-700 dark:text-neutral-400">
+      <p class="text-black-700 dark:text-black-400">
         No engineers currently have issues in progress. Sync the database to
         load data from Linear.
       </p>
@@ -349,10 +361,10 @@
     {#if sortedTeamMappedEngineers.length > 0}
       <Card class="p-0 overflow-hidden">
         <div
-          class="flex flex-wrap items-center justify-between gap-4 px-4 py-3 border-b border-white/10 bg-white/5"
+          class="flex flex-wrap items-center justify-between gap-4 px-4 py-3 border-b border-white/10 bg-black-50 dark:bg-white/5"
         >
           <div class="flex items-center gap-3">
-            <h2 class="text-lg font-semibold text-white">
+            <h2 class="text-lg font-semibold text-black-900 dark:text-white">
               {getTeamDisplayName(selectedTeamKey)} Engineers
             </h2>
             <Badge variant="outline"
@@ -367,7 +379,7 @@
       </Card>
     {:else}
       <Card>
-        <div class="py-4 text-center text-neutral-400">
+        <div class="py-4 text-center text-black-400">
           No engineers mapped to {getTeamDisplayName(selectedTeamKey)}
         </div>
       </Card>
@@ -377,17 +389,17 @@
     {#if sortedCrossTeamCollaborators.length > 0}
       <Card class="p-0 overflow-hidden">
         <div
-          class="flex flex-wrap items-center justify-between gap-4 px-4 py-3 border-b border-white/10 bg-white/5"
+          class="flex flex-wrap items-center justify-between gap-4 px-4 py-3 border-b border-white/10 bg-black-50 dark:bg-white/5"
         >
           <div class="flex items-center gap-3">
-            <h2 class="text-lg font-semibold text-white">
+            <h2 class="text-lg font-semibold text-black-900 dark:text-white">
               Cross-Team Collaborators
             </h2>
             <Badge variant="outline"
               >{sortedCrossTeamCollaborators.length} engineers</Badge
             >
           </div>
-          <span class="text-xs text-neutral-400">
+          <span class="text-xs text-black-400">
             Engineers from other teams working on {getTeamDisplayName(
               selectedTeamKey
             )} issues

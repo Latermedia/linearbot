@@ -170,6 +170,10 @@ export function getViolationSummary(project: ProjectSummary): string[] {
 
 /**
  * Get health display configuration for badges
+ * Uses 5-stop gradient from status-colors.ts:
+ * - On Track → success-400 (peakFlow tier)
+ * - At Risk → warning-500 (steadyProgress tier)
+ * - Off Track → danger-600 (lowTraction tier)
  */
 export function getHealthDisplay(health: string | null): {
   text: string;
@@ -185,18 +189,22 @@ export function getHealthDisplay(health: string | null): {
     return {
       text: "On Track",
       variant: "default",
-      colorClass: "!text-green-600 dark:!text-green-500",
+      colorClass: "!text-success-400",
     };
   }
   if (healthLower === "atrisk" || healthLower === "at risk") {
     return {
       text: "At Risk",
       variant: "default",
-      colorClass: "!text-amber-600 dark:!text-amber-500",
+      colorClass: "!text-warning-500",
     };
   }
   if (healthLower === "offtrack" || healthLower === "off track") {
-    return { text: "Off Track", variant: "destructive", colorClass: "" };
+    return {
+      text: "Off Track",
+      variant: "destructive",
+      colorClass: "!text-danger-600",
+    };
   }
 
   // Fallback for any other values
@@ -570,6 +578,7 @@ export function calculateEstimateAccuracy(issues: Issue[]): number | null {
 
 /**
  * Get velocity trend display (increasing/decreasing/stable)
+ * Uses semantic colors from the 5-stop gradient
  */
 export function getVelocityTrendDisplay(
   trend: "increasing" | "decreasing" | "stable" | "unknown"
@@ -578,12 +587,12 @@ export function getVelocityTrendDisplay(
   colorClass: string;
 } {
   if (trend === "increasing") {
-    return { icon: "→", colorClass: "text-green-500" };
+    return { icon: "→", colorClass: "text-success-500" };
   }
   if (trend === "decreasing") {
-    return { icon: "←", colorClass: "text-red-500" };
+    return { icon: "←", colorClass: "text-danger-500" };
   }
-  return { icon: "—", colorClass: "text-neutral-500" };
+  return { icon: "—", colorClass: "text-black-500" };
 }
 
 /**

@@ -280,7 +280,7 @@
       case "lowTraction":
         return "text-danger-600";
       default:
-        return "text-neutral-400";
+        return "text-black-400";
     }
   }
 
@@ -351,17 +351,19 @@
   <!-- Organization Metrics Table -->
   <div class="mt-8 border-t border-white/10 pt-6">
     <div class="flex items-center justify-between mb-4">
-      <h2 class="text-lg font-semibold text-white">Organization</h2>
+      <h2 class="text-lg font-semibold text-black-900 dark:text-white">
+        Organization
+      </h2>
       <div class="flex gap-2 items-center">
-        <span class="text-xs text-neutral-400">Teams</span>
+        <span class="text-xs text-black-400">Teams</span>
         <button
           type="button"
           role="switch"
           aria-checked={showTeams}
           onclick={() => (showTeams = !showTeams)}
           class="relative inline-flex h-5 w-9 shrink-0 cursor-pointer items-center rounded-full transition-colors duration-200 ease-in-out focus:outline-none focus-visible:ring-2 focus-visible:ring-white/20 {showTeams
-            ? 'bg-violet-600'
-            : 'bg-neutral-700'}"
+            ? 'bg-brand-600'
+            : 'bg-black-700'}"
         >
           <span class="sr-only">Show teams</span>
           <span
@@ -386,8 +388,8 @@
   {:else if !hasOrganizationData}
     <Card>
       <div class="py-8 text-center">
-        <div class="mb-2 text-neutral-400">No organization data available</div>
-        <p class="text-sm text-neutral-500">
+        <div class="mb-2 text-black-400">No organization data available</div>
+        <p class="text-sm text-black-500">
           Configure TEAM_DOMAIN_MAPPINGS to see domain and team metrics.
         </p>
       </div>
@@ -398,7 +400,7 @@
         <table class="w-full">
           <thead>
             <tr
-              class="text-left text-xs font-medium text-neutral-500 uppercase tracking-wider border-b border-white/10 bg-white/5"
+              class="text-left text-xs font-medium text-black-500 uppercase tracking-wider border-b border-white/10 bg-black-50 dark:bg-white/5"
             >
               <th class="px-4 py-3">Name</th>
               <th class="px-4 py-3 text-center whitespace-nowrap">Engineers</th>
@@ -427,15 +429,16 @@
               <!-- Domain row -->
               <tr class="bg-white/3 hover:bg-white/5 transition-colors">
                 <td class="px-4 py-3">
-                  <span class="text-sm font-semibold text-white"
+                  <span
+                    class="text-sm font-semibold text-black-900 dark:text-white"
                     >{domain.name}</span
                   >
-                  <span class="ml-2 text-xs text-neutral-500"
+                  <span class="ml-2 text-xs text-black-500"
                     >({domain.teams.length} teams)</span
                   >
                 </td>
                 <td class="px-4 py-3 text-center">
-                  <span class="text-sm font-medium text-neutral-300"
+                  <span class="text-sm font-medium text-black-300"
                     >{domainEngineerCount}</span
                   >
                 </td>
@@ -459,7 +462,7 @@
                       {hygiene?.hygieneScore}%
                     </button>
                   {:else}
-                    <span class="text-sm text-neutral-500">—</span>
+                    <span class="text-sm text-black-500">—</span>
                   {/if}
                 </td>
                 <td class="px-4 py-3 text-center">
@@ -482,7 +485,7 @@
                       {wip?.healthyWorkloadPercent.toFixed(0)}%
                     </button>
                   {:else}
-                    <span class="text-sm text-neutral-500">—</span>
+                    <span class="text-sm text-black-500">—</span>
                   {/if}
                 </td>
                 <td class="px-4 py-3 text-center">
@@ -505,7 +508,7 @@
                       {velocity?.onTrackPercent.toFixed(0)}%
                     </button>
                   {:else}
-                    <span class="text-sm text-neutral-500">—</span>
+                    <span class="text-sm text-black-500">—</span>
                   {/if}
                 </td>
                 <td class="px-4 py-3 text-center">
@@ -528,7 +531,7 @@
                       {prodData?.pct}%
                     </button>
                   {:else}
-                    <span class="text-sm text-neutral-500">—</span>
+                    <span class="text-sm text-black-500">—</span>
                   {/if}
                 </td>
                 <td class="px-4 py-3 text-center">
@@ -551,7 +554,7 @@
                       {quality?.compositeScore}%
                     </button>
                   {:else}
-                    <span class="text-sm text-neutral-500">—</span>
+                    <span class="text-sm text-black-500">—</span>
                   {/if}
                 </td>
               </tr>
@@ -564,12 +567,12 @@
                   {@const teamSnapshot = teamSnapshotsMap.get(team.teamKey)}
                   <tr class="hover:bg-white/3 transition-colors">
                     <td class="px-4 py-2.5 pl-8">
-                      <span class="text-sm text-neutral-300"
+                      <span class="text-sm text-black-300"
                         >{getTeamDisplayName(team.teamKey, team.teamName)}</span
                       >
                     </td>
                     <td class="px-4 py-2.5 text-center">
-                      <span class="text-sm text-neutral-400"
+                      <span class="text-sm text-black-400"
                         >{teamSnapshot?.teamHealth?.totalIcCount ??
                           team.members?.length ??
                           0}</span
@@ -595,7 +598,7 @@
                           {hygiene?.hygieneScore}%
                         </button>
                       {:else}
-                        <span class="text-sm text-neutral-500">—</span>
+                        <span class="text-sm text-black-500">—</span>
                       {/if}
                     </td>
                     <td class="px-4 py-2.5 text-center">
@@ -618,7 +621,7 @@
                           {wip?.healthyWorkloadPercent.toFixed(0)}%
                         </button>
                       {:else}
-                        <span class="text-sm text-neutral-500">—</span>
+                        <span class="text-sm text-black-500">—</span>
                       {/if}
                     </td>
                     <td class="px-4 py-2.5 text-center">
@@ -641,11 +644,11 @@
                           {velocity?.onTrackPercent.toFixed(0)}%
                         </button>
                       {:else}
-                        <span class="text-sm text-neutral-500">—</span>
+                        <span class="text-sm text-black-500">—</span>
                       {/if}
                     </td>
                     <td class="px-4 py-2.5 text-center">
-                      <span class="text-sm text-neutral-500 italic">—</span>
+                      <span class="text-sm text-black-500 italic">—</span>
                     </td>
                     <td class="px-4 py-2.5 text-center">
                       {#if teamSnapshotsMap.get(team.teamKey)?.quality}
@@ -667,7 +670,7 @@
                           {quality?.compositeScore}%
                         </button>
                       {:else}
-                        <span class="text-sm text-neutral-500">—</span>
+                        <span class="text-sm text-black-500">—</span>
                       {/if}
                     </td>
                   </tr>
@@ -682,12 +685,12 @@
               {#each standaloneTeams as team (team.teamKey)}
                 <tr class="hover:bg-white/3 transition-colors">
                   <td class="px-4 py-2.5">
-                    <span class="text-sm text-neutral-300"
+                    <span class="text-sm text-black-300"
                       >{getTeamDisplayName(team.teamKey, team.teamName)}</span
                     >
                   </td>
                   <td class="px-4 py-2.5 text-center">
-                    <span class="text-sm text-neutral-400">—</span>
+                    <span class="text-sm text-black-400">—</span>
                   </td>
                   <td class="px-4 py-2.5 text-center">
                     {#if teamSnapshotsMap.get(team.teamKey)?.linearHygiene}
@@ -709,7 +712,7 @@
                         {hygiene?.hygieneScore}%
                       </button>
                     {:else}
-                      <span class="text-sm text-neutral-500">—</span>
+                      <span class="text-sm text-black-500">—</span>
                     {/if}
                   </td>
                   <td class="px-4 py-2.5 text-center">
@@ -732,7 +735,7 @@
                         {wip?.healthyWorkloadPercent.toFixed(0)}%
                       </button>
                     {:else}
-                      <span class="text-sm text-neutral-500">—</span>
+                      <span class="text-sm text-black-500">—</span>
                     {/if}
                   </td>
                   <td class="px-4 py-2.5 text-center">
@@ -755,11 +758,11 @@
                         {velocity?.onTrackPercent.toFixed(0)}%
                       </button>
                     {:else}
-                      <span class="text-sm text-neutral-500">—</span>
+                      <span class="text-sm text-black-500">—</span>
                     {/if}
                   </td>
                   <td class="px-4 py-2.5 text-center">
-                    <span class="text-sm text-neutral-500 italic">—</span>
+                    <span class="text-sm text-black-500 italic">—</span>
                   </td>
                   <td class="px-4 py-2.5 text-center">
                     {#if teamSnapshotsMap.get(team.teamKey)?.quality}
@@ -781,7 +784,7 @@
                         {quality?.compositeScore}%
                       </button>
                     {:else}
-                      <span class="text-sm text-neutral-500">—</span>
+                      <span class="text-sm text-black-500">—</span>
                     {/if}
                   </td>
                 </tr>

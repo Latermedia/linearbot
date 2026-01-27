@@ -14,7 +14,7 @@
 <div class="overflow-hidden relative h-12">
   {#if currentMessage}
     <div
-      class="flex absolute inset-0 items-end text-xs truncate text-neutral-500"
+      class="flex absolute inset-0 items-end text-xs truncate text-black-500"
     >
       {currentMessage}
     </div>

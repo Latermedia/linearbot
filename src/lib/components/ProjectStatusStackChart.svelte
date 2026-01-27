@@ -39,11 +39,11 @@
   const chartWidth = $derived(containerWidth);
   const innerWidth = $derived(chartWidth - padding.left - padding.right);
 
-  // Colors for project status (matching Linear style)
+  // Colors for project status (using 5-stop gradient from design system)
   const colors = {
-    onTrack: "#10b981", // emerald-500
-    atRisk: "#f59e0b", // amber-500
-    offTrack: "#ef4444", // red-500
+    onTrack: "#55BF8C", // success-400 (peakFlow tier)
+    atRisk: "#E7B24F", // warning-500 (steadyProgress tier)
+    offTrack: "#B6556D", // danger-600 (lowTraction tier)
   };
 
   // Extract project data and convert to percentages
@@ -296,7 +296,7 @@
 
 <div class="relative" bind:this={container}>
   <!-- Chart Title -->
-  <div class="mb-2 text-xs font-medium text-neutral-400">
+  <div class="mb-2 text-xs font-medium text-black-400">
     Project Health Distribution
   </div>
 
@@ -333,7 +333,7 @@
           y={getY(y)}
           text-anchor="end"
           dominant-baseline="middle"
-          class="fill-neutral-400 text-[11px] font-medium"
+          class="fill-black-400 text-[11px] font-medium"
         >
           {y}%
         </text>
@@ -347,7 +347,7 @@
           {x}
           y={chartHeight - padding.bottom + 20}
           text-anchor="middle"
-          class="fill-neutral-400 text-[11px] font-medium"
+          class="fill-black-400 text-[11px] font-medium"
         >
           {label}
         </text>
@@ -377,10 +377,10 @@
   <!-- Hover Tooltip -->
   {#if hoveredData}
     <div
-      class="absolute z-10 px-3 py-2 text-xs bg-neutral-900 border border-white/10 rounded-lg shadow-xl pointer-events-none"
+      class="absolute z-10 px-3 py-2 text-xs bg-black-900 border border-white/10 rounded-lg shadow-xl pointer-events-none"
       style="left: {tooltipPosition.x}px; top: {tooltipPosition.y}px;"
     >
-      <div class="mb-1.5 text-neutral-400">{hoveredData.date}</div>
+      <div class="mb-1.5 text-black-400">{hoveredData.date}</div>
       <div class="space-y-1">
         <div class="flex items-center gap-1.5 justify-between">
           <div class="flex items-center gap-1.5">
@@ -388,11 +388,11 @@
               class="w-2 h-2 rounded-full"
               style="background-color: {colors.onTrack}"
             ></span>
-            <span class="text-neutral-300">On Track</span>
+            <span class="text-black-300">On Track</span>
           </div>
-          <span class="font-medium text-white"
+          <span class="font-medium text-black-900 dark:text-white"
             >{hoveredData.onTrackPct}%
-            <span class="text-neutral-500">({hoveredData.onTrackCount})</span
+            <span class="text-black-500">({hoveredData.onTrackCount})</span
             ></span
           >
         </div>
@@ -402,11 +402,11 @@
               class="w-2 h-2 rounded-full"
               style="background-color: {colors.atRisk}"
             ></span>
-            <span class="text-neutral-300">At Risk</span>
+            <span class="text-black-300">At Risk</span>
           </div>
-          <span class="font-medium text-white"
+          <span class="font-medium text-black-900 dark:text-white"
             >{hoveredData.atRiskPct}%
-            <span class="text-neutral-500">({hoveredData.atRiskCount})</span
+            <span class="text-black-500">({hoveredData.atRiskCount})</span
             ></span
           >
         </div>
@@ -416,19 +416,21 @@
               class="w-2 h-2 rounded-full"
               style="background-color: {colors.offTrack}"
             ></span>
-            <span class="text-neutral-300">Off Track</span>
+            <span class="text-black-300">Off Track</span>
           </div>
-          <span class="font-medium text-white"
+          <span class="font-medium text-black-900 dark:text-white"
             >{hoveredData.offTrackPct}%
-            <span class="text-neutral-500">({hoveredData.offTrackCount})</span
+            <span class="text-black-500">({hoveredData.offTrackCount})</span
             ></span
           >
         </div>
         <div
-          class="flex items-center justify-between pt-1 mt-1 border-t border-white/10"
+          class="flex items-center justify-between pt-1 mt-1 border-t border-black-200 dark:border-white/10"
         >
-          <span class="text-neutral-400">Total Projects</span>
-          <span class="font-medium text-white">{hoveredData.total}</span>
+          <span class="text-black-400">Total Projects</span>
+          <span class="font-medium text-black-900 dark:text-white"
+            >{hoveredData.total}</span
+          >
         </div>
       </div>
     </div>
@@ -437,7 +439,7 @@
   <!-- Empty state -->
   {#if stackData.length === 0}
     <div
-      class="flex absolute inset-0 justify-center items-center text-sm text-neutral-500"
+      class="flex absolute inset-0 justify-center items-center text-sm text-black-500"
     >
       No project data available
     </div>
@@ -453,7 +455,7 @@
           class="w-3 h-3 rounded-sm"
           style="background-color: {item.color}; opacity: 0.7;"
         ></div>
-        <span class="text-neutral-400">{item.label}</span>
+        <span class="text-black-400">{item.label}</span>
       </div>
     {/each}
   </div>

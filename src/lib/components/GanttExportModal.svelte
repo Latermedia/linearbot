@@ -415,18 +415,18 @@
 
 {#snippet headerSnippet()}
   <div
-    class="flex justify-between items-center p-6 bg-white border-b border-neutral-200 dark:border-white/10 dark:bg-neutral-900"
+    class="flex justify-between items-center p-6 bg-white border-b border-black-200 dark:border-white/10 dark:bg-black-900"
     onclick={handleClickOutside}
     role="presentation"
   >
     <div class="flex-1">
       <h2
         id="modal-title"
-        class="mb-1 text-xl font-semibold text-neutral-900 dark:text-white"
+        class="mb-1 text-xl font-semibold text-black-900 dark:text-black-900 dark:text-white"
       >
         Export: {displayName}
       </h2>
-      <div class="text-sm text-neutral-600 dark:text-neutral-400">
+      <div class="text-sm text-black-600 dark:text-black-400">
         {filteredProjects.length} of {allProjects.length}
         {allProjects.length === 1 ? "project" : "projects"} selected
       </div>
@@ -442,7 +442,7 @@
             e.stopPropagation();
             projectDropdownOpen = !projectDropdownOpen;
           }}
-          class="flex gap-2 items-center px-3 py-1.5 text-sm bg-white rounded border dark:bg-neutral-800 border-neutral-300 dark:border-white/20 text-neutral-700 dark:text-neutral-300 hover:bg-neutral-50 dark:hover:bg-neutral-700 transition-colors cursor-pointer min-w-[140px]"
+          class="flex gap-2 items-center px-3 py-1.5 text-sm bg-white rounded border dark:bg-black-800 border-black-300 dark:border-white/20 text-black-700 dark:text-black-300 hover:bg-black-50 dark:hover:bg-black-700 transition-colors cursor-pointer min-w-[140px]"
         >
           <span class="flex-1 text-left truncate">
             {selectedProjectIds.size === allProjects.length
@@ -460,11 +460,11 @@
 
         {#if projectDropdownOpen}
           <div
-            class="overflow-hidden absolute left-0 top-full z-50 mt-1 w-72 max-h-80 bg-white rounded-md border shadow-xl dark:bg-neutral-800 border-neutral-200 dark:border-white/10"
+            class="overflow-hidden absolute left-0 top-full z-50 mt-1 w-72 max-h-80 bg-white rounded-md border shadow-xl dark:bg-black-800 border-black-200 dark:border-black-200 dark:border-white/10"
           >
             <!-- Quick actions -->
             <div
-              class="flex gap-2 p-2 border-b border-neutral-200 dark:border-white/10"
+              class="flex gap-2 p-2 border-b border-black-200 dark:border-black-200 dark:border-white/10"
             >
               <button
                 type="button"
@@ -472,7 +472,7 @@
                   e.stopPropagation();
                   selectAllProjects();
                 }}
-                class="flex-1 px-2 py-1 text-xs font-medium rounded transition-colors cursor-pointer bg-neutral-100 dark:bg-white/10 text-neutral-700 dark:text-neutral-300 hover:bg-neutral-200 dark:hover:bg-white/20"
+                class="flex-1 px-2 py-1 text-xs font-medium rounded transition-colors cursor-pointer bg-black-100 dark:bg-white/10 text-black-700 dark:text-black-300 hover:bg-black-200 dark:hover:bg-white/20"
               >
                 Select All
               </button>
@@ -482,7 +482,7 @@
                   e.stopPropagation();
                   deselectAllProjects();
                 }}
-                class="flex-1 px-2 py-1 text-xs font-medium rounded transition-colors cursor-pointer bg-neutral-100 dark:bg-white/10 text-neutral-700 dark:text-neutral-300 hover:bg-neutral-200 dark:hover:bg-white/20"
+                class="flex-1 px-2 py-1 text-xs font-medium rounded transition-colors cursor-pointer bg-black-100 dark:bg-white/10 text-black-700 dark:text-black-300 hover:bg-black-200 dark:hover:bg-white/20"
               >
                 Deselect All
               </button>
@@ -492,17 +492,17 @@
             <div class="overflow-y-auto p-1 max-h-60">
               {#each allProjects as project (project.projectId)}
                 <label
-                  class="flex gap-2 items-center px-2 py-1.5 rounded transition-colors cursor-pointer hover:bg-neutral-100 dark:hover:bg-white/5"
+                  class="flex gap-2 items-center px-2 py-1.5 rounded transition-colors cursor-pointer hover:bg-black-100 dark:hover:bg-black-100 dark:hover:bg-black-50 dark:bg-white/5"
                 >
                   <input
                     type="checkbox"
                     checked={selectedProjectIds.has(project.projectId)}
                     onchange={() => toggleProject(project.projectId)}
                     onclick={(e) => e.stopPropagation()}
-                    class="w-4 h-4 text-violet-600 rounded border-neutral-300 dark:border-white/20 focus:ring-violet-500 focus:ring-2 dark:bg-neutral-700 dark:checked:bg-violet-600"
+                    class="w-4 h-4 text-brand-600 rounded border-black-300 dark:border-white/20 focus:ring-brand-500 focus:ring-2 dark:bg-black-700 dark:checked:bg-brand-600"
                   />
                   <span
-                    class="text-sm truncate text-neutral-700 dark:text-neutral-300"
+                    class="text-sm truncate text-black-700 dark:text-black-300"
                     title={project.projectName}
                   >
                     {project.projectName}
@@ -530,12 +530,12 @@
 
       <!-- End date mode -->
       <div class="flex gap-2 items-center">
-        <span class="text-sm text-neutral-600 dark:text-neutral-400">
+        <span class="text-sm text-black-600 dark:text-black-400">
           End date:
         </span>
         <select
           bind:value={endDateMode}
-          class="px-2 py-1 text-sm bg-white rounded border dark:bg-neutral-800 border-neutral-300 dark:border-white/20 text-neutral-700 dark:text-neutral-300 focus:ring-violet-500 focus:ring-2 focus:outline-none"
+          class="px-2 py-1 text-sm bg-white rounded border dark:bg-black-800 border-black-300 dark:border-white/20 text-black-700 dark:text-black-300 focus:ring-brand-500 focus:ring-2 focus:outline-none"
         >
           <option value="target">Target</option>
           <option value="predicted">Predicted</option>
@@ -547,9 +547,9 @@
         <input
           type="checkbox"
           bind:checked={showTodayIndicator}
-          class="w-4 h-4 text-violet-600 rounded border-neutral-300 dark:border-white/20 focus:ring-violet-500 focus:ring-2 dark:bg-neutral-800 dark:checked:bg-violet-600"
+          class="w-4 h-4 text-brand-600 rounded border-black-300 dark:border-white/20 focus:ring-brand-500 focus:ring-2 dark:bg-black-800 dark:checked:bg-brand-600"
         />
-        <span class="text-sm text-neutral-700 dark:text-neutral-300">
+        <span class="text-sm text-black-700 dark:text-black-300">
           Show today
         </span>
       </label>
@@ -559,9 +559,9 @@
         <input
           type="checkbox"
           bind:checked={showWarnings}
-          class="w-4 h-4 text-violet-600 rounded border-neutral-300 dark:border-white/20 focus:ring-violet-500 focus:ring-2 dark:bg-neutral-800 dark:checked:bg-violet-600"
+          class="w-4 h-4 text-brand-600 rounded border-black-300 dark:border-white/20 focus:ring-brand-500 focus:ring-2 dark:bg-black-800 dark:checked:bg-brand-600"
         />
-        <span class="text-sm text-neutral-700 dark:text-neutral-300">
+        <span class="text-sm text-black-700 dark:text-black-300">
           Show warnings
         </span>
       </label>
@@ -570,7 +570,7 @@
       <button
         type="button"
         onclick={resetDisplayOptions}
-        class="flex gap-1.5 items-center px-2 py-1.5 text-sm bg-transparent rounded border transition-colors cursor-pointer hover:bg-neutral-100 dark:hover:bg-white/10 text-neutral-600 dark:text-neutral-400 hover:text-neutral-900 dark:hover:text-white border-neutral-300 dark:border-white/20"
+        class="flex gap-1.5 items-center px-2 py-1.5 text-sm bg-transparent rounded border transition-colors cursor-pointer hover:bg-black-100 dark:hover:bg-white/10 text-black-600 dark:text-black-400 hover:text-black-900 dark:hover:text-white border-black-300 dark:border-white/20"
         title="Reset display options"
       >
         <RotateCcw class="w-4 h-4" />
@@ -579,7 +579,7 @@
     </div>
 
     <button
-      class="inline-flex justify-center items-center p-1.5 rounded transition-colors duration-150 cursor-pointer text-neutral-400 hover:text-neutral-900 dark:hover:text-white hover:bg-white/10 dark:hover:bg-white/10"
+      class="inline-flex justify-center items-center p-1.5 rounded transition-colors duration-150 cursor-pointer text-black-400 hover:text-black-900 dark:hover:text-white hover:bg-white/10 dark:hover:bg-black-100 dark:bg-white/10"
       onclick={onclose}
       aria-label="Close modal"
     >
@@ -590,7 +590,7 @@
 
 {#snippet childrenSnippet()}
   <!-- Preview Area -->
-  <div class="overflow-auto flex-1 p-6 bg-neutral-50 dark:bg-neutral-950">
+  <div class="overflow-auto flex-1 p-6 bg-black-50 dark:bg-black-950">
     <div
       bind:this={previewContainer}
       data-export-preview
@@ -621,10 +621,10 @@
           <!-- Current day indicator -->
           {#if showTodayIndicator && currentDayPercent !== null}
             <div
-              style="position: absolute; top: 0; bottom: 0; z-index: 20; width: 2px; background-color: #8b5cf6; left: {currentDayPercent}%;"
+              style="position: absolute; top: 0; bottom: 0; z-index: 20; width: 2px; background-color: #8661D2; left: {currentDayPercent}%;"
             >
               <div
-                style="position: absolute; top: -4px; left: 50%; width: 8px; height: 8px; background-color: #8b5cf6; border-radius: 50%; transform: translateX(-50%);"
+                style="position: absolute; top: -4px; left: 50%; width: 8px; height: 8px; background-color: #8661D2; border-radius: 50%; transform: translateX(-50%);"
               ></div>
             </div>
           {/if}
@@ -686,7 +686,7 @@
                   ></div>
                   <!-- Diamond marker at top -->
                   <div
-                    style="position: absolute; top: -4px; width: 10px; height: 10px; background-color: #fbbf24; transform: rotate(45deg); border: 1px solid #f59e0b;"
+                    style="position: absolute; top: -4px; width: 10px; height: 10px; background-color: #FFCA5A; transform: rotate(45deg); border: 1px solid #E7B24F;"
                   ></div>
                 </div>
               {/if}
@@ -696,7 +696,7 @@
               >
                 {#if hasWarnings}
                   <span
-                    style="color: #fbbf24; font-size: 0.875rem; flex-shrink: 0;"
+                    style="color: #FFCA5A; font-size: 0.875rem; flex-shrink: 0;"
                     >⚠️</span
                   >
                 {/if}
@@ -711,7 +711,7 @@
 
   <!-- Footer -->
   <div
-    class="flex justify-between items-center p-6 border-t border-neutral-200 dark:border-white/10"
+    class="flex justify-between items-center p-6 border-t border-black-200 dark:border-black-200 dark:border-white/10"
   >
     <div class="flex-1">
       {#if copyStatus === "success"}
@@ -747,7 +747,7 @@
   maxHeight="90vh"
   scrollable={true}
   topAligned={true}
-  background="bg-white dark:bg-neutral-900"
+  background="bg-white dark:bg-black-900"
   header={headerSnippet}
   children={childrenSnippet}
 />

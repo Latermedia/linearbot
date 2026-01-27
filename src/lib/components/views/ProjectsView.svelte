@@ -298,59 +298,59 @@
   {#if !loading && !error && teams.length > 0}
     <div class="flex flex-wrap gap-4">
       <Card class="max-w-[200px]">
-        <div class="mb-1 text-xs text-neutral-500 dark:text-neutral-300">
-          Teams
-        </div>
-        <div class="text-2xl font-semibold text-neutral-900 dark:text-white">
+        <div class="mb-1 text-xs text-black-500 dark:text-black-300">Teams</div>
+        <div
+          class="text-2xl font-semibold text-black-900 dark:text-black-900 dark:text-white"
+        >
           {teams.length}
         </div>
       </Card>
       <Card class="relative max-w-[200px]">
         <span
-          class="absolute top-2 right-2 inline-flex justify-center items-center w-3.5 h-3.5 text-[10px] rounded-full cursor-help bg-neutral-200 dark:bg-neutral-700 text-neutral-500 dark:text-neutral-400"
+          class="absolute top-2 right-2 inline-flex justify-center items-center w-3.5 h-3.5 text-[10px] rounded-full cursor-help bg-black-200 dark:bg-black-700 text-black-500 dark:text-black-400"
           title="Number of active projects. Target is based on having at least 2 ICs per project."
           >i</span
         >
-        <div class="pr-6 mb-1 text-xs text-neutral-500 dark:text-neutral-300">
+        <div class="pr-6 mb-1 text-xs text-black-500 dark:text-black-300">
           Projects
         </div>
         <div
           class="text-2xl font-semibold {filteredProjects.size <= projectTarget
-            ? 'text-green-600 dark:text-green-400'
-            : 'text-red-600 dark:text-red-400'}"
+            ? 'text-success-600 dark:text-success-400'
+            : 'text-danger-600 dark:text-danger-400'}"
         >
           {filteredProjects.size}
         </div>
-        <div class="text-xs text-neutral-400 dark:text-neutral-500">
+        <div class="text-xs text-black-400 dark:text-black-500">
           target: ≤{projectTarget}
         </div>
       </Card>
       <Card class="relative max-w-[200px]">
         <span
-          class="absolute top-2 right-2 inline-flex justify-center items-center w-3.5 h-3.5 text-[10px] rounded-full cursor-help bg-neutral-200 dark:bg-neutral-700 text-neutral-500 dark:text-neutral-400"
+          class="absolute top-2 right-2 inline-flex justify-center items-center w-3.5 h-3.5 text-[10px] rounded-full cursor-help bg-black-200 dark:bg-black-700 text-black-500 dark:text-black-400"
           title="Average number of projects each engineer is working on."
           >i</span
         >
-        <div class="pr-6 mb-1 text-xs text-neutral-500 dark:text-neutral-300">
+        <div class="pr-6 mb-1 text-xs text-black-500 dark:text-black-300">
           Avg Projects per IC
         </div>
         <div
           class="text-2xl font-semibold {avgProjectsPerIC <= 1.5
-            ? 'text-green-600 dark:text-green-400'
-            : 'text-red-600 dark:text-red-400'}"
+            ? 'text-success-600 dark:text-success-400'
+            : 'text-danger-600 dark:text-danger-400'}"
         >
           {avgProjectsPerIC.toFixed(2)}
         </div>
-        <div class="text-xs text-neutral-400 dark:text-neutral-500">
+        <div class="text-xs text-black-400 dark:text-black-500">
           target: ≤1.5
         </div>
       </Card>
       <Card class="relative max-w-[200px]">
         <span
-          class="absolute top-2 right-2 inline-flex justify-center items-center w-3.5 h-3.5 text-[10px] rounded-full cursor-help bg-neutral-200 dark:bg-neutral-700 text-neutral-500 dark:text-neutral-400"
+          class="absolute top-2 right-2 inline-flex justify-center items-center w-3.5 h-3.5 text-[10px] rounded-full cursor-help bg-black-200 dark:bg-black-700 text-black-500 dark:text-black-400"
           title="Total issues with missing data or violations.">i</span
         >
-        <div class="pr-6 mb-1 text-xs text-neutral-500 dark:text-neutral-300">
+        <div class="pr-6 mb-1 text-xs text-black-500 dark:text-black-300">
           Gaps
         </div>
         <div
@@ -360,9 +360,7 @@
         >
           {projectViolationsCount + icViolationsCount}
         </div>
-        <div class="text-xs text-neutral-400 dark:text-neutral-500">
-          target: 0
-        </div>
+        <div class="text-xs text-black-400 dark:text-black-500">target: 0</div>
       </Card>
     </div>
   {/if}
@@ -457,14 +455,16 @@
       </Card>
     </div>
   {:else if error}
-    <Card class="border-red-500/50">
-      <div class="mb-3 text-sm font-medium text-red-600 dark:text-red-400">
+    <Card class="border-danger-500/50">
+      <div
+        class="mb-3 text-sm font-medium text-danger-600 dark:text-danger-400"
+      >
         Error Loading Data
       </div>
-      <p class="mb-3 text-neutral-700 dark:text-neutral-400">{error}</p>
-      <p class="text-sm text-neutral-600 dark:text-neutral-500">
+      <p class="mb-3 text-black-700 dark:text-black-400">{error}</p>
+      <p class="text-sm text-black-600 dark:text-black-500">
         Make sure the database is synced. Run: <code
-          class="px-2 py-1 font-mono text-xs rounded bg-neutral-100 dark:bg-neutral-800 text-neutral-700 dark:text-neutral-300"
+          class="px-2 py-1 font-mono text-xs rounded bg-black-100 dark:bg-black-800 text-black-700 dark:text-black-300"
           >bun run sync</code
         >
       </p>
@@ -488,18 +488,18 @@
   <!-- Non-project WIP issues (when team filter active) -->
   {#if selectedTeamKey !== null && !loading && !error}
     <Card class="px-4 py-4 mt-8">
-      <div class="mb-4 text-sm font-medium text-neutral-300">
+      <div class="mb-4 text-sm font-medium text-black-300">
         Non-Project Work
         {#if loadingNonProjectWip}
-          <span class="ml-2 text-neutral-500">(loading...)</span>
+          <span class="ml-2 text-black-500">(loading...)</span>
         {:else}
-          <span class="ml-2 text-neutral-500"
+          <span class="ml-2 text-black-500"
             >({nonProjectWipIssues.length} issues)</span
           >
         {/if}
       </div>
       {#if loadingNonProjectWip}
-        <div class="text-sm text-neutral-400">Loading...</div>
+        <div class="text-sm text-black-400">Loading...</div>
       {:else}
         <IssueTable
           issues={nonProjectWipIssues}
@@ -526,10 +526,9 @@
 
     {#if coreTeamEngineers.length > 0}
       <Card class="px-4 py-4 mt-8">
-        <div class="mb-4 text-sm font-medium text-neutral-300">
+        <div class="mb-4 text-sm font-medium text-black-300">
           {teamName} Engineers
-          <span class="ml-2 text-neutral-500">({coreTeamEngineers.length})</span
-          >
+          <span class="ml-2 text-black-500">({coreTeamEngineers.length})</span>
         </div>
         <EngineersTable
           engineers={coreTeamEngineers}
@@ -540,9 +539,9 @@
 
     {#if crossTeamContributors.length > 0}
       <Card class="px-4 py-4 mt-8">
-        <div class="mb-4 text-sm font-medium text-neutral-300">
+        <div class="mb-4 text-sm font-medium text-black-300">
           Cross-team Contributors
-          <span class="ml-2 text-neutral-500"
+          <span class="ml-2 text-black-500"
             >({crossTeamContributors.length})</span
           >
         </div>
@@ -556,7 +555,7 @@
 
   {#if loadingEngineers && selectedTeamKey !== null}
     <Card class="px-4 py-4 mt-8">
-      <div class="text-sm text-neutral-400">Loading engineer data...</div>
+      <div class="text-sm text-black-400">Loading engineer data...</div>
     </Card>
   {/if}
 </div>

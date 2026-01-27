@@ -259,10 +259,12 @@
     class="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between"
   >
     <div>
-      <h1 class="text-3xl font-bold text-neutral-900 dark:text-white">
+      <h1
+        class="text-3xl font-bold text-black-900 dark:text-black-900 dark:text-white"
+      >
         Organization
       </h1>
-      <p class="mt-2 text-sm text-neutral-600 dark:text-neutral-400">
+      <p class="mt-2 text-sm text-black-600 dark:text-black-400">
         {#if isEditing}
           Remove non-engineers or adjust team assignments, then review changes
           to get your config.
@@ -309,9 +311,9 @@
 
   <!-- Validation Errors -->
   {#if !loading && data && hasValidationErrors}
-    <Card class="border-red-500/50 bg-red-50 dark:bg-red-950/20">
+    <Card class="border-danger-500/50 bg-danger-50 dark:bg-danger-950/20">
       <div class="flex items-start gap-3">
-        <div class="mt-0.5 text-red-500">
+        <div class="mt-0.5 text-danger-500">
           <svg
             xmlns="http://www.w3.org/2000/svg"
             class="w-5 h-5"
@@ -326,29 +328,31 @@
           </svg>
         </div>
         <div class="flex-1">
-          <h3 class="text-sm font-semibold text-red-700 dark:text-red-400">
+          <h3
+            class="text-sm font-semibold text-danger-700 dark:text-danger-400"
+          >
             Configuration Errors in ENGINEER_TEAM_MAPPING
           </h3>
-          <p class="mt-1 text-sm text-red-600 dark:text-red-300/80">
+          <p class="mt-1 text-sm text-danger-600 dark:text-danger-300/80">
             Each engineer should only be mapped to one team. The following
             engineers are mapped to multiple teams:
           </p>
           <ul class="mt-3 space-y-2">
             {#each data.validationErrors as err (err.engineer)}
               <li
-                class="flex items-center gap-2 text-sm text-red-700 dark:text-red-300"
+                class="flex items-center gap-2 text-sm text-danger-700 dark:text-danger-300"
               >
                 <span class="font-medium">{err.engineer}</span>
-                <span class="text-red-500 dark:text-red-400">→</span>
+                <span class="text-danger-500 dark:text-danger-400">→</span>
                 <span class="font-mono text-xs">
                   {err.teams.join(", ")}
                 </span>
               </li>
             {/each}
           </ul>
-          <p class="mt-4 text-xs text-red-600/80 dark:text-red-400/70">
+          <p class="mt-4 text-xs text-danger-600/80 dark:text-danger-400/70">
             Update your <code
-              class="px-1.5 py-0.5 rounded bg-red-100 dark:bg-red-900/50 font-mono"
+              class="px-1.5 py-0.5 rounded bg-danger-100 dark:bg-danger-900/50 font-mono"
               >ENGINEER_TEAM_MAPPING</code
             > environment variable to fix this issue.
           </p>
@@ -361,44 +365,48 @@
   {#if !loading && !error && data}
     <div class="flex flex-wrap gap-4">
       <Card class="max-w-[180px]">
-        <div class="mb-1 text-xs text-neutral-500 dark:text-neutral-300">
+        <div class="mb-1 text-xs text-black-500 dark:text-black-300">
           Domains
         </div>
-        <div class="text-2xl font-semibold text-neutral-900 dark:text-white">
+        <div
+          class="text-2xl font-semibold text-black-900 dark:text-black-900 dark:text-white"
+        >
           {totalDomains}
         </div>
-        <div class="text-xs text-neutral-500">org divisions</div>
+        <div class="text-xs text-black-500">org divisions</div>
       </Card>
       <Card class="max-w-[180px]">
-        <div class="mb-1 text-xs text-neutral-500 dark:text-neutral-300">
-          Teams
-        </div>
-        <div class="text-2xl font-semibold text-neutral-900 dark:text-white">
+        <div class="mb-1 text-xs text-black-500 dark:text-black-300">Teams</div>
+        <div
+          class="text-2xl font-semibold text-black-900 dark:text-black-900 dark:text-white"
+        >
           {totalTeams}
         </div>
-        <div class="text-xs text-neutral-500">configured</div>
+        <div class="text-xs text-black-500">configured</div>
       </Card>
       <Card class="max-w-[180px]">
-        <div class="mb-1 text-xs text-neutral-500 dark:text-neutral-300">
+        <div class="mb-1 text-xs text-black-500 dark:text-black-300">
           Engineers
         </div>
-        <div class="text-2xl font-semibold text-neutral-900 dark:text-white">
+        <div
+          class="text-2xl font-semibold text-black-900 dark:text-black-900 dark:text-white"
+        >
           {totalEngineersCount}
         </div>
-        <div class="text-xs text-neutral-500">assigned to teams</div>
+        <div class="text-xs text-black-500">assigned to teams</div>
       </Card>
       <Card class="max-w-[180px]">
-        <div class="mb-1 text-xs text-neutral-500 dark:text-neutral-300">
+        <div class="mb-1 text-xs text-black-500 dark:text-black-300">
           Unassigned
         </div>
         <div
           class="text-2xl font-semibold {unassignedEngineers.length > 0
-            ? 'text-amber-500'
-            : 'text-neutral-900 dark:text-white'}"
+            ? 'text-warning-500'
+            : 'text-black-900 dark:text-white'}"
         >
           {unassignedEngineers.length}
         </div>
-        <div class="text-xs text-neutral-500">in database</div>
+        <div class="text-xs text-black-500">in database</div>
       </Card>
     </div>
   {/if}
@@ -415,50 +423,58 @@
       </Card>
     </div>
   {:else if error}
-    <Card class="border-red-500/50">
-      <div class="mb-3 text-sm font-medium text-red-600 dark:text-red-400">
+    <Card class="border-danger-500/50">
+      <div
+        class="mb-3 text-sm font-medium text-danger-600 dark:text-danger-400"
+      >
         Error Loading Data
       </div>
-      <p class="mb-3 text-neutral-700 dark:text-neutral-400">{error}</p>
-      <p class="text-sm text-neutral-600 dark:text-neutral-500">
+      <p class="mb-3 text-black-700 dark:text-black-400">{error}</p>
+      <p class="text-sm text-black-600 dark:text-black-500">
         Make sure the database is synced. Run: <code
-          class="px-2 py-1 font-mono text-xs rounded bg-neutral-100 dark:bg-neutral-800 text-neutral-700 dark:text-neutral-300"
+          class="px-2 py-1 font-mono text-xs rounded bg-black-100 dark:bg-black-800 text-black-700 dark:text-black-300"
           >bun run sync</code
         >
       </p>
     </Card>
   {:else if !data || (data.domains.length === 0 && data.unassignedTeams.length === 0)}
     <Card>
-      <div class="mb-3 text-sm font-medium text-neutral-900 dark:text-white">
+      <div
+        class="mb-3 text-sm font-medium text-black-900 dark:text-black-900 dark:text-white"
+      >
         No Teams Configured
       </div>
-      <p class="mb-4 text-neutral-700 dark:text-neutral-400">
+      <p class="mb-4 text-black-700 dark:text-black-400">
         No team mappings found. Configure your environment variables to set up
         the organization structure.
       </p>
       <div class="space-y-3 text-sm">
         <div>
-          <p class="mb-1 font-medium text-neutral-900 dark:text-white">
+          <p
+            class="mb-1 font-medium text-black-900 dark:text-black-900 dark:text-white"
+          >
             TEAM_DOMAIN_MAPPINGS
           </p>
-          <p class="text-neutral-600 dark:text-neutral-400">
+          <p class="text-black-600 dark:text-black-400">
             JSON object mapping team keys to domain names
           </p>
           <code
-            class="block mt-1 px-3 py-2 font-mono text-xs rounded bg-neutral-100 dark:bg-neutral-800 text-neutral-700 dark:text-neutral-300"
+            class="block mt-1 px-3 py-2 font-mono text-xs rounded bg-black-100 dark:bg-black-800 text-black-700 dark:text-black-300"
           >
             {`TEAM_DOMAIN_MAPPINGS='{"ENG":"Engineering","DESIGN":"Product"}'`}
           </code>
         </div>
         <div>
-          <p class="mb-1 font-medium text-neutral-900 dark:text-white">
+          <p
+            class="mb-1 font-medium text-black-900 dark:text-black-900 dark:text-white"
+          >
             ENGINEER_TEAM_MAPPING
           </p>
-          <p class="text-neutral-600 dark:text-neutral-400">
+          <p class="text-black-600 dark:text-black-400">
             Comma-separated list of engineer:teamKey pairs
           </p>
           <code
-            class="block mt-1 px-3 py-2 font-mono text-xs rounded bg-neutral-100 dark:bg-neutral-800 text-neutral-700 dark:text-neutral-300"
+            class="block mt-1 px-3 py-2 font-mono text-xs rounded bg-black-100 dark:bg-black-800 text-black-700 dark:text-black-300"
           >
             ENGINEER_TEAM_MAPPING='Alice:ENG,Bob:ENG,Carol:DESIGN'
           </code>
@@ -471,7 +487,7 @@
       <div class="space-y-4">
         <div class="flex items-center gap-3">
           <h2
-            class="text-xl font-semibold text-neutral-900 dark:text-white tracking-tight"
+            class="text-xl font-semibold text-black-900 dark:text-white tracking-tight"
           >
             {domain.name}
           </h2>
@@ -487,7 +503,7 @@
               <div class="flex items-start justify-between mb-4">
                 <div>
                   <h3
-                    class="text-lg font-semibold text-neutral-900 dark:text-white"
+                    class="text-lg font-semibold text-black-900 dark:text-black-900 dark:text-white"
                   >
                     {team.teamName || team.teamKey}
                   </h3>
@@ -495,7 +511,7 @@
                     <Badge variant="default" class="font-mono text-xs">
                       {team.teamKey}
                     </Badge>
-                    <span class="text-xs text-neutral-500">
+                    <span class="text-xs text-black-500">
                       {isEditing ? teamEngineers?.length : team.members.length} members
                     </span>
                   </div>
@@ -510,7 +526,7 @@
                       (m) => m.name === engineerName
                     )}
                     <div
-                      class="flex items-center gap-3 py-2 px-2 -mx-2 rounded bg-neutral-50 dark:bg-neutral-800/50"
+                      class="flex items-center gap-3 py-2 px-2 -mx-2 rounded bg-black-50 dark:bg-black-800/50"
                     >
                       {#if member?.avatarUrl}
                         <img
@@ -520,10 +536,10 @@
                         />
                       {:else}
                         <div
-                          class="w-8 h-8 rounded-full bg-neutral-200 dark:bg-neutral-700 flex items-center justify-center shrink-0"
+                          class="w-8 h-8 rounded-full bg-black-200 dark:bg-black-700 flex items-center justify-center shrink-0"
                         >
                           <span
-                            class="text-xs font-medium text-neutral-600 dark:text-neutral-300"
+                            class="text-xs font-medium text-black-600 dark:text-black-300"
                           >
                             {engineerName
                               .split(" ")
@@ -535,7 +551,7 @@
                       {/if}
                       <div class="flex-1 min-w-0">
                         <p
-                          class="text-sm font-medium text-neutral-900 dark:text-white truncate"
+                          class="text-sm font-medium text-black-900 dark:text-white truncate"
                         >
                           {engineerName}
                         </p>
@@ -543,7 +559,7 @@
                       <button
                         type="button"
                         onclick={() => removeEngineer(engineerName)}
-                        class="p-1 text-neutral-400 hover:text-red-500 dark:hover:text-red-400 transition-colors"
+                        class="p-1 text-black-400 hover:text-danger-500 dark:hover:text-danger-400 transition-colors"
                         title="Remove from team"
                       >
                         <svg
@@ -569,16 +585,16 @@
                         type="text"
                         bind:value={searchQuery}
                         placeholder="Search engineers..."
-                        class="w-full px-3 py-2 text-sm rounded-t border border-neutral-300 dark:border-neutral-600 bg-white dark:bg-neutral-800 text-neutral-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-blue-500"
+                        class="w-full px-3 py-2 text-sm rounded-t border border-black-300 dark:border-black-600 bg-white dark:bg-black-800 text-black-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-blue-500"
                         onkeydown={(e) =>
                           handleDropdownKeydown(e, team.teamKey)}
                       />
                       <div
-                        class="absolute z-10 w-full max-h-48 overflow-y-auto rounded-b border border-t-0 border-neutral-300 dark:border-neutral-600 bg-white dark:bg-neutral-800 shadow-lg"
+                        class="absolute z-10 w-full max-h-48 overflow-y-auto rounded-b border border-t-0 border-black-300 dark:border-black-600 bg-white dark:bg-black-800 shadow-lg"
                       >
                         {#if filteredEngineers.length === 0}
                           <div
-                            class="px-3 py-2 text-sm text-neutral-500 dark:text-neutral-400"
+                            class="px-3 py-2 text-sm text-black-500 dark:text-black-400"
                           >
                             {unassignedEngineers.length === 0
                               ? "All engineers are assigned"
@@ -588,9 +604,9 @@
                           {#each filteredEngineers as engineer, index (engineer.id)}
                             <button
                               type="button"
-                              class="w-full flex items-center gap-3 px-3 py-2 text-left hover:bg-neutral-100 dark:hover:bg-neutral-700 transition-colors {index ===
+                              class="w-full flex items-center gap-3 px-3 py-2 text-left hover:bg-black-100 dark:hover:bg-black-700 transition-colors {index ===
                               selectedIndex
-                                ? 'bg-neutral-100 dark:bg-neutral-700'
+                                ? 'bg-black-100 dark:bg-black-700'
                                 : ''}"
                               onclick={() =>
                                 addEngineerByName(engineer.name, team.teamKey)}
@@ -604,10 +620,10 @@
                                 />
                               {:else}
                                 <div
-                                  class="w-6 h-6 rounded-full bg-neutral-200 dark:bg-neutral-600 flex items-center justify-center shrink-0"
+                                  class="w-6 h-6 rounded-full bg-black-200 dark:bg-black-600 flex items-center justify-center shrink-0"
                                 >
                                   <span
-                                    class="text-[10px] font-medium text-neutral-600 dark:text-neutral-300"
+                                    class="text-[10px] font-medium text-black-600 dark:text-black-300"
                                   >
                                     {engineer.name
                                       .split(" ")
@@ -620,26 +636,26 @@
                               <div class="flex-1 min-w-0">
                                 <div class="flex items-center gap-2">
                                   <p
-                                    class="text-sm font-medium text-neutral-900 dark:text-white truncate"
+                                    class="text-sm font-medium text-black-900 dark:text-white truncate"
                                   >
                                     {engineer.name}
                                   </p>
                                   {#if engineer.suggestedTeamKey === team.teamKey}
                                     <span
-                                      class="text-[10px] px-1.5 py-0.5 rounded bg-green-100 dark:bg-green-900/30 text-green-700 dark:text-green-400"
+                                      class="text-[10px] px-1.5 py-0.5 rounded bg-success-100 dark:bg-success-900/30 text-success-700 dark:text-success-400"
                                     >
                                       suggested
                                     </span>
                                   {/if}
                                 </div>
                                 <p
-                                  class="text-xs text-neutral-500 dark:text-neutral-400"
+                                  class="text-xs text-black-500 dark:text-black-400"
                                 >
                                   {engineer.wipCount > 0
                                     ? `${engineer.wipCount} WIP`
                                     : "No active WIP"}
                                   {#if engineer.suggestedTeamKey && engineer.suggestedTeamKey !== team.teamKey}
-                                    <span class="text-neutral-400">
+                                    <span class="text-black-400">
                                       · from {engineer.suggestedTeamKey}</span
                                     >
                                   {/if}
@@ -652,7 +668,7 @@
                       <button
                         type="button"
                         onclick={closeAddEngineer}
-                        class="absolute top-2 right-2 p-1 text-neutral-400 hover:text-neutral-600 dark:hover:text-neutral-300"
+                        class="absolute top-2 right-2 p-1 text-black-400 hover:text-black-600 dark:hover:text-black-300"
                         aria-label="Close dropdown"
                       >
                         <svg
@@ -673,7 +689,7 @@
                     <button
                       type="button"
                       onclick={() => openAddEngineer(team.teamKey)}
-                      class="flex items-center gap-2 mt-3 px-3 py-1.5 text-sm text-neutral-500 dark:text-neutral-400 hover:text-neutral-700 dark:hover:text-neutral-200 border border-dashed border-neutral-300 dark:border-neutral-600 rounded hover:border-neutral-400 dark:hover:border-neutral-500 transition-colors w-full justify-center disabled:opacity-50 disabled:cursor-not-allowed"
+                      class="flex items-center gap-2 mt-3 px-3 py-1.5 text-sm text-black-500 dark:text-black-400 hover:text-black-700 dark:hover:text-black-200 border border-dashed border-black-300 dark:border-black-600 rounded hover:border-black-400 dark:hover:border-black-500 transition-colors w-full justify-center disabled:opacity-50 disabled:cursor-not-allowed"
                       disabled={unassignedEngineers.length === 0}
                     >
                       <svg
@@ -699,7 +715,7 @@
                 <div class="space-y-2">
                   {#each team.members as member (member.id)}
                     <div
-                      class="flex items-center gap-3 py-2 px-2 -mx-2 rounded hover:bg-neutral-50 dark:hover:bg-neutral-800/50 transition-colors"
+                      class="flex items-center gap-3 py-2 px-2 -mx-2 rounded hover:bg-black-50 dark:hover:bg-black-800/50 transition-colors"
                     >
                       {#if member.avatarUrl}
                         <img
@@ -709,10 +725,10 @@
                         />
                       {:else}
                         <div
-                          class="w-8 h-8 rounded-full bg-neutral-200 dark:bg-neutral-700 flex items-center justify-center shrink-0"
+                          class="w-8 h-8 rounded-full bg-black-200 dark:bg-black-700 flex items-center justify-center shrink-0"
                         >
                           <span
-                            class="text-xs font-medium text-neutral-600 dark:text-neutral-300"
+                            class="text-xs font-medium text-black-600 dark:text-black-300"
                           >
                             {member.name
                               .split(" ")
@@ -724,20 +740,20 @@
                       {/if}
                       <div class="flex-1 min-w-0">
                         <p
-                          class="text-sm font-medium text-neutral-900 dark:text-white truncate"
+                          class="text-sm font-medium text-black-900 dark:text-white truncate"
                         >
                           {member.name}
                         </p>
                         <div class="flex items-center gap-2">
                           {#if member.wipCount > 0}
                             <span
-                              class="text-xs text-neutral-500 dark:text-neutral-400"
+                              class="text-xs text-black-500 dark:text-black-400"
                             >
                               {member.wipCount} WIP
                             </span>
                           {:else}
                             <span
-                              class="text-xs text-neutral-400 dark:text-neutral-500"
+                              class="text-xs text-black-400 dark:text-black-500"
                             >
                               No active WIP
                             </span>
@@ -756,7 +772,7 @@
                   {/each}
                 </div>
               {:else}
-                <p class="text-sm text-neutral-500 dark:text-neutral-400">
+                <p class="text-sm text-black-500 dark:text-black-400">
                   No members assigned
                 </p>
               {/if}
@@ -771,7 +787,7 @@
       <div class="space-y-4">
         <div class="flex items-center gap-3">
           <h2
-            class="text-xl font-semibold text-neutral-900 dark:text-white tracking-tight"
+            class="text-xl font-semibold text-black-900 dark:text-white tracking-tight"
           >
             Unassigned to Domain
           </h2>
@@ -787,7 +803,7 @@
               <div class="flex items-start justify-between mb-4">
                 <div>
                   <h3
-                    class="text-lg font-semibold text-neutral-900 dark:text-white"
+                    class="text-lg font-semibold text-black-900 dark:text-black-900 dark:text-white"
                   >
                     {team.teamName || team.teamKey}
                   </h3>
@@ -795,7 +811,7 @@
                     <Badge variant="outline" class="font-mono text-xs">
                       {team.teamKey}
                     </Badge>
-                    <span class="text-xs text-neutral-500">
+                    <span class="text-xs text-black-500">
                       {isEditing ? teamEngineers?.length : team.members.length} members
                     </span>
                   </div>
@@ -810,7 +826,7 @@
                       (m) => m.name === engineerName
                     )}
                     <div
-                      class="flex items-center gap-3 py-2 px-2 -mx-2 rounded bg-neutral-50 dark:bg-neutral-800/50"
+                      class="flex items-center gap-3 py-2 px-2 -mx-2 rounded bg-black-50 dark:bg-black-800/50"
                     >
                       {#if member?.avatarUrl}
                         <img
@@ -820,10 +836,10 @@
                         />
                       {:else}
                         <div
-                          class="w-8 h-8 rounded-full bg-neutral-200 dark:bg-neutral-700 flex items-center justify-center shrink-0"
+                          class="w-8 h-8 rounded-full bg-black-200 dark:bg-black-700 flex items-center justify-center shrink-0"
                         >
                           <span
-                            class="text-xs font-medium text-neutral-600 dark:text-neutral-300"
+                            class="text-xs font-medium text-black-600 dark:text-black-300"
                           >
                             {engineerName
                               .split(" ")
@@ -835,7 +851,7 @@
                       {/if}
                       <div class="flex-1 min-w-0">
                         <p
-                          class="text-sm font-medium text-neutral-900 dark:text-white truncate"
+                          class="text-sm font-medium text-black-900 dark:text-white truncate"
                         >
                           {engineerName}
                         </p>
@@ -843,7 +859,7 @@
                       <button
                         type="button"
                         onclick={() => removeEngineer(engineerName)}
-                        class="p-1 text-neutral-400 hover:text-red-500 dark:hover:text-red-400 transition-colors"
+                        class="p-1 text-black-400 hover:text-danger-500 dark:hover:text-danger-400 transition-colors"
                         title="Remove from team"
                       >
                         <svg
@@ -869,16 +885,16 @@
                         type="text"
                         bind:value={searchQuery}
                         placeholder="Search engineers..."
-                        class="w-full px-3 py-2 text-sm rounded-t border border-neutral-300 dark:border-neutral-600 bg-white dark:bg-neutral-800 text-neutral-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-blue-500"
+                        class="w-full px-3 py-2 text-sm rounded-t border border-black-300 dark:border-black-600 bg-white dark:bg-black-800 text-black-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-blue-500"
                         onkeydown={(e) =>
                           handleDropdownKeydown(e, team.teamKey)}
                       />
                       <div
-                        class="absolute z-10 w-full max-h-48 overflow-y-auto rounded-b border border-t-0 border-neutral-300 dark:border-neutral-600 bg-white dark:bg-neutral-800 shadow-lg"
+                        class="absolute z-10 w-full max-h-48 overflow-y-auto rounded-b border border-t-0 border-black-300 dark:border-black-600 bg-white dark:bg-black-800 shadow-lg"
                       >
                         {#if filteredEngineers.length === 0}
                           <div
-                            class="px-3 py-2 text-sm text-neutral-500 dark:text-neutral-400"
+                            class="px-3 py-2 text-sm text-black-500 dark:text-black-400"
                           >
                             {unassignedEngineers.length === 0
                               ? "All engineers are assigned"
@@ -888,9 +904,9 @@
                           {#each filteredEngineers as engineer, index (engineer.id)}
                             <button
                               type="button"
-                              class="w-full flex items-center gap-3 px-3 py-2 text-left hover:bg-neutral-100 dark:hover:bg-neutral-700 transition-colors {index ===
+                              class="w-full flex items-center gap-3 px-3 py-2 text-left hover:bg-black-100 dark:hover:bg-black-700 transition-colors {index ===
                               selectedIndex
-                                ? 'bg-neutral-100 dark:bg-neutral-700'
+                                ? 'bg-black-100 dark:bg-black-700'
                                 : ''}"
                               onclick={() =>
                                 addEngineerByName(engineer.name, team.teamKey)}
@@ -904,10 +920,10 @@
                                 />
                               {:else}
                                 <div
-                                  class="w-6 h-6 rounded-full bg-neutral-200 dark:bg-neutral-600 flex items-center justify-center shrink-0"
+                                  class="w-6 h-6 rounded-full bg-black-200 dark:bg-black-600 flex items-center justify-center shrink-0"
                                 >
                                   <span
-                                    class="text-[10px] font-medium text-neutral-600 dark:text-neutral-300"
+                                    class="text-[10px] font-medium text-black-600 dark:text-black-300"
                                   >
                                     {engineer.name
                                       .split(" ")
@@ -920,26 +936,26 @@
                               <div class="flex-1 min-w-0">
                                 <div class="flex items-center gap-2">
                                   <p
-                                    class="text-sm font-medium text-neutral-900 dark:text-white truncate"
+                                    class="text-sm font-medium text-black-900 dark:text-white truncate"
                                   >
                                     {engineer.name}
                                   </p>
                                   {#if engineer.suggestedTeamKey === team.teamKey}
                                     <span
-                                      class="text-[10px] px-1.5 py-0.5 rounded bg-green-100 dark:bg-green-900/30 text-green-700 dark:text-green-400"
+                                      class="text-[10px] px-1.5 py-0.5 rounded bg-success-100 dark:bg-success-900/30 text-success-700 dark:text-success-400"
                                     >
                                       suggested
                                     </span>
                                   {/if}
                                 </div>
                                 <p
-                                  class="text-xs text-neutral-500 dark:text-neutral-400"
+                                  class="text-xs text-black-500 dark:text-black-400"
                                 >
                                   {engineer.wipCount > 0
                                     ? `${engineer.wipCount} WIP`
                                     : "No active WIP"}
                                   {#if engineer.suggestedTeamKey && engineer.suggestedTeamKey !== team.teamKey}
-                                    <span class="text-neutral-400">
+                                    <span class="text-black-400">
                                       · from {engineer.suggestedTeamKey}</span
                                     >
                                   {/if}
@@ -952,7 +968,7 @@
                       <button
                         type="button"
                         onclick={closeAddEngineer}
-                        class="absolute top-2 right-2 p-1 text-neutral-400 hover:text-neutral-600 dark:hover:text-neutral-300"
+                        class="absolute top-2 right-2 p-1 text-black-400 hover:text-black-600 dark:hover:text-black-300"
                         aria-label="Close dropdown"
                       >
                         <svg
@@ -973,7 +989,7 @@
                     <button
                       type="button"
                       onclick={() => openAddEngineer(team.teamKey)}
-                      class="flex items-center gap-2 mt-3 px-3 py-1.5 text-sm text-neutral-500 dark:text-neutral-400 hover:text-neutral-700 dark:hover:text-neutral-200 border border-dashed border-neutral-300 dark:border-neutral-600 rounded hover:border-neutral-400 dark:hover:border-neutral-500 transition-colors w-full justify-center disabled:opacity-50 disabled:cursor-not-allowed"
+                      class="flex items-center gap-2 mt-3 px-3 py-1.5 text-sm text-black-500 dark:text-black-400 hover:text-black-700 dark:hover:text-black-200 border border-dashed border-black-300 dark:border-black-600 rounded hover:border-black-400 dark:hover:border-black-500 transition-colors w-full justify-center disabled:opacity-50 disabled:cursor-not-allowed"
                       disabled={unassignedEngineers.length === 0}
                     >
                       <svg
@@ -999,7 +1015,7 @@
                 <div class="space-y-2">
                   {#each team.members as member (member.id)}
                     <div
-                      class="flex items-center gap-3 py-2 px-2 -mx-2 rounded hover:bg-neutral-50 dark:hover:bg-neutral-800/50 transition-colors"
+                      class="flex items-center gap-3 py-2 px-2 -mx-2 rounded hover:bg-black-50 dark:hover:bg-black-800/50 transition-colors"
                     >
                       {#if member.avatarUrl}
                         <img
@@ -1009,10 +1025,10 @@
                         />
                       {:else}
                         <div
-                          class="w-8 h-8 rounded-full bg-neutral-200 dark:bg-neutral-700 flex items-center justify-center shrink-0"
+                          class="w-8 h-8 rounded-full bg-black-200 dark:bg-black-700 flex items-center justify-center shrink-0"
                         >
                           <span
-                            class="text-xs font-medium text-neutral-600 dark:text-neutral-300"
+                            class="text-xs font-medium text-black-600 dark:text-black-300"
                           >
                             {member.name
                               .split(" ")
@@ -1024,20 +1040,20 @@
                       {/if}
                       <div class="flex-1 min-w-0">
                         <p
-                          class="text-sm font-medium text-neutral-900 dark:text-white truncate"
+                          class="text-sm font-medium text-black-900 dark:text-white truncate"
                         >
                           {member.name}
                         </p>
                         <div class="flex items-center gap-2">
                           {#if member.wipCount > 0}
                             <span
-                              class="text-xs text-neutral-500 dark:text-neutral-400"
+                              class="text-xs text-black-500 dark:text-black-400"
                             >
                               {member.wipCount} WIP
                             </span>
                           {:else}
                             <span
-                              class="text-xs text-neutral-400 dark:text-neutral-500"
+                              class="text-xs text-black-400 dark:text-black-500"
                             >
                               No active WIP
                             </span>
@@ -1048,7 +1064,7 @@
                   {/each}
                 </div>
               {:else}
-                <p class="text-sm text-neutral-500 dark:text-neutral-400">
+                <p class="text-sm text-black-500 dark:text-black-400">
                   No members assigned
                 </p>
               {/if}
@@ -1063,21 +1079,21 @@
       <div class="space-y-4">
         <div class="flex items-center gap-3">
           <h2
-            class="text-xl font-semibold text-amber-600 dark:text-amber-400 tracking-tight"
+            class="text-xl font-semibold text-warning-600 dark:text-warning-400 tracking-tight"
           >
             Unassigned Users
           </h2>
           <Badge
             variant="outline"
-            class="border-amber-500 text-amber-600 dark:text-amber-400"
+            class="border-warning-500 text-warning-600 dark:text-warning-400"
             >{unassignedEngineers.length} users</Badge
           >
         </div>
 
         <Card
-          class="p-5 border-amber-300 dark:border-amber-700/50 bg-amber-50/50 dark:bg-amber-950/20"
+          class="p-5 border-warning-300 dark:border-warning-700/50 bg-warning-50/50 dark:bg-warning-950/20"
         >
-          <p class="text-sm text-amber-700 dark:text-amber-400 mb-4">
+          <p class="text-sm text-warning-700 dark:text-warning-400 mb-4">
             {#if isEditing}
               These users have issues in the database but haven't been
               categorized yet. Assign them to a team or mark as non-engineering.
@@ -1089,7 +1105,7 @@
           <div class="space-y-2">
             {#each unassignedEngineers as engineer (engineer.id)}
               <div
-                class="flex items-center gap-3 py-2 px-3 rounded bg-white dark:bg-neutral-800 border border-amber-200 dark:border-amber-800/50"
+                class="flex items-center gap-3 py-2 px-3 rounded bg-white dark:bg-black-800 border border-warning-200 dark:border-warning-800/50"
               >
                 {#if engineer.avatarUrl}
                   <img
@@ -1099,10 +1115,10 @@
                   />
                 {:else}
                   <div
-                    class="w-8 h-8 rounded-full bg-neutral-200 dark:bg-neutral-700 flex items-center justify-center shrink-0"
+                    class="w-8 h-8 rounded-full bg-black-200 dark:bg-black-700 flex items-center justify-center shrink-0"
                   >
                     <span
-                      class="text-xs font-medium text-neutral-600 dark:text-neutral-300"
+                      class="text-xs font-medium text-black-600 dark:text-black-300"
                     >
                       {engineer.name
                         .split(" ")
@@ -1114,16 +1130,16 @@
                 {/if}
                 <div class="flex-1 min-w-0">
                   <p
-                    class="text-sm font-medium text-neutral-900 dark:text-white truncate"
+                    class="text-sm font-medium text-black-900 dark:text-white truncate"
                   >
                     {engineer.name}
                   </p>
-                  <p class="text-xs text-neutral-500 dark:text-neutral-400">
+                  <p class="text-xs text-black-500 dark:text-black-400">
                     {engineer.wipCount > 0
                       ? `${engineer.wipCount} WIP`
                       : "No active WIP"}
                     {#if engineer.suggestedTeamKey}
-                      <span class="text-neutral-400">
+                      <span class="text-black-400">
                         · suggested: {engineer.suggestedTeamKey}</span
                       >
                     {/if}
@@ -1151,50 +1167,50 @@
 
     <!-- Configuration Info -->
     {#if !isEditing}
-      <Card class="mt-8 bg-neutral-50 dark:bg-neutral-900/50">
-        <h3 class="mb-3 text-sm font-semibold text-neutral-900 dark:text-white">
+      <Card class="mt-8 bg-black-50 dark:bg-black-900/50">
+        <h3
+          class="mb-3 text-sm font-semibold text-black-900 dark:text-black-900 dark:text-white"
+        >
           Configuration
         </h3>
         <div class="grid gap-4 md:grid-cols-2">
           <div>
             <p
-              class="mb-2 text-xs font-medium text-neutral-600 dark:text-neutral-400 uppercase tracking-wide"
+              class="mb-2 text-xs font-medium text-black-600 dark:text-black-400 uppercase tracking-wide"
             >
               TEAM_DOMAIN_MAPPINGS
             </p>
             <div
-              class="p-3 font-mono text-xs rounded bg-white dark:bg-neutral-800 border border-neutral-200 dark:border-neutral-700 overflow-x-auto"
+              class="p-3 font-mono text-xs rounded bg-white dark:bg-black-800 border border-black-200 dark:border-black-700 overflow-x-auto"
             >
               {#if Object.keys(data.teamDomainMappings).length > 0}
-                <pre
-                  class="text-neutral-700 dark:text-neutral-300">{JSON.stringify(
+                <pre class="text-black-700 dark:text-black-300">{JSON.stringify(
                     data.teamDomainMappings,
                     null,
                     2
                   )}</pre>
               {:else}
-                <span class="text-neutral-400">Not configured</span>
+                <span class="text-black-400">Not configured</span>
               {/if}
             </div>
           </div>
           <div>
             <p
-              class="mb-2 text-xs font-medium text-neutral-600 dark:text-neutral-400 uppercase tracking-wide"
+              class="mb-2 text-xs font-medium text-black-600 dark:text-black-400 uppercase tracking-wide"
             >
               ENGINEER_TEAM_MAPPING
             </p>
             <div
-              class="p-3 font-mono text-xs rounded bg-white dark:bg-neutral-800 border border-neutral-200 dark:border-neutral-700 overflow-x-auto max-h-48 overflow-y-auto"
+              class="p-3 font-mono text-xs rounded bg-white dark:bg-black-800 border border-black-200 dark:border-black-700 overflow-x-auto max-h-48 overflow-y-auto"
             >
               {#if Object.keys(data.engineerTeamMapping).length > 0}
-                <pre
-                  class="text-neutral-700 dark:text-neutral-300">{JSON.stringify(
+                <pre class="text-black-700 dark:text-black-300">{JSON.stringify(
                     data.engineerTeamMapping,
                     null,
                     2
                   )}</pre>
               {:else}
-                <span class="text-neutral-400">Not configured</span>
+                <span class="text-black-400">Not configured</span>
               {/if}
             </div>
           </div>
@@ -1211,19 +1227,19 @@
     title="Update Configuration"
     size="lg"
   >
-    <p class="text-sm text-neutral-400 mb-6">
+    <p class="text-sm text-black-400 mb-6">
       Copy the updated configuration string below and update your environment
       variable.
     </p>
 
     <!-- Changes summary -->
     <div class="mb-6">
-      <h3 class="text-sm font-medium text-neutral-300 mb-3">Changes Summary</h3>
+      <h3 class="text-sm font-medium text-black-300 mb-3">Changes Summary</h3>
       <div class="space-y-2 text-sm">
         {#each Object.entries(localMapping).sort( ([a], [b]) => a.localeCompare(b) ) as [engineer, team] (engineer)}
           {@const originalTeam = data?.engineerTeamMapping[engineer]}
           {#if originalTeam !== team}
-            <div class="flex items-center gap-2 text-amber-400">
+            <div class="flex items-center gap-2 text-warning-400">
               <svg
                 xmlns="http://www.w3.org/2000/svg"
                 class="w-4 h-4"
@@ -1237,19 +1253,17 @@
                 />
               </svg>
               <span class="font-medium">{engineer}</span>
-              <span class="text-neutral-500">moved from</span>
-              <span
-                class="font-mono text-xs px-1.5 py-0.5 rounded bg-neutral-700"
+              <span class="text-black-500">moved from</span>
+              <span class="font-mono text-xs px-1.5 py-0.5 rounded bg-black-700"
                 >{originalTeam || "none"}</span
               >
-              <span class="text-neutral-500">to</span>
-              <span
-                class="font-mono text-xs px-1.5 py-0.5 rounded bg-neutral-700"
+              <span class="text-black-500">to</span>
+              <span class="font-mono text-xs px-1.5 py-0.5 rounded bg-black-700"
                 >{team}</span
               >
             </div>
           {:else if !originalTeam}
-            <div class="flex items-center gap-2 text-green-400">
+            <div class="flex items-center gap-2 text-success-400">
               <svg
                 xmlns="http://www.w3.org/2000/svg"
                 class="w-4 h-4"
@@ -1263,9 +1277,8 @@
                 />
               </svg>
               <span class="font-medium">{engineer}</span>
-              <span class="text-neutral-500">added to</span>
-              <span
-                class="font-mono text-xs px-1.5 py-0.5 rounded bg-neutral-700"
+              <span class="text-black-500">added to</span>
+              <span class="font-mono text-xs px-1.5 py-0.5 rounded bg-black-700"
                 >{team}</span
               >
             </div>
@@ -1273,7 +1286,7 @@
         {/each}
         {#each Object.keys(data?.engineerTeamMapping ?? {}) as engineer (engineer)}
           {#if !localMapping[engineer]}
-            <div class="flex items-center gap-2 text-red-400">
+            <div class="flex items-center gap-2 text-danger-400">
               <svg
                 xmlns="http://www.w3.org/2000/svg"
                 class="w-4 h-4"
@@ -1287,9 +1300,8 @@
                 />
               </svg>
               <span class="font-medium">{engineer}</span>
-              <span class="text-neutral-500">removed from</span>
-              <span
-                class="font-mono text-xs px-1.5 py-0.5 rounded bg-neutral-700"
+              <span class="text-black-500">removed from</span>
+              <span class="font-mono text-xs px-1.5 py-0.5 rounded bg-black-700"
                 >{data?.engineerTeamMapping[engineer]}</span
               >
             </div>
@@ -1301,17 +1313,15 @@
     <!-- Config string -->
     <div class="mb-6">
       <div class="flex items-center justify-between mb-2">
-        <h3 class="text-sm font-medium text-neutral-300">
-          Environment Variable
-        </h3>
+        <h3 class="text-sm font-medium text-black-300">Environment Variable</h3>
         <Button size="sm" variant="outline" onclick={copyConfig}>
           {copied ? "Copied!" : "Copy"}
         </Button>
       </div>
       <div
-        class="p-4 font-mono text-xs rounded bg-neutral-800 border border-neutral-700 overflow-x-auto"
+        class="p-4 font-mono text-xs rounded bg-black-800 border border-black-700 overflow-x-auto"
       >
-        <code class="text-neutral-200 break-all whitespace-pre-wrap">
+        <code class="text-black-200 break-all whitespace-pre-wrap">
           {configValue ? configString : "ENGINEER_TEAM_MAPPING=''"}
         </code>
       </div>

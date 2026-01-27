@@ -318,7 +318,7 @@
     steadyProgress: "bg-warning-500",
     earlyTraction: "bg-danger-500",
     lowTraction: "bg-danger-600",
-    unknown: "bg-neutral-500",
+    unknown: "bg-black-500",
   };
 
   const statusLabels: Record<string, string> = {
@@ -347,7 +347,7 @@
     steadyProgress: "text-warning-500",
     earlyTraction: "text-danger-500",
     lowTraction: "text-danger-600",
-    unknown: "text-neutral-400",
+    unknown: "text-black-400",
   };
 
   // Determine status from snapshot or compute from percentage
@@ -387,7 +387,9 @@
 <div class="space-y-6">
   <!-- Page Title -->
   <div class="flex flex-wrap items-center justify-between gap-4">
-    <h1 class="text-2xl font-semibold text-white">WIP Health</h1>
+    <h1 class="text-2xl font-semibold text-black-900 dark:text-white">
+      WIP Health
+    </h1>
     <TeamFilterNotice level={activeTeamFilter ? "team" : "domain"} />
   </div>
 
@@ -410,15 +412,17 @@
     </Card>
   {:else if error}
     <!-- Error state -->
-    <Card class="border-red-500/50">
-      <div class="mb-3 text-sm font-medium text-red-600 dark:text-red-400">
+    <Card class="border-danger-500/50">
+      <div
+        class="mb-3 text-sm font-medium text-danger-600 dark:text-danger-400"
+      >
         Error Loading Data
       </div>
-      <p class="text-neutral-700 dark:text-neutral-400">{error}</p>
+      <p class="text-black-700 dark:text-black-400">{error}</p>
     </Card>
   {:else if teamHealth}
     <!-- Marquee Hero Section -->
-    <div class="py-8 border-b border-white/10">
+    <div class="py-8 border-b border-black-200 dark:border-white/10">
       <!-- Large metric -->
       <div class="flex items-baseline justify-center gap-4 mb-3">
         <span
@@ -427,7 +431,7 @@
           ]}"
         >
           {healthyPercent}<span
-            class="text-5xl lg:text-6xl font-normal text-neutral-400">%</span
+            class="text-5xl lg:text-6xl font-normal text-black-400">%</span
           >
         </span>
       </div>
@@ -464,16 +468,16 @@
         {/if}
       </div>
       {#if hasLimitedTrendData}
-        <p class="text-center text-[10px] text-neutral-500 mb-2">
+        <p class="text-center text-[10px] text-black-500 mb-2">
           * Based on available historical data
         </p>
       {/if}
 
       <!-- Subtitle -->
-      <p class="text-center text-xl text-neutral-400 mb-2">
+      <p class="text-center text-xl text-black-400 mb-2">
         Engineers within WIP constraints
       </p>
-      <p class="text-center text-sm text-neutral-500">
+      <p class="text-center text-sm text-black-500">
         {healthyCount} of {totalEngineerCount} engineers
         <span
           class="ml-2 inline-block text-xs font-medium px-2 py-0.5 rounded {computedStatus ===
@@ -487,7 +491,7 @@
                   ? 'bg-danger-500/20 text-danger-500'
                   : computedStatus === 'lowTraction'
                     ? 'bg-danger-600/20 text-danger-600'
-                    : 'bg-neutral-500/20 text-neutral-400'}"
+                    : 'bg-black-500/20 text-black-400'}"
         >
           {statusLabels[computedStatus]}
         </span>
@@ -497,45 +501,53 @@
       <div class="flex items-center justify-center gap-8 lg:gap-16 mt-8">
         <!-- Overloaded (combined) - use snapshot data -->
         <div class="text-center">
-          <div class="text-4xl lg:text-5xl font-bold text-white">
+          <div
+            class="text-4xl lg:text-5xl font-bold text-black-900 dark:text-white"
+          >
             {(displayHealth?.totalIcCount ?? 0) -
               (displayHealth?.healthyIcCount ?? 0)}
           </div>
-          <div class="text-sm text-neutral-400 mt-1">Overloaded</div>
-          <div class="text-xs text-neutral-500">need attention</div>
+          <div class="text-sm text-black-400 mt-1">Overloaded</div>
+          <div class="text-xs text-black-500">need attention</div>
         </div>
 
         <!-- Divider -->
-        <div class="h-12 w-px bg-white/10"></div>
+        <div class="h-12 w-px bg-black-100 dark:bg-white/10"></div>
 
         <!-- 6+ issues breakdown - use snapshot data -->
         <div class="text-center opacity-70">
-          <div class="text-3xl lg:text-4xl font-bold text-white">
+          <div
+            class="text-3xl lg:text-4xl font-bold text-black-900 dark:text-white"
+          >
             {displayHealth?.wipViolationCount ?? 0}
           </div>
-          <div class="text-sm text-neutral-400 mt-1">6+ issues</div>
+          <div class="text-sm text-black-400 mt-1">6+ issues</div>
         </div>
 
         <!-- Divider -->
-        <div class="h-12 w-px bg-white/10"></div>
+        <div class="h-12 w-px bg-black-100 dark:bg-white/10"></div>
 
         <!-- Context-switching breakdown - use snapshot data -->
         <div class="text-center opacity-70">
-          <div class="text-3xl lg:text-4xl font-bold text-white">
+          <div
+            class="text-3xl lg:text-4xl font-bold text-black-900 dark:text-white"
+          >
             {displayHealth?.multiProjectViolationCount ?? 0}
           </div>
-          <div class="text-sm text-neutral-400 mt-1">2+ projects</div>
+          <div class="text-sm text-black-400 mt-1">2+ projects</div>
         </div>
 
         <!-- Divider -->
-        <div class="h-12 w-px bg-white/10"></div>
+        <div class="h-12 w-px bg-black-100 dark:bg-white/10"></div>
 
         <!-- Projects impacted -->
         <div class="text-center opacity-70">
-          <div class="text-3xl lg:text-4xl font-bold text-white">
+          <div
+            class="text-3xl lg:text-4xl font-bold text-black-900 dark:text-white"
+          >
             {displayHealth?.impactedProjectCount ?? 0}
           </div>
-          <div class="text-sm text-neutral-400 mt-1">Projects impacted</div>
+          <div class="text-sm text-black-400 mt-1">Projects impacted</div>
         </div>
       </div>
     </div>
@@ -544,12 +556,10 @@
     <div class="grid grid-cols-1 lg:grid-cols-2 gap-6 pt-6">
       <!-- Why this matters -->
       <div class="space-y-2">
-        <h3
-          class="text-xs font-medium text-neutral-500 uppercase tracking-wider"
-        >
+        <h3 class="text-xs font-medium text-black-500 uppercase tracking-wider">
           Why this matters
         </h3>
-        <p class="text-sm text-neutral-400 leading-relaxed">
+        <p class="text-sm text-black-400 leading-relaxed">
           WIP constraints reduce cycle time by limiting queue depth. Overloaded
           engineers create bottlenecks; context-switching across projects
           compounds delays through task-switching overhead.
@@ -558,23 +568,21 @@
 
       <!-- How it's calculated -->
       <div class="space-y-2">
-        <h3
-          class="text-xs font-medium text-neutral-500 uppercase tracking-wider"
-        >
+        <h3 class="text-xs font-medium text-black-500 uppercase tracking-wider">
           How it's calculated
         </h3>
-        <p class="text-sm text-neutral-400">
+        <p class="text-sm text-black-400">
           An engineer is "within constraints" when they have <strong
-            class="text-neutral-300">5 or fewer</strong
+            class="text-black-300">5 or fewer</strong
           >
           in-progress issues AND are focused on a
-          <strong class="text-neutral-300">single project</strong>.
+          <strong class="text-black-300">single project</strong>.
         </p>
 
         <!-- Formula -->
         {#if formulaHtml}
           <div
-            class="py-3 px-4 rounded-md bg-neutral-800/50 border border-white/5 formula-container overflow-x-auto mt-3"
+            class="py-3 px-4 rounded-md bg-black-800/50 border border-white/5 formula-container overflow-x-auto mt-3"
           >
             <!-- eslint-disable-next-line svelte/no-at-html-tags -->
             {@html formulaHtml}
@@ -587,19 +595,19 @@
     {#if domainWipHealthData.length > 0}
       <Card class="p-0 overflow-hidden">
         <div
-          class="flex items-center justify-between px-4 py-3 border-b border-white/10 bg-white/5"
+          class="flex items-center justify-between px-4 py-3 border-b border-white/10 bg-black-50 dark:bg-white/5"
         >
-          <h3 class="text-sm font-medium text-white">
+          <h3 class="text-sm font-medium text-black-900 dark:text-white">
             Domain Breakdown ({domainWipHealthData.length})
           </h3>
-          <span class="text-xs text-neutral-500">WIP health by domain</span>
+          <span class="text-xs text-black-500">WIP health by domain</span>
         </div>
         <div class="p-4">
           <div class="overflow-x-auto">
             <table class="w-full">
               <thead>
                 <tr
-                  class="text-left text-xs font-medium text-neutral-500 uppercase tracking-wider border-b border-white/10"
+                  class="text-left text-xs font-medium text-black-500 uppercase tracking-wider border-b border-black-200 dark:border-white/10"
                 >
                   <th class="pb-3 pr-4">Domain</th>
                   <th class="pb-3 pr-4">Status</th>
@@ -627,31 +635,33 @@
                             statusColors[domain.status]
                               .replace('bg-', 'text-')
                               .replace('-500', '-400')
-                          : 'bg-neutral-500/20 text-neutral-400'}"
+                          : 'bg-black-500/20 text-black-400'}"
                       >
                         {statusLabels[domain.status] || domain.status}
                       </span>
                     </td>
                     <td class="py-3 pr-4 text-right">
-                      <span class="text-sm font-semibold text-white">
+                      <span
+                        class="text-sm font-semibold text-black-900 dark:text-white"
+                      >
                         {domain.healthyWorkloadPercent.toFixed(0)}%
                       </span>
-                      <span class="text-xs text-neutral-500 ml-1">
+                      <span class="text-xs text-black-500 ml-1">
                         ({domain.healthyIcCount}/{domain.totalIcCount})
                       </span>
                     </td>
                     <td class="py-3 pr-4 text-right">
-                      <span class="text-sm text-neutral-300">
+                      <span class="text-sm text-black-300">
                         {domain.wipViolationCount}
                       </span>
                     </td>
                     <td class="py-3 pr-4 text-right">
-                      <span class="text-sm text-neutral-300">
+                      <span class="text-sm text-black-300">
                         {domain.multiProjectViolationCount}
                       </span>
                     </td>
                     <td class="py-3 pr-4 text-right">
-                      <span class="text-sm text-neutral-400">
+                      <span class="text-sm text-black-400">
                         {domain.totalIcCount}
                       </span>
                     </td>
@@ -667,12 +677,12 @@
     <!-- Overloaded Engineers Table -->
     <Card class="p-0 overflow-hidden">
       <div
-        class="flex items-center justify-between px-4 py-3 border-b border-white/10 bg-white/5"
+        class="flex items-center justify-between px-4 py-3 border-b border-white/10 bg-black-50 dark:bg-white/5"
       >
-        <h3 class="text-sm font-medium text-white">
+        <h3 class="text-sm font-medium text-black-900 dark:text-white">
           Overloaded Engineers ({overloadedEngineers.length})
         </h3>
-        <span class="text-xs text-neutral-500"> 6+ issues or 2+ projects </span>
+        <span class="text-xs text-black-500"> 6+ issues or 2+ projects </span>
       </div>
       <div class="p-4">
         {#if overloadedEngineers.length > 0}
@@ -683,7 +693,7 @@
             }}
           />
         {:else}
-          <div class="py-8 text-center text-neutral-500">
+          <div class="py-8 text-center text-black-500">
             No engineers currently overloaded — great job!
           </div>
         {/if}
@@ -693,8 +703,8 @@
     <!-- No data state -->
     <Card>
       <div class="py-8 text-center">
-        <div class="mb-2 text-neutral-400">No metrics data available</div>
-        <p class="text-sm text-neutral-500">
+        <div class="mb-2 text-black-400">No metrics data available</div>
+        <p class="text-sm text-black-500">
           Run a sync to capture metrics data.
         </p>
       </div>

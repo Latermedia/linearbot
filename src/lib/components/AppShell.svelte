@@ -13,12 +13,12 @@
   const showSidebar = $derived($page.url.pathname !== "/login");
 </script>
 
-<div class="flex h-screen bg-neutral-950 overflow-hidden">
+<div class="flex h-screen bg-ambient-900 dark:bg-black-950 overflow-hidden">
   {#if showSidebar}
     <Sidebar />
   {/if}
 
-  <main class="flex-1 overflow-auto bg-white dark:bg-neutral-950">
+  <main class="flex-1 overflow-auto bg-white dark:bg-black-950">
     <div class="min-h-full">
       {@render children()}
     </div>

@@ -95,18 +95,16 @@
     {#each Array(4) as _}
       <div
         class="flex flex-col p-4 rounded-md border min-w-[140px] animate-pulse
-        bg-neutral-100 dark:bg-white/5 border-neutral-200 dark:border-white/10"
+        bg-black-100 dark:bg-white/5 border-black-200 dark:border-black-200 dark:border-white/10"
       >
-        <div
-          class="h-3 w-16 bg-neutral-200 dark:bg-white/10 rounded mb-3"
-        ></div>
-        <div class="h-7 w-12 bg-neutral-200 dark:bg-white/10 rounded"></div>
+        <div class="h-3 w-16 bg-black-200 dark:bg-white/10 rounded mb-3"></div>
+        <div class="h-7 w-12 bg-black-200 dark:bg-white/10 rounded"></div>
       </div>
     {/each}
   {:else if error}
     <div
-      class="flex items-center gap-2 px-4 py-3 text-sm text-red-600 dark:text-red-400
-      bg-red-500/10 border border-red-500/20 rounded-md"
+      class="flex items-center gap-2 px-4 py-3 text-sm text-danger-600 dark:text-danger-400
+      bg-danger-500/10 border border-danger-500/20 rounded-md"
     >
       <span>Failed to load health metrics</span>
     </div>
