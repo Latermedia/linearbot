@@ -225,32 +225,7 @@
         <!-- Status badge -->
         {#if status}
           <div class="flex justify-center mt-2">
-            <span
-              class="text-xs font-medium px-2 py-0.5 rounded {status ===
-              'peakFlow'
-                ? 'bg-success-400/20 text-success-400'
-                : status === 'strongRhythm'
-                  ? 'bg-success-500/20 text-success-500'
-                  : status === 'steadyProgress'
-                    ? 'bg-warning-500/20 text-warning-500'
-                    : status === 'earlyTraction'
-                      ? 'bg-danger-500/20 text-danger-500'
-                      : status === 'lowTraction'
-                        ? 'bg-danger-600/20 text-danger-600'
-                        : 'bg-black-500/20 text-black-400'}"
-            >
-              {status === "peakFlow"
-                ? "Peak Flow"
-                : status === "strongRhythm"
-                  ? "Strong Rhythm"
-                  : status === "steadyProgress"
-                    ? "Steady Progress"
-                    : status === "earlyTraction"
-                      ? "Early Traction"
-                      : status === "lowTraction"
-                        ? "Low Traction"
-                        : "Unknown"}
-            </span>
+            <Badge {status} />
           </div>
         {/if}
       {/if}
@@ -342,32 +317,7 @@
                 <span class="text-xs text-black-500">{subtitle}</span>
               {/if}
               {#if status && !underConstruction}
-                <span
-                  class="text-[10px] font-medium px-1.5 py-0.5 rounded {status ===
-                  'peakFlow'
-                    ? 'bg-success-400/20 text-success-400'
-                    : status === 'strongRhythm'
-                      ? 'bg-success-500/20 text-success-500'
-                      : status === 'steadyProgress'
-                        ? 'bg-warning-500/20 text-warning-500'
-                        : status === 'earlyTraction'
-                          ? 'bg-danger-500/20 text-danger-500'
-                          : status === 'lowTraction'
-                            ? 'bg-danger-600/20 text-danger-600'
-                            : 'bg-black-500/20 text-black-400'}"
-                >
-                  {status === "peakFlow"
-                    ? "Peak Flow"
-                    : status === "strongRhythm"
-                      ? "Strong Rhythm"
-                      : status === "steadyProgress"
-                        ? "Steady Progress"
-                        : status === "earlyTraction"
-                          ? "Early Traction"
-                          : status === "lowTraction"
-                            ? "Low Traction"
-                            : "Unknown"}
-                </span>
+                <Badge {status} class="text-[10px]" />
               {/if}
             </div>
           {/if}

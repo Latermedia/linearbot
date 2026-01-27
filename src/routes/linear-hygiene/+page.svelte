@@ -7,12 +7,14 @@
   import Skeleton from "$lib/components/Skeleton.svelte";
   import TeamFilterNotice from "$lib/components/TeamFilterNotice.svelte";
   import TrendChip from "$lib/components/metrics/TrendChip.svelte";
+  import Badge from "$lib/components/Badge.svelte";
   import { teamFilterStore } from "$lib/stores/team-filter";
   import { getDomainForTeam } from "../../utils/domain-mapping";
   import {
     calculateMetricTrends,
     metricExtractors,
   } from "$lib/utils/trend-calculation";
+  import { getStatusTextColor } from "$lib/utils/status-colors";
   import type {
     LinearHygieneV1,
     MetricsSnapshotV1,
@@ -379,35 +381,6 @@
     filteredTeamHygiene || filteredDomainHygiene || linearHygiene
   );
 
-  // Status indicator colors
-  const statusColors: Record<string, string> = {
-    peakFlow: "bg-success-400",
-    strongRhythm: "bg-success-500",
-    steadyProgress: "bg-warning-500",
-    earlyTraction: "bg-danger-500",
-    lowTraction: "bg-danger-600",
-    unknown: "bg-black-500",
-  };
-
-  // Status text colors for the large metric
-  const statusTextColors: Record<string, string> = {
-    peakFlow: "text-success-400",
-    strongRhythm: "text-success-500",
-    steadyProgress: "text-warning-500",
-    earlyTraction: "text-danger-500",
-    lowTraction: "text-danger-600",
-    unknown: "text-black-400",
-  };
-
-  const statusLabels: Record<string, string> = {
-    peakFlow: "Peak Flow",
-    strongRhythm: "Strong Rhythm",
-    steadyProgress: "Steady Progress",
-    earlyTraction: "Early Traction",
-    lowTraction: "Low Traction",
-    unknown: "Unknown",
-  };
-
   // Calculate total gaps from engineer gap counts (for future sorting)
   function _getEngineerTotalGaps(engineer: EngineerData): number {
     return (
@@ -478,9 +451,9 @@
       <!-- Large metric -->
       <div class="flex items-baseline justify-center gap-4 mb-3">
         <span
-          class="text-8xl lg:text-9xl font-bold tracking-tight {statusTextColors[
+          class="text-8xl lg:text-9xl font-bold tracking-tight {getStatusTextColor(
             displayHygiene?.status ?? 'unknown'
-          ]}"
+          )}"
         >
           {displayHygiene?.hygieneScore ?? 0}<span
             class="text-5xl lg:text-6xl font-normal text-black-400">%</span
@@ -531,22 +504,7 @@
       </p>
       <p class="text-center text-sm text-black-500">
         {displayHygiene?.totalGaps ?? 0} gaps found
-        <span
-          class="ml-2 inline-block text-xs font-medium px-2 py-0.5 rounded {displayHygiene?.status ===
-          'peakFlow'
-            ? 'bg-success-400/20 text-success-400'
-            : displayHygiene?.status === 'strongRhythm'
-              ? 'bg-success-500/20 text-success-500'
-              : displayHygiene?.status === 'steadyProgress'
-                ? 'bg-warning-500/20 text-warning-500'
-                : displayHygiene?.status === 'earlyTraction'
-                  ? 'bg-danger-500/20 text-danger-500'
-                  : displayHygiene?.status === 'lowTraction'
-                    ? 'bg-danger-600/20 text-danger-600'
-                    : 'bg-black-500/20 text-black-400'}"
-        >
-          {statusLabels[displayHygiene?.status ?? "unknown"]}
-        </span>
+        <Badge status={displayHygiene?.status ?? "unknown"} class="ml-2" />
       </p>
 
       <!-- Breakdown row -->
@@ -766,19 +724,7 @@
                       </span>
                     </td>
                     <td class="py-3 pr-4">
-                      <span
-                        class="text-xs font-medium px-2 py-1 rounded {statusColors[
-                          domain.status
-                        ]
-                          ? statusColors[domain.status].replace('bg-', 'bg-') +
-                            '/20 ' +
-                            statusColors[domain.status]
-                              .replace('bg-', 'text-')
-                              .replace('-500', '-400')
-                          : 'bg-black-500/20 text-black-400'}"
-                      >
-                        {statusLabels[domain.status] || domain.status}
-                      </span>
+                      <Badge status={domain.status} />
                     </td>
                     <td class="py-3 pr-4 text-right">
                       <span
@@ -914,7 +860,7 @@
                       <div class="flex items-center justify-center gap-1">
                         {#if project.missing_lead === 1}
                           <span
-                            class="text-xs px-1.5 py-0.5 rounded bg-danger-500/20 text-danger-400"
+                            class="text-xs px-1.5 py-0.5 rounded bg-danger-100 text-danger-700"
                             title="Missing lead"
                           >
                             Lead
@@ -922,7 +868,7 @@
                         {/if}
                         {#if project.is_stale_update === 1}
                           <span
-                            class="text-xs px-1.5 py-0.5 rounded bg-warning-500/20 text-warning-400"
+                            class="text-xs px-1.5 py-0.5 rounded bg-warning-100 text-warning-700"
                             title="Stale update (7+ days)"
                           >
                             Stale
@@ -930,7 +876,7 @@
                         {/if}
                         {#if project.has_status_mismatch === 1}
                           <span
-                            class="text-xs px-1.5 py-0.5 rounded bg-warning-500/20 text-warning-400"
+                            class="text-xs px-1.5 py-0.5 rounded bg-warning-100 text-warning-700"
                             title="Status mismatch"
                           >
                             Status
@@ -938,7 +884,7 @@
                         {/if}
                         {#if project.missing_health === 1}
                           <span
-                            class="text-xs px-1.5 py-0.5 rounded bg-warning-500/20 text-warning-400"
+                            class="text-xs px-1.5 py-0.5 rounded bg-warning-100 text-warning-700"
                             title="Missing health status"
                           >
                             Health
@@ -946,7 +892,7 @@
                         {/if}
                         {#if project.has_date_discrepancy === 1}
                           <span
-                            class="text-xs px-1.5 py-0.5 rounded bg-warning-500/20 text-warning-400"
+                            class="text-xs px-1.5 py-0.5 rounded bg-warning-100 text-warning-700"
                             title="Date discrepancy (>30 days)"
                           >
                             Date

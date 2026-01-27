@@ -6,6 +6,7 @@
   import Skeleton from "$lib/components/Skeleton.svelte";
   import TeamFilterNotice from "$lib/components/TeamFilterNotice.svelte";
   import TrendChip from "$lib/components/metrics/TrendChip.svelte";
+  import Badge from "$lib/components/Badge.svelte";
   import { teamFilterStore } from "$lib/stores/team-filter";
   import {
     getDomainForTeam,
@@ -161,25 +162,6 @@
       (qualityTrends.month.actualDays ?? 30) < 30;
     return weekLimited || monthLimited;
   });
-
-  // Status indicator colors
-  const statusColors: Record<string, string> = {
-    peakFlow: "bg-success-400",
-    strongRhythm: "bg-success-500",
-    steadyProgress: "bg-warning-500",
-    earlyTraction: "bg-danger-500",
-    lowTraction: "bg-danger-600",
-    unknown: "bg-black-500",
-  };
-
-  const statusLabels: Record<string, string> = {
-    peakFlow: "Peak Flow",
-    strongRhythm: "Strong Rhythm",
-    steadyProgress: "Steady Progress",
-    earlyTraction: "Early Traction",
-    lowTraction: "Low Traction",
-    unknown: "Unknown",
-  };
 
   // Get current filter state
   const filter = $derived($teamFilterStore);
@@ -358,22 +340,7 @@
       </p>
       <p class="text-center text-sm text-black-500">
         Based on bug count, age, and backlog trend
-        <span
-          class="ml-2 inline-block text-xs font-medium px-2 py-0.5 rounded {computedStatus ===
-          'peakFlow'
-            ? 'bg-success-400/20 text-success-400'
-            : computedStatus === 'strongRhythm'
-              ? 'bg-success-500/20 text-success-500'
-              : computedStatus === 'steadyProgress'
-                ? 'bg-warning-500/20 text-warning-500'
-                : computedStatus === 'earlyTraction'
-                  ? 'bg-danger-500/20 text-danger-500'
-                  : computedStatus === 'lowTraction'
-                    ? 'bg-danger-600/20 text-danger-600'
-                    : 'bg-black-500/20 text-black-400'}"
-        >
-          {statusLabels[computedStatus]}
-        </span>
+        <Badge status={computedStatus} class="ml-2" />
       </p>
 
       <!-- Breakdown row -->
@@ -513,19 +480,7 @@
                       </span>
                     </td>
                     <td class="py-3 pr-4">
-                      <span
-                        class="text-xs font-medium px-2 py-1 rounded {statusColors[
-                          domain.status
-                        ]
-                          ? statusColors[domain.status].replace('bg-', 'bg-') +
-                            '/20 ' +
-                            statusColors[domain.status]
-                              .replace('bg-', 'text-')
-                              .replace('-500', '-400')
-                          : 'bg-black-500/20 text-black-400'}"
-                      >
-                        {statusLabels[domain.status] || domain.status}
-                      </span>
+                      <Badge status={domain.status} />
                     </td>
                     <td class="py-3 pr-4 text-right">
                       <span

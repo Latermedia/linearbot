@@ -50,15 +50,15 @@
 
 <span
   class="inline-flex items-center gap-0.5 px-1.5 py-0.5 text-[10px] font-medium rounded {isPositive
-    ? 'bg-success-500/10 text-success-400'
+    ? 'bg-success-100 dark:bg-success-900 text-success-700 dark:text-success-400'
     : isNegative
-      ? 'bg-danger-500/10 text-danger-400'
-      : 'bg-black-500/10 text-black-400'}"
+      ? 'bg-danger-100 dark:bg-danger-900 text-danger-700 dark:text-danger-400'
+      : 'bg-black-100 dark:bg-black-800 text-black-500 dark:text-black-400'}"
   title={tooltip}
 >
   <span>{arrow}</span>
   <span>{displayPercent}%</span>
-  <span class="text-black-500"
+  <span class="text-black-500 dark:text-black-400"
     >{period}{#if isLimited}*{/if}</span
   >
 </span>

@@ -51,31 +51,30 @@ export function getProjectCountStatus(
 /**
  * Get badge classes for a pillar status
  * Returns classes for background, text, and border colors
+ * Uses opaque backgrounds to avoid color shifting on different backgrounds
  */
-export function getStatusBadgeClasses(
-  status: PillarStatus | "unknown"
-): string {
+export function getStatusBadgeClasses(status: string): string {
   switch (status) {
     case "peakFlow":
-      return "bg-success-400/20 text-success-400 border-success-400/30";
+      return "bg-success-100 dark:bg-success-900 text-success-700 dark:text-success-400";
     case "strongRhythm":
-      return "bg-success-500/20 text-success-500 border-success-500/30";
+      return "bg-success-100 dark:bg-success-900 text-success-700 dark:text-success-400";
     case "steadyProgress":
-      return "bg-warning-500/20 text-warning-500 border-warning-500/30";
+      return "bg-warning-100 dark:bg-warning-900 text-warning-700 dark:text-warning-400";
     case "earlyTraction":
-      return "bg-danger-500/20 text-danger-500 border-danger-500/30";
+      return "bg-danger-100 dark:bg-danger-900 text-danger-700 dark:text-danger-400";
     case "lowTraction":
-      return "bg-danger-600/20 text-danger-600 border-danger-600/30";
+      return "bg-danger-200 dark:bg-danger-900 text-danger-800 dark:text-danger-400";
     case "unknown":
     default:
-      return "bg-neutral-500/20 text-neutral-400 border-neutral-500/30";
+      return "bg-black-100 dark:bg-black-800 text-black-500 dark:text-black-400";
   }
 }
 
 /**
  * Get text color class for a pillar status
  */
-export function getStatusTextColor(status: PillarStatus | "unknown"): string {
+export function getStatusTextColor(status: string): string {
   switch (status) {
     case "peakFlow":
       return "text-success-400";
@@ -96,7 +95,7 @@ export function getStatusTextColor(status: PillarStatus | "unknown"): string {
 /**
  * Get background color class for a pillar status (solid)
  */
-export function getStatusBgColor(status: PillarStatus | "unknown"): string {
+export function getStatusBgColor(status: string): string {
   switch (status) {
     case "peakFlow":
       return "bg-success-400";
@@ -129,8 +128,8 @@ const STATUS_LABELS: Record<PillarStatus | "unknown", string> = {
 /**
  * Get human-readable label for a pillar status
  */
-export function getStatusLabel(status: PillarStatus | "unknown"): string {
-  return STATUS_LABELS[status];
+export function getStatusLabel(status: string): string {
+  return STATUS_LABELS[status as PillarStatus | "unknown"] ?? status;
 }
 
 /**

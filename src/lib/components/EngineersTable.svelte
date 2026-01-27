@@ -107,7 +107,7 @@
         {@const teamNames = parseTeamNames(engineer.team_names)}
         {@const totalGaps = getTotalGaps(engineer)}
         <tr
-          class="border-b transition-colors cursor-pointer border-white/5 hover:bg-black-100 dark:hover:bg-black-50 dark:bg-white/5"
+          class="border-b transition-colors cursor-pointer border-black-100 dark:border-white/5 hover:bg-black-100 dark:hover:bg-white/10"
           onclick={() => onEngineerClick(engineer)}
           role="button"
           tabindex="0"

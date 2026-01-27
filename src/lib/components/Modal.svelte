@@ -15,7 +15,7 @@
     topAligned = false,
     header,
     children,
-    background = "bg-black-900",
+    background = "bg-white dark:bg-black-900",
   }: {
     title?: string;
     onclose: () => void;
@@ -93,7 +93,7 @@
   <div
     class="w-full {sizeClasses[
       size
-    ]} rounded-md border shadow-2xl {background} border-white/10 shadow-black/50 m-4 {topAligned
+    ]} rounded-md border shadow-2xl {background} border-black-200 dark:border-white/10 shadow-black/20 dark:shadow-black/50 m-4 {topAligned
       ? 'mb-8'
       : ''} {scrollable ? 'flex flex-col' : ''}"
     style={maxHeight ? `max-height: ${maxHeight}` : ""}
@@ -136,7 +136,7 @@
               {title}
             </h2>
             <button
-              class="inline-flex justify-center items-center p-1.5 rounded transition-colors duration-150 cursor-pointer text-black-500 hover:text-white hover:bg-black-100 dark:bg-white/10"
+              class="inline-flex justify-center items-center p-1.5 rounded transition-colors duration-150 cursor-pointer text-black-500 hover:text-black-900 dark:hover:text-white hover:bg-black-100 dark:hover:bg-white/10"
               onclick={onclose}
               aria-label="Close modal"
             >

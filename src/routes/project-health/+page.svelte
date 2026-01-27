@@ -177,16 +177,6 @@
     return weekLimited || monthLimited;
   });
 
-  // Status labels for computed status badge
-  const statusLabels: Record<string, string> = {
-    peakFlow: "Peak Flow",
-    strongRhythm: "Strong Rhythm",
-    steadyProgress: "Steady Progress",
-    earlyTraction: "Early Traction",
-    lowTraction: "Low Traction",
-    unknown: "Unknown",
-  };
-
   // Get current filter state
   const filter = $derived($teamFilterStore);
 
@@ -530,22 +520,7 @@
       </p>
       <p class="text-center text-sm text-black-500">
         {onTrackCount} of {totalProjects} projects
-        <span
-          class="ml-2 inline-block text-xs font-medium px-2 py-0.5 rounded {computedStatus ===
-          'peakFlow'
-            ? 'bg-success-400/20 text-success-400'
-            : computedStatus === 'strongRhythm'
-              ? 'bg-success-500/20 text-success-500'
-              : computedStatus === 'steadyProgress'
-                ? 'bg-warning-500/20 text-warning-500'
-                : computedStatus === 'earlyTraction'
-                  ? 'bg-danger-500/20 text-danger-500'
-                  : computedStatus === 'lowTraction'
-                    ? 'bg-danger-600/20 text-danger-600'
-                    : 'bg-black-500/20 text-black-400'}"
-        >
-          {statusLabels[computedStatus]}
-        </span>
+        <Badge status={computedStatus} class="ml-2" />
       </p>
 
       <!-- Breakdown row -->
@@ -670,31 +645,20 @@
                   <th class="pb-3 pr-4 text-right">Total</th>
                 </tr>
               </thead>
-              <tbody class="divide-y divide-white/5">
+              <tbody class="divide-y divide-black-200 dark:divide-white/5">
                 {#each domainProjectHealthData as domain}
-                  <tr class="hover:bg-white/5 transition-colors">
+                  <tr
+                    class="hover:bg-black-50 dark:hover:bg-white/5 transition-colors"
+                  >
                     <td class="py-3 pr-4">
-                      <span class="text-sm text-white font-medium">
+                      <span
+                        class="text-sm text-black-900 dark:text-white font-medium"
+                      >
                         {domain.domainName}
                       </span>
                     </td>
                     <td class="py-3 pr-4">
-                      <span
-                        class="text-xs font-medium px-2 py-1 rounded {domain.status ===
-                        'peakFlow'
-                          ? 'bg-success-400/20 text-success-400'
-                          : domain.status === 'strongRhythm'
-                            ? 'bg-success-500/20 text-success-500'
-                            : domain.status === 'steadyProgress'
-                              ? 'bg-warning-500/20 text-warning-500'
-                              : domain.status === 'earlyTraction'
-                                ? 'bg-danger-500/20 text-danger-500'
-                                : domain.status === 'lowTraction'
-                                  ? 'bg-danger-600/20 text-danger-600'
-                                  : 'bg-black-500/20 text-black-400'}"
-                      >
-                        {statusLabels[domain.status] || domain.status}
-                      </span>
+                      <Badge status={domain.status} />
                     </td>
                     <td class="py-3 pr-4 text-right">
                       <span
@@ -707,17 +671,17 @@
                       </span>
                     </td>
                     <td class="py-3 pr-4 text-right">
-                      <span class="text-sm text-black-300">
+                      <span class="text-sm text-black-600 dark:text-black-300">
                         {domain.atRiskCount}
                       </span>
                     </td>
                     <td class="py-3 pr-4 text-right">
-                      <span class="text-sm text-black-300">
+                      <span class="text-sm text-black-600 dark:text-black-300">
                         {domain.offTrackCount}
                       </span>
                     </td>
                     <td class="py-3 pr-4 text-right">
-                      <span class="text-sm text-black-400">
+                      <span class="text-sm text-black-500 dark:text-black-400">
                         {domain.totalProjects}
                       </span>
                     </td>

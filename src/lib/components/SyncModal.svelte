@@ -320,7 +320,9 @@
                   : "0.00"}%</span
               >
             </div>
-            <div class="overflow-hidden h-2 rounded-full bg-black-800">
+            <div
+              class="overflow-hidden h-2 rounded-full bg-black-100 dark:bg-black-800"
+            >
               <div
                 class="h-full bg-brand-500 transition-all duration-300 ease-out"
                 style="width: {syncProgressPercent}%"
@@ -361,7 +363,7 @@
 
         <!-- API Query Count -->
         {#if apiQueryCount !== null}
-          <div class="pt-2 border-t border-black-800">
+          <div class="pt-2 border-t border-black-200 dark:border-black-800">
             <p class="text-xs text-black-500">
               API Queries: <span class="tabular-nums text-black-300"
                 >{apiQueryCount}</span
@@ -388,15 +390,17 @@
       <!-- Error from previous sync -->
       {#if syncErrorMessage && syncStatus === "error"}
         <div
-          class="p-3 rounded-md border bg-danger-900/20 border-danger-800/50"
+          class="p-3 rounded-md border bg-danger-50 dark:bg-danger-900/20 border-danger-200 dark:border-danger-800/50"
         >
-          <p class="text-sm text-danger-400">{syncErrorMessage}</p>
+          <p class="text-sm text-danger-600 dark:text-danger-400">
+            {syncErrorMessage}
+          </p>
         </div>
       {/if}
 
       <!-- Full Sync Toggle -->
       <div
-        class="flex gap-3 items-start p-4 rounded-lg border transition-colors cursor-pointer border-black-700 bg-black-800/50 hover:bg-black-800/70"
+        class="flex gap-3 items-start p-4 rounded-lg border transition-colors cursor-pointer border-black-200 dark:border-black-700 bg-black-50 dark:bg-black-800/50 hover:bg-black-100 dark:hover:bg-black-800/70"
         onclick={toggleFullSync}
         role="button"
         tabindex="0"
@@ -412,12 +416,12 @@
           id="fullSync"
           checked={isFullSync}
           onchange={toggleFullSync}
-          class="mt-1 w-4 h-4 text-blue-600 rounded pointer-events-none border-black-600 bg-black-700 focus:ring-2 focus:ring-blue-500 focus:ring-offset-0 focus:ring-offset-black-900"
+          class="mt-1 w-4 h-4 text-blue-600 rounded pointer-events-none border-black-300 dark:border-black-600 bg-white dark:bg-black-700 focus:ring-2 focus:ring-blue-500 focus:ring-offset-0"
         />
         <div class="flex-1">
           <label
             for="fullSync"
-            class="block text-sm font-medium text-white cursor-pointer"
+            class="block text-sm font-medium text-black-900 dark:text-white cursor-pointer"
           >
             Full Sync
           </label>
@@ -436,7 +440,7 @@
 
         <!-- Incremental Sync Toggle -->
         <div
-          class="flex gap-3 items-start p-4 rounded-lg border transition-colors cursor-pointer border-success-800/50 bg-success-900/20 hover:bg-success-900/30"
+          class="flex gap-3 items-start p-4 rounded-lg border transition-colors cursor-pointer border-success-300 dark:border-success-800/50 bg-success-50 dark:bg-success-900/20 hover:bg-success-100 dark:hover:bg-success-900/30"
           onclick={() => {
             incrementalSync = !incrementalSync;
             if (incrementalSync) deepHistorySync = false;
@@ -459,18 +463,18 @@
               incrementalSync = !incrementalSync;
               if (incrementalSync) deepHistorySync = false;
             }}
-            class="mt-1 w-4 h-4 text-success-600 rounded pointer-events-none border-black-600 bg-black-700 focus:ring-2 focus:ring-success-500 focus:ring-offset-0 focus:ring-offset-black-900"
+            class="mt-1 w-4 h-4 text-success-600 rounded pointer-events-none border-black-300 dark:border-black-600 bg-white dark:bg-black-700 focus:ring-2 focus:ring-success-500 focus:ring-offset-0"
           />
           <div class="flex-1">
             <label
               for="incrementalSync"
-              class="block text-sm font-medium text-success-300 cursor-pointer"
+              class="block text-sm font-medium text-success-700 dark:text-success-300 cursor-pointer"
             >
               Incremental Sync
             </label>
-            <p class="mt-1 text-xs text-success-200/70">
+            <p class="mt-1 text-xs text-success-600 dark:text-success-200/70">
               Only fetch issues updated since the last successful sync.
-              <span class="font-medium text-success-400"
+              <span class="font-medium text-success-700 dark:text-success-400"
                 >Fastest option - uses fewest API calls.</span
               >
             </p>
@@ -479,7 +483,7 @@
 
         <!-- Deep History Sync Toggle -->
         <div
-          class="flex gap-3 items-start p-4 rounded-lg border transition-colors cursor-pointer border-warning-800/50 bg-warning-900/20 hover:bg-warning-900/30"
+          class="flex gap-3 items-start p-4 rounded-lg border transition-colors cursor-pointer border-warning-300 dark:border-warning-800/50 bg-warning-50 dark:bg-warning-900/20 hover:bg-warning-100 dark:hover:bg-warning-900/30"
           onclick={() => {
             deepHistorySync = !deepHistorySync;
             if (deepHistorySync) incrementalSync = false;
@@ -502,19 +506,19 @@
               deepHistorySync = !deepHistorySync;
               if (deepHistorySync) incrementalSync = false;
             }}
-            class="mt-1 w-4 h-4 text-warning-600 rounded pointer-events-none border-black-600 bg-black-700 focus:ring-2 focus:ring-warning-500 focus:ring-offset-0 focus:ring-offset-black-900"
+            class="mt-1 w-4 h-4 text-warning-600 rounded pointer-events-none border-black-300 dark:border-black-600 bg-white dark:bg-black-700 focus:ring-2 focus:ring-warning-500 focus:ring-offset-0"
           />
           <div class="flex-1">
             <label
               for="deepHistorySync"
-              class="block text-sm font-medium text-warning-300 cursor-pointer"
+              class="block text-sm font-medium text-warning-700 dark:text-warning-300 cursor-pointer"
             >
               Deep History Sync
             </label>
-            <p class="mt-1 text-xs text-warning-200/70">
+            <p class="mt-1 text-xs text-warning-600 dark:text-warning-200/70">
               Fetch issues updated in the last year (365 days) instead of 14
               days.
-              <span class="font-medium text-warning-400"
+              <span class="font-medium text-warning-700 dark:text-warning-400"
                 >Slowest option - uses most API calls.</span
               >
             </p>
@@ -538,11 +542,11 @@
           {#each phaseOptions as option (option.phase)}
             {@const isRequired = option.phase === REQUIRED_PHASE}
             <div
-              class="flex items-start gap-3 p-3 rounded-lg border border-black-700 bg-black-800/30 {isRequired
+              class="flex items-start gap-3 p-3 rounded-lg border border-black-200 dark:border-black-700 bg-black-50 dark:bg-black-800/30 {isRequired
                 ? 'opacity-75 cursor-not-allowed'
                 : isFullSync
                   ? ''
-                  : 'hover:bg-black-800/50 cursor-pointer'} transition-colors"
+                  : 'hover:bg-black-100 dark:hover:bg-black-800/50 cursor-pointer'} transition-colors"
               onclick={() => {
                 if (!isFullSync && !isRequired) {
                   handlePhaseToggle(option.phase);
@@ -568,12 +572,12 @@
                 checked={selectedPhases.has(option.phase)}
                 onchange={() => handlePhaseToggle(option.phase)}
                 disabled={isFullSync || isRequired}
-                class="mt-0.5 w-4 h-4 text-blue-600 rounded pointer-events-none border-black-600 bg-black-700 focus:ring-2 focus:ring-blue-500 focus:ring-offset-0 focus:ring-offset-black-900 disabled:opacity-50 disabled:cursor-not-allowed"
+                class="mt-0.5 w-4 h-4 text-blue-600 rounded pointer-events-none border-black-300 dark:border-black-600 bg-white dark:bg-black-700 focus:ring-2 focus:ring-blue-500 focus:ring-offset-0 disabled:opacity-50 disabled:cursor-not-allowed"
               />
               <div class="flex-1 min-w-0">
                 <label
                   for="phase-{option.phase}"
-                  class="block text-sm font-medium text-white {isFullSync ||
+                  class="block text-sm font-medium text-black-900 dark:text-white {isFullSync ||
                   isRequired
                     ? 'opacity-50 cursor-not-allowed'
                     : 'cursor-pointer'}"
@@ -602,7 +606,7 @@
           id="adminPassword"
           bind:value={adminPassword}
           placeholder="Enter admin password"
-          class="px-3 py-2 w-full text-sm text-white rounded-md border border-black-600 bg-black-800 placeholder-black-500 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+          class="px-3 py-2 w-full text-sm text-black-900 dark:text-white rounded-md border border-black-200 dark:border-black-600 bg-white dark:bg-black-800 placeholder-black-400 dark:placeholder-black-500 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
           disabled={isSubmitting}
           autocomplete="off"
         />
@@ -611,9 +615,9 @@
       <!-- Form Error Message -->
       {#if error}
         <div
-          class="p-3 rounded-md border bg-danger-900/20 border-danger-800/50"
+          class="p-3 rounded-md border bg-danger-50 dark:bg-danger-900/20 border-danger-200 dark:border-danger-800/50"
         >
-          <p class="text-sm text-danger-400">{error}</p>
+          <p class="text-sm text-danger-600 dark:text-danger-400">{error}</p>
         </div>
       {/if}
 
@@ -648,17 +652,17 @@
     {/if}
 
     <!-- Footer hint -->
-    <div class="pt-4 border-t border-black-800">
+    <div class="pt-4 border-t border-black-200 dark:border-black-800">
       <p class="text-xs text-center text-black-500">
         <kbd
-          class="px-1.5 py-0.5 rounded border bg-black-800 border-black-700 text-black-300"
+          class="px-1.5 py-0.5 rounded border bg-black-100 dark:bg-black-800 border-black-200 dark:border-black-700 text-black-600 dark:text-black-300"
           >Esc</kbd
         >
         to close
         {#if !isSyncing}
           <span class="mx-1.5">·</span>
           <kbd
-            class="px-1.5 py-0.5 rounded border bg-black-800 border-black-700 text-black-300"
+            class="px-1.5 py-0.5 rounded border bg-black-100 dark:bg-black-800 border-black-200 dark:border-black-700 text-black-600 dark:text-black-300"
             >Cmd+Enter</kbd
           >
           to start

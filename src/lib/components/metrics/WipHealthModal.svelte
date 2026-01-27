@@ -1,8 +1,10 @@
 <script lang="ts">
   import { onMount } from "svelte";
   import Modal from "$lib/components/Modal.svelte";
+  import Badge from "$lib/components/Badge.svelte";
   import EngineersTable from "$lib/components/EngineersTable.svelte";
   import type { TeamHealthV1 } from "../../../types/metrics-snapshot";
+  import { getStatusBgColor } from "$lib/utils/status-colors";
 
   interface EngineerData {
     assignee_id: string;
@@ -59,25 +61,6 @@
     }
   });
 
-  // Status indicator colors
-  const statusColors = {
-    peakFlow: "bg-success-400",
-    strongRhythm: "bg-success-500",
-    steadyProgress: "bg-warning-500",
-    earlyTraction: "bg-danger-500",
-    lowTraction: "bg-danger-600",
-    unknown: "bg-black-500",
-  };
-
-  const statusLabels = {
-    peakFlow: "Peak Flow",
-    strongRhythm: "Strong Rhythm",
-    steadyProgress: "Steady Progress",
-    earlyTraction: "Early Traction",
-    lowTraction: "Low Traction",
-    unknown: "Unknown",
-  };
-
   // Calculate percentages for display
   const wipViolationPercent = $derived(
     teamHealth.totalIcCount > 0
@@ -112,27 +95,12 @@
     <!-- Hero metric -->
     <div class="text-center py-4">
       <div class="flex items-center justify-center gap-3 mb-2">
-        <span class="w-3 h-3 rounded-full {statusColors[teamHealth.status]}"
+        <span class="w-3 h-3 rounded-full {getStatusBgColor(teamHealth.status)}"
         ></span>
         <span class="text-4xl font-semibold text-black-900 dark:text-white">
           {teamHealth.healthyWorkloadPercent.toFixed(0)}%
         </span>
-        <span
-          class="text-sm font-medium px-2 py-0.5 rounded {teamHealth.status ===
-          'peakFlow'
-            ? 'bg-success-400/20 text-success-400'
-            : teamHealth.status === 'strongRhythm'
-              ? 'bg-success-500/20 text-success-500'
-              : teamHealth.status === 'steadyProgress'
-                ? 'bg-warning-500/20 text-warning-500'
-                : teamHealth.status === 'earlyTraction'
-                  ? 'bg-danger-500/20 text-danger-500'
-                  : teamHealth.status === 'lowTraction'
-                    ? 'bg-danger-600/20 text-danger-600'
-                    : 'bg-black-500/20 text-black-400'}"
-        >
-          {statusLabels[teamHealth.status]}
-        </span>
+        <Badge status={teamHealth.status} />
       </div>
       <p class="text-black-400">Engineers within WIP constraints</p>
     </div>
