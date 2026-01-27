@@ -160,7 +160,7 @@
   >
     <!-- Sliding indicator -->
     <div
-      class="absolute left-2 right-2 rounded-md bg-brand-100 dark:bg-white/10 pointer-events-none z-0 transition-[left,right] duration-250"
+      class="absolute left-2 right-2 rounded-md bg-black-100 dark:bg-white/10 pointer-events-none z-0 transition-[left,right] duration-250"
       style="top: {$indicatorTop}px; height: {$indicatorHeight}px; opacity: {$indicatorOpacity};"
       aria-hidden="true"
     ></div>

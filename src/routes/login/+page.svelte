@@ -51,7 +51,7 @@
 </script>
 
 <div
-  class="min-h-screen flex items-center justify-center bg-white dark:bg-black-950 px-4"
+  class="min-h-screen flex items-center justify-center bg-ambient-800 dark:bg-black-950 px-4"
 >
   <div class="w-full max-w-md">
     <div class="text-center mb-8">
@@ -78,7 +78,7 @@
           bind:this={passwordInput}
           disabled={isLoading}
           autocomplete="current-password"
-          class="w-full px-3 py-2 border border-black-300 dark:border-black-700 rounded-md bg-white dark:bg-black-900 text-black-900 dark:text-white placeholder-black-500 dark:placeholder-black-400 focus:outline-none focus:ring-2 focus:ring-black-500 dark:focus:ring-black-400 focus:border-transparent disabled:opacity-50 disabled:cursor-not-allowed"
+          class="w-full px-3 py-2 border border-black-200 dark:border-black-700 rounded-md bg-ambient-600 dark:bg-black-900 text-black-900 dark:text-white placeholder-black-500 dark:placeholder-black-400 focus:outline-none focus:ring-2 focus:ring-brand-500 dark:focus:ring-black-400 focus:border-transparent disabled:opacity-50 disabled:cursor-not-allowed"
           placeholder="Enter password"
         />
       </div>

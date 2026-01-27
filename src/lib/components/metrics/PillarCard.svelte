@@ -115,7 +115,7 @@
   <Card
     class="transition-colors duration-150 border {underConstruction
       ? 'border-black-700/50 opacity-60 cursor-not-allowed'
-      : 'hover:bg-white/5 border-white/10'}"
+      : 'hover:bg-ambient-500 dark:hover:bg-white/5 border-black-200 dark:border-white/10'}"
   >
     <button
       type="button"
@@ -236,7 +236,7 @@
   <Card
     class="transition-colors duration-150 border {underConstruction
       ? 'border-black-700/50 opacity-60 cursor-not-allowed'
-      : 'hover:bg-white/5 border-white/10'}"
+      : 'hover:bg-ambient-500 dark:hover:bg-white/5 border-black-200 dark:border-white/10'}"
   >
     <button
       type="button"

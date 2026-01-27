@@ -60,7 +60,7 @@
   data-active={isActive}
   class="group relative z-10 flex items-center py-2 text-sm font-medium rounded no-color-transition
     {isActive
-    ? 'text-brand-800 dark:text-white'
+    ? 'text-black-900 dark:text-white'
     : 'text-black-600 dark:text-black-400 hover:text-black-900 dark:hover:text-white'}"
   title={isCollapsed ? label : undefined}
 >
@@ -83,7 +83,7 @@
       <div class="loader-container grid grid-cols-3 w-4 h-4 gap-0.5">
         {#each Array(9) as _, i}
           <div
-            class="loader-block w-full h-full rounded-[1px] bg-brand-800 dark:bg-white"
+            class="loader-block w-full h-full rounded-[1px] bg-black-900 dark:bg-white"
             style="animation-delay: {delays[i]}s;"
           ></div>
         {/each}

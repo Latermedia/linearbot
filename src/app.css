@@ -250,9 +250,5 @@ body {
 body {
   margin: 0;
   padding: 0;
-  background-color: white;
-}
-
-.dark body {
-  background-color: #0a0a0a;
+  background-color: hsl(var(--background));
 }

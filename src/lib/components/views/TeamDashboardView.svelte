@@ -360,7 +360,7 @@
   </div>
 
   <!-- Organization Metrics Table -->
-  <div class="mt-8 border-t border-white/10 pt-6">
+  <div class="mt-8 border-t border-black-200 dark:border-white/10 pt-6">
     <div class="flex items-center justify-between mb-4">
       <h2 class="text-lg font-semibold text-black-900 dark:text-white">
         Organization
@@ -433,7 +433,9 @@
             <!-- Domain tbody -->
             <tbody class="divide-y divide-white/5">
               <!-- Domain row -->
-              <tr class="bg-white/3 hover:bg-white/5 transition-colors">
+              <tr
+                class="bg-ambient-500 dark:bg-white/3 hover:bg-ambient-400 dark:hover:bg-white/5 transition-colors"
+              >
                 <td class="px-4 py-3">
                   <span
                     class="text-sm font-semibold text-black-900 dark:text-white"
@@ -572,7 +574,9 @@
               <tbody class="divide-y divide-white/5">
                 {#each domain.teams as team (team.teamKey)}
                   {@const teamSnapshot = teamSnapshotsMap.get(team.teamKey)}
-                  <tr class="hover:bg-white/3 transition-colors">
+                  <tr
+                    class="hover:bg-ambient-500 dark:hover:bg-white/3 transition-colors"
+                  >
                     <td class="px-4 py-2.5 pl-8">
                       <span class="text-sm text-black-700 dark:text-black-300"
                         >{getTeamDisplayName(team.teamKey, team.teamName)}</span
@@ -690,7 +694,9 @@
           {#if showTeams && standaloneTeams.length > 0}
             <tbody class="divide-y divide-white/5">
               {#each standaloneTeams as team (team.teamKey)}
-                <tr class="hover:bg-white/3 transition-colors">
+                <tr
+                  class="hover:bg-ambient-500 dark:hover:bg-white/3 transition-colors"
+                >
                   <td class="px-4 py-2.5">
                     <span class="text-sm text-black-700 dark:text-black-300"
                       >{getTeamDisplayName(team.teamKey, team.teamName)}</span

@@ -1,28 +1,28 @@
 :root {
-  --background: 0 0% 100%;
+  --background: 39 47% 95%; /* ambient-800 (#F9F5EE) */
   --foreground: 0 0% 10%; /* black-900 */
-  --card: 0 0% 100%;
+  --card: 37 50% 96%; /* ambient-700 (#FAF6F0) - subtle elevation */
   --card-foreground: 0 0% 10%;
-  --popover: 0 0% 100%;
+  --popover: 34 53% 97%; /* ambient-600 (#FBF7F2) - higher elevation */
   --popover-foreground: 0 0% 10%;
   /* Primary: brand-800 (#5124C1) */
   --primary: 257 69% 45%;
   --primary-foreground: 0 0% 100%;
-  /* Secondary: black-100 */
-  --secondary: 0 0% 90%;
+  /* Secondary: warm neutral for secondary surfaces */
+  --secondary: 35 30% 92%; /* warm gray, between ambient and neutral */
   --secondary-foreground: 0 0% 10%;
-  /* Muted: black-100 */
-  --muted: 0 0% 90%;
-  --muted-foreground: 0 0% 50%; /* black-500 */
-  /* Accent: hot-take-100 for subtle accent backgrounds */
-  --accent: 15 100% 95%;
+  /* Muted: warm muted surfaces */
+  --muted: 35 25% 90%; /* warm muted background */
+  --muted-foreground: 30 10% 45%; /* warm gray text */
+  /* Accent: warm accent background */
+  --accent: 35 35% 94%; /* warm accent, harmonizes with ambient */
   --accent-foreground: 0 0% 10%;
   /* Destructive: danger-500 (#D86982) */
   --destructive: 347 57% 63%;
   --destructive-foreground: 0 0% 100%;
-  /* Border/Input: black-200 */
-  --border: 0 0% 80%;
-  --input: 0 0% 80%;
+  /* Border/Input: warm border */
+  --border: 30 20% 82%; /* warm border color */
+  --input: 30 20% 82%;
   /* Ring: brand-500 for focus rings */
   --ring: 257 55% 60%;
   --radius: 0.5rem;
