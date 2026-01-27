@@ -73,7 +73,7 @@
 <div class="relative" data-team-filter>
   <div
     class="w-full flex items-center gap-2 px-3 py-2 text-sm rounded transition-colors duration-150
-      text-black-600 dark:text-black-400 hover:text-black-900 dark:hover:text-white hover:bg-black-100 dark:hover:bg-white/5 overflow-hidden
+      text-black-600 dark:text-black-400 hover:text-black-900 dark:hover:text-white hover:bg-ambient-700 dark:hover:bg-white/5 overflow-hidden
       {isCollapsed ? 'justify-center' : ''}"
   >
     <button
@@ -118,7 +118,7 @@
         ? 'left-full ml-2 -mt-10'
         : 'left-0 right-0'} 
         min-w-[220px] max-h-80 overflow-y-auto
-        bg-white dark:bg-black-900 border border-black-200 dark:border-white/10 rounded shadow-xl z-50"
+        bg-ambient-300 dark:bg-black-900 border border-black-200 dark:border-white/10 rounded shadow-xl z-50"
     >
       <div class="py-1">
         <!-- Domain filter section -->
@@ -134,8 +134,8 @@
           onclick={() => handleSelectDomain(null)}
           class="w-full px-3 py-2 text-left text-sm transition-colors duration-150 cursor-pointer
             {filter.domain === null && filter.teamKey === null
-            ? 'text-black-900 dark:text-white bg-black-100 dark:bg-white/10'
-            : 'text-black-600 dark:text-black-400 hover:text-black-900 dark:hover:text-white hover:bg-black-50 dark:hover:bg-white/5'}"
+            ? 'text-black-900 dark:text-white bg-ambient-700 dark:bg-white/10'
+            : 'text-black-600 dark:text-black-400 hover:text-black-900 dark:hover:text-white hover:bg-ambient-600 dark:hover:bg-white/5'}"
         >
           All Domains
         </button>
@@ -166,7 +166,7 @@
             {#if domain.teams.length > 0}
               <!-- Domain group header -->
               <div
-                class="px-3 py-1 text-xs text-black-500 bg-black-50 dark:bg-white/2"
+                class="px-3 py-1 text-xs text-black-500 bg-ambient-600 dark:bg-white/2"
               >
                 {domain.domainName}
               </div>

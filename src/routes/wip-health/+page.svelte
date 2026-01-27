@@ -329,7 +329,7 @@
     steadyProgress: "text-warning-500",
     earlyTraction: "text-danger-500",
     lowTraction: "text-danger-600",
-    unknown: "text-black-400",
+    unknown: "text-black-600 dark:text-black-400",
   };
 
   // Determine status from snapshot or compute from percentage
@@ -413,7 +413,8 @@
           ]}"
         >
           {healthyPercent}<span
-            class="text-5xl lg:text-6xl font-normal text-black-400">%</span
+            class="text-5xl lg:text-6xl font-normal text-black-600 dark:text-black-400"
+            >%</span
           >
         </span>
       </div>
@@ -456,7 +457,7 @@
       {/if}
 
       <!-- Subtitle -->
-      <p class="text-center text-xl text-black-400 mb-2">
+      <p class="text-center text-xl text-black-600 dark:text-black-400 mb-2">
         Engineers within WIP constraints
       </p>
       <p class="text-center text-sm text-black-500">
@@ -474,12 +475,14 @@
             {(displayHealth?.totalIcCount ?? 0) -
               (displayHealth?.healthyIcCount ?? 0)}
           </div>
-          <div class="text-sm text-black-400 mt-1">Overloaded</div>
+          <div class="text-sm text-black-600 dark:text-black-400 mt-1">
+            Overloaded
+          </div>
           <div class="text-xs text-black-500">need attention</div>
         </div>
 
         <!-- Divider -->
-        <div class="h-12 w-px bg-black-100 dark:bg-white/10"></div>
+        <div class="h-12 w-px bg-ambient-700 dark:bg-white/10"></div>
 
         <!-- 6+ issues breakdown - use snapshot data -->
         <div class="text-center opacity-70">
@@ -488,11 +491,13 @@
           >
             {displayHealth?.wipViolationCount ?? 0}
           </div>
-          <div class="text-sm text-black-400 mt-1">6+ issues</div>
+          <div class="text-sm text-black-600 dark:text-black-400 mt-1">
+            6+ issues
+          </div>
         </div>
 
         <!-- Divider -->
-        <div class="h-12 w-px bg-black-100 dark:bg-white/10"></div>
+        <div class="h-12 w-px bg-ambient-700 dark:bg-white/10"></div>
 
         <!-- Context-switching breakdown - use snapshot data -->
         <div class="text-center opacity-70">
@@ -501,11 +506,13 @@
           >
             {displayHealth?.multiProjectViolationCount ?? 0}
           </div>
-          <div class="text-sm text-black-400 mt-1">2+ projects</div>
+          <div class="text-sm text-black-600 dark:text-black-400 mt-1">
+            2+ projects
+          </div>
         </div>
 
         <!-- Divider -->
-        <div class="h-12 w-px bg-black-100 dark:bg-white/10"></div>
+        <div class="h-12 w-px bg-ambient-700 dark:bg-white/10"></div>
 
         <!-- Projects impacted -->
         <div class="text-center opacity-70">
@@ -514,7 +521,9 @@
           >
             {displayHealth?.impactedProjectCount ?? 0}
           </div>
-          <div class="text-sm text-black-400 mt-1">Projects impacted</div>
+          <div class="text-sm text-black-600 dark:text-black-400 mt-1">
+            Projects impacted
+          </div>
         </div>
       </div>
     </div>
@@ -526,7 +535,7 @@
         <h3 class="text-xs font-medium text-black-500 uppercase tracking-wider">
           Why this matters
         </h3>
-        <p class="text-sm text-black-400 leading-relaxed">
+        <p class="text-sm text-black-600 dark:text-black-400 leading-relaxed">
           WIP constraints reduce cycle time by limiting queue depth. Overloaded
           engineers create bottlenecks; context-switching across projects
           compounds delays through task-switching overhead.
@@ -538,18 +547,20 @@
         <h3 class="text-xs font-medium text-black-500 uppercase tracking-wider">
           How it's calculated
         </h3>
-        <p class="text-sm text-black-400">
+        <p class="text-sm text-black-600 dark:text-black-400">
           An engineer is "within constraints" when they have <strong
-            class="text-black-300">5 or fewer</strong
+            class="text-black-700 dark:text-black-300">5 or fewer</strong
           >
           in-progress issues AND are focused on a
-          <strong class="text-black-300">single project</strong>.
+          <strong class="text-black-700 dark:text-black-300"
+            >single project</strong
+          >.
         </p>
 
         <!-- Formula -->
         {#if formulaHtml}
           <div
-            class="py-3 px-4 rounded-md bg-black-800/50 border border-white/5 formula-container overflow-x-auto mt-3"
+            class="py-3 px-4 rounded-md bg-ambient-700 dark:bg-black-800/50 border border-black-200 dark:border-white/5 formula-container overflow-x-auto mt-3"
           >
             <!-- eslint-disable-next-line svelte/no-at-html-tags -->
             {@html formulaHtml}
@@ -562,19 +573,21 @@
     {#if domainWipHealthData.length > 0}
       <Card class="p-0 overflow-hidden">
         <div
-          class="flex items-center justify-between px-4 py-3 border-b border-white/10 bg-black-50 dark:bg-white/5"
+          class="flex items-center justify-between px-4 py-3 border-b border-white/10 bg-ambient-600 dark:bg-white/5"
         >
           <h3 class="text-sm font-medium text-black-900 dark:text-white">
             Domain Breakdown ({domainWipHealthData.length})
           </h3>
-          <span class="text-xs text-black-500">WIP health by domain</span>
+          <span class="text-xs text-black-600 dark:text-black-500"
+            >WIP health by domain</span
+          >
         </div>
         <div class="p-4">
           <div class="overflow-x-auto">
             <table class="w-full">
               <thead>
                 <tr
-                  class="text-left text-xs font-medium text-black-500 uppercase tracking-wider border-b border-black-200 dark:border-white/10"
+                  class="text-left text-xs font-medium text-black-600 dark:text-black-500 uppercase tracking-wider border-b border-black-200 dark:border-white/10"
                 >
                   <th class="pb-3 pr-4">Domain</th>
                   <th class="pb-3 pr-4">Status</th>
@@ -584,11 +597,15 @@
                   <th class="pb-3 pr-4 text-right">Engineers</th>
                 </tr>
               </thead>
-              <tbody class="divide-y divide-white/5">
+              <tbody class="divide-y divide-black-100 dark:divide-white/5">
                 {#each domainWipHealthData as domain}
-                  <tr class="hover:bg-white/5 transition-colors">
+                  <tr
+                    class="hover:bg-ambient-600 dark:hover:bg-white/5 transition-colors"
+                  >
                     <td class="py-3 pr-4">
-                      <span class="text-sm text-white font-medium">
+                      <span
+                        class="text-sm text-black-900 dark:text-white font-medium"
+                      >
                         {domain.domainName}
                       </span>
                     </td>
@@ -601,22 +618,24 @@
                       >
                         {domain.healthyWorkloadPercent.toFixed(0)}%
                       </span>
-                      <span class="text-xs text-black-500 ml-1">
+                      <span
+                        class="text-xs text-black-600 dark:text-black-500 ml-1"
+                      >
                         ({domain.healthyIcCount}/{domain.totalIcCount})
                       </span>
                     </td>
                     <td class="py-3 pr-4 text-right">
-                      <span class="text-sm text-black-300">
+                      <span class="text-sm text-black-700 dark:text-black-300">
                         {domain.wipViolationCount}
                       </span>
                     </td>
                     <td class="py-3 pr-4 text-right">
-                      <span class="text-sm text-black-300">
+                      <span class="text-sm text-black-700 dark:text-black-300">
                         {domain.multiProjectViolationCount}
                       </span>
                     </td>
                     <td class="py-3 pr-4 text-right">
-                      <span class="text-sm text-black-400">
+                      <span class="text-sm text-black-600 dark:text-black-400">
                         {domain.totalIcCount}
                       </span>
                     </td>
@@ -632,12 +651,14 @@
     <!-- Overloaded Engineers Table -->
     <Card class="p-0 overflow-hidden">
       <div
-        class="flex items-center justify-between px-4 py-3 border-b border-white/10 bg-black-50 dark:bg-white/5"
+        class="flex items-center justify-between px-4 py-3 border-b border-white/10 bg-ambient-600 dark:bg-white/5"
       >
         <h3 class="text-sm font-medium text-black-900 dark:text-white">
           Overloaded Engineers ({overloadedEngineers.length})
         </h3>
-        <span class="text-xs text-black-500"> 6+ issues or 2+ projects </span>
+        <span class="text-xs text-black-600 dark:text-black-500">
+          6+ issues or 2+ projects
+        </span>
       </div>
       <div class="p-4">
         {#if overloadedEngineers.length > 0}
@@ -658,7 +679,9 @@
     <!-- No data state -->
     <Card>
       <div class="py-8 text-center">
-        <div class="mb-2 text-black-400">No metrics data available</div>
+        <div class="mb-2 text-black-600 dark:text-black-400">
+          No metrics data available
+        </div>
         <p class="text-sm text-black-500">
           Run a sync to capture metrics data.
         </p>
@@ -679,6 +702,9 @@
   /* KaTeX formula styling */
   .formula-container :global(.katex) {
     font-size: 1em;
+    color: #1a1a1a;
+  }
+  :global(.dark) .formula-container :global(.katex) {
     color: #e5e5e5;
   }
   .formula-container :global(.katex-display) {

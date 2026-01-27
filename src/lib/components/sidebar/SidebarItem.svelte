@@ -33,7 +33,7 @@
     {indent && !isCollapsed ? 'pl-9 pr-3' : 'px-3'}
     {isActive
     ? 'text-brand-800 dark:text-white bg-brand-100 dark:bg-white/10 border-l-2 border-brand-500 -ml-[2px] pl-[14px]'
-    : 'text-black-600 dark:text-black-400 hover:text-black-900 dark:hover:text-white hover:bg-black-100 dark:hover:bg-white/5'}
+    : 'text-black-600 dark:text-black-400 hover:text-black-900 dark:hover:text-white hover:bg-ambient-700 dark:hover:bg-white/5'}
     {isActive && indent && !isCollapsed ? 'pl-[34px]' : ''}"
   title={isCollapsed ? label : undefined}
 >

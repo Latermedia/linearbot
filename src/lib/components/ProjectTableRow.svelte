@@ -77,7 +77,7 @@
 </script>
 
 <tr
-  class="border-b transition-colors duration-150 cursor-pointer border-black-200 dark:border-white/5 hover:bg-black-50 dark:hover:bg-black-100 dark:hover:bg-black-50 dark:bg-white/5"
+  class="border-b transition-colors duration-150 cursor-pointer border-black-200 dark:border-white/5 hover:bg-ambient-600 dark:hover:bg-white/5"
   {onclick}
   role="button"
   tabindex="0"

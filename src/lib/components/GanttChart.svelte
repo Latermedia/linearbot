@@ -397,7 +397,7 @@
   <!-- Timeline header (sticky, outside scroll container) -->
   {#if showScale}
     <div
-      class="sticky top-[116px] z-30 px-4 pb-2 -mx-4 sm:-mx-6 lg:-mx-8 sm:px-6 lg:px-8 backdrop-blur-sm bg-white/95 dark:bg-black-950/95 border-b border-black-200 dark:border-white/10 pt-1 -mt-1"
+      class="sticky top-[116px] z-30 px-4 pb-2 -mx-4 sm:-mx-6 lg:-mx-8 sm:px-6 lg:px-8 backdrop-blur-sm bg-ambient-300/95 dark:bg-black-950/95 border-b border-black-200 dark:border-white/10 pt-1 -mt-1"
     >
       <div class="overflow-x-auto px-4 -mx-4 sm:-mx-6 lg:-mx-8 sm:px-6 lg:px-8">
         <div style="min-width: {viewMode === 'quarters' ? '1400px' : '100%'};">

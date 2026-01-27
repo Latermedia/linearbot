@@ -432,7 +432,7 @@
       <p class="mb-3 text-black-700 dark:text-black-400">{error}</p>
       <p class="text-sm text-black-600 dark:text-black-500">
         Make sure the database is synced. Run: <code
-          class="px-2 py-1 font-mono text-xs rounded bg-black-100 dark:bg-black-800 text-black-700 dark:text-black-300"
+          class="px-2 py-1 font-mono text-xs rounded bg-ambient-700 dark:bg-black-800 text-black-700 dark:text-black-300"
           >bun run sync</code
         >
       </p>
@@ -459,7 +459,7 @@
             JSON object mapping team keys to domain names
           </p>
           <code
-            class="block mt-1 px-3 py-2 font-mono text-xs rounded bg-black-100 dark:bg-black-800 text-black-700 dark:text-black-300"
+            class="block mt-1 px-3 py-2 font-mono text-xs rounded bg-ambient-700 dark:bg-black-800 text-black-700 dark:text-black-300"
           >
             {`TEAM_DOMAIN_MAPPINGS='{"ENG":"Engineering","DESIGN":"Product"}'`}
           </code>
@@ -474,7 +474,7 @@
             Comma-separated list of engineer:teamKey pairs
           </p>
           <code
-            class="block mt-1 px-3 py-2 font-mono text-xs rounded bg-black-100 dark:bg-black-800 text-black-700 dark:text-black-300"
+            class="block mt-1 px-3 py-2 font-mono text-xs rounded bg-ambient-700 dark:bg-black-800 text-black-700 dark:text-black-300"
           >
             ENGINEER_TEAM_MAPPING='Alice:ENG,Bob:ENG,Carol:DESIGN'
           </code>
@@ -526,7 +526,7 @@
                       (m) => m.name === engineerName
                     )}
                     <div
-                      class="flex items-center gap-3 py-2 px-2 -mx-2 rounded bg-black-50 dark:bg-black-800/50"
+                      class="flex items-center gap-3 py-2 px-2 -mx-2 rounded bg-ambient-600 dark:bg-black-800/50"
                     >
                       {#if member?.avatarUrl}
                         <img
@@ -585,12 +585,12 @@
                         type="text"
                         bind:value={searchQuery}
                         placeholder="Search engineers..."
-                        class="w-full px-3 py-2 text-sm rounded-t border border-black-300 dark:border-black-600 bg-white dark:bg-black-800 text-black-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-blue-500"
+                        class="w-full px-3 py-2 text-sm rounded-t border border-black-300 dark:border-black-600 bg-ambient-300 dark:bg-black-800 text-black-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-blue-500"
                         onkeydown={(e) =>
                           handleDropdownKeydown(e, team.teamKey)}
                       />
                       <div
-                        class="absolute z-10 w-full max-h-48 overflow-y-auto rounded-b border border-t-0 border-black-300 dark:border-black-600 bg-white dark:bg-black-800 shadow-lg"
+                        class="absolute z-10 w-full max-h-48 overflow-y-auto rounded-b border border-t-0 border-black-300 dark:border-black-600 bg-ambient-300 dark:bg-black-800 shadow-lg"
                       >
                         {#if filteredEngineers.length === 0}
                           <div
@@ -604,9 +604,9 @@
                           {#each filteredEngineers as engineer, index (engineer.id)}
                             <button
                               type="button"
-                              class="w-full flex items-center gap-3 px-3 py-2 text-left hover:bg-black-100 dark:hover:bg-black-700 transition-colors {index ===
+                              class="w-full flex items-center gap-3 px-3 py-2 text-left hover:bg-ambient-700 dark:hover:bg-black-700 transition-colors {index ===
                               selectedIndex
-                                ? 'bg-black-100 dark:bg-black-700'
+                                ? 'bg-ambient-700 dark:bg-black-700'
                                 : ''}"
                               onclick={() =>
                                 addEngineerByName(engineer.name, team.teamKey)}
@@ -655,7 +655,9 @@
                                     ? `${engineer.wipCount} WIP`
                                     : "No active WIP"}
                                   {#if engineer.suggestedTeamKey && engineer.suggestedTeamKey !== team.teamKey}
-                                    <span class="text-black-400">
+                                    <span
+                                      class="text-black-600 dark:text-black-400"
+                                    >
                                       · from {engineer.suggestedTeamKey}</span
                                     >
                                   {/if}
@@ -715,7 +717,7 @@
                 <div class="space-y-2">
                   {#each team.members as member (member.id)}
                     <div
-                      class="flex items-center gap-3 py-2 px-2 -mx-2 rounded hover:bg-black-50 dark:hover:bg-black-800/50 transition-colors"
+                      class="flex items-center gap-3 py-2 px-2 -mx-2 rounded hover:bg-ambient-600 dark:hover:bg-black-800/50 transition-colors"
                     >
                       {#if member.avatarUrl}
                         <img
@@ -826,7 +828,7 @@
                       (m) => m.name === engineerName
                     )}
                     <div
-                      class="flex items-center gap-3 py-2 px-2 -mx-2 rounded bg-black-50 dark:bg-black-800/50"
+                      class="flex items-center gap-3 py-2 px-2 -mx-2 rounded bg-ambient-600 dark:bg-black-800/50"
                     >
                       {#if member?.avatarUrl}
                         <img
@@ -885,12 +887,12 @@
                         type="text"
                         bind:value={searchQuery}
                         placeholder="Search engineers..."
-                        class="w-full px-3 py-2 text-sm rounded-t border border-black-300 dark:border-black-600 bg-white dark:bg-black-800 text-black-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-blue-500"
+                        class="w-full px-3 py-2 text-sm rounded-t border border-black-300 dark:border-black-600 bg-ambient-300 dark:bg-black-800 text-black-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-blue-500"
                         onkeydown={(e) =>
                           handleDropdownKeydown(e, team.teamKey)}
                       />
                       <div
-                        class="absolute z-10 w-full max-h-48 overflow-y-auto rounded-b border border-t-0 border-black-300 dark:border-black-600 bg-white dark:bg-black-800 shadow-lg"
+                        class="absolute z-10 w-full max-h-48 overflow-y-auto rounded-b border border-t-0 border-black-300 dark:border-black-600 bg-ambient-300 dark:bg-black-800 shadow-lg"
                       >
                         {#if filteredEngineers.length === 0}
                           <div
@@ -904,9 +906,9 @@
                           {#each filteredEngineers as engineer, index (engineer.id)}
                             <button
                               type="button"
-                              class="w-full flex items-center gap-3 px-3 py-2 text-left hover:bg-black-100 dark:hover:bg-black-700 transition-colors {index ===
+                              class="w-full flex items-center gap-3 px-3 py-2 text-left hover:bg-ambient-700 dark:hover:bg-black-700 transition-colors {index ===
                               selectedIndex
-                                ? 'bg-black-100 dark:bg-black-700'
+                                ? 'bg-ambient-700 dark:bg-black-700'
                                 : ''}"
                               onclick={() =>
                                 addEngineerByName(engineer.name, team.teamKey)}
@@ -955,7 +957,9 @@
                                     ? `${engineer.wipCount} WIP`
                                     : "No active WIP"}
                                   {#if engineer.suggestedTeamKey && engineer.suggestedTeamKey !== team.teamKey}
-                                    <span class="text-black-400">
+                                    <span
+                                      class="text-black-600 dark:text-black-400"
+                                    >
                                       · from {engineer.suggestedTeamKey}</span
                                     >
                                   {/if}
@@ -1015,7 +1019,7 @@
                 <div class="space-y-2">
                   {#each team.members as member (member.id)}
                     <div
-                      class="flex items-center gap-3 py-2 px-2 -mx-2 rounded hover:bg-black-50 dark:hover:bg-black-800/50 transition-colors"
+                      class="flex items-center gap-3 py-2 px-2 -mx-2 rounded hover:bg-ambient-600 dark:hover:bg-black-800/50 transition-colors"
                     >
                       {#if member.avatarUrl}
                         <img
@@ -1105,7 +1109,7 @@
           <div class="space-y-2">
             {#each unassignedEngineers as engineer (engineer.id)}
               <div
-                class="flex items-center gap-3 py-2 px-3 rounded bg-white dark:bg-black-800 border border-warning-200 dark:border-warning-800/50"
+                class="flex items-center gap-3 py-2 px-3 rounded bg-ambient-300 dark:bg-black-800 border border-warning-200 dark:border-warning-800/50"
               >
                 {#if engineer.avatarUrl}
                   <img
@@ -1139,7 +1143,7 @@
                       ? `${engineer.wipCount} WIP`
                       : "No active WIP"}
                     {#if engineer.suggestedTeamKey}
-                      <span class="text-black-400">
+                      <span class="text-black-600 dark:text-black-400">
                         · suggested: {engineer.suggestedTeamKey}</span
                       >
                     {/if}
@@ -1167,7 +1171,7 @@
 
     <!-- Configuration Info -->
     {#if !isEditing}
-      <Card class="mt-8 bg-black-50 dark:bg-black-900/50">
+      <Card class="mt-8 bg-ambient-600 dark:bg-black-900/50">
         <h3
           class="mb-3 text-sm font-semibold text-black-900 dark:text-black-900 dark:text-white"
         >
@@ -1181,7 +1185,7 @@
               TEAM_DOMAIN_MAPPINGS
             </p>
             <div
-              class="p-3 font-mono text-xs rounded bg-white dark:bg-black-800 border border-black-200 dark:border-black-700 overflow-x-auto"
+              class="p-3 font-mono text-xs rounded bg-ambient-300 dark:bg-black-800 border border-black-200 dark:border-black-700 overflow-x-auto"
             >
               {#if Object.keys(data.teamDomainMappings).length > 0}
                 <pre class="text-black-700 dark:text-black-300">{JSON.stringify(
@@ -1190,7 +1194,9 @@
                     2
                   )}</pre>
               {:else}
-                <span class="text-black-400">Not configured</span>
+                <span class="text-black-600 dark:text-black-400"
+                  >Not configured</span
+                >
               {/if}
             </div>
           </div>
@@ -1201,7 +1207,7 @@
               ENGINEER_TEAM_MAPPING
             </p>
             <div
-              class="p-3 font-mono text-xs rounded bg-white dark:bg-black-800 border border-black-200 dark:border-black-700 overflow-x-auto max-h-48 overflow-y-auto"
+              class="p-3 font-mono text-xs rounded bg-ambient-300 dark:bg-black-800 border border-black-200 dark:border-black-700 overflow-x-auto max-h-48 overflow-y-auto"
             >
               {#if Object.keys(data.engineerTeamMapping).length > 0}
                 <pre class="text-black-700 dark:text-black-300">{JSON.stringify(
@@ -1210,7 +1216,9 @@
                     2
                   )}</pre>
               {:else}
-                <span class="text-black-400">Not configured</span>
+                <span class="text-black-600 dark:text-black-400"
+                  >Not configured</span
+                >
               {/if}
             </div>
           </div>
@@ -1234,7 +1242,9 @@
 
     <!-- Changes summary -->
     <div class="mb-6">
-      <h3 class="text-sm font-medium text-black-300 mb-3">Changes Summary</h3>
+      <h3 class="text-sm font-medium text-black-700 dark:text-black-300 mb-3">
+        Changes Summary
+      </h3>
       <div class="space-y-2 text-sm">
         {#each Object.entries(localMapping).sort( ([a], [b]) => a.localeCompare(b) ) as [engineer, team] (engineer)}
           {@const originalTeam = data?.engineerTeamMapping[engineer]}
@@ -1313,7 +1323,9 @@
     <!-- Config string -->
     <div class="mb-6">
       <div class="flex items-center justify-between mb-2">
-        <h3 class="text-sm font-medium text-black-300">Environment Variable</h3>
+        <h3 class="text-sm font-medium text-black-700 dark:text-black-300">
+          Environment Variable
+        </h3>
         <Button size="sm" variant="outline" onclick={copyConfig}>
           {copied ? "Copied!" : "Copy"}
         </Button>

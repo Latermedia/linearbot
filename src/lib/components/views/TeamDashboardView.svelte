@@ -280,7 +280,7 @@
       case "lowTraction":
         return "text-danger-600";
       default:
-        return "text-black-400";
+        return "text-black-600 dark:text-black-400";
     }
   }
 
@@ -355,7 +355,7 @@
         Organization
       </h2>
       <div class="flex gap-2 items-center">
-        <span class="text-xs text-black-400">Teams</span>
+        <span class="text-xs text-black-600 dark:text-black-400">Teams</span>
         <button
           type="button"
           role="switch"
@@ -388,7 +388,9 @@
   {:else if !hasOrganizationData}
     <Card>
       <div class="py-8 text-center">
-        <div class="mb-2 text-black-400">No organization data available</div>
+        <div class="mb-2 text-black-600 dark:text-black-400">
+          No organization data available
+        </div>
         <p class="text-sm text-black-500">
           Configure TEAM_DOMAIN_MAPPINGS to see domain and team metrics.
         </p>
@@ -400,7 +402,7 @@
         <table class="w-full">
           <thead>
             <tr
-              class="text-left text-xs font-medium text-black-500 uppercase tracking-wider border-b border-white/10 bg-black-50 dark:bg-white/5"
+              class="text-left text-xs font-medium text-black-500 uppercase tracking-wider border-b border-white/10 bg-ambient-600 dark:bg-white/5"
             >
               <th class="px-4 py-3">Name</th>
               <th class="px-4 py-3 text-center whitespace-nowrap">Engineers</th>
@@ -438,7 +440,8 @@
                   >
                 </td>
                 <td class="px-4 py-3 text-center">
-                  <span class="text-sm font-medium text-black-300"
+                  <span
+                    class="text-sm font-medium text-black-700 dark:text-black-300"
                     >{domainEngineerCount}</span
                   >
                 </td>
@@ -567,12 +570,12 @@
                   {@const teamSnapshot = teamSnapshotsMap.get(team.teamKey)}
                   <tr class="hover:bg-white/3 transition-colors">
                     <td class="px-4 py-2.5 pl-8">
-                      <span class="text-sm text-black-300"
+                      <span class="text-sm text-black-700 dark:text-black-300"
                         >{getTeamDisplayName(team.teamKey, team.teamName)}</span
                       >
                     </td>
                     <td class="px-4 py-2.5 text-center">
-                      <span class="text-sm text-black-400"
+                      <span class="text-sm text-black-600 dark:text-black-400"
                         >{teamSnapshot?.teamHealth?.totalIcCount ??
                           team.members?.length ??
                           0}</span
@@ -685,12 +688,14 @@
               {#each standaloneTeams as team (team.teamKey)}
                 <tr class="hover:bg-white/3 transition-colors">
                   <td class="px-4 py-2.5">
-                    <span class="text-sm text-black-300"
+                    <span class="text-sm text-black-700 dark:text-black-300"
                       >{getTeamDisplayName(team.teamKey, team.teamName)}</span
                     >
                   </td>
                   <td class="px-4 py-2.5 text-center">
-                    <span class="text-sm text-black-400">—</span>
+                    <span class="text-sm text-black-600 dark:text-black-400"
+                      >—</span
+                    >
                   </td>
                   <td class="px-4 py-2.5 text-center">
                     {#if teamSnapshotsMap.get(team.teamKey)?.linearHygiene}

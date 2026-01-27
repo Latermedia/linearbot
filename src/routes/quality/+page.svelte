@@ -196,7 +196,7 @@
     steadyProgress: "text-warning-500",
     earlyTraction: "text-danger-500",
     lowTraction: "text-danger-600",
-    unknown: "text-black-400",
+    unknown: "text-black-600 dark:text-black-400",
   };
 
   // Get teams in active domain for filtering bugs
@@ -292,7 +292,8 @@
           ]}"
         >
           {displayQuality.compositeScore}<span
-            class="text-5xl lg:text-6xl font-normal text-black-400">%</span
+            class="text-5xl lg:text-6xl font-normal text-black-600 dark:text-black-400"
+            >%</span
           >
         </span>
       </div>
@@ -335,7 +336,7 @@
       {/if}
 
       <!-- Subtitle -->
-      <p class="text-center text-xl text-black-400 mb-2">
+      <p class="text-center text-xl text-black-600 dark:text-black-400 mb-2">
         Composite quality score
       </p>
       <p class="text-center text-sm text-black-500">
@@ -352,12 +353,14 @@
           >
             {displayQuality.openBugCount}
           </div>
-          <div class="text-sm text-black-400 mt-1">Open Bugs</div>
+          <div class="text-sm text-black-600 dark:text-black-400 mt-1">
+            Open Bugs
+          </div>
           <div class="text-xs text-black-500">total backlog</div>
         </div>
 
         <!-- Divider -->
-        <div class="h-12 w-px bg-black-100 dark:bg-white/10"></div>
+        <div class="h-12 w-px bg-ambient-700 dark:bg-white/10"></div>
 
         <!-- Average age -->
         <div class="text-center">
@@ -366,14 +369,16 @@
           >
             {displayQuality.averageBugAgeDays.toFixed(0)}
           </div>
-          <div class="text-sm text-black-400 mt-1">Avg Age (days)</div>
+          <div class="text-sm text-black-600 dark:text-black-400 mt-1">
+            Avg Age (days)
+          </div>
           <div class="text-xs text-black-500">
             max: {displayQuality.maxBugAgeDays.toFixed(0)}d
           </div>
         </div>
 
         <!-- Divider -->
-        <div class="h-12 w-px bg-black-100 dark:bg-white/10"></div>
+        <div class="h-12 w-px bg-ambient-700 dark:bg-white/10"></div>
 
         <!-- Net change -->
         <div class="text-center">
@@ -384,12 +389,14 @@
               ? "+"
               : ""}{displayQuality.netBugChange}
           </div>
-          <div class="text-sm text-black-400 mt-1">Net Change</div>
+          <div class="text-sm text-black-600 dark:text-black-400 mt-1">
+            Net Change
+          </div>
           <div class="text-xs text-black-500">in 14 days</div>
         </div>
 
         <!-- Divider -->
-        <div class="h-12 w-px bg-black-100 dark:bg-white/10"></div>
+        <div class="h-12 w-px bg-ambient-700 dark:bg-white/10"></div>
 
         <!-- Opened vs Closed -->
         <div class="text-center opacity-70">
@@ -398,7 +405,9 @@
           >
             {displayQuality.bugsOpenedInPeriod} / {displayQuality.bugsClosedInPeriod}
           </div>
-          <div class="text-sm text-black-400 mt-1">Opened / Closed</div>
+          <div class="text-sm text-black-600 dark:text-black-400 mt-1">
+            Opened / Closed
+          </div>
           <div class="text-xs text-black-500">in 14 days</div>
         </div>
       </div>
@@ -411,7 +420,7 @@
         <h3 class="text-xs font-medium text-black-500 uppercase tracking-wider">
           Why this matters
         </h3>
-        <p class="text-sm text-black-400 leading-relaxed">
+        <p class="text-sm text-black-600 dark:text-black-400 leading-relaxed">
           Bug debt compounds over time. A growing backlog indicates we're
           creating bugs faster than fixing them. Old bugs tend to get harder to
           fix as context fades. Tracking the trend helps catch quality
@@ -424,19 +433,21 @@
         <h3 class="text-xs font-medium text-black-500 uppercase tracking-wider">
           How it's calculated
         </h3>
-        <p class="text-sm text-black-400">
-          Three components: <strong class="text-black-300">bug count</strong>
+        <p class="text-sm text-black-600 dark:text-black-400">
+          Three components: <strong class="text-black-700 dark:text-black-300"
+            >bug count</strong
+          >
           (0 at 100+ bugs),
-          <strong class="text-black-300">net change</strong> (rewards closing
-          bugs, 0 at +10 net new), and
-          <strong class="text-black-300">average age</strong> (0 at 200+ days). 100%
-          = zero bugs.
+          <strong class="text-black-700 dark:text-black-300">net change</strong>
+          (rewards closing bugs, 0 at +10 net new), and
+          <strong class="text-black-700 dark:text-black-300">average age</strong
+          > (0 at 200+ days). 100% = zero bugs.
         </p>
 
         <!-- Formula -->
         {#if formulaHtml}
           <div
-            class="py-3 px-4 rounded-md bg-black-800/50 border border-white/5 formula-container overflow-x-auto mt-3"
+            class="py-3 px-4 rounded-md bg-ambient-700 dark:bg-black-800/50 border border-black-200 dark:border-white/5 formula-container overflow-x-auto mt-3"
           >
             <!-- eslint-disable-next-line svelte/no-at-html-tags -->
             {@html formulaHtml}
@@ -449,19 +460,21 @@
     {#if domainQualityData.length > 0}
       <Card class="p-0 overflow-hidden">
         <div
-          class="flex items-center justify-between px-4 py-3 border-b border-white/10 bg-black-50 dark:bg-white/5"
+          class="flex items-center justify-between px-4 py-3 border-b border-white/10 bg-ambient-600 dark:bg-white/5"
         >
           <h3 class="text-sm font-medium text-black-900 dark:text-white">
             Domain Breakdown ({domainQualityData.length})
           </h3>
-          <span class="text-xs text-black-500">Quality metrics by domain</span>
+          <span class="text-xs text-black-600 dark:text-black-500"
+            >Quality metrics by domain</span
+          >
         </div>
         <div class="p-4">
           <div class="overflow-x-auto">
             <table class="w-full">
               <thead>
                 <tr
-                  class="text-left text-xs font-medium text-black-500 uppercase tracking-wider border-b border-black-200 dark:border-white/10"
+                  class="text-left text-xs font-medium text-black-600 dark:text-black-500 uppercase tracking-wider border-b border-black-200 dark:border-white/10"
                 >
                   <th class="pb-3 pr-4">Domain</th>
                   <th class="pb-3 pr-4">Status</th>
@@ -471,11 +484,15 @@
                   <th class="pb-3 pr-4 text-right">Net Change</th>
                 </tr>
               </thead>
-              <tbody class="divide-y divide-white/5">
+              <tbody class="divide-y divide-black-100 dark:divide-white/5">
                 {#each domainQualityData as domain}
-                  <tr class="hover:bg-white/5 transition-colors">
+                  <tr
+                    class="hover:bg-ambient-600 dark:hover:bg-white/5 transition-colors"
+                  >
                     <td class="py-3 pr-4">
-                      <span class="text-sm text-white font-medium">
+                      <span
+                        class="text-sm text-black-900 dark:text-white font-medium"
+                      >
                         {domain.domainName}
                       </span>
                     </td>
@@ -490,17 +507,17 @@
                       </span>
                     </td>
                     <td class="py-3 pr-4 text-right">
-                      <span class="text-sm text-black-300">
+                      <span class="text-sm text-black-700 dark:text-black-300">
                         {domain.openBugCount}
                       </span>
                     </td>
                     <td class="py-3 pr-4 text-right">
-                      <span class="text-sm text-black-400">
+                      <span class="text-sm text-black-600 dark:text-black-400">
                         {domain.averageBugAgeDays.toFixed(0)}d
                       </span>
                     </td>
                     <td class="py-3 pr-4 text-right">
-                      <span class="text-sm text-black-300">
+                      <span class="text-sm text-black-700 dark:text-black-300">
                         {domain.netBugChange > 0
                           ? "+"
                           : ""}{domain.netBugChange}
@@ -518,7 +535,7 @@
     <!-- Open Bugs Table -->
     <Card class="p-0 overflow-hidden">
       <div
-        class="flex items-center justify-between px-4 py-3 border-b border-white/10 bg-black-50 dark:bg-white/5"
+        class="flex items-center justify-between px-4 py-3 border-b border-white/10 bg-ambient-600 dark:bg-white/5"
       >
         <h3 class="text-sm font-medium text-black-900 dark:text-white">
           Open Bugs {#if !bugsLoading}({openBugs.length}){/if}
@@ -547,7 +564,9 @@
     <!-- No data state -->
     <Card>
       <div class="py-8 text-center">
-        <div class="mb-2 text-black-400">No metrics data available</div>
+        <div class="mb-2 text-black-600 dark:text-black-400">
+          No metrics data available
+        </div>
         <p class="text-sm text-black-500">
           Run a sync to capture metrics data.
         </p>
@@ -560,6 +579,9 @@
   /* KaTeX formula styling */
   .formula-container :global(.katex) {
     font-size: 0.85em;
+    color: #1a1a1a;
+  }
+  :global(.dark) .formula-container :global(.katex) {
     color: #e5e5e5;
   }
   .formula-container :global(.katex-display) {

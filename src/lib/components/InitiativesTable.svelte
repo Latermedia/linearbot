@@ -78,22 +78,28 @@
   <table class="w-full text-sm">
     <thead>
       <tr class="border-b border-black-200 dark:border-white/10">
-        <th class="px-4 py-3 font-medium text-left text-black-400 min-w-[200px]"
+        <th
+          class="px-4 py-3 font-medium text-left text-black-600 dark:text-black-400 min-w-[200px]"
           >Name</th
         >
-        <th class="px-4 py-3 font-medium text-left text-black-400 w-[120px]"
+        <th
+          class="px-4 py-3 font-medium text-left text-black-600 dark:text-black-400 w-[120px]"
           >Status</th
         >
-        <th class="px-4 py-3 font-medium text-left text-black-400 w-[120px]"
+        <th
+          class="px-4 py-3 font-medium text-left text-black-600 dark:text-black-400 w-[120px]"
           >Health</th
         >
-        <th class="px-4 py-3 font-medium text-center text-black-400 w-[100px]"
+        <th
+          class="px-4 py-3 font-medium text-center text-black-600 dark:text-black-400 w-[100px]"
           >Projects</th
         >
-        <th class="px-4 py-3 font-medium text-left text-black-400 w-[140px]"
+        <th
+          class="px-4 py-3 font-medium text-left text-black-600 dark:text-black-400 w-[140px]"
           >Target/Completed</th
         >
-        <th class="px-4 py-3 font-medium text-right text-black-400 w-[120px]"
+        <th
+          class="px-4 py-3 font-medium text-right text-black-600 dark:text-black-400 w-[120px]"
           >Updated</th
         >
       </tr>
@@ -103,7 +109,7 @@
         {@const projectIds = parseProjectIds(initiative.project_ids)}
         {@const healthDisplay = getHealthBadgeDisplay(initiative.health)}
         <tr
-          class="border-b transition-colors cursor-pointer border-white/5 hover:bg-black-100 dark:hover:bg-black-50 dark:bg-white/5"
+          class="border-b transition-colors cursor-pointer border-white/5 hover:bg-ambient-700 dark:hover:bg-white/5"
           onclick={() => onInitiativeClick(initiative)}
           role="button"
           tabindex="0"
@@ -172,7 +178,7 @@
               <span class="text-sm text-black-400 dark:text-black-600">—</span>
             {/if}
           </td>
-          <td class="px-4 py-3 text-sm text-black-600 dark:text-black-400">
+          <td class="px-4 py-3 text-sm text-black-700 dark:text-black-400">
             {getDisplayDate(initiative)}
           </td>
           <td

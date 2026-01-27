@@ -15,7 +15,7 @@
     topAligned = false,
     header,
     children,
-    background = "bg-white dark:bg-black-900",
+    background = "bg-ambient-300 dark:bg-black-900",
   }: {
     title?: string;
     onclose: () => void;
@@ -136,7 +136,7 @@
               {title}
             </h2>
             <button
-              class="inline-flex justify-center items-center p-1.5 rounded transition-colors duration-150 cursor-pointer text-black-500 hover:text-black-900 dark:hover:text-white hover:bg-black-100 dark:hover:bg-white/10"
+              class="inline-flex justify-center items-center p-1.5 rounded transition-colors duration-150 cursor-pointer text-black-500 hover:text-black-900 dark:hover:text-white hover:bg-ambient-700 dark:hover:bg-white/10"
               onclick={onclose}
               aria-label="Close modal"
             >

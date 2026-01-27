@@ -456,7 +456,8 @@
           )}"
         >
           {displayHygiene?.hygieneScore ?? 0}<span
-            class="text-5xl lg:text-6xl font-normal text-black-400">%</span
+            class="text-5xl lg:text-6xl font-normal text-black-600 dark:text-black-400"
+            >%</span
           >
         </span>
       </div>
@@ -499,7 +500,7 @@
       {/if}
 
       <!-- Subtitle -->
-      <p class="text-center text-xl text-black-400 mb-2">
+      <p class="text-center text-xl text-black-600 dark:text-black-400 mb-2">
         of tracking best practices met
       </p>
       <p class="text-center text-sm text-black-500">
@@ -525,7 +526,7 @@
         </div>
 
         <!-- Divider -->
-        <div class="h-12 w-px bg-black-100 dark:bg-white/10"></div>
+        <div class="h-12 w-px bg-ambient-700 dark:bg-white/10"></div>
 
         <!-- Projects with gaps -->
         <div class="text-center">
@@ -543,7 +544,7 @@
         </div>
 
         <!-- Divider -->
-        <div class="h-12 w-px bg-black-100 dark:bg-white/10"></div>
+        <div class="h-12 w-px bg-ambient-700 dark:bg-white/10"></div>
 
         <!-- Total gaps -->
         <div class="text-center">
@@ -598,7 +599,7 @@
         </div>
 
         <!-- Divider -->
-        <div class="h-8 w-px bg-black-100 dark:bg-white/10"></div>
+        <div class="h-8 w-px bg-ambient-700 dark:bg-white/10"></div>
 
         <!-- Project gap types -->
         <div class="text-center opacity-70">
@@ -651,7 +652,7 @@
         <h3 class="text-xs font-medium text-black-500 uppercase tracking-wider">
           Why this matters
         </h3>
-        <p class="text-sm text-black-400 leading-relaxed">
+        <p class="text-sm text-black-600 dark:text-black-400 leading-relaxed">
           Linear hygiene reflects tactical discipline: estimates enable
           forecasting, priorities drive focus, comments surface blockers, and
           project metadata keeps stakeholders informed. Gaps compound and erode
@@ -664,17 +665,19 @@
         <h3 class="text-xs font-medium text-black-500 uppercase tracking-wider">
           How it's calculated
         </h3>
-        <p class="text-sm text-black-400">
-          Gaps are counted across <strong class="text-black-300">4</strong>
+        <p class="text-sm text-black-600 dark:text-black-400">
+          Gaps are counted across <strong
+            class="text-black-700 dark:text-black-300">4</strong
+          >
           engineer issue types (estimates, priority, comments, WIP age) and
-          <strong class="text-black-300">5</strong>
+          <strong class="text-black-700 dark:text-black-300">5</strong>
           project types (lead, update, status, health, dates).
         </p>
 
         <!-- Formula -->
         {#if formulaHtml}
           <div
-            class="py-3 px-4 rounded-md bg-black-800/50 border border-white/5 formula-container overflow-x-auto mt-3"
+            class="py-3 px-4 rounded-md bg-ambient-700 dark:bg-black-800/50 border border-black-200 dark:border-white/5 formula-container overflow-x-auto mt-3"
           >
             <!-- eslint-disable-next-line svelte/no-at-html-tags -->
             {@html formulaHtml}
@@ -687,21 +690,23 @@
     {#if domainHygieneData.length > 0}
       <Card class="p-0 overflow-hidden">
         <div
-          class="flex items-center justify-between px-4 py-3 border-b border-black-200 dark:border-white/10 bg-black-50 dark:bg-black-50 dark:bg-white/5"
+          class="flex items-center justify-between px-4 py-3 border-b border-black-200 dark:border-white/10 bg-ambient-600 dark:bg-white/5"
         >
           <h3
             class="text-sm font-medium text-black-900 dark:text-black-900 dark:text-white"
           >
             Domain Breakdown ({domainHygieneData.length})
           </h3>
-          <span class="text-xs text-black-500">Hygiene by domain</span>
+          <span class="text-xs text-black-600 dark:text-black-500"
+            >Hygiene by domain</span
+          >
         </div>
         <div class="p-4">
           <div class="overflow-x-auto">
             <table class="w-full">
               <thead>
                 <tr
-                  class="text-left text-xs font-medium text-black-500 uppercase tracking-wider border-b border-black-200 dark:border-white/10"
+                  class="text-left text-xs font-medium text-black-600 dark:text-black-500 uppercase tracking-wider border-b border-black-200 dark:border-white/10"
                 >
                   <th class="pb-3 pr-4">Domain</th>
                   <th class="pb-3 pr-4">Status</th>
@@ -711,10 +716,10 @@
                   <th class="pb-3 pr-4 text-right">Projects</th>
                 </tr>
               </thead>
-              <tbody class="divide-y divide-white/5">
+              <tbody class="divide-y divide-black-100 dark:divide-white/5">
                 {#each domainHygieneData as domain (domain.domainName)}
                   <tr
-                    class="hover:bg-black-50 dark:hover:bg-white/5 transition-colors"
+                    class="hover:bg-ambient-600 dark:hover:bg-white/5 transition-colors"
                   >
                     <td class="py-3 pr-4">
                       <span
@@ -734,23 +739,23 @@
                       </span>
                     </td>
                     <td class="py-3 pr-4 text-right">
-                      <span class="text-sm text-black-300">
+                      <span class="text-sm text-black-700 dark:text-black-300">
                         {domain.totalGaps}
                       </span>
                     </td>
                     <td class="py-3 pr-4 text-right">
-                      <span class="text-sm text-black-300">
+                      <span class="text-sm text-black-700 dark:text-black-300">
                         {domain.engineersWithGaps}
                       </span>
-                      <span class="text-xs text-black-500">
+                      <span class="text-xs text-black-600 dark:text-black-500">
                         /{domain.totalEngineers}
                       </span>
                     </td>
                     <td class="py-3 pr-4 text-right">
-                      <span class="text-sm text-black-300">
+                      <span class="text-sm text-black-700 dark:text-black-300">
                         {domain.projectsWithGaps}
                       </span>
-                      <span class="text-xs text-black-500">
+                      <span class="text-xs text-black-600 dark:text-black-500">
                         /{domain.totalProjects}
                       </span>
                     </td>
@@ -766,14 +771,14 @@
     <!-- Engineers with Gaps Table -->
     <Card class="p-0 overflow-hidden">
       <div
-        class="flex items-center justify-between px-4 py-3 border-b border-black-200 dark:border-white/10 bg-black-50 dark:bg-black-50 dark:bg-white/5"
+        class="flex items-center justify-between px-4 py-3 border-b border-black-200 dark:border-white/10 bg-ambient-600 dark:bg-white/5"
       >
         <h3
           class="text-sm font-medium text-black-900 dark:text-black-900 dark:text-white"
         >
           Engineers with Gaps ({engineersWithGaps.length})
         </h3>
-        <span class="text-xs text-black-500">
+        <span class="text-xs text-black-600 dark:text-black-500">
           Missing estimates, priority, comments, or WIP age
         </span>
       </div>
@@ -796,7 +801,7 @@
     <!-- Projects with Gaps Table -->
     <Card class="p-0 overflow-hidden">
       <div
-        class="flex items-center justify-between px-4 py-3 border-b border-black-200 dark:border-white/10 bg-black-50 dark:bg-black-50 dark:bg-white/5"
+        class="flex items-center justify-between px-4 py-3 border-b border-black-200 dark:border-white/10 bg-ambient-600 dark:bg-white/5"
       >
         <h3
           class="text-sm font-medium text-black-900 dark:text-black-900 dark:text-white"
@@ -824,7 +829,7 @@
               <tbody class="divide-y divide-white/5">
                 {#each projectsWithGaps.sort((a, b) => getProjectTotalGaps(b) - getProjectTotalGaps(a)) as project (project.project_id)}
                   <tr
-                    class="hover:bg-black-50 dark:hover:bg-white/5 transition-colors"
+                    class="hover:bg-ambient-600 dark:hover:bg-white/5 transition-colors"
                   >
                     <td class="py-3 pr-4">
                       <span
@@ -843,7 +848,9 @@
                               class="w-6 h-6 rounded-full"
                             />
                           {/if}
-                          <span class="text-sm text-black-300">
+                          <span
+                            class="text-sm text-black-700 dark:text-black-300"
+                          >
                             {project.project_lead_name}
                           </span>
                         </div>
@@ -852,7 +859,7 @@
                       {/if}
                     </td>
                     <td class="py-3 pr-4 text-center">
-                      <span class="text-sm text-black-400">
+                      <span class="text-sm text-black-600 dark:text-black-400">
                         {project.in_progress_issues}
                       </span>
                     </td>
@@ -916,7 +923,9 @@
     <!-- No data state -->
     <Card>
       <div class="py-8 text-center">
-        <div class="mb-2 text-black-400">No metrics data available</div>
+        <div class="mb-2 text-black-600 dark:text-black-400">
+          No metrics data available
+        </div>
         <p class="text-sm text-black-500">
           Run a sync to capture metrics data.
         </p>
@@ -937,6 +946,9 @@
   /* KaTeX formula styling */
   .formula-container :global(.katex) {
     font-size: 1em;
+    color: #1a1a1a;
+  }
+  :global(.dark) .formula-container :global(.katex) {
     color: #e5e5e5;
   }
   .formula-container :global(.katex-display) {

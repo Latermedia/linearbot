@@ -149,7 +149,7 @@
       ? 'text-danger-400 hover:text-danger-300 hover:bg-danger-500/10 border border-danger-500/30'
       : isSyncing
         ? 'text-black-600 dark:text-black-400'
-        : 'text-black-600 dark:text-black-400 hover:text-black-900 dark:hover:text-white hover:bg-black-100 dark:hover:bg-white/5'}
+        : 'text-black-600 dark:text-black-400 hover:text-black-900 dark:hover:text-white hover:bg-ambient-700 dark:hover:bg-white/5'}
       {isCollapsed ? 'justify-center' : ''}"
     title={isCollapsed
       ? tooltipText() ||

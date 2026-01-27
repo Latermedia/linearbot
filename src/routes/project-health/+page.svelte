@@ -277,7 +277,7 @@
     steadyProgress: "text-warning-500",
     earlyTraction: "text-danger-500",
     lowTraction: "text-danger-600",
-    unknown: "text-black-400",
+    unknown: "text-black-600 dark:text-black-400",
   };
 
   // Extract domain-level project health data for overview table (only shown when no team filter)
@@ -472,7 +472,8 @@
           ]}"
         >
           {displayVelocity.onTrackPercent.toFixed(0)}<span
-            class="text-5xl lg:text-6xl font-normal text-black-400">%</span
+            class="text-5xl lg:text-6xl font-normal text-black-600 dark:text-black-400"
+            >%</span
           >
         </span>
       </div>
@@ -515,7 +516,7 @@
       {/if}
 
       <!-- Subtitle -->
-      <p class="text-center text-xl text-black-400 mb-2">
+      <p class="text-center text-xl text-black-600 dark:text-black-400 mb-2">
         Projects on track to meet their target dates
       </p>
       <p class="text-center text-sm text-black-500">
@@ -532,12 +533,14 @@
           >
             {atRiskCount}
           </div>
-          <div class="text-sm text-black-400 mt-1">At Risk</div>
+          <div class="text-sm text-black-600 dark:text-black-400 mt-1">
+            At Risk
+          </div>
           <div class="text-xs text-black-500">need monitoring</div>
         </div>
 
         <!-- Divider -->
-        <div class="h-12 w-px bg-black-100 dark:bg-white/10"></div>
+        <div class="h-12 w-px bg-ambient-700 dark:bg-white/10"></div>
 
         <!-- Off Track total -->
         <div class="text-center">
@@ -546,12 +549,14 @@
           >
             {offTrackCount}
           </div>
-          <div class="text-sm text-black-400 mt-1">Off Track</div>
+          <div class="text-sm text-black-600 dark:text-black-400 mt-1">
+            Off Track
+          </div>
           <div class="text-xs text-black-500">need intervention</div>
         </div>
 
         <!-- Divider -->
-        <div class="h-12 w-px bg-black-100 dark:bg-white/10"></div>
+        <div class="h-12 w-px bg-ambient-700 dark:bg-white/10"></div>
 
         <!-- Self-reported breakdown -->
         <div class="text-center opacity-70">
@@ -560,11 +565,13 @@
           >
             {atRiskHuman + offTrackHuman}
           </div>
-          <div class="text-sm text-black-400 mt-1">Self-reported</div>
+          <div class="text-sm text-black-600 dark:text-black-400 mt-1">
+            Self-reported
+          </div>
         </div>
 
         <!-- Divider -->
-        <div class="h-12 w-px bg-black-100 dark:bg-white/10"></div>
+        <div class="h-12 w-px bg-ambient-700 dark:bg-white/10"></div>
 
         <!-- Trajectory Alert breakdown -->
         <div class="text-center opacity-70">
@@ -573,7 +580,9 @@
           >
             {atRiskVelocity + offTrackVelocity}
           </div>
-          <div class="text-sm text-black-400 mt-1">Trajectory Alert</div>
+          <div class="text-sm text-black-600 dark:text-black-400 mt-1">
+            Trajectory Alert
+          </div>
         </div>
       </div>
     </div>
@@ -585,7 +594,7 @@
         <h3 class="text-xs font-medium text-black-500 uppercase tracking-wider">
           Why this matters
         </h3>
-        <p class="text-sm text-black-400 leading-relaxed">
+        <p class="text-sm text-black-600 dark:text-black-400 leading-relaxed">
           Early detection of at-risk projects enables proactive intervention
           before deadlines slip. Combining self-reported status with
           velocity-based trajectory alerts catches blind spots that either
@@ -598,19 +607,21 @@
         <h3 class="text-xs font-medium text-black-500 uppercase tracking-wider">
           How it's calculated
         </h3>
-        <p class="text-sm text-black-400">
-          A project is "on track" when both <strong class="text-black-300"
+        <p class="text-sm text-black-600 dark:text-black-400">
+          A project is "on track" when both <strong
+            class="text-black-700 dark:text-black-300"
             >self-reported status</strong
           >
           is healthy AND the
-          <strong class="text-black-300">velocity trajectory</strong> predicts completion
-          within 14 days of the target date.
+          <strong class="text-black-700 dark:text-black-300"
+            >velocity trajectory</strong
+          > predicts completion within 14 days of the target date.
         </p>
 
         <!-- Formula -->
         {#if formulaHtml}
           <div
-            class="py-3 px-4 rounded-md bg-black-800/50 border border-white/5 formula-container overflow-x-auto mt-3"
+            class="py-3 px-4 rounded-md bg-ambient-700 dark:bg-black-800/50 border border-black-200 dark:border-white/5 formula-container overflow-x-auto mt-3"
           >
             <!-- eslint-disable-next-line svelte/no-at-html-tags -->
             {@html formulaHtml}
@@ -623,7 +634,7 @@
     {#if domainProjectHealthData.length > 0}
       <Card class="p-0 overflow-hidden">
         <div
-          class="flex items-center justify-between px-4 py-3 border-b border-white/10 bg-black-50 dark:bg-white/5"
+          class="flex items-center justify-between px-4 py-3 border-b border-white/10 bg-ambient-600 dark:bg-white/5"
         >
           <h3 class="text-sm font-medium text-black-900 dark:text-white">
             Domain Overview ({domainProjectHealthData.length})
@@ -648,7 +659,7 @@
               <tbody class="divide-y divide-black-200 dark:divide-white/5">
                 {#each domainProjectHealthData as domain}
                   <tr
-                    class="hover:bg-black-50 dark:hover:bg-white/5 transition-colors"
+                    class="hover:bg-ambient-600 dark:hover:bg-white/5 transition-colors"
                   >
                     <td class="py-3 pr-4">
                       <span
@@ -803,7 +814,7 @@
         </p>
         <p class="text-sm text-black-600 dark:text-black-500">
           Make sure the database is synced. Run: <code
-            class="px-2 py-1 font-mono text-xs rounded bg-black-100 dark:bg-black-800 text-black-700 dark:text-black-300"
+            class="px-2 py-1 font-mono text-xs rounded bg-ambient-700 dark:bg-black-800 text-black-700 dark:text-black-300"
             >bun run sync</code
           >
         </p>
@@ -814,7 +825,7 @@
         <Card class="p-0 overflow-hidden">
           <!-- Domain Header with Mini Pillars -->
           <div
-            class="flex flex-wrap items-center justify-between gap-4 px-4 py-3 border-b border-white/10 bg-black-50 dark:bg-white/5"
+            class="flex flex-wrap items-center justify-between gap-4 px-4 py-3 border-b border-white/10 bg-ambient-600 dark:bg-white/5"
           >
             <div class="flex items-center gap-3">
               <h2 class="text-lg font-semibold text-black-900 dark:text-white">
@@ -858,7 +869,9 @@
       {#if domains.length === 0}
         <Card>
           <div class="py-8 text-center">
-            <div class="mb-2 text-black-400">No domains found</div>
+            <div class="mb-2 text-black-600 dark:text-black-400">
+              No domains found
+            </div>
             <p class="text-sm text-black-500">
               {selectedTeamKey
                 ? "No projects match the current team filter."
@@ -873,7 +886,7 @@
         <Card class="p-0 overflow-hidden">
           <!-- Team Header with Mini Pillars -->
           <div
-            class="flex flex-wrap items-center justify-between gap-4 px-4 py-3 border-b border-white/10 bg-black-50 dark:bg-white/5"
+            class="flex flex-wrap items-center justify-between gap-4 px-4 py-3 border-b border-white/10 bg-ambient-600 dark:bg-white/5"
           >
             <div class="flex items-center gap-3">
               <h2 class="text-lg font-semibold text-black-900 dark:text-white">
@@ -919,7 +932,9 @@
       {#if teams.length === 0}
         <Card>
           <div class="py-8 text-center">
-            <div class="mb-2 text-black-400">No teams found</div>
+            <div class="mb-2 text-black-600 dark:text-black-400">
+              No teams found
+            </div>
             <p class="text-sm text-black-500">
               {selectedTeamKey
                 ? "No projects match the current team filter."
@@ -933,7 +948,9 @@
     <!-- No data state -->
     <Card>
       <div class="py-8 text-center">
-        <div class="mb-2 text-black-400">No metrics data available</div>
+        <div class="mb-2 text-black-600 dark:text-black-400">
+          No metrics data available
+        </div>
         <p class="text-sm text-black-500">
           Run a sync to capture metrics data.
         </p>
@@ -946,6 +963,9 @@
   /* KaTeX formula styling */
   .formula-container :global(.katex) {
     font-size: 1em;
+    color: #1a1a1a;
+  }
+  :global(.dark) .formula-container :global(.katex) {
     color: #e5e5e5;
   }
   .formula-container :global(.katex-display) {

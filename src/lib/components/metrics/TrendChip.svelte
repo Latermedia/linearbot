@@ -53,7 +53,7 @@
     ? 'bg-success-100 dark:bg-success-900 text-success-700 dark:text-success-400'
     : isNegative
       ? 'bg-danger-100 dark:bg-danger-900 text-danger-700 dark:text-danger-400'
-      : 'bg-black-100 dark:bg-black-800 text-black-500 dark:text-black-400'}"
+      : 'bg-ambient-700 dark:bg-black-800 text-black-500 dark:text-black-400'}"
   title={tooltip}
 >
   <span>{arrow}</span>

@@ -338,7 +338,7 @@
       <p class="mb-3 text-black-700 dark:text-black-400">{error}</p>
       <p class="text-sm text-black-600 dark:text-black-500">
         Make sure the database is synced. Run: <code
-          class="px-2 py-1 font-mono text-xs rounded bg-black-100 dark:bg-black-800 text-black-700 dark:text-black-300"
+          class="px-2 py-1 font-mono text-xs rounded bg-ambient-700 dark:bg-black-800 text-black-700 dark:text-black-300"
           >bun run sync</code
         >
       </p>
@@ -361,7 +361,7 @@
     {#if sortedTeamMappedEngineers.length > 0}
       <Card class="p-0 overflow-hidden">
         <div
-          class="flex flex-wrap items-center justify-between gap-4 px-4 py-3 border-b border-white/10 bg-black-50 dark:bg-white/5"
+          class="flex flex-wrap items-center justify-between gap-4 px-4 py-3 border-b border-white/10 bg-ambient-600 dark:bg-white/5"
         >
           <div class="flex items-center gap-3">
             <h2 class="text-lg font-semibold text-black-900 dark:text-white">
@@ -389,7 +389,7 @@
     {#if sortedCrossTeamCollaborators.length > 0}
       <Card class="p-0 overflow-hidden">
         <div
-          class="flex flex-wrap items-center justify-between gap-4 px-4 py-3 border-b border-white/10 bg-black-50 dark:bg-white/5"
+          class="flex flex-wrap items-center justify-between gap-4 px-4 py-3 border-b border-white/10 bg-ambient-600 dark:bg-white/5"
         >
           <div class="flex items-center gap-3">
             <h2 class="text-lg font-semibold text-black-900 dark:text-white">

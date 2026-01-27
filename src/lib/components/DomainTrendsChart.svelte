@@ -443,7 +443,7 @@
 
     <select
       bind:value={selectedMetric}
-      class="text-xs bg-black-800 border border-white/10 rounded px-2 py-1 text-black-300 focus:outline-none focus:ring-1 focus:ring-violet-500/50 cursor-pointer"
+      class="text-xs bg-ambient-700 dark:bg-black-800 border border-black-200 dark:border-white/10 rounded px-2 py-1 text-black-700 dark:text-black-300 focus:outline-none focus:ring-1 focus:ring-violet-500/50 cursor-pointer"
     >
       {#each metricOptions as option (option.key)}
         <option value={option.key}>{option.label}</option>
@@ -552,7 +552,9 @@
             class="w-2 h-2 rounded-full"
             style="background-color: {hoveredData.color}"
           ></span>
-          <span class="text-black-300">{hoveredData.domain}</span>
+          <span class="text-black-700 dark:text-black-300"
+            >{hoveredData.domain}</span
+          >
           {#if hoveredData.value !== null}
             <span class="ml-auto font-medium text-black-900 dark:text-white"
               >{hoveredData.value}%</span

@@ -118,7 +118,7 @@
       type="button"
       onclick={toggleSidebar}
       class="w-full flex items-center gap-3 px-3 py-2 text-sm font-medium rounded transition-colors duration-150 cursor-pointer
-        text-black-600 dark:text-black-400 hover:text-black-900 dark:hover:text-white hover:bg-black-100 dark:hover:bg-white/5
+        text-black-600 dark:text-black-400 hover:text-black-900 dark:hover:text-white hover:bg-ambient-700 dark:hover:bg-white/5
         {isCollapsed ? 'justify-center' : ''}"
       title={isCollapsed ? "Expand sidebar (⌘B)" : "Collapse sidebar (⌘B)"}
     >

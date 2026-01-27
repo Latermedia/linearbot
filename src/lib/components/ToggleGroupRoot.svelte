@@ -110,7 +110,7 @@
   class={cn(
     "group/toggle-group relative flex w-fit items-center",
     variant === "outline" &&
-      "bg-black-100 dark:bg-white/5 rounded-md p-1 gap-1",
+      "bg-ambient-700 dark:bg-white/5 rounded-md p-1 gap-1",
     className
   )}
   role="group"
@@ -119,7 +119,7 @@
   {#if variant === "outline" && type === "single"}
     <!-- Sliding indicator with Svelte tweened animation -->
     <div
-      class="absolute rounded-md bg-white dark:bg-white/10 pointer-events-none z-0"
+      class="absolute rounded-md bg-ambient-300 dark:bg-white/10 pointer-events-none z-0"
       style="top: 0.25rem; bottom: 0.25rem; left: {$indicatorLeft}px; width: {$indicatorWidth}px; opacity: {$indicatorOpacity};"
       aria-hidden="true"
     ></div>

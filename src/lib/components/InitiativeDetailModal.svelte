@@ -320,7 +320,9 @@
 
     <!-- Dates -->
     <div class="mb-6">
-      <div class="mb-3 text-sm font-medium text-black-300">Dates</div>
+      <div class="mb-3 text-sm font-medium text-black-700 dark:text-black-300">
+        Dates
+      </div>
       <div class="grid grid-cols-2 gap-4 sm:grid-cols-3">
         {#if initiative.target_date}
           <div>
@@ -497,7 +499,9 @@
 
     <!-- Content -->
     <div class="mb-6">
-      <div class="mb-3 text-sm font-medium text-black-300">Content</div>
+      <div class="mb-3 text-sm font-medium text-black-700 dark:text-black-300">
+        Content
+      </div>
       {#if initiative.content}
         <div class="markdown-content text-sm leading-relaxed text-black-200">
           <!-- eslint-disable-next-line svelte/no-at-html-tags -->

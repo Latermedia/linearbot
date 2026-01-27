@@ -464,7 +464,7 @@
       <p class="mb-3 text-black-700 dark:text-black-400">{error}</p>
       <p class="text-sm text-black-600 dark:text-black-500">
         Make sure the database is synced. Run: <code
-          class="px-2 py-1 font-mono text-xs rounded bg-black-100 dark:bg-black-800 text-black-700 dark:text-black-300"
+          class="px-2 py-1 font-mono text-xs rounded bg-ambient-700 dark:bg-black-800 text-black-700 dark:text-black-300"
           >bun run sync</code
         >
       </p>
@@ -488,7 +488,7 @@
   <!-- Non-project WIP issues (when team filter active) -->
   {#if selectedTeamKey !== null && !loading && !error}
     <Card class="px-4 py-4 mt-8">
-      <div class="mb-4 text-sm font-medium text-black-300">
+      <div class="mb-4 text-sm font-medium text-black-700 dark:text-black-300">
         Non-Project Work
         {#if loadingNonProjectWip}
           <span class="ml-2 text-black-500">(loading...)</span>
@@ -499,7 +499,7 @@
         {/if}
       </div>
       {#if loadingNonProjectWip}
-        <div class="text-sm text-black-400">Loading...</div>
+        <div class="text-sm text-black-600 dark:text-black-400">Loading...</div>
       {:else}
         <IssueTable
           issues={nonProjectWipIssues}
@@ -526,7 +526,9 @@
 
     {#if coreTeamEngineers.length > 0}
       <Card class="px-4 py-4 mt-8">
-        <div class="mb-4 text-sm font-medium text-black-300">
+        <div
+          class="mb-4 text-sm font-medium text-black-700 dark:text-black-300"
+        >
           {teamName} Engineers
           <span class="ml-2 text-black-500">({coreTeamEngineers.length})</span>
         </div>
@@ -539,7 +541,9 @@
 
     {#if crossTeamContributors.length > 0}
       <Card class="px-4 py-4 mt-8">
-        <div class="mb-4 text-sm font-medium text-black-300">
+        <div
+          class="mb-4 text-sm font-medium text-black-700 dark:text-black-300"
+        >
           Cross-team Contributors
           <span class="ml-2 text-black-500"
             >({crossTeamContributors.length})</span
@@ -555,7 +559,9 @@
 
   {#if loadingEngineers && selectedTeamKey !== null}
     <Card class="px-4 py-4 mt-8">
-      <div class="text-sm text-black-400">Loading engineer data...</div>
+      <div class="text-sm text-black-600 dark:text-black-400">
+        Loading engineer data...
+      </div>
     </Card>
   {/if}
 </div>

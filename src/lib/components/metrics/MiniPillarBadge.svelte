@@ -32,7 +32,7 @@
         return "text-blue-400";
       case "pending":
       default:
-        return "text-black-400";
+        return "text-black-600 dark:text-black-400";
     }
   }
 

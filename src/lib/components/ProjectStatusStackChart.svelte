@@ -388,7 +388,7 @@
               class="w-2 h-2 rounded-full"
               style="background-color: {colors.onTrack}"
             ></span>
-            <span class="text-black-300">On Track</span>
+            <span class="text-black-700 dark:text-black-300">On Track</span>
           </div>
           <span class="font-medium text-black-900 dark:text-white"
             >{hoveredData.onTrackPct}%
@@ -402,7 +402,7 @@
               class="w-2 h-2 rounded-full"
               style="background-color: {colors.atRisk}"
             ></span>
-            <span class="text-black-300">At Risk</span>
+            <span class="text-black-700 dark:text-black-300">At Risk</span>
           </div>
           <span class="font-medium text-black-900 dark:text-white"
             >{hoveredData.atRiskPct}%
@@ -416,7 +416,7 @@
               class="w-2 h-2 rounded-full"
               style="background-color: {colors.offTrack}"
             ></span>
-            <span class="text-black-300">Off Track</span>
+            <span class="text-black-700 dark:text-black-300">Off Track</span>
           </div>
           <span class="font-medium text-black-900 dark:text-white"
             >{hoveredData.offTrackPct}%
@@ -427,7 +427,7 @@
         <div
           class="flex items-center justify-between pt-1 mt-1 border-t border-black-200 dark:border-white/10"
         >
-          <span class="text-black-400">Total Projects</span>
+          <span class="text-black-600 dark:text-black-400">Total Projects</span>
           <span class="font-medium text-black-900 dark:text-white"
             >{hoveredData.total}</span
           >
@@ -455,7 +455,7 @@
           class="w-3 h-3 rounded-sm"
           style="background-color: {item.color}; opacity: 0.7;"
         ></div>
-        <span class="text-black-400">{item.label}</span>
+        <span class="text-black-600 dark:text-black-400">{item.label}</span>
       </div>
     {/each}
   </div>

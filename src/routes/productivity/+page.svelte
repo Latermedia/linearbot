@@ -237,7 +237,7 @@
     steadyProgress: "text-warning-500",
     earlyTraction: "text-danger-500",
     lowTraction: "text-danger-600",
-    unknown: "text-black-400",
+    unknown: "text-black-600 dark:text-black-400",
   };
 
   // Extract domain-level productivity data for table (filtered by active domain)
@@ -331,7 +331,8 @@
           ]}"
         >
           {#if hasProductivityData}{percentOfGoal}<span
-              class="text-5xl lg:text-6xl font-normal text-black-400">%</span
+              class="text-5xl lg:text-6xl font-normal text-black-600 dark:text-black-400"
+              >%</span
             >{:else}—{/if}
         </span>
       </div>
@@ -376,7 +377,7 @@
       {/if}
 
       <!-- Subtitle -->
-      <p class="text-center text-xl text-black-400 mb-2">
+      <p class="text-center text-xl text-black-600 dark:text-black-400 mb-2">
         {#if hasProductivityData}
           TrueThroughput relative to goal
         {:else}
@@ -401,12 +402,14 @@
           >
             {weeklyThroughput.toFixed(1)}
           </div>
-          <div class="text-sm text-black-400 mt-1">Total/week</div>
+          <div class="text-sm text-black-600 dark:text-black-400 mt-1">
+            Total/week
+          </div>
           <div class="text-xs text-black-500">TrueThroughput</div>
         </div>
 
         <!-- Divider -->
-        <div class="h-12 w-px bg-black-100 dark:bg-white/10"></div>
+        <div class="h-12 w-px bg-ambient-700 dark:bg-white/10"></div>
 
         <!-- Domains tracked -->
         <div class="text-center">
@@ -415,12 +418,14 @@
           >
             {domainProductivityData.length}
           </div>
-          <div class="text-sm text-black-400 mt-1">Domains</div>
+          <div class="text-sm text-black-600 dark:text-black-400 mt-1">
+            Domains
+          </div>
           <div class="text-xs text-black-500">with GetDX data</div>
         </div>
 
         <!-- Divider -->
-        <div class="h-12 w-px bg-black-100 dark:bg-white/10"></div>
+        <div class="h-12 w-px bg-ambient-700 dark:bg-white/10"></div>
 
         <!-- Engineer count (org-wide) -->
         <div class="text-center opacity-70">
@@ -429,12 +434,14 @@
           >
             {engineerCount ?? "—"}
           </div>
-          <div class="text-sm text-black-400 mt-1">Engineers</div>
+          <div class="text-sm text-black-600 dark:text-black-400 mt-1">
+            Engineers
+          </div>
           <div class="text-xs text-black-500">org-wide</div>
         </div>
 
         <!-- Divider -->
-        <div class="h-12 w-px bg-black-100 dark:bg-white/10"></div>
+        <div class="h-12 w-px bg-ambient-700 dark:bg-white/10"></div>
 
         <!-- Per engineer rate -->
         <div class="text-center opacity-70">
@@ -443,11 +450,13 @@
           >
             {weeklyRatePerEngineer.toFixed(2)}
           </div>
-          <div class="text-sm text-black-400 mt-1">Per Eng/wk</div>
+          <div class="text-sm text-black-600 dark:text-black-400 mt-1">
+            Per Eng/wk
+          </div>
         </div>
 
         <!-- Divider -->
-        <div class="h-12 w-px bg-black-100 dark:bg-white/10"></div>
+        <div class="h-12 w-px bg-ambient-700 dark:bg-white/10"></div>
 
         <!-- Goal -->
         <div class="text-center opacity-70">
@@ -456,7 +465,9 @@
           >
             {PRODUCTIVITY_GOAL}
           </div>
-          <div class="text-sm text-black-400 mt-1">Goal/wk</div>
+          <div class="text-sm text-black-600 dark:text-black-400 mt-1">
+            Goal/wk
+          </div>
         </div>
       </div>
     </div>
@@ -468,7 +479,7 @@
         <h3 class="text-xs font-medium text-black-500 uppercase tracking-wider">
           Why this matters
         </h3>
-        <p class="text-sm text-black-400 leading-relaxed">
+        <p class="text-sm text-black-600 dark:text-black-400 leading-relaxed">
           TrueThroughput measures actual completed work, not just activity.
           Tracking throughput per engineer identifies capacity constraints and
           helps balance workloads. Consistent throughput correlates with
@@ -481,12 +492,13 @@
         <h3 class="text-xs font-medium text-black-500 uppercase tracking-wider">
           How it's calculated
         </h3>
-        <p class="text-sm text-black-400">
-          TrueThroughput from GetDX measures <strong class="text-black-300"
+        <p class="text-sm text-black-600 dark:text-black-400">
+          TrueThroughput from GetDX measures <strong
+            class="text-black-700 dark:text-black-300"
             >merged PRs weighted by complexity</strong
           >. The productivity score compares the per-engineer weekly rate
           against a target of
-          <strong class="text-black-300"
+          <strong class="text-black-700 dark:text-black-300"
             >{PRODUCTIVITY_GOAL} throughput/week</strong
           >.
         </p>
@@ -494,7 +506,7 @@
         <!-- Formula -->
         {#if formulaHtml}
           <div
-            class="py-3 px-4 rounded-md bg-black-800/50 border border-white/5 formula-container overflow-x-auto mt-3"
+            class="py-3 px-4 rounded-md bg-ambient-700 dark:bg-black-800/50 border border-black-200 dark:border-white/5 formula-container overflow-x-auto mt-3"
           >
             <!-- eslint-disable-next-line svelte/no-at-html-tags -->
             {@html formulaHtml}
@@ -507,19 +519,21 @@
     {#if domainProductivityData.length > 0}
       <Card class="p-0 overflow-hidden">
         <div
-          class="flex items-center justify-between px-4 py-3 border-b border-white/10 bg-black-50 dark:bg-white/5"
+          class="flex items-center justify-between px-4 py-3 border-b border-white/10 bg-ambient-600 dark:bg-white/5"
         >
           <h3 class="text-sm font-medium text-black-900 dark:text-white">
             Domain Breakdown ({domainProductivityData.length})
           </h3>
-          <span class="text-xs text-black-500">TrueThroughput by domain</span>
+          <span class="text-xs text-black-600 dark:text-black-500"
+            >TrueThroughput by domain</span
+          >
         </div>
         <div class="p-4">
           <div class="overflow-x-auto">
             <table class="w-full">
               <thead>
                 <tr
-                  class="text-left text-xs font-medium text-black-500 uppercase tracking-wider border-b border-black-200 dark:border-white/10"
+                  class="text-left text-xs font-medium text-black-600 dark:text-black-500 uppercase tracking-wider border-b border-black-200 dark:border-white/10"
                 >
                   <th class="pb-3 pr-4">Domain</th>
                   <th class="pb-3 pr-4">Status</th>
@@ -529,11 +543,15 @@
                   <th class="pb-3 pr-4 text-right">Engineers</th>
                 </tr>
               </thead>
-              <tbody class="divide-y divide-white/5">
+              <tbody class="divide-y divide-black-100 dark:divide-white/5">
                 {#each domainProductivityData as domain}
-                  <tr class="hover:bg-white/5 transition-colors">
+                  <tr
+                    class="hover:bg-ambient-600 dark:hover:bg-white/5 transition-colors"
+                  >
                     <td class="py-3 pr-4">
-                      <span class="text-sm text-white font-medium">
+                      <span
+                        class="text-sm text-black-900 dark:text-white font-medium"
+                      >
                         {domain.domainName}
                       </span>
                     </td>
@@ -548,19 +566,19 @@
                       </span>
                     </td>
                     <td class="py-3 pr-4 text-right">
-                      <span class="text-sm text-black-300">
+                      <span class="text-sm text-black-700 dark:text-black-300">
                         {domain.weeklyRatePerEngineer !== null
                           ? domain.weeklyRatePerEngineer.toFixed(2)
                           : "—"}
                       </span>
                     </td>
                     <td class="py-3 pr-4 text-right">
-                      <span class="text-sm text-black-400">
+                      <span class="text-sm text-black-600 dark:text-black-400">
                         {domain.weeklyRate.toFixed(1)}
                       </span>
                     </td>
                     <td class="py-3 pr-4 text-right">
-                      <span class="text-sm text-black-400">
+                      <span class="text-sm text-black-600 dark:text-black-400">
                         {domain.engineerCount ?? "—"}
                       </span>
                     </td>
@@ -576,7 +594,7 @@
       {#if domainsBelowThreshold.length > 0}
         <Card class="p-0 overflow-hidden">
           <div
-            class="flex items-center justify-between px-4 py-3 border-b border-white/10 bg-black-50 dark:bg-white/5"
+            class="flex items-center justify-between px-4 py-3 border-b border-white/10 bg-ambient-600 dark:bg-white/5"
           >
             <h3 class="text-sm font-medium text-black-900 dark:text-white">
               Domains Needing Attention ({domainsBelowThreshold.length})
@@ -589,7 +607,7 @@
             <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
               {#each domainsBelowThreshold as domain}
                 <div
-                  class="p-4 rounded-lg border border-white/10 bg-black-50 dark:bg-white/5"
+                  class="p-4 rounded-lg border border-white/10 bg-ambient-600 dark:bg-white/5"
                 >
                   <div class="flex items-center justify-between mb-2">
                     <span
@@ -622,7 +640,7 @@
     {:else}
       <Card>
         <div class="py-8 text-center">
-          <div class="mb-2 text-black-400">
+          <div class="mb-2 text-black-600 dark:text-black-400">
             No domain productivity data available
           </div>
           <p class="text-sm text-black-500">
@@ -636,7 +654,9 @@
     <!-- No data state -->
     <Card>
       <div class="py-8 text-center">
-        <div class="mb-2 text-black-400">No metrics data available</div>
+        <div class="mb-2 text-black-600 dark:text-black-400">
+          No metrics data available
+        </div>
         <p class="text-sm text-black-500">
           Run a sync to capture metrics data.
         </p>
@@ -649,6 +669,9 @@
   /* KaTeX formula styling */
   .formula-container :global(.katex) {
     font-size: 1em;
+    color: #1a1a1a;
+  }
+  :global(.dark) .formula-container :global(.katex) {
     color: #e5e5e5;
   }
   .formula-container :global(.katex-display) {

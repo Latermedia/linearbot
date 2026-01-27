@@ -640,7 +640,7 @@
             class="w-2 h-2 rounded-full"
             style="background-color: {colors.wipHealth}"
           ></span>
-          <span class="text-black-300">WIP Health</span>
+          <span class="text-black-700 dark:text-black-300">WIP Health</span>
           <span class="ml-auto font-medium text-black-900 dark:text-white"
             >{hoveredData.wipHealth}%</span
           >
@@ -650,7 +650,7 @@
             class="w-2 h-2 rounded-full"
             style="background-color: {colors.projectHealth}"
           ></span>
-          <span class="text-black-300">Project Health</span>
+          <span class="text-black-700 dark:text-black-300">Project Health</span>
           <span class="ml-auto font-medium text-black-900 dark:text-white"
             >{hoveredData.projectHealth}%</span
           >
@@ -660,7 +660,7 @@
             class="w-2 h-2 rounded-full"
             style="background-color: {colors.productivity}"
           ></span>
-          <span class="text-black-300">Velocity</span>
+          <span class="text-black-700 dark:text-black-300">Velocity</span>
           <span class="ml-auto font-medium text-black-900 dark:text-white"
             >{hoveredData.productivity}%</span
           >
@@ -670,7 +670,7 @@
             class="w-2 h-2 rounded-full"
             style="background-color: {colors.quality}"
           ></span>
-          <span class="text-black-300">Quality</span>
+          <span class="text-black-700 dark:text-black-300">Quality</span>
           <span class="ml-auto font-medium text-black-900 dark:text-white"
             >{hoveredData.quality}%</span
           >
@@ -681,7 +681,7 @@
               class="w-2 h-2 rounded-full"
               style="background-color: {colors.hygiene}"
             ></span>
-            <span class="text-black-300">Hygiene</span>
+            <span class="text-black-700 dark:text-black-300">Hygiene</span>
             <span class="ml-auto font-medium text-black-900 dark:text-white"
               >{hoveredData.hygiene}%</span
             >

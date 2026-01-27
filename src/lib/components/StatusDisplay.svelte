@@ -57,7 +57,7 @@
     // Default/unstarted
     return {
       iconType: "default" as const,
-      color: "text-black-400",
+      color: "text-black-600 dark:text-black-400",
       bgColor: "bg-black-400/10",
     };
   });

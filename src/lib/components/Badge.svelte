@@ -6,7 +6,7 @@
     variants: {
       variant: {
         default:
-          "bg-black-100 dark:bg-white/10 text-black-700 dark:text-black-300",
+          "bg-ambient-700 dark:bg-white/10 text-black-700 dark:text-black-300",
         secondary:
           "bg-black-200 dark:bg-black-800 text-black-600 dark:text-black-400",
         destructive:
@@ -29,7 +29,7 @@
         lowTraction:
           "bg-danger-200 dark:bg-danger-900 text-danger-800 dark:text-danger-400",
         unknown:
-          "bg-black-100 dark:bg-black-800 text-black-500 dark:text-black-400",
+          "bg-ambient-700 dark:bg-black-800 text-black-500 dark:text-black-400",
       },
     },
     defaultVariants: {

@@ -80,7 +80,7 @@
 </script>
 
 <div
-  class="fixed z-50 px-4 py-3 text-xs rounded-lg border shadow-lg pointer-events-none bg-white dark:bg-black-900 border-black-200 dark:border-black-800 max-w-[280px]"
+  class="fixed z-50 px-4 py-3 text-xs rounded-lg border shadow-lg pointer-events-none bg-ambient-300 dark:bg-black-900 border-black-200 dark:border-black-800 max-w-[280px]"
   style={`left: ${position.x + 10}px; top: ${position.y + 10}px;`}
 >
   <!-- Project Header -->

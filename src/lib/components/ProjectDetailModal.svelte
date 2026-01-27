@@ -379,7 +379,9 @@
   <!-- Progress Section -->
   <div class="mb-6">
     <div class="mb-2">
-      <span class="text-sm font-medium text-black-300">Progress</span>
+      <span class="text-sm font-medium text-black-700 dark:text-black-300"
+        >Progress</span
+      >
     </div>
     <ProgressBar {project} />
   </div>
@@ -414,7 +416,7 @@
   {#if allGaps.length > 0}
     <div class="p-4 mb-6 rounded-md ring-1 ring-danger-400 bg-black-800/50">
       <div
-        class="flex gap-2 items-center mb-3 text-sm font-medium text-black-300"
+        class="flex gap-2 items-center mb-3 text-sm font-medium text-black-700 dark:text-black-300"
       >
         Gaps
         <span
@@ -438,7 +440,9 @@
 
   <!-- Metrics Section -->
   <div class="p-4 mb-6 rounded-md border bg-black-800/50 border-white/5">
-    <div class="mb-3 text-sm font-medium text-black-300">Metrics</div>
+    <div class="mb-3 text-sm font-medium text-black-700 dark:text-black-300">
+      Metrics
+    </div>
     <div class="grid grid-cols-2 gap-4">
       <!-- Left Column -->
       <div>
@@ -555,8 +559,8 @@
         <div class="space-y-1">
           {#each Array.from(project.velocityByTeam.entries()) as [team, velocity]}
             <div class="flex justify-between items-center text-xs">
-              <span class="text-black-400">{team}</span>
-              <span class="text-black-300"
+              <span class="text-black-600 dark:text-black-400">{team}</span>
+              <span class="text-black-700 dark:text-black-300"
                 >{formatVelocity(velocity)} issues/week</span
               >
             </div>
@@ -876,7 +880,7 @@
                       />
                     </td>
                     <td
-                      class="px-2 py-1.5 text-right text-black-300 w-[70px] min-w-[70px]"
+                      class="px-2 py-1.5 text-right text-black-700 dark:text-black-300 w-[70px] min-w-[70px]"
                     >
                       <div class="flex gap-1.5 justify-end items-center">
                         {#if parent.estimate !== null && parent.estimate !== undefined}
@@ -907,17 +911,18 @@
                         <span
                           class={!hideWarnings && hasOldComment
                             ? "text-warning-400"
-                            : "text-black-300"}>{commentRecency}</span
+                            : "text-black-700 dark:text-black-300"}
+                          >{commentRecency}</span
                         >
                       </div>
                     </td>
                     <td
-                      class="px-2 py-1.5 text-right text-black-300 w-[80px] min-w-[80px]"
+                      class="px-2 py-1.5 text-right text-black-700 dark:text-black-300 w-[80px] min-w-[80px]"
                     >
                       {formatCommentCount(parent.comment_count)}
                     </td>
                     <td
-                      class="px-2 py-1.5 text-right text-black-300 w-[70px] min-w-[70px]"
+                      class="px-2 py-1.5 text-right text-black-700 dark:text-black-300 w-[70px] min-w-[70px]"
                     >
                       <div class="flex gap-1 justify-end items-center">
                         {#if hasWIPAgeViolation(parent)}
@@ -1037,7 +1042,7 @@
                         />
                       </td>
                       <td
-                        class="px-2 py-1.5 text-right text-black-300 w-[70px] min-w-[70px]"
+                        class="px-2 py-1.5 text-right text-black-700 dark:text-black-300 w-[70px] min-w-[70px]"
                       >
                         <div class="flex gap-1.5 justify-end items-center">
                           {#if subissue.estimate !== null && subissue.estimate !== undefined}
@@ -1071,17 +1076,18 @@
                           <span
                             class={!hideWarnings && subHasOldComment
                               ? "text-warning-400"
-                              : "text-black-300"}>{subCommentRecency}</span
+                              : "text-black-700 dark:text-black-300"}
+                            >{subCommentRecency}</span
                           >
                         </div>
                       </td>
                       <td
-                        class="px-2 py-1.5 text-right text-black-300 w-[80px] min-w-[80px]"
+                        class="px-2 py-1.5 text-right text-black-700 dark:text-black-300 w-[80px] min-w-[80px]"
                       >
                         {formatCommentCount(subissue.comment_count)}
                       </td>
                       <td
-                        class="px-2 py-1.5 text-right text-black-300 w-[70px] min-w-[70px]"
+                        class="px-2 py-1.5 text-right text-black-700 dark:text-black-300 w-[70px] min-w-[70px]"
                       >
                         <div class="flex gap-1 justify-end items-center">
                           {#if hasWIPAgeViolation(subissue)}
@@ -1191,7 +1197,7 @@
                       />
                     </td>
                     <td
-                      class="px-2 py-1.5 text-right text-black-300 w-[70px] min-w-[70px]"
+                      class="px-2 py-1.5 text-right text-black-700 dark:text-black-300 w-[70px] min-w-[70px]"
                     >
                       <div class="flex gap-1.5 justify-end items-center">
                         {#if issue.estimate !== null && issue.estimate !== undefined}
@@ -1222,17 +1228,18 @@
                         <span
                           class={!hideWarnings && hasOldComment
                             ? "text-warning-400"
-                            : "text-black-300"}>{commentRecency}</span
+                            : "text-black-700 dark:text-black-300"}
+                          >{commentRecency}</span
                         >
                       </div>
                     </td>
                     <td
-                      class="px-2 py-1.5 text-right text-black-300 w-[80px] min-w-[80px]"
+                      class="px-2 py-1.5 text-right text-black-700 dark:text-black-300 w-[80px] min-w-[80px]"
                     >
                       {formatCommentCount(issue.comment_count)}
                     </td>
                     <td
-                      class="px-2 py-1.5 text-right text-black-300 w-[70px] min-w-[70px]"
+                      class="px-2 py-1.5 text-right text-black-700 dark:text-black-300 w-[70px] min-w-[70px]"
                     >
                       <div class="flex gap-1 justify-end items-center">
                         {#if hasWIPAgeViolation(issue)}

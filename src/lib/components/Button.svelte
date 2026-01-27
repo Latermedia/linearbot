@@ -15,11 +15,11 @@
         destructive:
           "bg-danger-600/80 text-white hover:bg-danger-600 rounded focus:outline-none focus:ring-1 focus:ring-danger-500/50",
         outline:
-          "bg-transparent border border-black-300 dark:border-white/10 text-black-700 dark:text-black-300 hover:bg-black-100 dark:hover:bg-white/10 active:bg-black-200 dark:active:bg-white/15 hover:text-black-900 dark:hover:text-white rounded focus:outline-none focus:ring-1 focus:ring-brand-500/50 focus:border-brand-500",
+          "bg-transparent border border-black-300 dark:border-white/10 text-black-700 dark:text-black-300 hover:bg-ambient-700 dark:hover:bg-white/10 active:bg-ambient-800 dark:active:bg-white/15 hover:text-black-900 dark:hover:text-white rounded focus:outline-none focus:ring-1 focus:ring-brand-500/50 focus:border-brand-500",
         secondary:
-          "bg-black-100 dark:bg-white/5 text-black-700 dark:text-black-300 hover:bg-black-200 dark:hover:bg-white/10 active:bg-black-300 dark:active:bg-white/15 hover:text-black-900 dark:hover:text-white rounded focus:outline-none focus:ring-1 focus:ring-brand-500/50",
+          "bg-ambient-700 dark:bg-white/5 text-black-700 dark:text-black-300 hover:bg-ambient-800 dark:hover:bg-white/10 active:bg-ambient-900 dark:active:bg-white/15 hover:text-black-900 dark:hover:text-white rounded focus:outline-none focus:ring-1 focus:ring-brand-500/50",
         ghost:
-          "text-black-600 dark:text-black-400 hover:bg-black-100 dark:hover:bg-white/5 active:bg-black-200 dark:active:bg-white/10 hover:text-black-900 dark:hover:text-white rounded focus:outline-none focus:ring-1 focus:ring-brand-500/50",
+          "text-black-600 dark:text-black-400 hover:bg-ambient-700 dark:hover:bg-white/5 active:bg-ambient-800 dark:active:bg-white/10 hover:text-black-900 dark:hover:text-white rounded focus:outline-none focus:ring-1 focus:ring-brand-500/50",
         link: "text-brand-500 underline-offset-4 hover:text-brand-400 hover:underline focus:outline-none focus:ring-1 focus:ring-brand-500/50",
       },
       size: {

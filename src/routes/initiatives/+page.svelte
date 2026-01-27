@@ -225,7 +225,7 @@
       <p class="mb-3 text-black-700 dark:text-black-400">{error}</p>
       <p class="text-sm text-black-600 dark:text-black-500">
         Make sure the database is synced. Run: <code
-          class="px-2 py-1 font-mono text-xs rounded bg-black-100 dark:bg-black-800 text-black-700 dark:text-black-300"
+          class="px-2 py-1 font-mono text-xs rounded bg-ambient-700 dark:bg-black-800 text-black-700 dark:text-black-300"
           >bun run sync</code
         >
       </p>
