@@ -202,11 +202,18 @@
     <!-- Label with animated width -->
     <div
       class="sidebar-text overflow-hidden relative text-left"
-      style="width: {isCollapsed ? '0' : '176px'}; opacity: {isCollapsed
-        ? 0
-        : 1}; filter: blur({isCollapsed ? '8px' : '0'})"
+      style="width: {isCollapsed ? '0' : '176px'}"
     >
-      <span class="whitespace-nowrap {hasError ? 'text-danger-400' : ''}">
+      <span
+        class="sidebar-text-inner whitespace-nowrap {hasError
+          ? 'text-danger-400'
+          : ''}"
+        style="opacity: {isCollapsed ? 0 : 1}; filter: blur({isCollapsed
+          ? '8px'
+          : '0'}); transform: scale({isCollapsed
+          ? 0.85
+          : 1}) translateX({isCollapsed ? '-8px' : '0'})"
+      >
         {hasError
           ? hasPartialSync
             ? "Partial sync"
@@ -240,12 +247,19 @@
 {/if}
 
 <style>
-  /* Sidebar text blur poof transition */
+  /* Sidebar text container - handles width collapse */
   .sidebar-text {
+    transition: width 250ms cubic-bezier(0.25, 1, 0.5, 1);
+  }
+
+  /* Sidebar text inner - handles blur poof with springy easing */
+  .sidebar-text-inner {
+    display: inline-block;
+    transform-origin: left center;
     transition:
-      width 250ms cubic-bezier(0.25, 1, 0.5, 1),
-      opacity 250ms cubic-bezier(0.25, 1, 0.5, 1),
-      filter 250ms cubic-bezier(0.25, 1, 0.5, 1);
+      opacity 200ms cubic-bezier(0.25, 1, 0.5, 1),
+      filter 250ms cubic-bezier(0.34, 1.56, 0.64, 1),
+      transform 280ms cubic-bezier(0.34, 1.56, 0.64, 1);
   }
 
   @keyframes sync-pulse {

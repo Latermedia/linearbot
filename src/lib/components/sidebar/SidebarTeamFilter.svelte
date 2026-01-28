@@ -163,11 +163,17 @@
       </div>
       <div
         class="sidebar-text overflow-hidden text-left"
-        style="width: {isCollapsed ? '0' : '176px'}; opacity: {isCollapsed
-          ? 0
-          : 1}; filter: blur({isCollapsed ? '8px' : '0'})"
+        style="width: {isCollapsed ? '0' : '176px'}"
       >
-        <span class="block truncate">{filterDisplayText}</span>
+        <span
+          class="sidebar-text-inner block truncate"
+          style="opacity: {isCollapsed ? 0 : 1}; filter: blur({isCollapsed
+            ? '8px'
+            : '0'}); transform: scale({isCollapsed
+            ? 0.85
+            : 1}) translateX({isCollapsed ? '-8px' : '0'})"
+          >{filterDisplayText}</span
+        >
       </div>
     </button>
   </div>
@@ -271,12 +277,19 @@
 {/snippet}
 
 <style>
-  /* Sidebar text blur poof transition */
+  /* Sidebar text container - handles width collapse */
   .sidebar-text {
+    transition: width 250ms cubic-bezier(0.25, 1, 0.5, 1);
+  }
+
+  /* Sidebar text inner - handles blur poof with springy easing */
+  .sidebar-text-inner {
+    display: inline-block;
+    transform-origin: left center;
     transition:
-      width 250ms cubic-bezier(0.25, 1, 0.5, 1),
-      opacity 250ms cubic-bezier(0.25, 1, 0.5, 1),
-      filter 250ms cubic-bezier(0.25, 1, 0.5, 1);
+      opacity 200ms cubic-bezier(0.25, 1, 0.5, 1),
+      filter 250ms cubic-bezier(0.34, 1.56, 0.64, 1),
+      transform 280ms cubic-bezier(0.34, 1.56, 0.64, 1);
   }
 
   /* Blur poof animation for filter dot */

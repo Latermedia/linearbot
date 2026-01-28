@@ -136,13 +136,15 @@
       </div>
       <div
         class="sidebar-text overflow-hidden text-left"
-        style="width: {isCollapsed ? '0' : '176px'}; opacity: {isCollapsed
-          ? 0
-          : 1}; filter: blur({isCollapsed ? '8px' : '0'})"
+        style="width: {isCollapsed ? '0' : '176px'}"
       >
         <span
-          class="logo-text text-black-900 dark:text-white font-semibold text-sm tracking-tight whitespace-nowrap"
-          >Laterbot</span
+          class="sidebar-text-inner logo-text text-black-900 dark:text-white font-semibold text-sm tracking-tight whitespace-nowrap"
+          style="opacity: {isCollapsed ? 0 : 1}; filter: blur({isCollapsed
+            ? '8px'
+            : '0'}); transform: scale({isCollapsed
+            ? 0.85
+            : 1}) translateX({isCollapsed ? '-8px' : '0'})">Laterbot</span
         >
       </div>
     </div>
@@ -218,23 +220,35 @@
       </div>
       <div
         class="sidebar-text overflow-hidden text-left"
-        style="width: {isCollapsed ? '0' : '176px'}; opacity: {isCollapsed
-          ? 0
-          : 1}; filter: blur({isCollapsed ? '8px' : '0'})"
+        style="width: {isCollapsed ? '0' : '176px'}"
       >
-        <span class="whitespace-nowrap">Collapse</span>
+        <span
+          class="sidebar-text-inner whitespace-nowrap"
+          style="opacity: {isCollapsed ? 0 : 1}; filter: blur({isCollapsed
+            ? '8px'
+            : '0'}); transform: scale({isCollapsed
+            ? 0.85
+            : 1}) translateX({isCollapsed ? '-8px' : '0'})">Collapse</span
+        >
       </div>
     </button>
   </div>
 </aside>
 
 <style>
-  /* Sidebar text blur poof transition */
+  /* Sidebar text container - handles width collapse */
   .sidebar-text {
+    transition: width 250ms cubic-bezier(0.25, 1, 0.5, 1);
+  }
+
+  /* Sidebar text inner - handles blur poof with springy easing */
+  .sidebar-text-inner {
+    display: inline-block;
+    transform-origin: left center;
     transition:
-      width 250ms cubic-bezier(0.25, 1, 0.5, 1),
-      opacity 250ms cubic-bezier(0.25, 1, 0.5, 1),
-      filter 250ms cubic-bezier(0.25, 1, 0.5, 1);
+      opacity 200ms cubic-bezier(0.25, 1, 0.5, 1),
+      filter 250ms cubic-bezier(0.34, 1.56, 0.64, 1),
+      transform 280ms cubic-bezier(0.34, 1.56, 0.64, 1);
   }
 
   .logo-text {
@@ -245,16 +259,21 @@
     from {
       opacity: 0;
       filter: blur(10px);
+      transform: scale(0.85) translateX(-8px);
     }
     to {
       opacity: 1;
       filter: blur(0px);
+      transform: scale(1) translateX(0);
     }
   }
 
   @media (prefers-reduced-motion: reduce) {
     .logo-text {
       animation: none;
+    }
+    .sidebar-text-inner {
+      transition: none;
     }
   }
 </style>
