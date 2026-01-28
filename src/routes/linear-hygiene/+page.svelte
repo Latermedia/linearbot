@@ -417,7 +417,7 @@
     >
       Linear Hygiene
     </h1>
-    <TeamFilterNotice level={activeTeamFilter ? "team" : "domain"} />
+    <TeamFilterNotice showLevelNotice={false} />
   </div>
 
   {#if loading}

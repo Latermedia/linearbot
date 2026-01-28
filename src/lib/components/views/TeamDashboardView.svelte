@@ -10,6 +10,7 @@
   import TrendsSection from "$lib/components/metrics/TrendsSection.svelte";
   import { teamFilterStore } from "$lib/stores/team-filter";
   import { pageLoading } from "$lib/stores/page-loading";
+  import TeamFilterNotice from "$lib/components/TeamFilterNotice.svelte";
   import type { MetricsSnapshotV1 } from "../../../types/metrics-snapshot";
   import type { LatestMetricsResponse } from "../../../routes/api/metrics/latest/+server";
   import type {
@@ -67,6 +68,9 @@
 
   // Organization table state - default to collapsed (domains only)
   let showTeams = $state(false);
+
+  // Filter state
+  const filter = $derived($teamFilterStore);
 
   // Pillar click handler - navigate to dedicated metric pages
   function handlePillarClick(
@@ -158,15 +162,37 @@
     }
   }
 
-  // Fetch trend data for all-time view
-  async function fetchTrendData() {
+  // Fetch trend data for all-time view (based on current filter)
+  async function fetchTrendData(
+    levelOverride?: string,
+    levelIdOverride?: string | null
+  ) {
     if (!browser) return;
 
     trendLoading = true;
 
     try {
-      // Fetch all available trend data (high limit to get all-time data)
-      const response = await fetch("/api/metrics/trends?level=org&limit=10000");
+      // Determine level and levelId based on filter or overrides
+      let level = levelOverride || "org";
+      let levelId = levelIdOverride !== undefined ? levelIdOverride : null;
+
+      if (!levelOverride) {
+        if (filter.teamKey) {
+          level = "team";
+          levelId = filter.teamKey;
+        } else if (filter.domain) {
+          level = "domain";
+          levelId = filter.domain;
+        }
+      }
+
+      // Build URL with appropriate parameters
+      let url = `/api/metrics/trends?level=${level}&limit=10000`;
+      if (levelId) {
+        url += `&levelId=${encodeURIComponent(levelId)}`;
+      }
+
+      const response = await fetch(url);
       const data = (await response.json()) as TrendsResponse;
 
       if (data.success && data.dataPoints) {
@@ -189,6 +215,29 @@
     fetchMetrics();
     fetchTrendData();
     fetchOrganization();
+  });
+
+  // Refetch trend data when filter changes
+  let previousFilter = $state<{
+    domain: string | null;
+    teamKey: string | null;
+  }>({ domain: null, teamKey: null });
+  $effect(() => {
+    // Check if filter actually changed (not just initial render)
+    if (
+      filter.domain !== previousFilter.domain ||
+      filter.teamKey !== previousFilter.teamKey
+    ) {
+      previousFilter = { ...filter };
+      // Don't refetch on initial mount (handled by onMount)
+      if (
+        previousFilter.domain !== null ||
+        previousFilter.teamKey !== null ||
+        (filter.domain === null && filter.teamKey === null && !trendLoading)
+      ) {
+        fetchTrendData();
+      }
+    }
   });
 
   // Track when all loading completes
@@ -223,6 +272,39 @@
     return map;
   });
 
+  // Get the active snapshot based on filter (team > domain > org)
+  const activeSnapshot = $derived.by((): MetricsSnapshotV1 | null => {
+    if (filter.teamKey) {
+      return teamSnapshotsMap.get(filter.teamKey) || null;
+    }
+    if (filter.domain) {
+      return domainSnapshotsMap.get(filter.domain) || null;
+    }
+    return orgSnapshot;
+  });
+
+  // Get the page title based on filter
+  const pageTitle = $derived.by((): string => {
+    if (filter.teamKey) {
+      // Find team name
+      for (const domain of organizationDomains) {
+        const team = domain.teams.find((t) => t.teamKey === filter.teamKey);
+        if (team) {
+          return team.teamName
+            ? `${team.teamName} (${filter.teamKey})`
+            : filter.teamKey;
+        }
+      }
+      return teamNames[filter.teamKey]
+        ? `${teamNames[filter.teamKey]} (${filter.teamKey})`
+        : filter.teamKey;
+    }
+    if (filter.domain) {
+      return filter.domain;
+    }
+    return "Overview";
+  });
+
   // Get team display name
   function getTeamDisplayName(
     teamKey: string,
@@ -243,20 +325,44 @@
   );
 
   // Combined domains list - uses organizationDomains if available, otherwise builds from domainSnapshotsMap
+  // Filtered based on teamFilterStore
   const displayDomains = $derived.by((): Domain[] => {
+    let domains: Domain[] = [];
+
     // If we have organization domains from the API, use those
     if (organizationDomains.length > 0) {
-      return organizationDomains;
+      domains = organizationDomains;
+    } else {
+      // Otherwise, build domains from the snapshot data
+      for (const [domainName] of domainSnapshotsMap) {
+        domains.push({
+          name: domainName,
+          teams: [], // No team info available from snapshots alone
+        });
+      }
     }
 
-    // Otherwise, build domains from the snapshot data
-    const domains: Domain[] = [];
-    for (const [domainName] of domainSnapshotsMap) {
-      domains.push({
-        name: domainName,
-        teams: [], // No team info available from snapshots alone
-      });
+    // Apply filter
+    if (filter.teamKey) {
+      // Filter to just the domain containing this team, with only that team
+      return domains
+        .map((domain) => {
+          const matchingTeam = domain.teams.find(
+            (t) => t.teamKey === filter.teamKey
+          );
+          if (matchingTeam) {
+            return { ...domain, teams: [matchingTeam] };
+          }
+          return null;
+        })
+        .filter((d): d is Domain => d !== null);
     }
+
+    if (filter.domain) {
+      // Filter to just the selected domain
+      return domains.filter((d) => d.name === filter.domain);
+    }
+
     return domains;
   });
 
@@ -324,16 +430,19 @@
 <div class="space-y-6">
   <!-- Header with rotating principles -->
   <MetricsHeader
-    title="Overview"
+    title={pageTitle}
     {showTrends}
     onToggleTrends={() => (showTrends = !showTrends)}
   />
 
-  <!-- Org-Level Health Metrics + Trends (grouped to avoid space-y-6 affecting animation) -->
+  <!-- Filter indicator -->
+  <TeamFilterNotice showLevelNotice={false} />
+
+  <!-- Health Metrics + Trends (filtered by team/domain selection) -->
   <div>
     <PillarCardGrid
-      snapshot={orgSnapshot}
-      loading={metricsLoading && !orgSnapshot}
+      snapshot={activeSnapshot}
+      loading={metricsLoading && !activeSnapshot}
       error={metricsError}
       productivityUnderConstruction={false}
       onPillarClick={handlePillarClick}
@@ -363,27 +472,35 @@
   <div class="mt-8 border-t border-black-200 dark:border-white/10 pt-6">
     <div class="flex items-center justify-between mb-4">
       <h2 class="text-lg font-semibold text-black-900 dark:text-white">
-        Organization
+        {#if filter.teamKey}
+          Team Details
+        {:else if filter.domain}
+          {filter.domain} Domain
+        {:else}
+          Organization
+        {/if}
       </h2>
-      <div class="flex gap-2 items-center">
-        <span class="text-xs text-black-600 dark:text-black-400">Teams</span>
-        <button
-          type="button"
-          role="switch"
-          aria-checked={showTeams}
-          onclick={() => (showTeams = !showTeams)}
-          class="relative inline-flex h-5 w-9 shrink-0 cursor-pointer items-center rounded-full transition-colors duration-200 ease-in-out focus:outline-none focus-visible:ring-2 focus-visible:ring-white/20 {showTeams
-            ? 'bg-brand-600'
-            : 'bg-black-700'}"
-        >
-          <span class="sr-only">Show teams</span>
-          <span
-            class="pointer-events-none inline-block h-4 w-4 transform rounded-full bg-white shadow ring-0 transition duration-200 ease-in-out {showTeams
-              ? 'translate-x-4'
-              : 'translate-x-0.5'}"
-          ></span>
-        </button>
-      </div>
+      {#if !filter.teamKey}
+        <div class="flex gap-2 items-center">
+          <span class="text-xs text-black-600 dark:text-black-400">Teams</span>
+          <button
+            type="button"
+            role="switch"
+            aria-checked={showTeams}
+            onclick={() => (showTeams = !showTeams)}
+            class="relative inline-flex h-5 w-9 shrink-0 cursor-pointer items-center rounded-full transition-colors duration-200 ease-in-out focus:outline-none focus-visible:ring-2 focus-visible:ring-white/20 {showTeams
+              ? 'bg-brand-600'
+              : 'bg-black-700'}"
+          >
+            <span class="sr-only">Show teams</span>
+            <span
+              class="pointer-events-none inline-block h-4 w-4 transform rounded-full bg-white shadow ring-0 transition duration-200 ease-in-out {showTeams
+                ? 'translate-x-4'
+                : 'translate-x-0.5'}"
+            ></span>
+          </button>
+        </div>
+      {/if}
     </div>
   </div>
 
@@ -570,7 +687,7 @@
             </tbody>
 
             <!-- Team rows tbody -->
-            {#if showTeams && domain.teams.length > 0}
+            {#if (showTeams || filter.teamKey) && domain.teams.length > 0}
               <tbody class="divide-y divide-white/5">
                 {#each domain.teams as team (team.teamKey)}
                   {@const teamSnapshot = teamSnapshotsMap.get(team.teamKey)}
@@ -690,8 +807,8 @@
             {/if}
           {/each}
 
-          <!-- Standalone teams (no domain grouping) - only shown when expanded -->
-          {#if showTeams && standaloneTeams.length > 0}
+          <!-- Standalone teams (no domain grouping) - only shown when expanded or filtered -->
+          {#if (showTeams || filter.teamKey) && standaloneTeams.length > 0}
             <tbody class="divide-y divide-white/5">
               {#each standaloneTeams as team (team.teamKey)}
                 <tr

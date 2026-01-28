@@ -6,9 +6,12 @@
   interface Props {
     /** The granularity level this page supports (e.g., "domain", "organization") */
     level?: string;
+    /** Whether to show the level notice (e.g., "this view shows domain-level data only").
+     *  Set to false for pages that fully filter to the selected level. */
+    showLevelNotice?: boolean;
   }
 
-  let { level = "domain" }: Props = $props();
+  let { level = "domain", showLevelNotice = true }: Props = $props();
 
   const teams = $derived($teamsStore);
   const filter = $derived($teamFilterStore);
@@ -25,6 +28,10 @@
     }
     return null;
   });
+
+  function handleClearFilter() {
+    teamFilterStore.clear();
+  }
 </script>
 
 {#if isFilterActive && filterDisplayName}
@@ -35,8 +42,17 @@
     <span>
       Filtering by <span class="font-medium text-blue-800 dark:text-blue-300"
         >{filterDisplayName}</span
-      >
-      — this view shows {level}-level data only
+      >{#if showLevelNotice}
+        <span class="ml-1">— this view shows {level}-level data only</span>
+      {/if}
     </span>
+    <span class="text-blue-500/50">·</span>
+    <button
+      type="button"
+      onclick={handleClearFilter}
+      class="underline hover:text-blue-800 dark:hover:text-blue-300 transition-colors cursor-pointer"
+    >
+      clear filter
+    </button>
   </div>
 {/if}

@@ -374,7 +374,7 @@
     <h1 class="text-2xl font-semibold text-black-900 dark:text-white">
       WIP Health
     </h1>
-    <TeamFilterNotice level={activeTeamFilter ? "team" : "domain"} />
+    <TeamFilterNotice showLevelNotice={false} />
   </div>
 
   {#if loading}
