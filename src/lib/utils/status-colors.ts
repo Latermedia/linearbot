@@ -189,3 +189,84 @@ export function getGapsCountStatus(count: number): PillarStatus {
   if (count <= 6) return "earlyTraction";
   return "lowTraction";
 }
+
+/**
+ * Get pillar status for bug age in days
+ * Lower is better: fresher bugs are easier to fix with context still fresh
+ *
+ * Thresholds:
+ * - 0-7 days: Peak Flow (fresh, actively being addressed)
+ * - 8-14 days: Strong Rhythm (still reasonable, within 2 weeks)
+ * - 15-30 days: Steady Progress (getting stale, needs attention)
+ * - 31-60 days: Early Traction (concerning, 1-2 months old)
+ * - 61+ days: Low Traction (critical, context is fading)
+ */
+export function getBugAgeStatus(ageDays: number): PillarStatus {
+  if (ageDays <= 7) return "peakFlow";
+  if (ageDays <= 14) return "strongRhythm";
+  if (ageDays <= 30) return "steadyProgress";
+  if (ageDays <= 60) return "earlyTraction";
+  return "lowTraction";
+}
+
+/**
+ * Get text color class for bug age
+ * Uses the status color mapping for consistency
+ */
+export function getBugAgeColorClass(ageDays: number): string {
+  const status = getBugAgeStatus(ageDays);
+  return getStatusTextColor(status);
+}
+
+/**
+ * Calculate bug age in days from a created_at timestamp
+ */
+export function calculateBugAgeDays(createdAt: string | Date): number {
+  const created =
+    typeof createdAt === "string" ? new Date(createdAt) : createdAt;
+  const now = new Date();
+  return Math.floor(
+    (now.getTime() - created.getTime()) / (1000 * 60 * 60 * 24)
+  );
+}
+
+/**
+ * Format bug age for display
+ */
+export function formatBugAge(ageDays: number): string {
+  if (ageDays === 0) return "< 1d";
+  if (ageDays === 1) return "1d";
+  return `${ageDays}d`;
+}
+
+/**
+ * Get pillar status for WIP age in days
+ * Lower is better: issues shouldn't stay in progress too long
+ *
+ * Thresholds based on 14-day trigger being worst:
+ * - 0-3 days: Peak Flow (fresh, just started)
+ * - 4-7 days: Strong Rhythm (healthy progress, within a week)
+ * - 8-10 days: Steady Progress (getting long, over a week)
+ * - 11-13 days: Early Traction (concerning, approaching trigger)
+ * - 14+ days: Low Traction (critical, at or past 14-day trigger)
+ */
+export function getWIPAgeStatus(
+  ageDays: number | null
+): PillarStatus | "unknown" {
+  if (ageDays === null) return "unknown";
+  if (ageDays <= 3) return "peakFlow";
+  if (ageDays <= 7) return "strongRhythm";
+  if (ageDays <= 10) return "steadyProgress";
+  if (ageDays <= 13) return "earlyTraction";
+  return "lowTraction";
+}
+
+/**
+ * Get text color class for WIP age
+ * Uses the status color mapping for consistency
+ */
+export function getWIPAgeColorClass(ageDays: number | null): string {
+  const status = getWIPAgeStatus(ageDays);
+  if (status === "unknown") return "text-black-600 dark:text-black-500";
+  return getStatusTextColor(status);
+}

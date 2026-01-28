@@ -53,7 +53,7 @@ export function formatRelativeDate(dateStr: string | null): string {
  * Returns "Never" if no comment, or relative time like "2h ago", "3d ago"
  */
 export function formatCommentRecency(lastCommentAt: string | null): string {
-  if (!lastCommentAt) return "Never";
+  if (!lastCommentAt) return "—";
   const lastComment = new Date(lastCommentAt);
   const now = new Date();
   const diffMs = now.getTime() - lastComment.getTime();

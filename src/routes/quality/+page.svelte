@@ -537,6 +537,7 @@
             showAssignee={true}
             showTeam={true}
             showIdentifier={true}
+            showBugAge={true}
             groupByState={false}
             noMaxHeight={true}
           />

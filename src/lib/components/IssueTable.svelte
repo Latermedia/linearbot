@@ -19,6 +19,12 @@
     hasNoRecentComment,
     hasMissingEstimate,
   } from "../../utils/issue-validators";
+  import {
+    calculateBugAgeDays,
+    formatBugAge,
+    getBugAgeColorClass,
+    getWIPAgeColorClass,
+  } from "$lib/utils/status-colors";
   import UserProfile from "./UserProfile.svelte";
   import PriorityDisplay from "./PriorityDisplay.svelte";
   import StatusDisplay from "./StatusDisplay.svelte";
@@ -33,6 +39,7 @@
     last_comment_at: string | null;
     comment_count: number | null;
     started_at: string | null;
+    created_at: string;
     url: string;
     team_name: string;
     project_name: string | null;
@@ -62,6 +69,7 @@
     showTeam = true,
     showIdentifier = false,
     showEstimateAccuracy = false,
+    showBugAge = false,
     daysPerStoryPoint = null,
     groupByState = false,
     hideWarnings = false,
@@ -72,6 +80,7 @@
     showTeam?: boolean;
     showIdentifier?: boolean;
     showEstimateAccuracy?: boolean;
+    showBugAge?: boolean;
     daysPerStoryPoint?: number | null;
     groupByState?: boolean;
     hideWarnings?: boolean;
@@ -127,7 +136,7 @@
   }
 
   function _getCommentRecency(lastCommentAt: string | null): string {
-    if (!lastCommentAt) return "Never";
+    if (!lastCommentAt) return "—";
     const date = new Date(lastCommentAt);
     const now = new Date();
     const diffMs = now.getTime() - date.getTime();
@@ -219,6 +228,7 @@
     (showAssignee ? 1 : 0) +
     (showTeam ? 1 : 0) +
     (showEstimateAccuracy ? 1 : 0) +
+    (showBugAge ? 1 : 0) +
     6}
   <div class="space-y-2">
     <!-- Group by selector (hidden when groupByState is true) -->
@@ -252,15 +262,25 @@
               class="px-2 py-1.5 font-medium text-left text-black-600 dark:text-black-400 w-[310px] min-w-[310px]"
               >Title</th
             >
+            <th
+              class="px-2 py-1.5 font-medium text-left text-black-600 dark:text-black-400 w-[120px] min-w-[120px]"
+              >Status</th
+            >
             {#if showAssignee}
               <th
                 class="px-2 py-1.5 font-medium text-left text-black-600 dark:text-black-400 w-[120px] min-w-[120px]"
                 >Assignee</th
               >
             {/if}
+            {#if showBugAge}
+              <th
+                class="px-2 py-1.5 font-medium text-right text-black-600 dark:text-black-400 w-[70px] min-w-[70px]"
+                title="Days since bug was created">Bug Age</th
+              >
+            {/if}
             <th
-              class="px-2 py-1.5 font-medium text-left text-black-600 dark:text-black-400 w-[120px] min-w-[120px]"
-              >Status</th
+              class="px-2 py-1.5 font-medium text-right text-black-600 dark:text-black-400 w-[80px] min-w-[80px]"
+              >Priority</th
             >
             <th
               class="px-2 py-1.5 font-medium text-right text-black-600 dark:text-black-400 w-[70px] min-w-[70px]"
@@ -268,19 +288,15 @@
             >
             <th
               class="px-2 py-1.5 font-medium text-right text-black-600 dark:text-black-400 w-[80px] min-w-[80px]"
-              >Priority</th
+              title="Total number of comments">Comments</th
             >
             <th
               class="px-2 py-1.5 font-medium text-right text-black-600 dark:text-black-400 w-[110px] min-w-[110px]"
               title="Time since last comment">Last Comment</th
             >
             <th
-              class="px-2 py-1.5 font-medium text-right text-black-600 dark:text-black-400 w-[80px] min-w-[80px]"
-              title="Total number of comments">Comments</th
-            >
-            <th
               class="px-2 py-1.5 font-medium text-right text-black-600 dark:text-black-400 w-[70px] min-w-[70px]"
-              >WIP Age</th
+              title="Days in progress">WIP Age</th
             >
             {#if showEstimateAccuracy}
               <th
@@ -357,6 +373,7 @@
                     }
                   }}
                 >
+                  <!-- Title -->
                   <td
                     class="px-2 py-1.5 text-black-800 dark:text-black-200 w-[310px] min-w-[310px] max-w-[310px]"
                   >
@@ -379,23 +396,7 @@
                       {/if}
                     </div>
                   </td>
-                  {#if showAssignee}
-                    <td
-                      class="px-2 py-1.5 w-[120px] min-w-[120px] max-w-[120px]"
-                    >
-                      {#if parent.assignee_name}
-                        <UserProfile
-                          name={parent.assignee_name}
-                          avatarUrl={parent.assignee_avatar_url}
-                          size="xs"
-                        />
-                      {:else}
-                        <span class="text-xs text-black-600 dark:text-black-500"
-                          >Unassigned</span
-                        >
-                      {/if}
-                    </td>
-                  {/if}
+                  <!-- Status -->
                   <td class="px-2 py-1.5">
                     <StatusDisplay
                       stateName={parent.state_name || ""}
@@ -412,6 +413,42 @@
                         : []}
                     />
                   </td>
+                  <!-- Assignee -->
+                  {#if showAssignee}
+                    <td
+                      class="px-2 py-1.5 w-[120px] min-w-[120px] max-w-[120px]"
+                    >
+                      {#if parent.assignee_name}
+                        <UserProfile
+                          name={parent.assignee_name}
+                          avatarUrl={parent.assignee_avatar_url}
+                          size="xs"
+                        />
+                      {:else}
+                        <span class="text-xs text-black-600 dark:text-black-500"
+                          >—</span
+                        >
+                      {/if}
+                    </td>
+                  {/if}
+                  <!-- Bug Age -->
+                  {#if showBugAge}
+                    {@const bugAgeDays = calculateBugAgeDays(parent.created_at)}
+                    <td
+                      class="px-2 py-1.5 text-right w-[70px] min-w-[70px] {getBugAgeColorClass(
+                        bugAgeDays
+                      )}"
+                    >
+                      {formatBugAge(bugAgeDays)}
+                    </td>
+                  {/if}
+                  <!-- Priority -->
+                  <td class="px-2 py-1.5 text-right w-[80px] min-w-[80px]">
+                    <div class="flex justify-end">
+                      <PriorityDisplay priority={parent.priority || 0} />
+                    </div>
+                  </td>
+                  <!-- Points -->
                   <td
                     class="px-2 py-1.5 text-right text-black-700 dark:text-black-300 w-[70px] min-w-[70px]"
                   >
@@ -428,11 +465,13 @@
                       {/if}
                     </div>
                   </td>
-                  <td class="px-2 py-1.5 text-right w-[80px] min-w-[80px]">
-                    <div class="flex justify-end">
-                      <PriorityDisplay priority={parent.priority || 0} />
-                    </div>
+                  <!-- Comments -->
+                  <td
+                    class="px-2 py-1.5 text-right text-black-700 dark:text-black-300 w-[80px] min-w-[80px]"
+                  >
+                    {formatCommentCount(parent.comment_count)}
                   </td>
+                  <!-- Last Comment -->
                   <td class="px-2 py-1.5 text-right w-[110px] min-w-[110px]">
                     <div class="flex gap-1.5 justify-end items-center">
                       {#if !hideWarnings && hasOldComment}
@@ -449,13 +488,11 @@
                       >
                     </div>
                   </td>
+                  <!-- WIP Age -->
                   <td
-                    class="px-2 py-1.5 text-right text-black-700 dark:text-black-300 w-[80px] min-w-[80px]"
-                  >
-                    {formatCommentCount(parent.comment_count)}
-                  </td>
-                  <td
-                    class="px-2 py-1.5 text-right text-black-700 dark:text-black-300 w-[70px] min-w-[70px]"
+                    class="px-2 py-1.5 text-right w-[70px] min-w-[70px] {getWIPAgeColorClass(
+                      wipAge
+                    )}"
                   >
                     {formatWIPAge(wipAge)}
                   </td>
@@ -528,6 +565,7 @@
                       }
                     }}
                   >
+                    <!-- Title -->
                     <td
                       class="px-2 py-1.5 text-black-800 dark:text-black-200 w-[310px] min-w-[310px] max-w-[310px]"
                     >
@@ -545,6 +583,16 @@
                         {subissue.title}
                       </div>
                     </td>
+                    <!-- Status -->
+                    <td class="px-2 py-1.5">
+                      <StatusDisplay
+                        stateName={subissue.state_name || ""}
+                        stateType={subissue.state_type || ""}
+                        showWarnings={!hideWarnings}
+                        warnings={[]}
+                      />
+                    </td>
+                    <!-- Assignee -->
                     {#if showAssignee}
                       <td
                         class="px-2 py-1.5 w-[120px] min-w-[120px] max-w-[120px]"
@@ -558,19 +606,31 @@
                         {:else}
                           <span
                             class="text-xs text-black-600 dark:text-black-500"
-                            >Unassigned</span
+                            >—</span
                           >
                         {/if}
                       </td>
                     {/if}
-                    <td class="px-2 py-1.5">
-                      <StatusDisplay
-                        stateName={subissue.state_name || ""}
-                        stateType={subissue.state_type || ""}
-                        showWarnings={!hideWarnings}
-                        warnings={[]}
-                      />
+                    <!-- Bug Age -->
+                    {#if showBugAge}
+                      {@const subBugAgeDays = calculateBugAgeDays(
+                        subissue.created_at
+                      )}
+                      <td
+                        class="px-2 py-1.5 text-right w-[70px] min-w-[70px] {getBugAgeColorClass(
+                          subBugAgeDays
+                        )}"
+                      >
+                        {formatBugAge(subBugAgeDays)}
+                      </td>
+                    {/if}
+                    <!-- Priority -->
+                    <td class="px-2 py-1.5 text-right w-[80px] min-w-[80px]">
+                      <div class="flex justify-end">
+                        <PriorityDisplay priority={subissue.priority || 0} />
+                      </div>
                     </td>
+                    <!-- Points -->
                     <td
                       class="px-2 py-1.5 text-right text-black-700 dark:text-black-300 w-[70px] min-w-[70px]"
                     >
@@ -589,11 +649,13 @@
                         {/if}
                       </div>
                     </td>
-                    <td class="px-2 py-1.5 text-right w-[80px] min-w-[80px]">
-                      <div class="flex justify-end">
-                        <PriorityDisplay priority={subissue.priority || 0} />
-                      </div>
+                    <!-- Comments -->
+                    <td
+                      class="px-2 py-1.5 text-right text-black-700 dark:text-black-300 w-[80px] min-w-[80px]"
+                    >
+                      {formatCommentCount(subissue.comment_count)}
                     </td>
+                    <!-- Last Comment -->
                     <td class="px-2 py-1.5 text-right w-[110px] min-w-[110px]">
                       <div class="flex gap-1.5 justify-end items-center">
                         {#if !hideWarnings && subHasOldComment}
@@ -610,13 +672,11 @@
                         >
                       </div>
                     </td>
+                    <!-- WIP Age -->
                     <td
-                      class="px-2 py-1.5 text-right text-black-700 dark:text-black-300 w-[80px] min-w-[80px]"
-                    >
-                      {formatCommentCount(subissue.comment_count)}
-                    </td>
-                    <td
-                      class="px-2 py-1.5 text-right text-black-700 dark:text-black-300 w-[70px] min-w-[70px]"
+                      class="px-2 py-1.5 text-right w-[70px] min-w-[70px] {getWIPAgeColorClass(
+                        subWipAge
+                      )}"
                     >
                       {formatWIPAge(subWipAge)}
                     </td>
@@ -685,6 +745,7 @@
                     }
                   }}
                 >
+                  <!-- Title -->
                   <td
                     class="px-2 py-1.5 text-black-800 dark:text-black-200 w-[310px] min-w-[310px] max-w-[310px]"
                   >
@@ -701,6 +762,16 @@
                       {issue.title}
                     </div>
                   </td>
+                  <!-- Status -->
+                  <td class="px-2 py-1.5">
+                    <StatusDisplay
+                      stateName={issue.state_name || ""}
+                      stateType={issue.state_type || ""}
+                      showWarnings={!hideWarnings}
+                      warnings={[]}
+                    />
+                  </td>
+                  <!-- Assignee -->
                   {#if showAssignee}
                     <td
                       class="px-2 py-1.5 w-[120px] min-w-[120px] max-w-[120px]"
@@ -713,19 +784,29 @@
                         />
                       {:else}
                         <span class="text-xs text-black-600 dark:text-black-500"
-                          >Unassigned</span
+                          >—</span
                         >
                       {/if}
                     </td>
                   {/if}
-                  <td class="px-2 py-1.5">
-                    <StatusDisplay
-                      stateName={issue.state_name || ""}
-                      stateType={issue.state_type || ""}
-                      showWarnings={!hideWarnings}
-                      warnings={[]}
-                    />
+                  <!-- Bug Age -->
+                  {#if showBugAge}
+                    {@const bugAgeDays = calculateBugAgeDays(issue.created_at)}
+                    <td
+                      class="px-2 py-1.5 text-right w-[70px] min-w-[70px] {getBugAgeColorClass(
+                        bugAgeDays
+                      )}"
+                    >
+                      {formatBugAge(bugAgeDays)}
+                    </td>
+                  {/if}
+                  <!-- Priority -->
+                  <td class="px-2 py-1.5 text-right w-[80px] min-w-[80px]">
+                    <div class="flex justify-end">
+                      <PriorityDisplay priority={issue.priority || 0} />
+                    </div>
                   </td>
+                  <!-- Points -->
                   <td
                     class="px-2 py-1.5 text-right text-black-700 dark:text-black-300 w-[70px] min-w-[70px]"
                   >
@@ -742,11 +823,13 @@
                       {/if}
                     </div>
                   </td>
-                  <td class="px-2 py-1.5 text-right w-[80px] min-w-[80px]">
-                    <div class="flex justify-end">
-                      <PriorityDisplay priority={issue.priority || 0} />
-                    </div>
+                  <!-- Comments -->
+                  <td
+                    class="px-2 py-1.5 text-right text-black-700 dark:text-black-300 w-[80px] min-w-[80px]"
+                  >
+                    {formatCommentCount(issue.comment_count)}
                   </td>
+                  <!-- Last Comment -->
                   <td class="px-2 py-1.5 text-right w-[110px] min-w-[110px]">
                     <div class="flex gap-1.5 justify-end items-center">
                       {#if !hideWarnings && hasOldComment}
@@ -763,13 +846,11 @@
                       >
                     </div>
                   </td>
+                  <!-- WIP Age -->
                   <td
-                    class="px-2 py-1.5 text-right text-black-700 dark:text-black-300 w-[80px] min-w-[80px]"
-                  >
-                    {formatCommentCount(issue.comment_count)}
-                  </td>
-                  <td
-                    class="px-2 py-1.5 text-right text-black-700 dark:text-black-300 w-[70px] min-w-[70px]"
+                    class="px-2 py-1.5 text-right w-[70px] min-w-[70px] {getWIPAgeColorClass(
+                      wipAge
+                    )}"
                   >
                     {formatWIPAge(wipAge)}
                   </td>
