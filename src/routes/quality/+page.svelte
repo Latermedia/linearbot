@@ -93,7 +93,7 @@
     import("katex").then((k) => {
       katex = k;
       formulaHtml = katex.default.renderToString(
-        "\\text{Score} = 0.3 \\times \\underbrace{(100 - \\text{Bugs})}_{\\text{Bug Score}} + 0.4 \\times \\underbrace{(100 - \\text{Net} \\times 10)}_{\\text{Net Score}} + 0.3 \\times \\underbrace{(100 - \\text{Age} \\times 0.5)}_{\\text{Age Score}}",
+        "\\text{Score} = 0.3 \\times \\underbrace{\\max(0, 100 - \\text{Bugs})}_{\\text{Bug Score}} + 0.4 \\times \\underbrace{\\max(0, 100 - \\text{Net} \\times 10)}_{\\text{Net Score}} + 0.3 \\times \\underbrace{\\max(0, 100 - \\text{Age} \\times 0.5)}_{\\text{Age Score}}",
         { throwOnError: false, displayMode: true }
       );
     });
