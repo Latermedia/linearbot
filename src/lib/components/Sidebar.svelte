@@ -125,7 +125,7 @@
 </script>
 
 <aside
-  class="flex flex-col h-full bg-ambient-900 dark:bg-[#0d0d0d] border-r border-black-200 dark:border-white/10 shrink-0"
+  class="flex flex-col h-full bg-ambient-900 dark:bg-[#0d0d0d] border-r border-black-200 dark:border-white/10 shrink-0 overflow-x-hidden"
   style="width: {$sidebarWidth}px"
 >
   <!-- Logo -->
@@ -156,7 +156,7 @@
   <!-- Navigation -->
   <nav
     bind:this={navRef}
-    class="relative flex-1 py-4 space-y-1 overflow-y-auto"
+    class="relative flex-1 py-4 space-y-1 overflow-y-auto overflow-x-clip"
   >
     <!-- Sliding indicator -->
     <div
