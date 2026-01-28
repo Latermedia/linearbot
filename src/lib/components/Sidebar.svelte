@@ -16,7 +16,7 @@
     Users,
     Presentation,
     Settings,
-    ChevronsLeft,
+    ChevronLeft,
   } from "lucide-svelte";
   import SidebarItem from "./sidebar/SidebarItem.svelte";
   import SidebarTeamFilter from "./sidebar/SidebarTeamFilter.svelte";
@@ -208,10 +208,12 @@
     >
       <div class="w-16 flex justify-center shrink-0">
         <div
-          class="w-5 h-5 transition-transform duration-250"
-          style="transform: rotate({isCollapsed ? '180deg' : '0deg'})"
+          class="w-5 h-5"
+          style="transform: rotate({isCollapsed
+            ? '180deg'
+            : '0deg'}); transition: transform 250ms cubic-bezier(0.34, 1.56, 0.64, 1)"
         >
-          <ChevronsLeft class="w-5 h-5" />
+          <ChevronLeft class="w-5 h-5" />
         </div>
       </div>
       <div
