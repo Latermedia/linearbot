@@ -11,6 +11,7 @@
     id: string;
     name: string;
     description: string | null;
+    content: string | null;
     status: string | null;
     target_date: string | null;
     completed_at: string | null;
@@ -18,6 +19,7 @@
     archived_at: string | null;
     health: string | null;
     health_updated_at: string | null;
+    health_updates: string | null;
     owner_id: string | null;
     owner_name: string | null;
     creator_id: string | null;

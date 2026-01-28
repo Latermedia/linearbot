@@ -23,6 +23,7 @@
     archived_at: string | null;
     health: string | null;
     health_updated_at: string | null;
+    health_updates: string | null;
     owner_id: string | null;
     owner_name: string | null;
     creator_id: string | null;
