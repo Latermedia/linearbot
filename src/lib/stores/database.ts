@@ -1,4 +1,4 @@
-import { writable, derived } from "svelte/store";
+import { writable, derived, get } from "svelte/store";
 import { browser } from "$app/environment";
 import type { Issue } from "../../db/schema";
 import { getIssuesWithProjects } from "../queries";
@@ -13,6 +13,7 @@ import {
 } from "../project-data";
 import { getProjectById } from "../queries";
 import type { Project } from "../../db/schema";
+import { isAuthenticated } from "./auth";
 
 interface DatabaseState {
   loading: boolean;
@@ -223,3 +224,100 @@ export const domainsStore = derived(teamsStore, ($teams) => {
   if (!browser) return [];
   return groupProjectsByDomains($teams);
 });
+
+// Retry configuration for loading teams when authenticated but teams are missing
+const TEAM_RETRY_INTERVAL_MS = 2000; // Check every 2 seconds
+const TEAM_RETRY_MAX_ATTEMPTS = 10; // Give up after 10 attempts (20 seconds)
+let teamRetryAttempts = 0;
+let teamRetryIntervalId: ReturnType<typeof setInterval> | null = null;
+
+/**
+ * Ensures teams are loaded when authenticated.
+ * Called when auth state changes or periodically if teams are missing.
+ */
+async function ensureTeamsLoaded(): Promise<void> {
+  if (!browser) return;
+
+  const authenticated = get(isAuthenticated);
+  const currentDomains = get(domainsStore);
+
+  // If not authenticated or teams are already loaded, nothing to do
+  if (!authenticated) {
+    stopTeamRetry();
+    return;
+  }
+
+  if (currentDomains.length > 0) {
+    stopTeamRetry();
+    teamRetryAttempts = 0;
+    return;
+  }
+
+  // Teams are missing but we're authenticated - try to load
+  console.log(
+    "[ensureTeamsLoaded] Authenticated but teams missing, loading data...",
+    { attempt: teamRetryAttempts + 1 }
+  );
+
+  // Reset config load promise to force a fresh fetch
+  configLoadPromise = null;
+  configLoadedSuccessfully = false;
+
+  await databaseStore.load();
+}
+
+function stopTeamRetry(): void {
+  if (teamRetryIntervalId !== null) {
+    clearInterval(teamRetryIntervalId);
+    teamRetryIntervalId = null;
+  }
+}
+
+function startTeamRetry(): void {
+  if (teamRetryIntervalId !== null) return; // Already running
+
+  teamRetryAttempts = 0;
+  teamRetryIntervalId = setInterval(() => {
+    teamRetryAttempts++;
+
+    if (teamRetryAttempts >= TEAM_RETRY_MAX_ATTEMPTS) {
+      console.warn(
+        "[ensureTeamsLoaded] Max retry attempts reached, stopping retry"
+      );
+      stopTeamRetry();
+      return;
+    }
+
+    ensureTeamsLoaded();
+  }, TEAM_RETRY_INTERVAL_MS);
+}
+
+// Subscribe to auth changes to trigger team loading
+if (browser) {
+  isAuthenticated.subscribe((authenticated) => {
+    if (authenticated) {
+      // When becoming authenticated, immediately try to load teams
+      ensureTeamsLoaded().then(() => {
+        // If teams still not loaded after first attempt, start retry interval
+        const currentDomains = get(domainsStore);
+        if (currentDomains.length === 0) {
+          startTeamRetry();
+        }
+      });
+    } else {
+      // When logging out, stop any retry and reset
+      stopTeamRetry();
+      teamRetryAttempts = 0;
+    }
+  });
+}
+
+/**
+ * Manually trigger a check and load of teams if missing.
+ * Useful for components that need to ensure teams are loaded.
+ */
+export function ensureTeamsLoadedIfAuthenticated(): void {
+  if (browser) {
+    ensureTeamsLoaded();
+  }
+}

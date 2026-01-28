@@ -283,15 +283,14 @@
   // Productivity goal target (3 throughput per engineer per week)
   const PRODUCTIVITY_GOAL = 3;
 
-  // Productivity value display as % of goal (number only, unit added separately)
+  // Productivity value display as weekly rate per engineer (number only, unit added separately)
   const productivityValueNumber = $derived.by(() => {
     if (!productivity || !hasProductivity) return "—";
     if (!("trueThroughput" in productivity)) return "—";
 
     if (productivity.trueThroughputPerEngineer !== null) {
       const weeklyRate = toWeeklyRate(productivity.trueThroughputPerEngineer);
-      const percentOfGoal = (weeklyRate / PRODUCTIVITY_GOAL) * 100;
-      return Math.round(percentOfGoal);
+      return weeklyRate.toFixed(2);
     }
     return "—";
   });
@@ -301,8 +300,7 @@
     if (!("trueThroughput" in productivity)) return undefined;
 
     if (productivity.trueThroughputPerEngineer !== null) {
-      const weeklyRate = toWeeklyRate(productivity.trueThroughputPerEngineer);
-      return `${weeklyRate.toFixed(2)}/wk per eng (goal: ${PRODUCTIVITY_GOAL})`;
+      return `Goal: ${PRODUCTIVITY_GOAL} TruePR/week/eng`;
     }
     return "TrueThroughput";
   });
@@ -369,7 +367,9 @@
     <PillarCard
       title="Productivity"
       value={productivityValueNumber}
-      valueUnit={productivityValueNumber !== "—" ? "%" : undefined}
+      valueUnit={productivityValueNumber !== "—"
+        ? "TruePR/week/eng"
+        : undefined}
       subtitle={productivitySubtitle}
       status={productivity?.status}
       underConstruction={productivityUnderConstruction}

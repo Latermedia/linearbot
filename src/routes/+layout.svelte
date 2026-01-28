@@ -6,6 +6,7 @@
   import { page } from "$app/stores";
   import { theme } from "$lib/stores/theme";
   import { checkAuth } from "$lib/stores/auth";
+  import { ensureTeamsLoadedIfAuthenticated } from "$lib/stores/database";
   import { goto } from "$app/navigation";
   import AppShell from "$lib/components/AppShell.svelte";
   import DevMenuModal from "$lib/components/DevMenuModal.svelte";
@@ -21,7 +22,12 @@
   onMount(() => {
     if (browser) {
       theme.initialize();
-      checkAuth();
+      checkAuth().then((authenticated) => {
+        // Ensure teams are loaded after initial auth check
+        if (authenticated) {
+          ensureTeamsLoadedIfAuthenticated();
+        }
+      });
 
       // Unregister any existing service workers (from old LibSQL client)
       if ("serviceWorker" in navigator) {
@@ -111,6 +117,9 @@
     checkAuth().then((authenticated) => {
       if (!authenticated && currentPathname !== "/login") {
         goto("/login");
+      } else if (authenticated) {
+        // Ensure teams are loaded on every authenticated navigation
+        ensureTeamsLoadedIfAuthenticated();
       }
       // Update previousPathname after auth check
       previousPathname = currentPathname;
