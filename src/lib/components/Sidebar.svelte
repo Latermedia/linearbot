@@ -135,10 +135,10 @@
         <AnimatedLogo size={20} delay={150} />
       </div>
       <div
-        class="overflow-hidden transition-all duration-250 ease-quart-out text-left"
+        class="sidebar-text overflow-hidden text-left"
         style="width: {isCollapsed ? '0' : '176px'}; opacity: {isCollapsed
           ? 0
-          : 1}"
+          : 1}; filter: blur({isCollapsed ? '8px' : '0'})"
       >
         <span
           class="logo-text text-black-900 dark:text-white font-semibold text-sm tracking-tight whitespace-nowrap"
@@ -215,10 +215,10 @@
         </div>
       </div>
       <div
-        class="overflow-hidden transition-all duration-250 ease-quart-out text-left"
+        class="sidebar-text overflow-hidden text-left"
         style="width: {isCollapsed ? '0' : '176px'}; opacity: {isCollapsed
           ? 0
-          : 1}"
+          : 1}; filter: blur({isCollapsed ? '8px' : '0'})"
       >
         <span class="whitespace-nowrap">Collapse</span>
       </div>
@@ -227,12 +227,12 @@
 </aside>
 
 <style>
-  /* Quartic easing: cubic-bezier(0.76, 0, 0.24, 1) for quartInOut */
-  .duration-250 {
-    transition-duration: 250ms;
-  }
-  .ease-quart-out {
-    transition-timing-function: cubic-bezier(0.25, 1, 0.5, 1);
+  /* Sidebar text blur poof transition */
+  .sidebar-text {
+    transition:
+      width 250ms cubic-bezier(0.25, 1, 0.5, 1),
+      opacity 250ms cubic-bezier(0.25, 1, 0.5, 1),
+      filter 250ms cubic-bezier(0.25, 1, 0.5, 1);
   }
 
   .logo-text {

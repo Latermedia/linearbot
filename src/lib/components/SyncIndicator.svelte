@@ -201,10 +201,10 @@
 
     <!-- Label with animated width -->
     <div
-      class="overflow-hidden transition-all duration-250 ease-quart-out relative text-left"
+      class="sidebar-text overflow-hidden relative text-left"
       style="width: {isCollapsed ? '0' : '176px'}; opacity: {isCollapsed
         ? 0
-        : 1}"
+        : 1}; filter: blur({isCollapsed ? '8px' : '0'})"
     >
       <span class="whitespace-nowrap {hasError ? 'text-danger-400' : ''}">
         {hasError
@@ -240,11 +240,12 @@
 {/if}
 
 <style>
-  .duration-250 {
-    transition-duration: 250ms;
-  }
-  .ease-quart-out {
-    transition-timing-function: cubic-bezier(0.25, 1, 0.5, 1);
+  /* Sidebar text blur poof transition */
+  .sidebar-text {
+    transition:
+      width 250ms cubic-bezier(0.25, 1, 0.5, 1),
+      opacity 250ms cubic-bezier(0.25, 1, 0.5, 1),
+      filter 250ms cubic-bezier(0.25, 1, 0.5, 1);
   }
 
   @keyframes sync-pulse {
